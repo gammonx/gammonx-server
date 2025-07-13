@@ -33,7 +33,7 @@ Enters the matchmaking queue and waits for an appropriate opponent based on give
 - Request
 ```
 {
-    "userId": {userId}
+    "userId": {userId},
     "mode": "backgammon" // tavla | tavli (portes/fevga/plakoto)
     "eloRange": [1200, 1400],
     "region": "EU"
@@ -43,7 +43,9 @@ Enters the matchmaking queue and waits for an appropriate opponent based on give
 ```
 {
     "matchId": {GUID} // or null on waiting
-    "status": waiting // matched
+    "status": "waiting" // matched
+    "createdBy": {userID},
+    "players": [{userId1}, {userId2}]
 }
 ```
 
@@ -70,7 +72,9 @@ Creates a match lobby and initializes a match session including a unique identif
 If a given match session id is know, the match can be joined directly or on request.
 - Request
 ```
-{}
+{
+    "userId": {userId}
+}
 ```
 - Response
 ```
@@ -101,7 +105,8 @@ If a given match session id is know, the match can be joined directly or on requ
 
 ### Server > Client
 
-#### `match-state`
+#### Event: `match-state`
+```
 {
   "type": "match-state",
   "payload": {
@@ -114,8 +119,9 @@ If a given match session id is know, the match can be joined directly or on requ
     }
   }
 }
+```
 
-#### `game-state`
+#### Event: `game-state`
 ```
 {
   "type": "game-state",
@@ -166,7 +172,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `game-finished`
+#### Event: `game-finished`
 ```
 {
     "type": "game-finished",
@@ -183,7 +189,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `match-finished`
+#### Event: `match-finished`
 ```
 {
     "type": "match-finished",
@@ -203,7 +209,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `error`
+#### Event: `error`
 ```
 {
     "type": "error"
@@ -216,14 +222,14 @@ If a given match session id is know, the match can be joined directly or on requ
 
 ### Client > Server
 
-#### `roll`
+#### Command: `roll`
 ```
 {
     "type": "roll"
 }
 ```
 
-####  `move`
+#### Command: `move`
 ```
 {
     "type": "move",
@@ -236,7 +242,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `ff`
+#### Command: `ff`
 ```
 {
     "type": "ff"
@@ -247,7 +253,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `double-offer`
+#### Command: `double-offer`
 ```
 {
     "type": "double-offer"
@@ -258,7 +264,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `double-accept`
+#### Command: `double-accept`
 ```
 {
     "type": "double-accept"
@@ -269,7 +275,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `double-decline`
+#### Command: `double-decline`
 ```
 {
     "type": "double-decline"
@@ -280,7 +286,7 @@ If a given match session id is know, the match can be joined directly or on requ
 }
 ```
 
-#### `get-game-state`
+#### Command: `get-game-state`
 ```
 {
     "type": "game-state"
@@ -294,22 +300,25 @@ If a given match session id is know, the match can be joined directly or on requ
 ## Game History Payload
 ```
 {
-    "gameId": {GUID},
-    "mode": {mode}, // tavla | tavli (portes/fevga/plakoto)
-    "winner": {userId1},
-    "loser": {userId2},
-    "moves": [
-        {
-            "player": {userId1},
-            "from": {fromIndex},
-            "to": {toIndex},
-        },
-        ...
-    ],
+    "matchId": {GUID},
     "createdAt": {dateInUTC},
     "duration": {durationInMs},
-    "type": "gammon" // backgammon | standard
-    "score": {score}
+    "games": [
+        "gameId": {GUID},
+        "mode": {mode}, // tavla | tavli (portes/fevga/plakoto)
+        "winner": {userId1},
+        "loser": {userId2},
+        "moves": [
+            {
+                "player": {userId1},
+                "from": {fromIndex},
+                "to": {toIndex},
+            },
+            ...
+        ],
+        "type": "gammon" // backgammon | standard
+        "score": {score}
+    ]
 }
 ```
 
