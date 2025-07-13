@@ -1,1 +1,1 @@
-# gammonx-server
+# GammonX Server
