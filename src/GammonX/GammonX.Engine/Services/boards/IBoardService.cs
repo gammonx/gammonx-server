@@ -32,8 +32,20 @@ namespace GammonX.Engine.Services
         /// <remarks>
         /// This method does not validate the move according to the game rules.
         /// All move done are validated beforehand by the game logic.
+        /// Use <see cref="CanMovePiece"/> for validation.
         /// </remarks>
         /// <returns>Indicates success of the move.</returns>
         bool MovePiece(IBoardModel model, int from, int roll, bool isWhite);
+
+        /// <summary>
+        /// Checks if the given piece can be moved from to a given position based
+        /// on the roll.
+        /// </summary>
+        /// <param name="model">The board model to operate on.</param>
+        /// <param name="from">Position to move from.</param>
+        /// <param name="roll">Value of the used dice roll.</param>
+        /// <param name="isWhite">Indicates if the white or black pieces move.</param>
+        /// <returns>Indicates if the given dice roll value can be moved from.</returns>
+        bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite);
     }
 }

@@ -3,7 +3,7 @@
 namespace GammonX.Engine.Services
 {
     /// <summary>
-    /// Provies basemplementation for board services used in all variants.
+    /// Provies base implementation for board services used in all variants.
     /// </summary>
     internal abstract class BoardBaseServiceImpl : IBoardService
     {
@@ -12,6 +12,21 @@ namespace GammonX.Engine.Services
 
         // <inheritdoc />
         public abstract IBoardModel CreateBoard();
+
+        // <inheritdoc />
+        public bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite)
+        {
+            if (isWhite)
+            {
+                var newPosition = model.WhiteMoveOperator(from, roll);
+                return BoardBroker.CanMove(model, from, newPosition, isWhite);
+            }
+            else
+            {
+                var newPosition = model.BlackMoveOperator(from, roll);
+                return BoardBroker.CanMove(model, from, newPosition, isWhite);
+            }
+        }
 
         // <inheritdoc />
         public bool MovePiece(IBoardModel model, int from, int roll, bool isWhite)

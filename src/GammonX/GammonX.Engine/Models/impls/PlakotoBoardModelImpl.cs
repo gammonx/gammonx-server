@@ -1,11 +1,13 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Engine.Services;
+
+namespace GammonX.Engine.Models
 {
     /// <summary>
     /// Portes implementation
     /// <seealso cref="https://www.bkgm.com/variants/Plakoto.html"/>
     /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
     /// </summary>
-    internal class PlakotoBoardModelImpl : IBoardModel, IBearOffBoardModel, IBlockedModel
+    internal class PlakotoBoardModelImpl : IBoardModel, IBearOffBoardModel, IPinModel
     {
         public PlakotoBoardModelImpl()
         {
@@ -87,6 +89,9 @@
 
         // <inheritdoc />
         public int BearOffBlack => 0;
+
+        // <inheritdoc />
+        public int BlockAmount => 2;
 
         // <inheritdoc />
         public int BarWhite => 0;

@@ -57,6 +57,9 @@
         public int BearOffBlack => 0;
 
         // <inheritdoc />
+        public int BlockAmount => 1;
+
+        // <inheritdoc />
         public int BarWhite => 0;
 
         // <inheritdoc />

@@ -40,6 +40,11 @@
         int BearOffBlack { get; }
 
         /// <summary>
+        /// Gets the amount of pieces needed in order to block a point.
+        /// </summary>
+        int BlockAmount { get; }
+
+        /// <summary>
         /// Operator function for moving a piece for the white player.
         /// First int represents the current position of the piece,
         /// Second int represents the dice roll or move distance.

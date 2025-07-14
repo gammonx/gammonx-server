@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Engine.Services;
+
+namespace GammonX.Engine.Models
 {
     /// <summary>
     /// Tavla implementation.
@@ -55,6 +57,9 @@
 
         // <inheritdoc />
         public int BearOffBlack => 0;
+
+        // <inheritdoc />
+        public int BlockAmount => 2;
 
         // <inheritdoc />
         public int BarWhite => 0;
