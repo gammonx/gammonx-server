@@ -1,6 +1,9 @@
 ﻿namespace GammonX.Engine.Models
 {
-    // <inheritdoc />
+    /// <summary>
+    /// Classic BackGammon implementation.
+    /// <seealso cref="https://www.bkgm.com/rules.html"/>
+    /// </summary>
     internal class BackgammonBoardModelImpl : IBoardModel, IBearOffBoardModel, IDoublingCubeModel
     {
         // <inheritdoc />
@@ -37,10 +40,10 @@
         };
 
         // <inheritdoc />
-        public int WhiteHome => 23;
+        public Range WhiteHome => new(18, 23);
 
         // <inheritdoc />
-        public int BlackHome => 0;
+        public Range BlackHome => new(0, 5);
 
         // <inheritdoc />
         public int BearOffWhite => 0;
@@ -59,5 +62,21 @@
 
         // <inheritdoc />
         public bool DoublingCubeOwner => true;
+
+        // <inheritdoc />
+        public Func<int, int, int> WhiteMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>
+        {
+            // White moves from 0 to 23
+            int newPosition = currentPosition + moveDistance;
+            return newPosition;
+        });
+
+        // <inheritdoc />
+        public Func<int, int, int> BlackMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>
+        {
+            // White moves from 23 to 0
+            int newPosition = currentPosition - moveDistance;
+            return newPosition;
+        });
     }
 }

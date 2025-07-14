@@ -11,7 +11,7 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public IBoardModel CreateBoard()
         {
-            throw new NotImplementedException();
+            return new FevgaBoardModelImpl();
         }
     }
 }

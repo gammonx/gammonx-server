@@ -144,22 +144,25 @@ If a given match session id is know, the match can be joined directly or on requ
             ..
     ]
     "boardState": { 
-        "points": [ // server stores only for player1, player2 gets inverted
+        "points": [ // server stores only for white, black gets inverted
             // Array[0 - 23]
-            [0] 5 // player1 5 checkers
-            [1] 2 // player1 2 checkers
+            [0] 5 // black player 5 checkers
+            [1] 2 // black player 2 checkers
             [2] 0 // empty field
-            [3] -3 // player2 3 checkers
+            [3] -3 // white player 3 checkers
             [..]
-            [23] -5 // player2 5 checkers
+            [23] -5 // white player 5 checkers
         ],
+        "blockedPoints" [
+            ... // Plakoto Extension
+        ]
         "bar": [
-            [0] // bar player1
-            [1] // bar player2
+            [0] // bar black
+            [1] // bar white
         ],
         "bearOff": {
-            [0] // home player1
-            [1] // home player2
+            [0] // home black
+            [1] // home white
         },
         "doublingCube": {
             "owner": {userId1},

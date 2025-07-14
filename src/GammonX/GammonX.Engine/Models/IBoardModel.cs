@@ -22,12 +22,12 @@
         /// <summary>
         /// Gets the index of the home point for the white player.
         /// </summary>
-        int WhiteHome { get; }
+        Range WhiteHome { get; }
 
         /// <summary>
         /// Gets the index of the home point for the black player.
         /// </summary>
-        int BlackHome { get; }
+        Range BlackHome { get; }
 
         /// <summary>
         /// Gets the amount of pieces for the white player that are currently borne off.
@@ -38,5 +38,21 @@
         /// Gets the amount of pieces for the black player that are currently borne off.
         /// </summary>
         int BearOffBlack { get; }
+
+        /// <summary>
+        /// Operator function for moving a piece for the white player.
+        /// First int represents the current position of the piece,
+        /// Second int represents the dice roll or move distance.
+        /// Returns the new position of the piece after the move.
+        /// </summary>
+        Func<int, int, int> WhiteMoveOperator { get; }
+
+        /// <summary>
+        /// Operator function for moving a piece for the black player.
+        /// First int represents the current position of the piece,
+        /// Second int represents the dice roll or move distance.
+        /// Returns the new position of the piece after the move.
+        /// </summary>
+        Func<int, int, int> BlackMoveOperator { get; }
     }
 }
