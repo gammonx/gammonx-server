@@ -1,3 +1,4 @@
+using GammonX.Engine.Services;
 
 namespace GammonX.Engine.Tests
 {

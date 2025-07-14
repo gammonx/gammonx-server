@@ -1,5 +1,4 @@
-﻿
-namespace GammonX.Engine
+﻿namespace GammonX.Engine.Services
 {
     // <inheritdoc />
     internal class SimpleDiceService : IDiceService

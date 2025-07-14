@@ -1,4 +1,4 @@
-﻿namespace GammonX.Engine
+﻿namespace GammonX.Engine.Services
 {
     /// <summary>
     /// Creates instances of <see cref="IDiceService"/>.

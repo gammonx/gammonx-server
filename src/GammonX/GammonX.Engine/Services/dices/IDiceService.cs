@@ -1,4 +1,4 @@
-﻿namespace GammonX.Engine
+﻿namespace GammonX.Engine.Services
 {
     /// <summary>
     /// Interface for a service that simulates rolling dice.
