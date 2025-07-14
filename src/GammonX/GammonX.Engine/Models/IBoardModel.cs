@@ -17,7 +17,7 @@
         /// Negative numbers in the array represent the number of pieces for the white player, 
         /// while positive numbers represent the peices for the black player.
         /// </remarks>
-        int[] Points { get; }
+        int[] Fields { get; }
 
         /// <summary>
         /// Gets the index of the home point for the white player.
@@ -45,18 +45,18 @@
         int BlockAmount { get; }
 
         /// <summary>
-        /// Operator function for moving a piece for the white player.
-        /// First int represents the current position of the piece,
+        /// Operator function for moving a checker for the white player.
+        /// First int represents the current position of the checker,
         /// Second int represents the dice roll or move distance.
-        /// Returns the new position of the piece after the move.
+        /// Returns the new position of the checker after the move.
         /// </summary>
         Func<int, int, int> WhiteMoveOperator { get; }
 
         /// <summary>
-        /// Operator function for moving a piece for the black player.
-        /// First int represents the current position of the piece,
+        /// Operator function for moving a checker for the black player.
+        /// First int represents the current position of the checker,
         /// Second int represents the dice roll or move distance.
-        /// Returns the new position of the piece after the move.
+        /// Returns the new position of the checker after the move.
         /// </summary>
         Func<int, int, int> BlackMoveOperator { get; }
     }

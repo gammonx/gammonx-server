@@ -11,60 +11,60 @@ namespace GammonX.Engine.Models
     {
         public PlakotoBoardModelImpl()
         {
-            Points = new int[24]
+            Fields = new int[24]
             {
-                -15,// Point 1  :: Black Home  :: 15 White Pieces
-                0,  // Point 2  :: Black Home
-                0,  // Point 3  :: Black Home
-                0,  // Point 4  :: Black Home
-                0,  // Point 5  :: Black Home
-                0,  // Point 6  :: Black Home
-                0,  // Point 7
-                0,  // Point 8
-                0,  // Point 9
-                0,  // Point 10
-                0,  // Point 11
-                0,  // Point 12
-                0,  // Point 13
-                0,  // Point 14
-                0,  // Point 15
-                0,  // Point 16
-                0,  // Point 17
-                0,  // Point 18
-                0,  // Point 19 :: White Home
-                0,  // Point 20 :: White Home
-                0,  // Point 21 :: White Home
-                0,  // Point 22 :: White Home
-                0,  // Point 23 :: White Home 
-                15, // Point 24 :: White Home :: 15 Black Pieces
+                -15,// Field 1  :: Black Home  :: 15 White Checkers
+                0,  // Field 2  :: Black Home
+                0,  // Field 3  :: Black Home
+                0,  // Field 4  :: Black Home
+                0,  // Field 5  :: Black Home
+                0,  // Field 6  :: Black Home
+                0,  // Field 7
+                0,  // Field 8
+                0,  // Field 9
+                0,  // Field 10
+                0,  // Field 11
+                0,  // Field 12
+                0,  // Field 13
+                0,  // Field 14
+                0,  // Field 15
+                0,  // Field 16
+                0,  // Field 17
+                0,  // Field 18
+                0,  // Field 19 :: White Home
+                0,  // Field 20 :: White Home
+                0,  // Field 21 :: White Home
+                0,  // Field 22 :: White Home
+                0,  // Field 23 :: White Home 
+                15, // Field 24 :: White Home :: 15 Black Checkers
             };
 
             BlockedPoints = new int[24]
             {
-                0,  // Point 1  :: Black Home
-                0,  // Point 2  :: Black Home
-                0,  // Point 3  :: Black Home
-                0,  // Point 4  :: Black Home
-                0,  // Point 5  :: Black Home
-                0,  // Point 6  :: Black Home
-                0,  // Point 7
-                0,  // Point 8
-                0,  // Point 9
-                0,  // Point 10
-                0,  // Point 11
-                0,  // Point 12
-                0,  // Point 13
-                0,  // Point 14
-                0,  // Point 15
-                0,  // Point 16
-                0,  // Point 17
-                0,  // Point 18
-                0,  // Point 19 :: White Home
-                0,  // Point 20 :: White Home
-                0,  // Point 21 :: White Home
-                0,  // Point 22 :: White Home
-                0,  // Point 23 :: White Home 
-                0,  // Point 24 :: White Home
+                0,  // Field 1  :: Black Home
+                0,  // Field 2  :: Black Home
+                0,  // Field 3  :: Black Home
+                0,  // Field 4  :: Black Home
+                0,  // Field 5  :: Black Home
+                0,  // Field 6  :: Black Home
+                0,  // Field 7
+                0,  // Field 8
+                0,  // Field 9
+                0,  // Field 10
+                0,  // Field 11
+                0,  // Field 12
+                0,  // Field 13
+                0,  // Field 14
+                0,  // Field 15
+                0,  // Field 16
+                0,  // Field 17
+                0,  // Field 18
+                0,  // Field 19 :: White Home
+                0,  // Field 20 :: White Home
+                0,  // Field 21 :: White Home
+                0,  // Field 22 :: White Home
+                0,  // Field 23 :: White Home 
+                0,  // Field 24 :: White Home
 
             };
         }
@@ -73,7 +73,7 @@ namespace GammonX.Engine.Models
         public GameModus Modus => GameModus.Plakoto;
 
         // <inheritdoc />
-        public int[] Points { get; private set; }
+        public int[] Fields { get; private set; }
 
         // <inheritdoc />
         public int[] BlockedPoints { get; private set; }

@@ -30,9 +30,9 @@ namespace GammonX.Engine.Services
             }
             else
             {
-                for (int i = 0; i < model.Points.Length; i++)
+                for (int i = 0; i < model.Fields.Length; i++)
                 {
-                    int pointValue = model.Points[i];
+                    int pointValue = model.Fields[i];
                     if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
                     {
                         playerPoints.Add(i);
@@ -82,17 +82,17 @@ namespace GammonX.Engine.Services
             // TODO: UNIT TESTS
             if (isWhite)
             {
-                // remove a negative piece from the old position
-                model.Points.SetValue(model.Points[from] += 1, from);
-                // add a negative piece to the new position
-                model.Points.SetValue(model.Points[to] -= 1, to);
+                // remove a negative checker from the old position
+                model.Fields.SetValue(model.Fields[from] += 1, from);
+                // add a negative checker to the new position
+                model.Fields.SetValue(model.Fields[to] -= 1, to);
             }
             else
             {
-                // remove a positive piece from the old position
-                model.Points.SetValue(model.Points[from] -= 1, from);
-                // add a positive piece to the new position
-                model.Points.SetValue(model.Points[to] += 1, to);
+                // remove a positive checker from the old position
+                model.Fields.SetValue(model.Fields[from] -= 1, from);
+                // add a positive checker to the new position
+                model.Fields.SetValue(model.Fields[to] += 1, to);
             }
         }
 
@@ -115,7 +115,7 @@ namespace GammonX.Engine.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error moving piece: {ex.Message}");
+                Console.WriteLine($"Error moving checker: {ex.Message}");
                 return false;
             }
         }

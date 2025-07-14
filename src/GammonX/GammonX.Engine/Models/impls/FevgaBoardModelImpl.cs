@@ -9,32 +9,32 @@
     {
         public FevgaBoardModelImpl()
         {
-            Points = new int[24]
+            Fields = new int[24]
             {
-                -15, // Point 1  :: 15 White Pieces
-                0,  // Point 2
-                0,  // Point 3
-                0,  // Point 4
-                0,  // Point 5
-                0,  // Point 6
-                0,  // Point 7  :: Black Home
-                0,  // Point 8  :: Black Home
-                0,  // Point 9  :: Black Home
-                0,  // Point 10 :: Black Home
-                0,  // Point 11 :: Black Home
-                0,  // Point 12 :: Black Home
-                15, // Point 13 :: 15 Black Pieces
-                0,  // Point 14
-                0,  // Point 15
-                0,  // Point 16
-                0,  // Point 17
-                0,  // Point 18
-                0,  // Point 19 :: White Home
-                0,  // Point 20 :: White Home
-                0,  // Point 21 :: White Home
-                0,  // Point 22 :: White Home
-                0,  // Point 23 :: White Home 
-                0,  // Point 24 :: White Home
+                -15, // Field 1  :: 15 White Checkers
+                0,  // Field 2
+                0,  // Field 3
+                0,  // Field 4
+                0,  // Field 5
+                0,  // Field 6
+                0,  // Field 7  :: Black Home
+                0,  // Field 8  :: Black Home
+                0,  // Field 9  :: Black Home
+                0,  // Field 10 :: Black Home
+                0,  // Field 11 :: Black Home
+                0,  // Field 12 :: Black Home
+                15, // Field 13 :: 15 Black Checkers
+                0,  // Field 14
+                0,  // Field 15
+                0,  // Field 16
+                0,  // Field 17
+                0,  // Field 18
+                0,  // Field 19 :: White Home
+                0,  // Field 20 :: White Home
+                0,  // Field 21 :: White Home
+                0,  // Field 22 :: White Home
+                0,  // Field 23 :: White Home 
+                0,  // Field 24 :: White Home
             };
         }
 
@@ -42,7 +42,7 @@
         public GameModus Modus => GameModus.Fevga;
 
         // <inheritdoc />
-        public int[] Points { get; private set; }
+        public int[] Fields { get; private set; }
 
         // <inheritdoc />
         public Range HomeRangeWhite => new(18, 23);

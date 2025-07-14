@@ -10,7 +10,7 @@ namespace GammonX.Engine.Models
         /// Gets the amount of pieces for the white player on the home bar.
         /// </summary>
         /// <remarks>
-        /// A piece is returned to the home bar when it is hit by an opponent's piece.
+        /// A checker is returned to the home bar when it is hit by an opponent's checker.
         /// </remarks>
         int HomeBarCountWhite { get; }
 
@@ -18,7 +18,7 @@ namespace GammonX.Engine.Models
         /// Gets the amount of pieces for the black player on the home bar.
         /// </summary>
         /// <remarks>
-        /// A piece is returned to the home bar when it is hit by an opponent's piece.
+        /// A checker is returned to the home bar when it is hit by an opponent's checker.
         /// </remarks>
         int HomeBarCountBlack { get; }
 

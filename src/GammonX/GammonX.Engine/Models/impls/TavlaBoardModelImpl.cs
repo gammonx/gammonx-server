@@ -10,32 +10,32 @@ namespace GammonX.Engine.Models
     {
         public TavlaBoardModelImpl()
         {
-            Points = new int[24]
+            Fields = new int[24]
             {
-                -2, // Point 1 :: Black Home :: 2 White pieces
-                0,  // Point 2
-                0,  // Point 3
-                0,  // Point 4
-                0,  // Point 5
-                5,  // Point 6 :: 5 Black pieces
-                0,  // Point 7
-                3,  // Point 8 :: 3 Black pieces
-                0,  // Point 9
-                0,  // Point 10
-                0,  // Point 11
-                -5, // Point 12 :: 5 White pieces
-                5,  // Point 13 :: 5 Black pieces
-                0,  // Point 14
-                0,  // Point 15
-                0,  // Point 16
-                -3, // Point 17 :: 3 White pieces
-                0,  // Point 18
-                -5, // Point 19 :: 5 White pieces
-                0,  // Point 20
-                0,  // Point 21
-                0,  // Point 22
-                0,  // Point 23 
-                2,  // Point 24 :: White Home :: 2 Black pieces
+                -2, // Field 1 :: Black Home :: 2 White pieces
+                0,  // Field 2
+                0,  // Field 3
+                0,  // Field 4
+                0,  // Field 5
+                5,  // Field 6 :: 5 Black pieces
+                0,  // Field 7
+                3,  // Field 8 :: 3 Black pieces
+                0,  // Field 9
+                0,  // Field 10
+                0,  // Field 11
+                -5, // Field 12 :: 5 White pieces
+                5,  // Field 13 :: 5 Black pieces
+                0,  // Field 14
+                0,  // Field 15
+                0,  // Field 16
+                -3, // Field 17 :: 3 White pieces
+                0,  // Field 18
+                -5, // Field 19 :: 5 White pieces
+                0,  // Field 20
+                0,  // Field 21
+                0,  // Field 22
+                0,  // Field 23 
+                2,  // Field 24 :: White Home :: 2 Black pieces
 
             };
         }
@@ -44,7 +44,7 @@ namespace GammonX.Engine.Models
         public GameModus Modus => GameModus.Tavla;
 
         // <inheritdoc />
-        public int[] Points { get; private set; }
+        public int[] Fields { get; private set; }
 
         // <inheritdoc />
         public Range HomeRangeWhite => new(18, 23);

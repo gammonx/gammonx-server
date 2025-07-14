@@ -26,10 +26,10 @@ namespace GammonX.Engine.Services
             if (from < 0 || from > 23 || to < 0 || to > 23)
                 return false;
 
-            int fromPoint = model.Points[from];
-            int toPoint = model.Points[to];
+            int fromPoint = model.Fields[from];
+            int toPoint = model.Fields[to];
 
-            // check if a piece is available on the from point
+            // check if a checker is available on the from point
             if (isWhite)
             {
                 // no white pieces on from point
@@ -57,13 +57,13 @@ namespace GammonX.Engine.Services
         }
 
         /// <summary>
-        /// Checks if the given piece can be beared of based on the given roll.
+        /// Checks if the given checker can be beared of based on the given roll.
         /// </summary>
         /// <param name="model">Board model to operate on.</param>
         /// <param name="from">The from position.</param>
         /// <param name="roll">The roll value.</param>
         /// <param name="isWhite">Indicates if white or black pieces are relevant.</param>
-        /// <returns>Boolean indicating if the piece can be beared off.</returns>
+        /// <returns>Boolean indicating if the checker can be beared off.</returns>
         public static bool CanBearOff(this IBoardModel model, int from, int roll, bool isWhite)
         {
             // TODO: UNIT TESTS
@@ -93,9 +93,9 @@ namespace GammonX.Engine.Services
         {
             // TODO: UNIT TESTS
             var homeRange = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
-            for (int i = 0; i < model.Points.Length; i++)
+            for (int i = 0; i < model.Fields.Length; i++)
             {
-                int point = model.Points[i];
+                int point = model.Fields[i];
                 if (isWhite && point < 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
                 if (!isWhite && point > 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
             }
