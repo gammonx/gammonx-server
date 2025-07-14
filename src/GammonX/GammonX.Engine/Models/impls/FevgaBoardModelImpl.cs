@@ -7,38 +7,42 @@
     /// </summary>
     internal class FevgaBoardModelImpl : IBoardModel, IBearOffBoardModel
     {
+        public FevgaBoardModelImpl()
+        {
+            Points = new int[24]
+            {
+                -15, // Point 1  :: 15 White Pieces
+                0,  // Point 2
+                0,  // Point 3
+                0,  // Point 4
+                0,  // Point 5
+                0,  // Point 6
+                0,  // Point 7  :: Black Home
+                0,  // Point 8  :: Black Home
+                0,  // Point 9  :: Black Home
+                0,  // Point 10 :: Black Home
+                0,  // Point 11 :: Black Home
+                0,  // Point 12 :: Black Home
+                15, // Point 13 :: 15 Black Pieces
+                0,  // Point 14
+                0,  // Point 15
+                0,  // Point 16
+                0,  // Point 17
+                0,  // Point 18
+                0,  // Point 19 :: White Home
+                0,  // Point 20 :: White Home
+                0,  // Point 21 :: White Home
+                0,  // Point 22 :: White Home
+                0,  // Point 23 :: White Home 
+                0,  // Point 24 :: White Home
+            };
+        }
+
         // <inheritdoc />
         public GameModus Modus => GameModus.Fevga;
 
         // <inheritdoc />
-        public int[] Points => new int[24]
-        {
-            -15, // Point 1  :: 15 White Pieces
-            0,  // Point 2
-            0,  // Point 3
-            0,  // Point 4
-            0,  // Point 5
-            0,  // Point 6
-            0,  // Point 7  :: Black Home
-            0,  // Point 8  :: Black Home
-            0,  // Point 9  :: Black Home
-            0,  // Point 10 :: Black Home
-            0,  // Point 11 :: Black Home
-            0,  // Point 12 :: Black Home
-            15, // Point 13 :: 15 Black Pieces
-            0,  // Point 14
-            0,  // Point 15
-            0,  // Point 16
-            0,  // Point 17
-            0,  // Point 18
-            0,  // Point 19 :: White Home
-            0,  // Point 20 :: White Home
-            0,  // Point 21 :: White Home
-            0,  // Point 22 :: White Home
-            0,  // Point 23 :: White Home 
-            0,  // Point 24 :: White Home
-
-        };
+        public int[] Points { get; private set; }
 
         // <inheritdoc />
         public Range WhiteHome => new(18, 23);

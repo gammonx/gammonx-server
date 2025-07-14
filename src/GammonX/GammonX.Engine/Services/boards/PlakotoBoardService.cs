@@ -3,13 +3,13 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class PlakotoBoardService : IBoardService
+    internal class PlakotoBoardService : BoardBaseServiceImpl
     {
         // <inheritdoc />
-        public GameModus Modus => GameModus.Plakoto;
+        public override GameModus Modus => GameModus.Plakoto;
 
         // <inheritdoc />
-        public IBoardModel CreateBoard()
+        public override IBoardModel CreateBoard()
         {
             return new PlakotoBoardModelImpl();
         }

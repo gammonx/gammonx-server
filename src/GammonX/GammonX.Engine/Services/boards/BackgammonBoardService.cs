@@ -3,13 +3,13 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class BackgammonBoardService : IBoardService
+    internal class BackgammonBoardService : BoardBaseServiceImpl
     {
         // <inheritdoc />
-        public GameModus Modus => GameModus.Backgammon;
+        public override GameModus Modus => GameModus.Backgammon;
 
         // <inheritdoc />
-        public IBoardModel CreateBoard()
+        public override IBoardModel CreateBoard()
         {
             return new BackgammonBoardModelImpl();
         }

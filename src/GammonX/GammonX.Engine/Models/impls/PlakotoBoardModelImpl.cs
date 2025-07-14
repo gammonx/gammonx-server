@@ -7,68 +7,74 @@
     /// </summary>
     internal class PlakotoBoardModelImpl : IBoardModel, IBearOffBoardModel, IBlockedModel
     {
+        public PlakotoBoardModelImpl()
+        {
+            Points = new int[24]
+            {
+                -15,// Point 1  :: Black Home  :: 15 White Pieces
+                0,  // Point 2  :: Black Home
+                0,  // Point 3  :: Black Home
+                0,  // Point 4  :: Black Home
+                0,  // Point 5  :: Black Home
+                0,  // Point 6  :: Black Home
+                0,  // Point 7
+                0,  // Point 8
+                0,  // Point 9
+                0,  // Point 10
+                0,  // Point 11
+                0,  // Point 12
+                0,  // Point 13
+                0,  // Point 14
+                0,  // Point 15
+                0,  // Point 16
+                0,  // Point 17
+                0,  // Point 18
+                0,  // Point 19 :: White Home
+                0,  // Point 20 :: White Home
+                0,  // Point 21 :: White Home
+                0,  // Point 22 :: White Home
+                0,  // Point 23 :: White Home 
+                15, // Point 24 :: White Home :: 15 Black Pieces
+            };
+
+            BlockedPoints = new int[24]
+            {
+                0,  // Point 1  :: Black Home
+                0,  // Point 2  :: Black Home
+                0,  // Point 3  :: Black Home
+                0,  // Point 4  :: Black Home
+                0,  // Point 5  :: Black Home
+                0,  // Point 6  :: Black Home
+                0,  // Point 7
+                0,  // Point 8
+                0,  // Point 9
+                0,  // Point 10
+                0,  // Point 11
+                0,  // Point 12
+                0,  // Point 13
+                0,  // Point 14
+                0,  // Point 15
+                0,  // Point 16
+                0,  // Point 17
+                0,  // Point 18
+                0,  // Point 19 :: White Home
+                0,  // Point 20 :: White Home
+                0,  // Point 21 :: White Home
+                0,  // Point 22 :: White Home
+                0,  // Point 23 :: White Home 
+                0,  // Point 24 :: White Home
+
+            };
+        }
+
         // <inheritdoc />
         public GameModus Modus => GameModus.Plakoto;
 
         // <inheritdoc />
-        public int[] Points => new int[24]
-        {
-            -15,// Point 1  :: Black Home  :: 15 White Pieces
-            0,  // Point 2  :: Black Home
-            0,  // Point 3  :: Black Home
-            0,  // Point 4  :: Black Home
-            0,  // Point 5  :: Black Home
-            0,  // Point 6  :: Black Home
-            0,  // Point 7
-            0,  // Point 8
-            0,  // Point 9
-            0,  // Point 10
-            0,  // Point 11
-            0,  // Point 12
-            0,  // Point 13
-            0,  // Point 14
-            0,  // Point 15
-            0,  // Point 16
-            0,  // Point 17
-            0,  // Point 18
-            0,  // Point 19 :: White Home
-            0,  // Point 20 :: White Home
-            0,  // Point 21 :: White Home
-            0,  // Point 22 :: White Home
-            0,  // Point 23 :: White Home 
-            15, // Point 24 :: White Home :: 15 Black Pieces
-
-        };
+        public int[] Points { get; private set; }
 
         // <inheritdoc />
-        public int[] BlockedPoints => new int[24]
-        {
-            0,  // Point 1  :: Black Home
-            0,  // Point 2  :: Black Home
-            0,  // Point 3  :: Black Home
-            0,  // Point 4  :: Black Home
-            0,  // Point 5  :: Black Home
-            0,  // Point 6  :: Black Home
-            0,  // Point 7
-            0,  // Point 8
-            0,  // Point 9
-            0,  // Point 10
-            0,  // Point 11
-            0,  // Point 12
-            0,  // Point 13
-            0,  // Point 14
-            0,  // Point 15
-            0,  // Point 16
-            0,  // Point 17
-            0,  // Point 18
-            0,  // Point 19 :: White Home
-            0,  // Point 20 :: White Home
-            0,  // Point 21 :: White Home
-            0,  // Point 22 :: White Home
-            0,  // Point 23 :: White Home 
-            0,  // Point 24 :: White Home
-
-        };
+        public int[] BlockedPoints { get; private set; }
 
         // <inheritdoc />
         public Range WhiteHome => new(18, 23);

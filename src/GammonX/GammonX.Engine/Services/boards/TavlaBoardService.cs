@@ -3,13 +3,13 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class TavlaBoardService : IBoardService
+    internal class TavlaBoardService : BoardBaseServiceImpl
     {
         // <inheritdoc />
-        public GameModus Modus => GameModus.Tavla;
+        public override GameModus Modus => GameModus.Tavla;
 
         // <inheritdoc />
-        public IBoardModel CreateBoard()
+        public override IBoardModel CreateBoard()
         {
             return new TavlaBoardModelImpl();
         }

@@ -57,6 +57,21 @@ namespace GammonX.Engine.Tests
             Assert.Equal(2, boardModel.Points[23]); // 2 black pieces on point 24
         }
 
+        [Fact]
+        public void BackgammonBoardMovesCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var boardModel = service.CreateBoard();
+
+            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
+            Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
+
+            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
+            Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
+        }
+
         #endregion Backgammon
 
         #region Tavli
@@ -108,6 +123,21 @@ namespace GammonX.Engine.Tests
         }
 
         [Fact]
+        public void PlakotoBoardMovesCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+
+            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            Assert.Equal(-14, boardModel.Points[0]); // Point 1 should now have 14 white pieces
+            Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
+
+            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            Assert.Equal(14, boardModel.Points[23]); // Point 24 should now have 14 black pieces
+            Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
+        }
+
+        [Fact]
         public void PortesBoardServiceHasCorrectModus()
         {
             var service = BoardServiceFactory.Create(GameModus.Portes);
@@ -156,6 +186,21 @@ namespace GammonX.Engine.Tests
         }
 
         [Fact]
+        public void PortesBoardMovesCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Portes);
+            var boardModel = service.CreateBoard();
+
+            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
+            Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
+
+            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
+            Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
+        }
+
+        [Fact]
         public void FevgaBoardServiceHasCorrectModus()
         {
             var service = BoardServiceFactory.Create(GameModus.Fevga);
@@ -193,6 +238,27 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(boardModel);
             Assert.Equal(-15, boardModel.Points[0]); // 15 white pieces on point 1
             Assert.Equal(15, boardModel.Points[12]); // 15 black pieces on point 6
+        }
+
+        [Fact]
+        public void FevgaBoardMovesCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Fevga);
+            var boardModel = service.CreateBoard();
+
+            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            Assert.Equal(-14, boardModel.Points[0]); // Point 1 should now have 14 white pieces
+            Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
+
+            service.MovePiece(boardModel, 12, 6, false); // Move black piece from point 24 to point 18
+            Assert.Equal(14, boardModel.Points[12]); // Point 13 should now have 14 black pieces
+            Assert.Equal(1, boardModel.Points[18]); // Point 19 should now have 1 black piece
+
+            // move piece around from index 23 to index 1
+            service.MovePiece(boardModel, 18, 7, false); // Move black piece from point 19 to point 2
+            Assert.Equal(0, boardModel.Points[18]); // Point 18 should now have 0 black piece
+            Assert.Equal(1, boardModel.Points[1]); // Point 2 should now have 1 black piece
+            
         }
 
         #endregion
@@ -245,6 +311,21 @@ namespace GammonX.Engine.Tests
             Assert.Equal(-3, boardModel.Points[16]); // 3 white pieces on point 17
             Assert.Equal(-5, boardModel.Points[18]); // 5 white pieces on point 19
             Assert.Equal(2, boardModel.Points[23]); // 2 black pieces on point 24
+        }
+
+        [Fact]
+        public void TavlaBoardMovesCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Tavla);
+            var boardModel = service.CreateBoard();
+
+            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
+            Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
+
+            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
+            Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
         }
 
         #endregion Tavla

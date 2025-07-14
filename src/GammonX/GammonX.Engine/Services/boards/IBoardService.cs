@@ -21,5 +21,19 @@ namespace GammonX.Engine.Services
         /// </remarks>
         /// <returns>An instance of <see cref="IBoardModel"/>.</returns>
         IBoardModel CreateBoard();
+
+        /// <summary>
+        /// Moves a piece from one position to another on the board.
+        /// </summary>
+        /// <param name="model">The board model to operate on.</param>
+        /// <param name="from">Position to move from.</param>
+        /// <param name="roll">Value of the used dice roll.</param>
+        /// <param name="isWhite">Indicates if white or black pieces move.</param>
+        /// <remarks>
+        /// This method does not validate the move according to the game rules.
+        /// All move done are validated beforehand by the game logic.
+        /// </remarks>
+        /// <returns>Indicates success of the move.</returns>
+        bool MovePiece(IBoardModel model, int from, int roll, bool isWhite);
     }
 }

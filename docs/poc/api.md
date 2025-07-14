@@ -89,9 +89,9 @@ If a given match session id is know, the match can be joined directly or on requ
 ## Web Socket Events (SignalR)
 
 ### Connect to Socket
-`wss://example.com/gammonxhub?gameId={GUID}&token={user1Token}`
+`wss://example.com/gammonxhub?matchId={GUID}&token={user1Token}`
 
-`wss://example.com/gammonxhub?gameId={GUID}&token={user2Token}`
+`wss://example.com/gammonxhub?matchId={GUID}&token={user2Token}`
 
 ### Game Phases
 

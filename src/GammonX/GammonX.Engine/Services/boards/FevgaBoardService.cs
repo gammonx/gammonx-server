@@ -3,13 +3,13 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class FevgaBoardService : IBoardService
+    internal class FevgaBoardService : BoardBaseServiceImpl
     {
         // <inheritdoc />
-        public GameModus Modus => GameModus.Fevga;
+        public override GameModus Modus => GameModus.Fevga;
 
         // <inheritdoc />
-        public IBoardModel CreateBoard()
+        public override IBoardModel CreateBoard()
         {
             return new FevgaBoardModelImpl();
         }

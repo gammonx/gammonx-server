@@ -3,13 +3,13 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class PortesBoardService : IBoardService
+    internal class PortesBoardService : BoardBaseServiceImpl
     {
         // <inheritdoc />
-        public GameModus Modus => GameModus.Portes;
+        public override GameModus Modus => GameModus.Portes;
 
         // <inheritdoc />
-        public IBoardModel CreateBoard()
+        public override IBoardModel CreateBoard()
         {
             return new PortesBoardModelImpl();
         }
