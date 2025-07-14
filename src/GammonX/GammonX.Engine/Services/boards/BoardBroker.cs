@@ -4,7 +4,7 @@ using GammonX.Engine.Models;
 namespace GammonX.Engine.Services
 {
     /// <summary>
-    /// Helper class for board operations
+    /// Helper class for board operations.
     /// </summary>
     internal static class BoardBroker
     {
@@ -20,7 +20,7 @@ namespace GammonX.Engine.Services
         /// <param name="to">To position index.</param>
         /// <param name="isWhite">Indicates if white or black pieces are moved.</param>
         /// <returns>Boolean indicating if the move can be made.</returns>
-        public static bool CanMove(IBoardModel model, int from, int to, bool isWhite)
+        public static bool CanMove(this IBoardModel model, int from, int to, bool isWhite)
         {
             // check indices validity
             if (from < 0 || from > 23 || to < 0 || to > 23)
@@ -53,6 +53,52 @@ namespace GammonX.Engine.Services
                 if (toPoint <= -model.BlockAmount) return false;
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if the given piece can be beared of based on the given roll.
+        /// </summary>
+        /// <param name="model">Board model to operate on.</param>
+        /// <param name="from">The from position.</param>
+        /// <param name="roll">The roll value.</param>
+        /// <param name="isWhite">Indicates if white or black pieces are relevant.</param>
+        /// <returns>Boolean indicating if the piece can be beared off.</returns>
+        public static bool CanBearOff(this IBoardModel model, int from, int roll, bool isWhite)
+        {
+            // TODO: UNIT TESTS
+            if (!AllPiecesInHomeRange(model, isWhite)) 
+                return false;
+
+            int to = isWhite ? model.WhiteMoveOperator(from, roll) : model.BlackMoveOperator(from, roll);
+
+            // can be beared off if the roll moves the exactly on or beyond the home range
+            if (isWhite)
+            {
+                return to < 0;
+            }
+            else
+            {
+                return to > 23;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a player has all pieces within the home range.
+        /// </summary>
+        /// <param name="model">Board to operate on.</param>
+        /// <param name="isWhite">Indicates if white or black pieces are relevant.</param>
+        /// <returns>Boolean indicating if all pieces are within the home range</returns>
+        public static bool AllPiecesInHomeRange(this IBoardModel model, bool isWhite)
+        {
+            // TODO: UNIT TESTS
+            var homeRange = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
+            for (int i = 0; i < model.Points.Length; i++)
+            {
+                int point = model.Points[i];
+                if (isWhite && point < 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
+                if (!isWhite && point > 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
+            }
             return true;
         }
     }

@@ -24,14 +24,16 @@ namespace GammonX.Engine.Tests
             var boardModel = service.CreateBoard();
             Assert.IsAssignableFrom<IBoardModel>(boardModel);
             Assert.Equal(24, boardModel.Points.Length);
-            Assert.Equal(new Range(18, 23), boardModel.WhiteHome);
-            Assert.Equal(new Range(0, 5), boardModel.BlackHome);
-            Assert.Equal(0, boardModel.BearOffWhite);
-            Assert.Equal(0, boardModel.BearOffBlack);
-            var bearOffModel = boardModel as IBearOffBoardModel;
-            Assert.NotNull(bearOffModel);
-            Assert.Equal(0, bearOffModel.BarWhite);
-            Assert.Equal(0, bearOffModel.BarBlack);
+            Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
+            Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
+            Assert.Equal(0, boardModel.BearOffCountWhite);
+            Assert.Equal(0, boardModel.BearOffCountBlack);
+            var homebarModel = boardModel as IHomeBarBoardModel;
+            Assert.NotNull(homebarModel);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+            Assert.Equal(0, homebarModel.StartIndexWhite);
+            Assert.Equal(23, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.NotNull(doublingCubeModel);
             Assert.Equal(2, doublingCubeModel.DoublingCubeValue);
@@ -63,11 +65,11 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Backgammon);
             var boardModel = service.CreateBoard();
 
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
             Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
             Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
 
-            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            service.MoveRoll(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
             Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
             Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
         }
@@ -87,12 +89,12 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
 
             // create a single white piece on 1 and 2
-            service.MovePiece(boardModel, 0, 1, true);
+            service.MoveRoll(boardModel, 0, 1, true);
             Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
             Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
 
             // create a single black piece on 24 and 23
-            service.MovePiece(boardModel, 23, 1, false);
+            service.MoveRoll(boardModel, 23, 1, false);
             Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
             Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
         }
@@ -118,14 +120,16 @@ namespace GammonX.Engine.Tests
             var boardModel = service.CreateBoard();
             Assert.IsAssignableFrom<IBoardModel>(boardModel);
             Assert.Equal(24, boardModel.Points.Length);
-            Assert.Equal(new Range(18, 23), boardModel.WhiteHome);
-            Assert.Equal(new Range(0, 5), boardModel.BlackHome);
-            Assert.Equal(0, boardModel.BearOffWhite);
-            Assert.Equal(0, boardModel.BearOffBlack);
-            var bearOffModel = boardModel as IBearOffBoardModel;
-            Assert.NotNull(bearOffModel);
-            Assert.Equal(0, bearOffModel.BarWhite);
-            Assert.Equal(0, bearOffModel.BarBlack);
+            Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
+            Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
+            Assert.Equal(0, boardModel.BearOffCountWhite);
+            Assert.Equal(0, boardModel.BearOffCountBlack);
+            var homebarModel = boardModel as IHomeBarBoardModel;
+            Assert.NotNull(homebarModel);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+            Assert.Equal(0, homebarModel.StartIndexWhite);
+            Assert.Equal(23, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;
@@ -153,11 +157,11 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Plakoto);
             var boardModel = service.CreateBoard();
 
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
             Assert.Equal(-14, boardModel.Points[0]); // Point 1 should now have 14 white pieces
             Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
 
-            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            service.MoveRoll(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
             Assert.Equal(14, boardModel.Points[23]); // Point 24 should now have 14 black pieces
             Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
         }
@@ -173,17 +177,17 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
 
             // creating single white piece on point 18
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
-            service.MovePiece(boardModel, 11, 6, true); // Move white piece from point 12 to point 18
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
+            service.MoveRoll(boardModel, 11, 6, true); // Move white piece from point 12 to point 18
 
             // creating double white piece on point 19
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 6, true); // Move white piece from point 7 to point 13
-            service.MovePiece(boardModel, 12, 6, true); // Move white piece from point 13 to point 19
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 6, true); // Move white piece from point 7 to point 13
-            service.MovePiece(boardModel, 12, 6, true); // Move white piece from point 13 to point 19
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 6, true); // Move white piece from point 7 to point 13
+            service.MoveRoll(boardModel, 12, 6, true); // Move white piece from point 13 to point 19
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 6, true); // Move white piece from point 7 to point 13
+            service.MoveRoll(boardModel, 12, 6, true); // Move white piece from point 13 to point 19
 
             // try to move from point 23 to 18 
             Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
@@ -191,17 +195,17 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
 
             // creating single black piece on point 7
-            service.MovePiece(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
-            service.MovePiece(boardModel, 17, 5, false); // Move white piece from point 18 to point 13
-            service.MovePiece(boardModel, 12, 6, false); // Move white piece from point 13 to point 7
+            service.MoveRoll(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
+            service.MoveRoll(boardModel, 17, 5, false); // Move white piece from point 18 to point 13
+            service.MoveRoll(boardModel, 12, 6, false); // Move white piece from point 13 to point 7
 
             // creating double black piece on point 6
-            service.MovePiece(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
-            service.MovePiece(boardModel, 17, 6, false); // Move white piece from point 18 to point 11
-            service.MovePiece(boardModel, 11, 6, false); // Move white piece from point 12 to point 6
-            service.MovePiece(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
-            service.MovePiece(boardModel, 17, 6, false); // Move white piece from point 18 to point 11
-            service.MovePiece(boardModel, 11, 6, false); // Move white piece from point 12 to point 6
+            service.MoveRoll(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
+            service.MoveRoll(boardModel, 17, 6, false); // Move white piece from point 18 to point 11
+            service.MoveRoll(boardModel, 11, 6, false); // Move white piece from point 12 to point 6
+            service.MoveRoll(boardModel, 23, 6, false); // Move white piece from point 23 to point 18
+            service.MoveRoll(boardModel, 17, 6, false); // Move white piece from point 18 to point 11
+            service.MoveRoll(boardModel, 11, 6, false); // Move white piece from point 12 to point 6
 
             // try to move from point 1 to 7 
             Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
@@ -226,14 +230,16 @@ namespace GammonX.Engine.Tests
             var boardModel = service.CreateBoard();
             Assert.IsAssignableFrom<IBoardModel>(boardModel);
             Assert.Equal(24, boardModel.Points.Length);
-            Assert.Equal(new Range(18, 23), boardModel.WhiteHome);
-            Assert.Equal(new Range(0, 5), boardModel.BlackHome);
-            Assert.Equal(0, boardModel.BearOffWhite);
-            Assert.Equal(0, boardModel.BearOffBlack);
-            var bearOffModel = boardModel as IBearOffBoardModel;
-            Assert.NotNull(bearOffModel);
-            Assert.Equal(0, bearOffModel.BarWhite);
-            Assert.Equal(0, bearOffModel.BarBlack);
+            Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
+            Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
+            Assert.Equal(0, boardModel.BearOffCountWhite);
+            Assert.Equal(0, boardModel.BearOffCountBlack);
+            var homebarModel = boardModel as IHomeBarBoardModel;
+            Assert.NotNull(homebarModel);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+            Assert.Equal(0, homebarModel.StartIndexWhite);
+            Assert.Equal(23, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;
@@ -263,11 +269,11 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Portes);
             var boardModel = service.CreateBoard();
 
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
             Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
             Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
 
-            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            service.MoveRoll(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
             Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
             Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
         }
@@ -287,12 +293,12 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
 
             // create a single white piece on 1 and 2
-            service.MovePiece(boardModel, 0, 1, true);
+            service.MoveRoll(boardModel, 0, 1, true);
             Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
             Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
 
             // create a single black piece on 24 and 23
-            service.MovePiece(boardModel, 23, 1, false);
+            service.MoveRoll(boardModel, 23, 1, false);
             Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
             Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
         }
@@ -314,14 +320,12 @@ namespace GammonX.Engine.Tests
             var boardModel = service.CreateBoard();
             Assert.IsAssignableFrom<IBoardModel>(boardModel);
             Assert.Equal(24, boardModel.Points.Length);
-            Assert.Equal(new Range(18, 23), boardModel.WhiteHome);
-            Assert.Equal(new Range(6, 11), boardModel.BlackHome);
-            Assert.Equal(0, boardModel.BearOffWhite);
-            Assert.Equal(0, boardModel.BearOffBlack);
-            var bearOffModel = boardModel as IBearOffBoardModel;
-            Assert.NotNull(bearOffModel);
-            Assert.Equal(0, bearOffModel.BarWhite);
-            Assert.Equal(0, bearOffModel.BarBlack);
+            Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
+            Assert.Equal(new Range(6, 11), boardModel.HomeRangeBlack);
+            Assert.Equal(0, boardModel.BearOffCountWhite);
+            Assert.Equal(0, boardModel.BearOffCountBlack);
+            var homebarModel = boardModel as IHomeBarBoardModel;
+            Assert.Null(homebarModel);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
         }
@@ -343,16 +347,16 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Fevga);
             var boardModel = service.CreateBoard();
 
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
             Assert.Equal(-14, boardModel.Points[0]); // Point 1 should now have 14 white pieces
             Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
 
-            service.MovePiece(boardModel, 12, 6, false); // Move black piece from point 24 to point 18
+            service.MoveRoll(boardModel, 12, 6, false); // Move black piece from point 24 to point 18
             Assert.Equal(14, boardModel.Points[12]); // Point 13 should now have 14 black pieces
             Assert.Equal(1, boardModel.Points[18]); // Point 19 should now have 1 black piece
 
             // move piece around from index 23 to index 1
-            service.MovePiece(boardModel, 18, 7, false); // Move black piece from point 19 to point 2
+            service.MoveRoll(boardModel, 18, 7, false); // Move black piece from point 19 to point 2
             Assert.Equal(0, boardModel.Points[18]); // Point 18 should now have 0 black piece
             Assert.Equal(1, boardModel.Points[1]); // Point 2 should now have 1 black piece
             
@@ -369,17 +373,17 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMovePiece(boardModel, 12, 6, false));
 
             // creating single white piece on point 14
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
-            service.MovePiece(boardModel, 11, 2, true); // Move white piece from point 12 to point 14
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
+            service.MoveRoll(boardModel, 11, 2, true); // Move white piece from point 12 to point 14
 
             // creating double white piece on point 15
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
-            service.MovePiece(boardModel, 11, 3, true); // Move white piece from point 12 to point 15
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
-            service.MovePiece(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
-            service.MovePiece(boardModel, 11, 3, true); // Move white piece from point 12 to point 15
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
+            service.MoveRoll(boardModel, 11, 3, true); // Move white piece from point 12 to point 15
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 6, 5, true); // Move white piece from point 7 to point 12
+            service.MoveRoll(boardModel, 11, 3, true); // Move white piece from point 12 to point 15
 
             // try to move from point 13 to 14 
             Assert.False(service.CanMovePiece(boardModel, 12, 1, false));
@@ -387,17 +391,17 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMovePiece(boardModel, 12, 2, false));
 
             // creating single black piece on point 2
-            service.MovePiece(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
-            service.MovePiece(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
-            service.MovePiece(boardModel, 23, 2, false); // Move white piece from point 24 to point 2
+            service.MoveRoll(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
+            service.MoveRoll(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
+            service.MoveRoll(boardModel, 23, 2, false); // Move white piece from point 24 to point 2
 
             // creating double black piece on point 3
-            service.MovePiece(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
-            service.MovePiece(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
-            service.MovePiece(boardModel, 23, 3, false); // Move white piece from point 24 to point 3
-            service.MovePiece(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
-            service.MovePiece(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
-            service.MovePiece(boardModel, 23, 3, false); // Move white piece from point 24 to point 3
+            service.MoveRoll(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
+            service.MoveRoll(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
+            service.MoveRoll(boardModel, 23, 3, false); // Move white piece from point 24 to point 3
+            service.MoveRoll(boardModel, 12, 6, false); // Move white piece from point 13 to point 19
+            service.MoveRoll(boardModel, 18, 5, false); // Move white piece from point 19 to point 24
+            service.MoveRoll(boardModel, 23, 3, false); // Move white piece from point 24 to point 3
 
             // try to move from point 1 to 2 
             Assert.False(service.CanMovePiece(boardModel, 0, 1, true));
@@ -426,14 +430,16 @@ namespace GammonX.Engine.Tests
             var boardModel = service.CreateBoard();
             Assert.IsAssignableFrom<IBoardModel>(boardModel);
             Assert.Equal(24, boardModel.Points.Length);
-            Assert.Equal(new Range(18, 23), boardModel.WhiteHome);
-            Assert.Equal(new Range(0, 5), boardModel.BlackHome);
-            Assert.Equal(0, boardModel.BearOffWhite);
-            Assert.Equal(0, boardModel.BearOffBlack);
-            var bearOffModel = boardModel as IBearOffBoardModel;
-            Assert.NotNull(bearOffModel);
-            Assert.Equal(0, bearOffModel.BarWhite);
-            Assert.Equal(0, bearOffModel.BarBlack);
+            Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
+            Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
+            Assert.Equal(0, boardModel.BearOffCountWhite);
+            Assert.Equal(0, boardModel.BearOffCountBlack);
+            var homebarModel = boardModel as IHomeBarBoardModel;
+            Assert.NotNull(homebarModel);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+            Assert.Equal(0, homebarModel.StartIndexWhite);
+            Assert.Equal(23, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;
@@ -463,11 +469,11 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Tavla);
             var boardModel = service.CreateBoard();
 
-            service.MovePiece(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
+            service.MoveRoll(boardModel, 0, 6, true); // Move white piece from point 1 to point 7
             Assert.Equal(-1, boardModel.Points[0]); // Point 1 should now have 1 white piece
             Assert.Equal(-1, boardModel.Points[6]); // Point 7 should now have 1 white piece
 
-            service.MovePiece(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
+            service.MoveRoll(boardModel, 23, 6, false); // Move black piece from point 24 to point 18
             Assert.Equal(1, boardModel.Points[23]); // Point 24 should now have 1 black piece
             Assert.Equal(1, boardModel.Points[17]); // Point 18 should now have 1 black piece
         }
@@ -487,12 +493,12 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
 
             // create a single white piece on 1 and 2
-            service.MovePiece(boardModel, 0, 1, true);
+            service.MoveRoll(boardModel, 0, 1, true);
             Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
             Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
 
             // create a single black piece on 24 and 23
-            service.MovePiece(boardModel, 23, 1, false);
+            service.MoveRoll(boardModel, 23, 1, false);
             Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
             Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
         }

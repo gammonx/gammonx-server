@@ -27,6 +27,20 @@ namespace GammonX.Engine.Services
         /// </summary>
         /// <param name="model">The board model to operate on.</param>
         /// <param name="from">Position to move from.</param>
+        /// <param name="to">Position to move to.</param>
+        /// <param name="isWhite">Indicates if white or black pieces move.</param>
+        /// <remarks>
+        /// This method does not validate the move according to the game rules.
+        /// All move done are validated beforehand by the game logic.
+        /// Use <see cref="CanMovePiece"/> for validation.
+        /// </remarks>
+        void MoveTo(IBoardModel model, int from, int to, bool isWhite);
+
+        /// <summary>
+        /// Moves a piece from one position to another on the board.
+        /// </summary>
+        /// <param name="model">The board model to operate on.</param>
+        /// <param name="from">Position to move from.</param>
         /// <param name="roll">Value of the used dice roll.</param>
         /// <param name="isWhite">Indicates if white or black pieces move.</param>
         /// <remarks>
@@ -35,7 +49,7 @@ namespace GammonX.Engine.Services
         /// Use <see cref="CanMovePiece"/> for validation.
         /// </remarks>
         /// <returns>Indicates success of the move.</returns>
-        bool MovePiece(IBoardModel model, int from, int roll, bool isWhite);
+        bool MoveRoll(IBoardModel model, int from, int roll, bool isWhite);
 
         /// <summary>
         /// Checks if the given piece can be moved from to a given position based
@@ -47,5 +61,15 @@ namespace GammonX.Engine.Services
         /// <param name="isWhite">Indicates if the white or black pieces move.</param>
         /// <returns>Indicates if the given dice roll value can be moved from.</returns>
         bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite);
+
+        /// <summary>
+        /// Calculates all legal moves for the given player based on the current board state
+        /// and the given dice rolls.
+        /// </summary>
+        /// <param name="model">Board model to operate on.</param>
+        /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
+        /// <param name="rolls">1:n Dice roll values</param>
+        /// <returns>A tuple array containing all legal moves from to.</returns>
+        ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls);
     }
 }

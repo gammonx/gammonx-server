@@ -5,7 +5,7 @@
     /// <seealso cref="https://www.bkgm.com/variants/Fevga.html"/>
     /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
     /// </summary>
-    internal class FevgaBoardModelImpl : IBoardModel, IBearOffBoardModel
+    internal class FevgaBoardModelImpl : IBoardModel
     {
         public FevgaBoardModelImpl()
         {
@@ -45,25 +45,19 @@
         public int[] Points { get; private set; }
 
         // <inheritdoc />
-        public Range WhiteHome => new(18, 23);
+        public Range HomeRangeWhite => new(18, 23);
 
         // <inheritdoc />
-        public Range BlackHome => new(6, 11);
+        public Range HomeRangeBlack => new(6, 11);
 
         // <inheritdoc />
-        public int BearOffWhite => 0;
+        public int BearOffCountWhite => 0;
 
         // <inheritdoc />
-        public int BearOffBlack => 0;
+        public int BearOffCountBlack => 0;
 
         // <inheritdoc />
         public int BlockAmount => 1;
-
-        // <inheritdoc />
-        public int BarWhite => 0;
-
-        // <inheritdoc />
-        public int BarBlack => 0;
 
         // <inheritdoc />
         public Func<int, int, int> WhiteMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>

@@ -6,7 +6,7 @@ namespace GammonX.Engine.Models
     /// Tavla implementation.
     /// <seealso cref="https://www.bkgm.com/variants/Tavla.html"/>
     /// </summary>
-    internal class TavlaBoardModelImpl : IBoardModel, IBearOffBoardModel
+    internal class TavlaBoardModelImpl : IBoardModel, IHomeBarBoardModel
     {
         public TavlaBoardModelImpl()
         {
@@ -47,25 +47,31 @@ namespace GammonX.Engine.Models
         public int[] Points { get; private set; }
 
         // <inheritdoc />
-        public Range WhiteHome => new(18, 23);
+        public Range HomeRangeWhite => new(18, 23);
 
         // <inheritdoc />
-        public Range BlackHome => new(0, 5);
+        public Range HomeRangeBlack => new(5, 0);
 
         // <inheritdoc />
-        public int BearOffWhite => 0;
+        public int BearOffCountWhite => 0;
 
         // <inheritdoc />
-        public int BearOffBlack => 0;
+        public int BearOffCountBlack => 0;
 
         // <inheritdoc />
         public int BlockAmount => 2;
 
         // <inheritdoc />
-        public int BarWhite => 0;
+        public int HomeBarCountWhite => 0;
 
         // <inheritdoc />
-        public int BarBlack => 0;
+        public int HomeBarCountBlack => 0;
+
+        // <inheritdoc />
+        public int StartIndexWhite => 0;
+
+        // <inheritdoc />
+        public int StartIndexBlack => 23;
 
         // <inheritdoc />
         public Func<int, int, int> WhiteMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>

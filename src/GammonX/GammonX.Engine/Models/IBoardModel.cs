@@ -22,22 +22,22 @@
         /// <summary>
         /// Gets the index of the home point for the white player.
         /// </summary>
-        Range WhiteHome { get; }
+        Range HomeRangeWhite { get; }
 
         /// <summary>
         /// Gets the index of the home point for the black player.
         /// </summary>
-        Range BlackHome { get; }
+        Range HomeRangeBlack { get; }
 
         /// <summary>
         /// Gets the amount of pieces for the white player that are currently borne off.
         /// </summary>
-        int BearOffWhite { get; }
+        int BearOffCountWhite { get; }
 
         /// <summary>
         /// Gets the amount of pieces for the black player that are currently borne off.
         /// </summary>
-        int BearOffBlack { get; }
+        int BearOffCountBlack { get; }
 
         /// <summary>
         /// Gets the amount of pieces needed in order to block a point.
