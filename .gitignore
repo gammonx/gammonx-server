@@ -1,0 +1,97 @@
+## Build-Output
+bin/
+obj/
+out/
+*.log
+
+## User-spezifische Dateien
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+.vscode/
+.idea/
+.vs/
+
+## Visual Studio Code workspace settings
+.vscode/
+
+## Rider
+.idea/
+*.sln.iml
+
+## ASP.NET temp files
+**/App_Data/
+**/App_Start/
+**/Properties/PublishProfiles/
+
+## Paketmanagement
+# NuGet
+packages/
+*.nupkg
+# Paket-Locks
+project.lock.json
+project.assets.json
+*.deps.json
+
+# Paket-Cache
+.nuget/
+
+# dotnet Tooling
+*.pidb
+*.svclog
+
+## Konfigurationen
+*.dbmdl
+*.bak
+*.orig
+
+## Entity Framework Migrations-Backups
+Migrations/
+
+## Log-Dateien
+*.log
+logs/
+log/
+
+## Test-Output
+TestResults/
+*.TestResults.xml
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml
+*.trx
+
+## Build artefacts
+*.dll
+*.exe
+*.pdb
+
+## OS-spezifisch
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+## Sonstiges
+*.swp
+*.swo
+*.bak
+*.tmp
+*.orig
+*.rej
+*.zip
+*.tar.gz
+*.tar
+*.gz
+
+# JetBrains Rider cache (optional)
+.idea/
+
+# Optional: secrets.json (wenn nicht bewusst eingecheckt)
+**/secrets.json
