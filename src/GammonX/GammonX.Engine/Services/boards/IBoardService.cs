@@ -32,7 +32,7 @@ namespace GammonX.Engine.Services
         /// <remarks>
         /// This method does not validate the move according to the game rules.
         /// All move done are validated beforehand by the game logic.
-        /// Use <see cref="CanMovePiece"/> for validation.
+        /// Use <see cref="CanMoveChecker"/> for validation.
         /// </remarks>
         void MoveTo(IBoardModel model, int from, int to, bool isWhite);
 
@@ -46,7 +46,7 @@ namespace GammonX.Engine.Services
         /// <remarks>
         /// This method does not validate the move according to the game rules.
         /// All move done are validated beforehand by the game logic.
-        /// Use <see cref="CanMovePiece"/> for validation.
+        /// Use <see cref="CanMoveChecker"/> for validation.
         /// </remarks>
         /// <returns>Indicates success of the move.</returns>
         bool MoveRoll(IBoardModel model, int from, int roll, bool isWhite);
@@ -60,7 +60,7 @@ namespace GammonX.Engine.Services
         /// <param name="roll">Value of the used dice roll.</param>
         /// <param name="isWhite">Indicates if the white or black pieces move.</param>
         /// <returns>Indicates if the given dice roll value can be moved from.</returns>
-        bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite);
+        bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
         /// <summary>
         /// Calculates all legal moves for the given player based on the current board state

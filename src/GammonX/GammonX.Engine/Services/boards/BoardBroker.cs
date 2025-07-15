@@ -4,7 +4,7 @@ using GammonX.Engine.Models;
 namespace GammonX.Engine.Services
 {
     /// <summary>
-    /// Helper class for board operations.
+    /// Helper class for checking and validating a specific board state or move.
     /// </summary>
     public static class BoardBroker
     {
@@ -41,16 +41,27 @@ namespace GammonX.Engine.Services
                 if (fromPoint <= 0) return false;
             }
 
+            // TODO :: implement and test IPinModel
+
+            // we determine the final block amount
+            var blockAmount = model.BlockAmount;
+            if (model is IPinModel pinModel)
+            {
+                // we decrease the block amount if an opponents checker is pinned
+                blockAmount -= Math.Abs(pinModel.PinnedFields[to]);
+            }
+
             // check if the to point is blocked
             if (isWhite)
-            {
+            {                
+
                 // >= 2 black pieces on the to point
-                if (toPoint >= model.BlockAmount) return false;
+                if (toPoint >= blockAmount) return false;
             }
             else
             {
                 // >= 2 white pieces on the to point
-                if (toPoint <= -model.BlockAmount) return false;
+                if (toPoint <= -blockAmount) return false;
             }
 
             return true;

@@ -12,6 +12,6 @@
         /// Negative numbers in the array represent the number of pieces for the white player, 
         /// while positive numbers represent the peices for the black player.
         /// </remarks>
-        int[] BlockedPoints { get; }
+        int[] PinnedFields { get; }
     }
 }

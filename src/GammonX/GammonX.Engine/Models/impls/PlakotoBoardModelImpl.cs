@@ -39,7 +39,7 @@ namespace GammonX.Engine.Models
                 15, // Field 24 :: White Home :: 15 Black Checkers
             };
 
-            BlockedPoints = new int[24]
+            PinnedFields = new int[24]
             {
                 0,  // Field 1  :: Black Home
                 0,  // Field 2  :: Black Home
@@ -76,7 +76,7 @@ namespace GammonX.Engine.Models
         public int[] Fields { get; private set; }
 
         // <inheritdoc />
-        public int[] BlockedPoints { get; private set; }
+        public int[] PinnedFields { get; private set; }
 
         // <inheritdoc />
         public Range HomeRangeWhite => new(18, 23);

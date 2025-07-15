@@ -95,23 +95,23 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Backgammon);
             var boardModel = service.CreateBoard();
             // White can move from point 1 to point 7
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // Black can move from point 24 to point 18
-            Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
             // White cannot move from point 1 to point 6 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 0, 5, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 5, true));
             // Black cannot move from point 24 to point 19 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
+            Assert.False(service.CanMoveChecker(boardModel, 23, 5, false));
 
             // create a single white checker on 1 and 2
             service.MoveRoll(boardModel, 0, 1, true);
-            Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
-            Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 4, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 5, false));
 
             // create a single black checker on 24 and 23
             service.MoveRoll(boardModel, 23, 1, false);
-            Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
-            Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 4, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 5, true));
         }
 
         #endregion Backgammon
@@ -149,7 +149,7 @@ namespace GammonX.Engine.Tests
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;
             Assert.NotNull(blockModel);
-            foreach (var point in blockModel.BlockedPoints)
+            foreach (var point in blockModel.PinnedFields)
             {
                 Assert.Equal(0, point); // There should be no blocked points at game start
             }
@@ -202,9 +202,9 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Plakoto);
             var boardModel = service.CreateBoard();
             // White can move from point 1 to point 7
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // Black can move from point 24 to point 18
-            Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
 
             // creating single white checker on point 18
             service.MoveRoll(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
@@ -220,9 +220,9 @@ namespace GammonX.Engine.Tests
             service.MoveRoll(boardModel, 12, 6, true); // Move white checker from point 13 to point 19
 
             // try to move from point 23 to 18 
-            Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
             // try to move from point 23 to 19
-            Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
+            Assert.False(service.CanMoveChecker(boardModel, 23, 5, false));
 
             // creating single black checker on point 7
             service.MoveRoll(boardModel, 23, 6, false); // Move white checker from point 23 to point 18
@@ -238,9 +238,9 @@ namespace GammonX.Engine.Tests
             service.MoveRoll(boardModel, 11, 6, false); // Move white checker from point 12 to point 6
 
             // try to move from point 1 to 7 
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // try to move from point 1 to 6
-            Assert.False(service.CanMovePiece(boardModel, 0, 5, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 5, true));
         }
 
         [Fact]
@@ -329,23 +329,23 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Portes);
             var boardModel = service.CreateBoard();
             // White can move from point 1 to point 7
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // Black can move from point 24 to point 18
-            Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
             // White cannot move from point 1 to point 6 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 0, 5, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 5, true));
             // Black cannot move from point 24 to point 19 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
+            Assert.False(service.CanMoveChecker(boardModel, 23, 5, false));
 
             // create a single white checker on 1 and 2
             service.MoveRoll(boardModel, 0, 1, true);
-            Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
-            Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 4, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 5, false));
 
             // create a single black checker on 24 and 23
             service.MoveRoll(boardModel, 23, 1, false);
-            Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
-            Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 4, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 5, true));
         }
 
         [Fact]
@@ -434,9 +434,9 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Fevga);
             var boardModel = service.CreateBoard();
             // White can move from point 1 to point 7
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // Black can move from point 6 to point 12
-            Assert.True(service.CanMovePiece(boardModel, 12, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 12, 6, false));
 
             // creating single white checker on point 14
             service.MoveRoll(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
@@ -452,9 +452,9 @@ namespace GammonX.Engine.Tests
             service.MoveRoll(boardModel, 11, 3, true); // Move white checker from point 12 to point 15
 
             // try to move from point 13 to 14 
-            Assert.False(service.CanMovePiece(boardModel, 12, 1, false));
+            Assert.False(service.CanMoveChecker(boardModel, 12, 1, false));
             // try to move from point 13 to 15
-            Assert.False(service.CanMovePiece(boardModel, 12, 2, false));
+            Assert.False(service.CanMoveChecker(boardModel, 12, 2, false));
 
             // creating single black checker on point 2
             service.MoveRoll(boardModel, 12, 6, false); // Move white checker from point 13 to point 19
@@ -470,9 +470,9 @@ namespace GammonX.Engine.Tests
             service.MoveRoll(boardModel, 23, 3, false); // Move white checker from point 24 to point 3
 
             // try to move from point 1 to 2 
-            Assert.False(service.CanMovePiece(boardModel, 0, 1, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 1, true));
             // try to move from point 1 to 3
-            Assert.False(service.CanMovePiece(boardModel, 0, 2, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 2, true));
         }
 
         #endregion
@@ -565,23 +565,23 @@ namespace GammonX.Engine.Tests
             var service = BoardServiceFactory.Create(GameModus.Tavla);
             var boardModel = service.CreateBoard();
             // White can move from point 1 to point 7
-            Assert.True(service.CanMovePiece(boardModel, 0, 6, true));
+            Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // Black can move from point 24 to point 18
-            Assert.True(service.CanMovePiece(boardModel, 23, 6, false));
+            Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
             // White cannot move from point 1 to point 6 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 0, 5, true));
+            Assert.False(service.CanMoveChecker(boardModel, 0, 5, true));
             // Black cannot move from point 24 to point 19 (blocked)
-            Assert.False(service.CanMovePiece(boardModel, 23, 5, false));
+            Assert.False(service.CanMoveChecker(boardModel, 23, 5, false));
 
             // create a single white checker on 1 and 2
             service.MoveRoll(boardModel, 0, 1, true);
-            Assert.True(service.CanMovePiece(boardModel, 5, 4, false));
-            Assert.True(service.CanMovePiece(boardModel, 5, 5, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 4, false));
+            Assert.True(service.CanMoveChecker(boardModel, 5, 5, false));
 
             // create a single black checker on 24 and 23
             service.MoveRoll(boardModel, 23, 1, false);
-            Assert.True(service.CanMovePiece(boardModel, 18, 4, true));
-            Assert.True(service.CanMovePiece(boardModel, 18, 5, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 4, true));
+            Assert.True(service.CanMoveChecker(boardModel, 18, 5, true));
         }
 
         #endregion Tavla

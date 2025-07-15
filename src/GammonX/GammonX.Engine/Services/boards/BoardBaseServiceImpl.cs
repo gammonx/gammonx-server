@@ -46,7 +46,7 @@ namespace GammonX.Engine.Services
                 foreach (var from in playerPoints)
                 {
                     int to = model.MoveOperator(isWhite, from, roll);
-                    if (CanMovePiece(model, from, roll, isWhite))
+                    if (CanMoveChecker(model, from, roll, isWhite))
                     {
                         legalMoves.Add((from, to));
                     }
@@ -62,17 +62,22 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite)
+        public bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
             var newPosition = model.MoveOperator(isWhite, from, roll);
             return model.CanMove(from, newPosition, isWhite);
         }
 
         // <inheritdoc />
-        public void MoveTo(IBoardModel model, int from, int to, bool isWhite)
-        {
-            if (isWhite)
+        public virtual void MoveTo(IBoardModel model, int from, int to, bool isWhite)
+        {           
+            if (model is IHomeBarModel homeBarModel)
             {
+                // TODO :: implement hitting a checker to the home bar
+            }
+
+            if (isWhite)
+            {           
                 // remove a negative checker from the old position
                 model.Fields.SetValue(model.Fields[from] += 1, from);
                 // add a negative checker to the new position
