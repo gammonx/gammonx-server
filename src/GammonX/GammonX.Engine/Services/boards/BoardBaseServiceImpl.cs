@@ -44,8 +44,7 @@ namespace GammonX.Engine.Services
             {
                 foreach (var from in playerPoints)
                 {
-                    int to = isWhite ? model.WhiteMoveOperator(from, roll) : model.BlackMoveOperator(from, roll);
-
+                    int to = model.MoveOperator(isWhite, from, roll);
                     if (CanMovePiece(model, from, roll, isWhite))
                     {
                         legalMoves.Add((from, to));
@@ -64,22 +63,13 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public bool CanMovePiece(IBoardModel model, int from, int roll, bool isWhite)
         {
-            if (isWhite)
-            {
-                var newPosition = model.WhiteMoveOperator(from, roll);
-                return model.CanMove(from, newPosition, isWhite);
-            }
-            else
-            {
-                var newPosition = model.BlackMoveOperator(from, roll);
-                return model.CanMove(from, newPosition, isWhite);
-            }
+            var newPosition = model.MoveOperator(isWhite, from, roll);
+            return model.CanMove(from, newPosition, isWhite);
         }
 
         // <inheritdoc />
         public void MoveTo(IBoardModel model, int from, int to, bool isWhite)
         {
-            // TODO: UNIT TESTS
             if (isWhite)
             {
                 // remove a negative checker from the old position
@@ -101,16 +91,8 @@ namespace GammonX.Engine.Services
         {
             try
             {
-                if (isWhite)
-                {
-                    var newPosition = model.WhiteMoveOperator(from, roll);
-                    MoveTo(model, from, newPosition, isWhite);
-                }
-                else
-                {
-                    var newPosition = model.BlackMoveOperator(from, roll);
-                    MoveTo(model, from, newPosition, isWhite);
-                }
+                var newPosition = model.MoveOperator(isWhite, from, roll);
+                MoveTo(model, from, newPosition, isWhite);
                 return true;
             }
             catch (Exception ex)

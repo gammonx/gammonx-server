@@ -75,6 +75,21 @@ namespace GammonX.Engine.Tests
         }
 
         [Fact]
+        public void BackgammonBoardMovesToCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var boardModel = service.CreateBoard();
+
+            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            Assert.Equal(-1, boardModel.Fields[0]); // Field 1 should now have 1 white checker
+            Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
+
+            service.MoveTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
+            Assert.Equal(1, boardModel.Fields[23]); // Field 24 should now have 1 black checker
+            Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
+        }
+
+        [Fact]
         public void BackgammonBoardCanMovePiece()
         {
             var service = BoardServiceFactory.Create(GameModus.Backgammon);
@@ -162,6 +177,21 @@ namespace GammonX.Engine.Tests
             Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
 
             service.MoveRoll(boardModel, 23, 6, false); // Move black checker from point 24 to point 18
+            Assert.Equal(14, boardModel.Fields[23]); // Field 24 should now have 14 black pieces
+            Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
+        }
+
+        [Fact]
+        public void PlakotoBoardMovesToCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+
+            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            Assert.Equal(-14, boardModel.Fields[0]); // Field 1 should now have 14 white pieces
+            Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
+
+            service.MoveTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
             Assert.Equal(14, boardModel.Fields[23]); // Field 24 should now have 14 black pieces
             Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
         }
@@ -279,6 +309,21 @@ namespace GammonX.Engine.Tests
         }
 
         [Fact]
+        public void PortesBoardMovesToCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Portes);
+            var boardModel = service.CreateBoard();
+
+            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            Assert.Equal(-1, boardModel.Fields[0]); // Field 1 should now have 1 white checker
+            Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
+
+            service.MoveTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
+            Assert.Equal(1, boardModel.Fields[23]); // Field 24 should now have 1 black checker
+            Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
+        }
+
+        [Fact]
         public void PortesBoardCanMovePiece()
         {
             var service = BoardServiceFactory.Create(GameModus.Portes);
@@ -351,7 +396,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(-14, boardModel.Fields[0]); // Field 1 should now have 14 white pieces
             Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
 
-            service.MoveRoll(boardModel, 12, 6, false); // Move black checker from point 24 to point 18
+            service.MoveRoll(boardModel, 12, 6, false); // Move black checker from point 13 to point 19
             Assert.Equal(14, boardModel.Fields[12]); // Field 13 should now have 14 black pieces
             Assert.Equal(1, boardModel.Fields[18]); // Field 19 should now have 1 black checker
 
@@ -360,6 +405,27 @@ namespace GammonX.Engine.Tests
             Assert.Equal(0, boardModel.Fields[18]); // Field 18 should now have 0 black checker
             Assert.Equal(1, boardModel.Fields[1]); // Field 2 should now have 1 black checker
             
+        }
+
+        [Fact]
+        public void FevgaBoardMovesToCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Fevga);
+            var boardModel = service.CreateBoard();
+
+            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            Assert.Equal(-14, boardModel.Fields[0]); // Field 1 should now have 14 white pieces
+            Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
+
+            service.MoveTo(boardModel, 12, 18, false); // Move black checker from point 13 to point 19
+            Assert.Equal(14, boardModel.Fields[12]); // Field 13 should now have 14 black pieces
+            Assert.Equal(1, boardModel.Fields[18]); // Field 19 should now have 1 black checker
+
+            // move checker around from index 23 to index 1
+            service.MoveTo(boardModel, 18, 1, false); // Move black checker from point 19 to point 2
+            Assert.Equal(0, boardModel.Fields[18]); // Field 18 should now have 0 black checker
+            Assert.Equal(1, boardModel.Fields[1]); // Field 2 should now have 1 black checker
+
         }
 
         [Fact]
@@ -474,6 +540,21 @@ namespace GammonX.Engine.Tests
             Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
 
             service.MoveRoll(boardModel, 23, 6, false); // Move black checker from point 24 to point 18
+            Assert.Equal(1, boardModel.Fields[23]); // Field 24 should now have 1 black checker
+            Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
+        }
+
+        [Fact]
+        public void TavlaBoardMovesToCorrect()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Tavla);
+            var boardModel = service.CreateBoard();
+
+            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            Assert.Equal(-1, boardModel.Fields[0]); // Field 1 should now have 1 white checker
+            Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
+
+            service.MoveTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
             Assert.Equal(1, boardModel.Fields[23]); // Field 24 should now have 1 black checker
             Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
         }

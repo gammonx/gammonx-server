@@ -6,7 +6,7 @@ namespace GammonX.Engine.Services
     /// <summary>
     /// Helper class for board operations.
     /// </summary>
-    internal static class BoardBroker
+    public static class BoardBroker
     {
         /// <summary>
         /// Checks if the given move can be made on the board.
@@ -66,21 +66,11 @@ namespace GammonX.Engine.Services
         /// <returns>Boolean indicating if the checker can be beared off.</returns>
         public static bool CanBearOff(this IBoardModel model, int from, int roll, bool isWhite)
         {
-            // TODO: UNIT TESTS
             if (!AllPiecesInHomeRange(model, isWhite)) 
                 return false;
 
-            int to = isWhite ? model.WhiteMoveOperator(from, roll) : model.BlackMoveOperator(from, roll);
-
             // can be beared off if the roll moves the exactly on or beyond the home range
-            if (isWhite)
-            {
-                return to < 0;
-            }
-            else
-            {
-                return to > 23;
-            }
+            return model.CanBearOffOperator(isWhite, from, roll);
         }
 
         /// <summary>
@@ -91,13 +81,17 @@ namespace GammonX.Engine.Services
         /// <returns>Boolean indicating if all pieces are within the home range</returns>
         public static bool AllPiecesInHomeRange(this IBoardModel model, bool isWhite)
         {
-            // TODO: UNIT TESTS
             var homeRange = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
             for (int i = 0; i < model.Fields.Length; i++)
             {
                 int point = model.Fields[i];
-                if (isWhite && point < 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
-                if (!isWhite && point > 0 && (i < homeRange.Start.Value || i >= homeRange.End.Value)) return false;
+                if (!model.IsInHomeOperator(isWhite, i))
+                {
+                    if ((isWhite && point < 0) || (!isWhite && point > 0))
+                    {
+                        return false;
+                    }
+                }
             }
             return true;
         }

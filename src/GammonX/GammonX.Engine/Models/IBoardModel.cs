@@ -20,12 +20,14 @@
         int[] Fields { get; }
 
         /// <summary>
-        /// Gets the index of the home point for the white player.
+        /// Gets the index range of the home point for the white player.
+        /// If all checkers are within the home range, the player can bear off pieces.
         /// </summary>
         Range HomeRangeWhite { get; }
 
         /// <summary>
-        /// Gets the index of the home point for the black player.
+        /// Gets the index range of the home point for the black player.
+        /// If all checkers are within the home range, the player can bear off pieces.
         /// </summary>
         Range HomeRangeBlack { get; }
 
@@ -45,19 +47,29 @@
         int BlockAmount { get; }
 
         /// <summary>
-        /// Operator function for moving a checker for the white player.
-        /// First int represents the current position of the checker,
-        /// Second int represents the dice roll or move distance.
+        /// Operator function for moving a checker for the given player.
+        /// First parameter true for white player, false for black player.
+        /// Second int represents the current position of the checker,
+        /// Third int represents the dice roll or move distance.
         /// Returns the new position of the checker after the move.
         /// </summary>
-        Func<int, int, int> WhiteMoveOperator { get; }
+        Func<bool, int, int, int> MoveOperator { get; }
 
         /// <summary>
-        /// Operator function for moving a checker for the black player.
-        /// First int represents the current position of the checker,
-        /// Second int represents the dice roll or move distance.
-        /// Returns the new position of the checker after the move.
+        /// Operator function to check if a checker can be borne off for the given player.
+        /// First parameter true for white player, false for black player.
+        /// Second int represents the current position of the checker,
+        /// Third int represents the dice roll or move distance.
+        /// Returns true if the checker can be borne off, otherwise false.
         /// </summary>
-        Func<int, int, int> BlackMoveOperator { get; }
+        Func<bool, int, int, bool> CanBearOffOperator { get; }
+
+        /// <summary>
+        /// Operator function to check if a given checker is within the home range.
+        /// First parameter true for white player, false for black player.
+        /// Second int represents the current position of the checker.
+        /// Returns true if the checker is within the home range, otherwise false.
+        /// </summary>
+        Func<bool, int, bool> IsInHomeOperator { get; }
     }
 }

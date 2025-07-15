@@ -60,19 +60,43 @@
         public int BlockAmount => 1;
 
         // <inheritdoc />
-        public Func<int, int, int> WhiteMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>
+        public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
         {
-            // White moves from 0 to 23
-            int newPosition = currentPosition + moveDistance;
-            return newPosition;
+            if (isWhite)
+            {
+                // White moves from 0 to 23
+                int newPosition = currentPosition + moveDistance;
+                return newPosition;
+            }
+            else
+            {
+                // Black moves forward (wraps from 23 -> 0)
+                int newPosition = (currentPosition + moveDistance) % 24;
+                return newPosition;
+            }
         });
 
         // <inheritdoc />
-        public Func<int, int, int> BlackMoveOperator => new Func<int, int, int>((currentPosition, moveDistance) =>
+        public Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
         {
-            // Black moves forward (wraps from 23 -> 0)
-            int newPosition = (currentPosition + moveDistance) % 24;
-            return newPosition;
+            if (isWhite)
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                return to > HomeRangeWhite.End.Value;
+            }
+            else
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                return to > HomeRangeBlack.End.Value;
+            }
+        });
+
+        // <inheritdoc />
+        public Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
+        {
+            if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
+            if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
+            return true;
         });
     }
 }
