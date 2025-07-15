@@ -140,11 +140,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
-            Assert.NotNull(homebarModel);
-            Assert.Equal(0, homebarModel.HomeBarCountWhite);
-            Assert.Equal(0, homebarModel.HomeBarCountBlack);
-            Assert.Equal(0, homebarModel.StartIndexWhite);
-            Assert.Equal(23, homebarModel.StartIndexBlack);
+            Assert.Null(homebarModel);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;

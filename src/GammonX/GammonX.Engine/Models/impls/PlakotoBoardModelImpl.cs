@@ -7,7 +7,7 @@ namespace GammonX.Engine.Models
     /// <seealso cref="https://www.bkgm.com/variants/Plakoto.html"/>
     /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
     /// </summary>
-    internal class PlakotoBoardModelImpl : IBoardModel, IHomeBarModel, IPinModel
+    internal class PlakotoBoardModelImpl : IBoardModel, IPinModel
     {
         public PlakotoBoardModelImpl()
         {
@@ -92,18 +92,6 @@ namespace GammonX.Engine.Models
 
         // <inheritdoc />
         public int BlockAmount => 2;
-
-        // <inheritdoc />
-        public int HomeBarCountWhite => 0;
-
-        // <inheritdoc />
-        public int HomeBarCountBlack => 0;
-
-        // <inheritdoc />
-        public int StartIndexWhite => 0;
-
-        // <inheritdoc />
-        public int StartIndexBlack => 23;
 
         // <inheritdoc />
         public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>

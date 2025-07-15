@@ -13,5 +13,25 @@ namespace GammonX.Engine.Services
         {
             return new PortesBoardModelImpl();
         }
+
+        // <inheritdoc />
+        public override void MoveTo(IBoardModel model, int from, int to, bool isWhite)
+        {
+            base.MoveTo(model, from, to, isWhite);
+        }
+
+        // <inheritdoc />
+        protected override void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
+        {
+            // portes uses the normal mechanism when hitting checkers
+            base.EvaluateHittedCheckers(model, from, to, isWhite);
+        }
+
+        // <inheritdoc />
+        protected override void HitChecker(IBoardModel model, int fieldIndex, bool isWhite)
+        {
+            // portes uses the normal mechanism when hitting checkers
+            base.HitChecker(model, fieldIndex, isWhite);
+        }
     }
 }

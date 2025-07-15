@@ -62,10 +62,10 @@ namespace GammonX.Engine.Models
         public int BlockAmount => 2;
 
         // <inheritdoc />
-        public int HomeBarCountWhite => 0;
+        public int HomeBarCountWhite { get; private set; } = 0;
 
         // <inheritdoc />
-        public int HomeBarCountBlack => 0;
+        public int HomeBarCountBlack { get; private set; } = 0;
 
         // <inheritdoc />
         public int StartIndexWhite => 0;
@@ -112,5 +112,18 @@ namespace GammonX.Engine.Models
             if (!isWhite && (position > HomeRangeBlack.Start.Value || position < HomeRangeBlack.End.Value)) return false;
             return true;
         });
+
+        // <inheritdoc />
+        public void AddToHomeBar(bool isWhite, int amount)
+        {
+            if (isWhite)
+            {
+                HomeBarCountWhite += amount;
+            }
+            else
+            {
+                HomeBarCountBlack += amount;
+            }
+        }
     }
 }

@@ -18,8 +18,6 @@ namespace GammonX.Engine.Services
         {
             // TODO: UNIT TESTS
             var legalMoves = new List<(int from, int to)>();
-            // TODO: how to handle blocked pieces?
-
             // get only points with relevance for the current player
             var playerPoints = new List<int>();
             var homebarCount = GetHomeBarCount(model, isWhite);
@@ -70,10 +68,13 @@ namespace GammonX.Engine.Services
 
         // <inheritdoc />
         public virtual void MoveTo(IBoardModel model, int from, int to, bool isWhite)
-        {           
-            if (model is IHomeBarModel homeBarModel)
+        {
+            // we check it here because most of the variants actually use hitting
+            var homeBarModel = model as IHomeBarModel;
+            if (homeBarModel != null)
             {
-                // TODO :: implement hitting a checker to the home bar
+                // we check if we would hit an opponents checker with this move
+                EvaluateHittedCheckers(model, from, to, isWhite);
             }
 
             if (isWhite)
@@ -95,6 +96,10 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public bool MoveRoll(IBoardModel model, int from, int roll, bool isWhite)
         {
+            // we probably can remove this later on
+            if (!CanMoveChecker(model, from, roll, isWhite))
+                throw new InvalidOperationException("Cannot move checker to the specified position.");
+
             try
             {
                 var newPosition = model.MoveOperator(isWhite, from, roll);
@@ -108,7 +113,73 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private int GetHomeBarCount(IBoardModel model, bool isWhite)
+        /// <summary>
+        /// Evaluates if a checker on the target field is hit by the current move.
+        /// </summary>
+        /// <remarks>
+        /// Can be overridden in derived classes to implement specific logic for determining a hit.
+        /// </remarks>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="from">From move position.</param>
+        /// <param name="to">To move position. Can contain an opponents checker.</param>
+        /// <param name="isWhite">Indicates if white or black checker.</param>
+        protected virtual void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
+        {
+            // we know that the opponents checker can be hit, otherwise the move could not have been made
+            if (isWhite)
+            {
+                // we detect a black checker on the target field
+                if (model.Fields[to] > 0)
+                {
+                    HitChecker(model, to, isWhite);
+                }
+            }
+            else
+            {
+                // we detect a white checker on the target field
+                if (model.Fields[to] < 0)
+                {
+                    HitChecker(model, to, isWhite);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Is executed when a checker is hit by the current move.
+        /// </summary>
+        /// <remarks>
+        /// Can be overridden in derived classes to implement specific logic for hitting a checker.
+        /// </remarks>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="fieldIndex">Field index where the hit occurs.</param>
+        /// <param name="isWhite">Indicates if white or black checker.</param>
+        /// <exception cref="InvalidOperationException">Throws if given model does not support hitting.</exception>
+        protected virtual void HitChecker(IBoardModel model, int fieldIndex, bool isWhite)
+        {
+            if (model is IHomeBarModel homeBarModel)
+            {
+                if (isWhite)
+                {
+                    // we remove the black checker from the moveable fields array
+                    model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
+                    // and move it to the black home bar
+                    homeBarModel.AddToHomeBar(!isWhite, 1);
+                }
+                else
+                {
+                    // we remove the white checker from the moveable fields array
+                    model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
+                    // and move it to the white home bar
+                    homeBarModel.AddToHomeBar(!isWhite, 1);
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("Model does not support hitting checkers.");
+            }
+        }
+
+        private static int GetHomeBarCount(IBoardModel model, bool isWhite)
         {
             if (model is IHomeBarModel homebarBoard)
             {

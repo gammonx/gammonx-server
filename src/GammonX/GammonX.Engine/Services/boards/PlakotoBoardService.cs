@@ -14,6 +14,7 @@ namespace GammonX.Engine.Services
             return new PlakotoBoardModelImpl();
         }
 
+        // <inheritdoc />
         public override void MoveTo(IBoardModel model, int from, int to, bool isWhite)
         {
             var pinModel = model as IPinModel;
@@ -32,12 +33,12 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private void EvaluatePinnedCheckers(IBoardModel model, int from, int to, bool isWhite)
+        private static void EvaluatePinnedCheckers(IBoardModel model, int from, int to, bool isWhite)
         {
-            // we know that the checker can be hit, otherwise the move could not have been made
+            // we know that the checker can be pinned, otherwise the move could not have been made
             if (isWhite)
             {
-                // we detect a black checker on the hit field
+                // we detect a black checker on the target field
                 if (model.Fields[to] > 0)
                 {
                     PinChecker(model, to, isWhite);
@@ -45,7 +46,7 @@ namespace GammonX.Engine.Services
             }
             else
             {
-                // we detect a white checker on the hit field
+                // we detect a white checker on the target field
                 if (model.Fields[to] < 0)
                 {
                     PinChecker(model, to, isWhite);
@@ -53,7 +54,7 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private void EvaluateUnPinnedCheckers(IBoardModel model, int from, bool isWhite)
+        private static void EvaluateUnPinnedCheckers(IBoardModel model, int from, bool isWhite)
         {
             // we check if we released a pinned checker
             if (model.Fields[from] == 0)
@@ -62,7 +63,7 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private void PinChecker(IBoardModel model, int fieldIndex, bool isWhite)
+        private static void PinChecker(IBoardModel model, int fieldIndex, bool isWhite)
         {
             if (model is IPinModel pinModel)
             {
@@ -87,7 +88,7 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private void UnPinChecker(IBoardModel model, int fieldIndex, bool isWhite)
+        private static void UnPinChecker(IBoardModel model, int fieldIndex, bool isWhite)
         {
             if (model is IPinModel pinModel)
             {

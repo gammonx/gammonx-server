@@ -41,8 +41,6 @@ namespace GammonX.Engine.Services
                 if (fromPoint <= 0) return false;
             }
 
-            // TODO :: implement and test IPinModel
-
             // we determine the final block amount
             var blockAmount = model.BlockAmount;
             if (model is IPinModel pinModel)
