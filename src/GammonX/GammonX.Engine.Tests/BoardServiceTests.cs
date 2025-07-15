@@ -28,7 +28,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
-            var homebarModel = boardModel as IHomeBarBoardModel;
+            var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
@@ -139,7 +139,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
-            var homebarModel = boardModel as IHomeBarBoardModel;
+            var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
@@ -264,7 +264,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
-            var homebarModel = boardModel as IHomeBarBoardModel;
+            var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
@@ -369,7 +369,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(new Range(6, 11), boardModel.HomeRangeBlack);
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
-            var homebarModel = boardModel as IHomeBarBoardModel;
+            var homebarModel = boardModel as IHomeBarModel;
             Assert.Null(homebarModel);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
@@ -500,7 +500,7 @@ namespace GammonX.Engine.Tests
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
             Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
-            var homebarModel = boardModel as IHomeBarBoardModel;
+            var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);

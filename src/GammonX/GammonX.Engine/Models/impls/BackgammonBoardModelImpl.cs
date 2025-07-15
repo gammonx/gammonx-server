@@ -6,7 +6,7 @@ namespace GammonX.Engine.Models
     /// Classic BackGammon implementation.
     /// <seealso cref="https://www.bkgm.com/rules.html"/>
     /// </summary>
-    internal class BackgammonBoardModelImpl : IBoardModel, IHomeBarBoardModel, IDoublingCubeModel
+    internal class BackgammonBoardModelImpl : IBoardModel, IHomeBarModel, IDoublingCubeModel
     {
         public BackgammonBoardModelImpl()
         {

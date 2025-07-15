@@ -19,10 +19,11 @@ namespace GammonX.Engine.Services
             // TODO: UNIT TESTS
             var legalMoves = new List<(int from, int to)>();
             // TODO: how to handle blocked pieces?
+
             // get only points with relevance for the current player
             var playerPoints = new List<int>();
             var homebarCount = GetHomeBarCount(model, isWhite);
-            if (homebarCount > 0 && model is IHomeBarBoardModel homeBarModel)
+            if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
             {
                 // if the player has pieces in the home bar, they can only move those pieces
                 int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
@@ -104,7 +105,7 @@ namespace GammonX.Engine.Services
 
         private int GetHomeBarCount(IBoardModel model, bool isWhite)
         {
-            if (model is IHomeBarBoardModel homebarBoard)
+            if (model is IHomeBarModel homebarBoard)
             {
                 return isWhite ? homebarBoard.HomeBarCountWhite : homebarBoard.HomeBarCountBlack;
             }

@@ -4,7 +4,7 @@ namespace GammonX.Engine.Models
     /// <summary>
     /// Represents an extension for the homebar board in a backgammon variant.
     /// </summary>
-    public interface IHomeBarBoardModel
+    public interface IHomeBarModel
     {
         /// <summary>
         /// Gets the amount of pieces for the white player on the home bar.

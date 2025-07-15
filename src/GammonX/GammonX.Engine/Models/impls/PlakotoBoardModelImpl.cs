@@ -7,7 +7,7 @@ namespace GammonX.Engine.Models
     /// <seealso cref="https://www.bkgm.com/variants/Plakoto.html"/>
     /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
     /// </summary>
-    internal class PlakotoBoardModelImpl : IBoardModel, IHomeBarBoardModel, IPinModel
+    internal class PlakotoBoardModelImpl : IBoardModel, IHomeBarModel, IPinModel
     {
         public PlakotoBoardModelImpl()
         {
