@@ -5,6 +5,33 @@ namespace GammonX.Engine.Tests
 {
     public class PinBoardServiceTests
     {
+        #region Simple Interface Tests
+
+        [Theory]
+        [InlineData(GameModus.Plakoto)]
+        public void HasPinnedCheckersAndCanPin(GameModus gameModus)
+        {
+            var service = BoardServiceFactory.Create(gameModus);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Fevga)]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void HasNoPinnedCheckersAndCanNotPin(GameModus gameModus)
+        {
+            var service = BoardServiceFactory.Create(gameModus);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.Null(pinModel);
+        }
+
+        #endregion Simple Interface Tests
+
         [Fact]
         public void PlakotoBoardWhitePinsBlackAndReleasesCorrect()
         {

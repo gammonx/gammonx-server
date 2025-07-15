@@ -62,6 +62,8 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
+            // TODO :: what happens when checker on bar?
+            // TODO :: fevga start condition?
             var newPosition = model.MoveOperator(isWhite, from, roll);
             return model.CanMove(from, newPosition, isWhite);
         }

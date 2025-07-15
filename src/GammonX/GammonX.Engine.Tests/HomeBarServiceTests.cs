@@ -4,7 +4,7 @@ using Moq;
 
 namespace GammonX.Engine.Tests
 {
-    public class HomeBarServiceTest
+    public class HomeBarServiceTests
     {
         #region Simple Interface Tests
 
