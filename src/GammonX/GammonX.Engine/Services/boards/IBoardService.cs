@@ -34,7 +34,7 @@ namespace GammonX.Engine.Services
         /// All move done are validated beforehand by the game logic.
         /// Use <see cref="CanMoveChecker"/> for validation.
         /// </remarks>
-        void MoveTo(IBoardModel model, int from, int to, bool isWhite);
+        void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite);
 
         /// <summary>
         /// Moves a piece from one position to another on the board.
@@ -49,7 +49,7 @@ namespace GammonX.Engine.Services
         /// Use <see cref="CanMoveChecker"/> for validation.
         /// </remarks>
         /// <returns>Indicates success of the move.</returns>
-        bool MoveRoll(IBoardModel model, int from, int roll, bool isWhite);
+        bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
         /// <summary>
         /// Checks if the given piece can be moved from to a given position based

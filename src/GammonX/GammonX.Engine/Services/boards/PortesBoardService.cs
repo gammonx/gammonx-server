@@ -15,9 +15,9 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public override void MoveTo(IBoardModel model, int from, int to, bool isWhite)
+        public override void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
-            base.MoveTo(model, from, to, isWhite);
+            base.MoveCheckerTo(model, from, to, isWhite);
         }
 
         // <inheritdoc />

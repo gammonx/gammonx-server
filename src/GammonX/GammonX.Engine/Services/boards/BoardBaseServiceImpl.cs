@@ -64,13 +64,12 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
-            // TODO :: fevga start condition?
             var newPosition = model.MoveOperator(isWhite, from, roll);
             return model.CanMove(from, newPosition, isWhite);
         }
 
         // <inheritdoc />
-        public virtual void MoveTo(IBoardModel model, int from, int to, bool isWhite)
+        public virtual void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
             // we check it here because most of the variants actually use hitting
             var homeBarModel = model as IHomeBarModel;
@@ -113,7 +112,7 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public bool MoveRoll(IBoardModel model, int from, int roll, bool isWhite)
+        public bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
             // we probably can remove this later on
             if (!CanMoveChecker(model, from, roll, isWhite))
@@ -122,7 +121,7 @@ namespace GammonX.Engine.Services
             try
             {
                 var newPosition = model.MoveOperator(isWhite, from, roll);
-                MoveTo(model, from, newPosition, isWhite);
+                MoveCheckerTo(model, from, newPosition, isWhite);
                 return true;
             }
             catch (Exception ex)

@@ -15,7 +15,7 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public override void MoveTo(IBoardModel model, int from, int to, bool isWhite)
+        public override void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
             var pinModel = model as IPinModel;
             if (pinModel != null)
@@ -24,7 +24,7 @@ namespace GammonX.Engine.Services
                 EvaluatePinnedCheckers(model, from, to, isWhite);
             }
 
-            base.MoveTo(model, from, to, isWhite);
+            base.MoveCheckerTo(model, from, to, isWhite);
 
             if (pinModel != null)
             {

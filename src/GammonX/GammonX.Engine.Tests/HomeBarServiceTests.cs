@@ -99,10 +99,10 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(mockBoard, 11, 1, true));
 
             // hit the black checkers and sent them to the home bar
-            service.MoveRoll(mockBoard, 8, 7, true);
-            service.MoveRoll(mockBoard, 9, 5, true);
-            Assert.Throws<InvalidOperationException>(() => service.MoveRoll(mockBoard, 10, 3, true));
-            service.MoveRoll(mockBoard, 11, 1, true);
+            service.MoveChecker(mockBoard, 8, 7, true);
+            service.MoveChecker(mockBoard, 9, 5, true);
+            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(mockBoard, 10, 3, true));
+            service.MoveChecker(mockBoard, 11, 1, true);
 
             Assert.Equal(3, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
@@ -143,10 +143,10 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(mockBoard, 12, 1, false));
 
             // hit the white checkers and sent them to the home bar
-            service.MoveRoll(mockBoard, 15, 7, false);
-            service.MoveRoll(mockBoard, 14, 5, false);
-            Assert.Throws<InvalidOperationException>(() => service.MoveRoll(mockBoard, 13, 3, false));
-            service.MoveRoll(mockBoard, 12, 1, false);
+            service.MoveChecker(mockBoard, 15, 7, false);
+            service.MoveChecker(mockBoard, 14, 5, false);
+            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(mockBoard, 13, 3, false));
+            service.MoveChecker(mockBoard, 12, 1, false);
 
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(3, homeBarModel.HomeBarCountWhite);
@@ -189,7 +189,7 @@ namespace GammonX.Engine.Tests
             var mockBoard = mock.Object;
 
             // hit the black checkers and sent them to the home bar
-            service.MoveRoll(mockBoard, 8, 7, true);
+            service.MoveChecker(mockBoard, 8, 7, true);
             Assert.Equal(1, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
             Assert.Equal(-1, mockBoard.Fields[15]);
@@ -203,7 +203,7 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, false));
             Assert.True(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, false));
             // move black checker from the homebar
-            service.MoveRoll(mockBoard, homeBarModel.StartIndexBlack, 1, false);
+            service.MoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, false);
             Assert.Equal(6, mockBoard.Fields[homeBarModel.StartIndexBlack - 1]);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
@@ -243,7 +243,7 @@ namespace GammonX.Engine.Tests
             var mockBoard = mock.Object;
 
             // hit the white checkers and sent them to the home bar
-            service.MoveRoll(mockBoard, 15, 7, false);
+            service.MoveChecker(mockBoard, 15, 7, false);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(1, homeBarModel.HomeBarCountWhite);
             Assert.Equal(1, mockBoard.Fields[8]);
@@ -257,7 +257,7 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, true));
             Assert.False(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, true));
             // move white checker from the homebar
-            service.MoveRoll(mockBoard, homeBarModel.StartIndexWhite, 1, true);
+            service.MoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, true);
             Assert.Equal(-6, mockBoard.Fields[homeBarModel.StartIndexWhite + 1]);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);

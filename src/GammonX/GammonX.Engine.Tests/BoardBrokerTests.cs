@@ -204,10 +204,14 @@ namespace GammonX.Engine.Tests
             Assert.False(board.CanMove(24, -1, false));
         }
 
-        [Fact]
-        public void BackGammonCanBearOff()
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Plakoto)]
+        public void BackGammonCanBearOff(GameModus gameModus)
         {
-            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var service = BoardServiceFactory.Create(gameModus);
             var board = service.CreateBoard();
 
             var mock = new Mock<IBoardModel>();

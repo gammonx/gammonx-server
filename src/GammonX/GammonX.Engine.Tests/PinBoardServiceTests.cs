@@ -41,13 +41,13 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(pinModel);
 
             // move black checker forwards
-            service.MoveTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
+            service.MoveCheckerTo(boardModel, 23, 17, false); // Move black checker from point 24 to point 18
             Assert.Equal(14, boardModel.Fields[23]); // Field 24 should now have 14 black pieces
             Assert.Equal(1, boardModel.Fields[17]); // Field 18 should now have 1 black checker
 
             // check if white checker can pin black checker
             Assert.True(service.CanMoveChecker(boardModel, 0, 17, true));
-            service.MoveRoll(boardModel, 0, 17, true);
+            service.MoveChecker(boardModel, 0, 17, true);
             // one black checker on field 18 should be pinned now
             Assert.Equal(1, pinModel.PinnedFields[17]);
             // pinned black checker was removed from field 18 and white added
@@ -58,7 +58,7 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(boardModel, 0, 17, true));
 
             // release pinned black checker, move white one
-            service.MoveRoll(boardModel, 17, 1, true);
+            service.MoveChecker(boardModel, 17, 1, true);
             // field 18 is moveable for other black checkers
             Assert.True(service.CanMoveChecker(boardModel, 23, 6, false));
             // pinned black checker is released and can be moved
@@ -77,13 +77,13 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(pinModel);
 
             // move white checker forwards
-            service.MoveTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
+            service.MoveCheckerTo(boardModel, 0, 6, true); // Move white checker from point 1 to point 7
             Assert.Equal(-14, boardModel.Fields[0]); // Field 0 should now have 14 white pieces
             Assert.Equal(-1, boardModel.Fields[6]); // Field 7 should now have 1 white checker
 
             // check if white checker can pin black checker
             Assert.True(service.CanMoveChecker(boardModel, 23, 17, false));
-            service.MoveRoll(boardModel, 23, 17, false);
+            service.MoveChecker(boardModel, 23, 17, false);
             // one white checker on field 7 should be pinned now
             Assert.Equal(-1, pinModel.PinnedFields[6]);
             // pinned white checker was removed from field 7 and black added
@@ -94,7 +94,7 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(boardModel, 23, 17, false));
 
             // release pinned white checker, move black one
-            service.MoveRoll(boardModel, 6, 1, false);
+            service.MoveChecker(boardModel, 6, 1, false);
             // field 18 is moveable for other white checkers
             Assert.True(service.CanMoveChecker(boardModel, 0, 6, true));
             // pinned white checker is released and can be moved
