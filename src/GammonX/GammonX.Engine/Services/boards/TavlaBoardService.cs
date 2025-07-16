@@ -15,6 +15,19 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
+        public override bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
+        {
+            if (model.MustEnterFromHomeBar(isWhite) && !model.EntersFromHomeBar(from, isWhite))
+            {
+                // if a checker is on the homebar it was removed from the playing fields
+                // no other checker can be played until the homebar is empty
+                return false;
+            }
+
+            return base.CanMoveChecker(model, from, roll, isWhite);
+        }
+
+        // <inheritdoc />
         protected override void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
         {
             // tavla uses the normal mechanism when hitting checkers

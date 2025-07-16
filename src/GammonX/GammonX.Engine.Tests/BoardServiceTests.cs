@@ -32,8 +32,8 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
-            Assert.Equal(0, homebarModel.StartIndexWhite);
-            Assert.Equal(23, homebarModel.StartIndexBlack);
+            Assert.Equal(-1, homebarModel.StartIndexWhite);
+            Assert.Equal(24, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.NotNull(doublingCubeModel);
             Assert.Equal(2, doublingCubeModel.DoublingCubeValue);
@@ -264,8 +264,8 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
-            Assert.Equal(0, homebarModel.StartIndexWhite);
-            Assert.Equal(23, homebarModel.StartIndexBlack);
+            Assert.Equal(-1, homebarModel.StartIndexWhite);
+            Assert.Equal(24, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;
@@ -500,8 +500,8 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
-            Assert.Equal(0, homebarModel.StartIndexWhite);
-            Assert.Equal(23, homebarModel.StartIndexBlack);
+            Assert.Equal(-1, homebarModel.StartIndexWhite);
+            Assert.Equal(24, homebarModel.StartIndexBlack);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
             var blockModel = boardModel as IPinModel;

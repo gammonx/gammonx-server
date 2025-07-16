@@ -27,11 +27,21 @@ namespace GammonX.Engine.Models
         /// <summary>
         /// Gets the start index for the white players pieces if on the bar.
         /// </summary>
+        /// <remarks>
+        /// This index may not directly be applied for the fields array,normally
+        /// it is outside of the array bounds and. For white checkers the value is e.g.
+        /// -1 and would move to index 0 with a dice roll value of 1
+        /// </remarks>
         int StartIndexWhite { get; }
 
         /// <summary>
         /// Gets the start index for the black players pieces if on the bar.
         /// </summary>
+        /// <remarks>
+        /// This index may not directly be applied for the fields array,normally
+        /// it is outside of the array bounds and. For white checkers the value is e.g.
+        /// 24 and would move to index 23 with a dice roll value of 1
+        /// </remarks>
         int StartIndexBlack { get; }
 
         /// <summary>
@@ -40,5 +50,12 @@ namespace GammonX.Engine.Models
         /// <param name="isWhite">Indicates the player, true for white and false for black.</param>
         /// <param name="amount">Amount of checkers sent to the homebar. Normally just one.</param>
         void AddToHomeBar(bool isWhite, int amount);
+
+        /// <summary>
+        /// Removes the given amount of pieces from the home bar for the specified player.
+        /// </summary>
+        /// <param name="isWhite">Indicates the player, true for white and false for black.</param>
+        /// <param name="amount">Amount of checkers removed from the homebar. Normally just one.</param>
+        void RemoveFromHomeBar(bool isWhite, int amount);
     }
 }

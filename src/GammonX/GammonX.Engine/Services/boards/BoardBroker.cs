@@ -1,5 +1,6 @@
 ﻿
 using GammonX.Engine.Models;
+using System.Reflection;
 
 namespace GammonX.Engine.Services
 {
@@ -10,6 +11,9 @@ namespace GammonX.Engine.Services
     {
         /// <summary>
         /// Checks if the given move can be made on the board.
+        /// 1) Validates the max and min indices of the fields arrays.
+        /// 2) Validates if a checker is available on the from position.
+        /// 3) Validates if the to position is not blocked by the opponents checker.
         /// </summary>
         /// <remarks>
         /// Move direction is determined when the to position is calculated.
@@ -22,23 +26,32 @@ namespace GammonX.Engine.Services
         /// <returns>Boolean indicating if the move can be made.</returns>
         public static bool CanMove(this IBoardModel model, int from, int to, bool isWhite)
         {
-            // check indices validity
-            if (from < 0 || from > 23 || to < 0 || to > 23)
-                return false;
-
-            int fromPoint = model.Fields[from];
-            int toPoint = model.Fields[to];
-
-            // check if a checker is available on the from point
-            if (isWhite)
+            // if home bar model is implemented, some indices outside the array bounds are valid
+            if (model.EntersFromHomeBar(from, isWhite))
             {
-                // no white pieces on from point
-                if (fromPoint >= 0) return false;
+                if (to < 0 || to > model.Fields.Length - 1)
+                    return false;
             }
             else
             {
-                // no black pieces on from point
-                if (fromPoint <= 0) return false;
+                if (from < 0 || from > model.Fields.Length - 1 || to < 0 || to > model.Fields.Length - 1)
+                    return false;
+            }
+
+            if (!model.EntersFromHomeBar(from, isWhite))
+            {
+                int fromPoint = model.Fields[from];
+                // check if a checker is available on the from point
+                if (isWhite)
+                {
+                    // no white pieces on from point
+                    if (fromPoint >= 0) return false;
+                }
+                else
+                {
+                    // no black pieces on from point
+                    if (fromPoint <= 0) return false;
+                }
             }
 
             // we determine the final block amount
@@ -49,9 +62,10 @@ namespace GammonX.Engine.Services
                 blockAmount -= Math.Abs(pinModel.PinnedFields[to]);
             }
 
+            int toPoint = model.Fields[to];
             // check if the to point is blocked
             if (isWhite)
-            {                
+            {
 
                 // >= 2 black pieces on the to point
                 if (toPoint >= blockAmount) return false;
@@ -75,7 +89,7 @@ namespace GammonX.Engine.Services
         /// <returns>Boolean indicating if the checker can be beared off.</returns>
         public static bool CanBearOff(this IBoardModel model, int from, int roll, bool isWhite)
         {
-            if (!AllPiecesInHomeRange(model, isWhite)) 
+            if (!AllPiecesInHomeRange(model, isWhite))
                 return false;
 
             // can be beared off if the roll moves the exactly on or beyond the home range
@@ -103,6 +117,49 @@ namespace GammonX.Engine.Services
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// Checks if the given player has to play a checker from the homebar.
+        /// </summary>
+        /// <param name="model">Board to operate on.</param>
+        /// <param name="isWhite">Indicates if white or black pieces are relevant.</param>
+        /// <returns>Boolean indicating if the next move has to be from the hombebar.</returns>
+        public static bool MustEnterFromHomeBar(this IBoardModel model, bool isWhite)
+        {
+            // if a checker is on the home bar, it has to be moved first
+            if (isWhite && model is IHomeBarModel homeBarModelWhite && homeBarModelWhite.HomeBarCountWhite > 0)
+            {
+                return true;
+            }
+            else if (!isWhite && model is IHomeBarModel homeBarModelBlack && homeBarModelBlack.HomeBarCountBlack > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the given from position is the home bar for the given player.
+        /// </summary>
+        /// <param name="model">Board to operate on.</param>
+        /// <param name="from">The from position of the move.</param>
+        /// <param name="isWhite">Indicates if white or black pieces are relevant.</param>
+        /// <returns>Boolean indicating if the given from position is the homebar.</returns>
+        public static bool EntersFromHomeBar(this IBoardModel model, int from, bool isWhite)
+        {
+            if (isWhite && model is IHomeBarModel homeBarModel)
+            {
+                // white pieces enter from the home bar at index -1
+                return from == homeBarModel.StartIndexWhite;
+            }
+            else if (!isWhite && model is IHomeBarModel homeBarModelBlack)
+            {
+                // black pieces enter from the home bar at index 24
+                return from == homeBarModelBlack.StartIndexBlack;
+            }
+            return false;
         }
     }
 }

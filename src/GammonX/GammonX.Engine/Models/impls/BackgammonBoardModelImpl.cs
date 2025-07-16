@@ -67,10 +67,10 @@ namespace GammonX.Engine.Models
         public int HomeBarCountBlack { get; private set; } = 0;
 
         // <inheritdoc />
-        public int StartIndexWhite => 0;
+        public int StartIndexWhite => -1;
 
         // <inheritdoc />
-        public int StartIndexBlack => 23;
+        public int StartIndexBlack => 24;
 
         // <inheritdoc />
         public int DoublingCubeValue => 2;
@@ -128,6 +128,19 @@ namespace GammonX.Engine.Models
             else
             {
                 HomeBarCountBlack += amount;
+            }
+        }
+
+        // <inheritdoc />
+        public void RemoveFromHomeBar(bool isWhite, int amount)
+        {
+            if (isWhite)
+            {
+                HomeBarCountWhite -= amount;
+            }
+            else
+            {
+                HomeBarCountBlack -= amount;
             }
         }
     }

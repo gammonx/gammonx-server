@@ -290,6 +290,225 @@ namespace GammonX.Engine.Tests
             Assert.False(mockBoard.CanBearOff(18, 5, true));
         }
 
+        [Fact]
+        public void WhitePlayerWithPiecesOnHomeBarReturnsTrue()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.HomeBarCountWhite)
+                .Returns(2);
+            var board = mock.Object;
+            var result = board.MustEnterFromHomeBar(true);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void WhitePlayerNoPiecesOnHomeBarReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.HomeBarCountWhite)
+                .Returns(0);
+            var board = mock.Object;
+            var result = board.MustEnterFromHomeBar(true);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void BlackPlayerWithPiecesOnHomeBarReturnsTrue()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.HomeBarCountBlack)
+                .Returns(1);
+            var board = mock.Object;
+            var result = board.MustEnterFromHomeBar(false);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void BlackPlayerNoPiecesOnHomeBarReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.HomeBarCountBlack)
+                .Returns(0);
+            var board = mock.Object;
+            var result = board.MustEnterFromHomeBar(false);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void ModelDoesNotImplementIHomeBarModelReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            var board = mock.Object;
+            var resultWhite = board.MustEnterFromHomeBar(true);
+            var resultBlack = board.MustEnterFromHomeBar(false);
+            Assert.False(resultWhite);
+            Assert.False(resultBlack);
+        }
+
+        [Fact]
+        public void WhitePlayerWithCorrectStartIndexReturnsTrue()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.StartIndexWhite)
+                .Returns(-1);
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(-1, true);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void WhitePlayerWithWrongStartIndexReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.StartIndexWhite)
+                .Returns(-1);
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(0, true);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void BlackPlayerWithCorrectStartIndexReturnsTrue()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.StartIndexBlack)
+                .Returns(24);
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(24, false);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void BlackPlayerWithWrongStartIndexReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.As<IHomeBarModel>()
+                .SetupGet(x => x.StartIndexBlack)
+                .Returns(24);
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(10, false);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void WhitePlayerWithoutHomeBarModelReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(-1, true);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void BlackPlayerWithoutHomeBarModelReturnsFalse()
+        {
+            var mock = new Mock<IBoardModel>();
+            var board = mock.Object;
+            var result = board.EntersFromHomeBar(24, false);
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(-1, 5, true)]  // from out of bounds
+        [InlineData(0, 24, true)]  // to out of bounds
+        [InlineData(-5, -1, true)] // both invalid
+        public void IndexOutOfBoundsReturnsFalse(int from, int to, bool isWhite)
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.SetupGet(m => m.Fields).Returns(new int[24]);
+            var board = mock.Object;
+            var result = board.CanMove(from, to, isWhite);
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(-1, 5, true)]
+        [InlineData(24, 5, false)]
+        public void FromIsHomeBarAndToIsValidReturnsTrue(int from, int to, bool isWhite)
+        {
+            var mock = new Mock<IBoardModel>();
+            mock.SetupGet(m => m.Fields).Returns(new int[24]);
+            mock.SetupGet(b => b.BlockAmount).Returns(2);
+            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(-1);
+            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(24);
+            var board = mock.Object;
+            var result = board.CanMove(from, to, isWhite);
+            Assert.True(result);
+        }
+
+        [Theory]
+        [InlineData(5, 6, true, 2)]   // white: 2 black pieces on from
+        [InlineData(5, 6, false, -2)] // black: 2 white pieces on from
+        public void MoveFromEmptyFieldReturnsFalse(int from, int to, bool isWhite, int fromValue)
+        {
+            var fields = new int[24];
+            fields[from] = fromValue;
+            var mock = new Mock<IBoardModel>();
+            mock.SetupGet(m => m.Fields).Returns(fields);
+            var board = mock.Object;
+            var result = board.CanMove(from, to, isWhite);
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(true, 2)]  // white blocked by 2 black pieces
+        [InlineData(false, -2)] // black blocked by 2 white pieces
+        public void BlockedByOpponentReturnsFalse(bool isWhite, int toPointValue)
+        {
+            var fields = new int[24];
+            fields[5] = isWhite ? -1 : 1; // valid piece
+            fields[6] = toPointValue;
+            var mock = new Mock<IBoardModel>();
+            mock.SetupGet(m => m.Fields).Returns(fields);
+            mock.Setup(m => m.BlockAmount).Returns(2);
+            var board = mock.Object;
+            var result = board.CanMove(5, 6, isWhite);
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(true, 2, 1)]  // white: 2 black on target, but 1 pinned
+        [InlineData(false, -2, -1)] // black: 2 white on target, but 1 pinned
+        public void BlockedButPinnedReturnsFalse(bool isWhite, int toValue, int pinned)
+        {
+            var fields = new int[24];
+            fields[5] = isWhite ? -1 : 1; // has checker to move
+            fields[6] = toValue;
+
+            var mock = new Mock<IBoardModel>();
+            var pinnedFields = new int[24];
+            pinnedFields[6] = pinned;
+            mock.As<IPinModel>().SetupGet(m => m.PinnedFields).Returns(pinnedFields);
+            mock.SetupGet(m => m.Fields).Returns(fields);
+            mock.Setup(m => m.BlockAmount).Returns(2);
+            var board = mock.Object;
+            var result = board.CanMove(5, 6, isWhite);
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(true, -1)] // white moving to empty field
+        [InlineData(false, 1)] // black moving to empty field
+        public void ValidMoveReturnsTrue(bool isWhite, int fromValue)
+        {
+            var fields = new int[24];
+            fields[5] = fromValue; // valid piece
+            fields[6] = 0;         // target empty
+            var mock = new Mock<IBoardModel>();
+            mock.SetupGet(m => m.Fields).Returns(fields);
+            mock.Setup(m => m.BlockAmount).Returns(2);
+            var board = mock.Object;
+            var result = board.CanMove(5, 6, isWhite);
+            Assert.True(result);
+        }
+
         #region Board Mocks
 
         private readonly int[] StandardCanBearOffBoard = new int[24]

@@ -17,6 +17,8 @@ namespace GammonX.Engine.Services
         public ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls)
         {
             // TODO: UNIT TESTS
+            // TODO: if homebar is not empty return specific moves for it
+
             var legalMoves = new List<(int from, int to)>();
             // get only points with relevance for the current player
             var playerPoints = new List<int>();
@@ -60,9 +62,8 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
+        public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
-            // TODO :: what happens when checker on bar?
             // TODO :: fevga start condition?
             var newPosition = model.MoveOperator(isWhite, from, roll);
             return model.CanMove(from, newPosition, isWhite);
@@ -81,15 +82,31 @@ namespace GammonX.Engine.Services
 
             if (isWhite)
             {           
-                // remove a negative checker from the old position
-                model.Fields.SetValue(model.Fields[from] += 1, from);
+                if (model.EntersFromHomeBar(from, isWhite))
+                {
+                    ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+                }
+                else
+                {
+                    // remove a negative checker from the old position
+                    model.Fields.SetValue(model.Fields[from] += 1, from);
+                }
+
                 // add a negative checker to the new position
                 model.Fields.SetValue(model.Fields[to] -= 1, to);
             }
             else
             {
-                // remove a positive checker from the old position
-                model.Fields.SetValue(model.Fields[from] -= 1, from);
+                if (model.EntersFromHomeBar(from, isWhite))
+                {
+                    ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+                }
+                else
+                {
+                    // remove a positive checker from the old position
+                    model.Fields.SetValue(model.Fields[from] -= 1, from);
+                }
+                
                 // add a positive checker to the new position
                 model.Fields.SetValue(model.Fields[to] += 1, to);
             }
