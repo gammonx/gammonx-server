@@ -302,8 +302,7 @@ namespace GammonX.Engine.Tests
                 .SetupGet(x => x.HomeBarCountWhite)
                 .Returns(2);
             var board = mock.Object;
-            var result = board.MustEnterFromHomeBar(true);
-            Assert.True(result);
+            Assert.True(board.MustEnterFromHomeBar(true));
         }
 
         [Fact]
@@ -314,8 +313,7 @@ namespace GammonX.Engine.Tests
                 .SetupGet(x => x.HomeBarCountWhite)
                 .Returns(0);
             var board = mock.Object;
-            var result = board.MustEnterFromHomeBar(true);
-            Assert.False(result);
+            Assert.False(board.MustEnterFromHomeBar(true));
         }
 
         [Fact]
@@ -326,8 +324,7 @@ namespace GammonX.Engine.Tests
                 .SetupGet(x => x.HomeBarCountBlack)
                 .Returns(1);
             var board = mock.Object;
-            var result = board.MustEnterFromHomeBar(false);
-            Assert.True(result);
+            Assert.True(board.MustEnterFromHomeBar(false));
         }
 
         [Fact]
@@ -338,8 +335,7 @@ namespace GammonX.Engine.Tests
                 .SetupGet(x => x.HomeBarCountBlack)
                 .Returns(0);
             var board = mock.Object;
-            var result = board.MustEnterFromHomeBar(false);
-            Assert.False(result);
+            Assert.False(board.MustEnterFromHomeBar(false));
         }
 
         [Fact]
@@ -347,10 +343,8 @@ namespace GammonX.Engine.Tests
         {
             var mock = new Mock<IBoardModel>();
             var board = mock.Object;
-            var resultWhite = board.MustEnterFromHomeBar(true);
-            var resultBlack = board.MustEnterFromHomeBar(false);
-            Assert.False(resultWhite);
-            Assert.False(resultBlack);
+            Assert.False(board.MustEnterFromHomeBar(true));
+            Assert.False(board.MustEnterFromHomeBar(false));
         }
 
         [Fact]
