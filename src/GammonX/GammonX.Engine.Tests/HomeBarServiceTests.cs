@@ -82,7 +82,8 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -126,7 +127,8 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -174,7 +176,8 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -228,7 +231,8 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);

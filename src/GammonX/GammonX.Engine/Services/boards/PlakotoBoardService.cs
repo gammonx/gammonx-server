@@ -18,11 +18,15 @@ namespace GammonX.Engine.Services
         public override void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
             var pinModel = model as IPinModel;
-            if (pinModel != null)
+            // we do not have to check for pinned checker if the move bears the moving checker off
+            if (!IsBearOffMove(model, to ,isWhite))
             {
-                // we check if we would pin an opponents checker with this move
-                EvaluatePinnedCheckers(model, from, to, isWhite);
-            }
+				if (pinModel != null)
+				{
+					// we check if we would pin an opponents checker with this move
+					EvaluatePinnedCheckers(model, from, to, isWhite);
+				}
+			}
 
             base.MoveCheckerTo(model, from, to, isWhite);
 

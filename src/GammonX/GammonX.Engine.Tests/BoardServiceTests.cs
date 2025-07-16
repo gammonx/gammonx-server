@@ -1,5 +1,9 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+using GammonX.Engine.Tests.Data;
+using Moq;
+
+using Range = System.Range;
 
 namespace GammonX.Engine.Tests
 {
@@ -580,6 +584,179 @@ namespace GammonX.Engine.Tests
             Assert.True(service.CanMoveChecker(boardModel, 18, 5, true));
         }
 
-        #endregion Tavla
-    }
+		#endregion Tavla
+
+		#region BearOff
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Plakoto)]
+		public void StandardBearOffHomeRange(GameModus gameModus)
+		{
+			var service = BoardServiceFactory.Create(gameModus);
+			var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardCanBearOffBoard);
+
+			// can bear off black
+			Assert.Equal(5, board.Fields[0]);
+			Assert.True(board.CanBearOff(0, 1, false));
+            service.MoveCheckerTo(board, 0, WellKnownBoardPositions.BearOffBlack, false);
+            Assert.Equal(1, board.BearOffCountBlack);
+            Assert.Equal(4, board.Fields[0]);
+
+			Assert.Equal(5, board.Fields[1]);
+			Assert.True(board.CanBearOff(1, 2, false));
+			service.MoveCheckerTo(board, 1, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(2, board.BearOffCountBlack);
+			Assert.Equal(4, board.Fields[1]);
+
+			Assert.Equal(3, board.Fields[2]);
+			Assert.True(board.CanBearOff(2, 3, false));
+			service.MoveCheckerTo(board, 2, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(3, board.BearOffCountBlack);
+			Assert.Equal(2, board.Fields[2]);
+
+			Assert.Equal(1, board.Fields[3]);
+			Assert.True(board.CanBearOff(3, 4, false));
+			service.MoveCheckerTo(board, 3, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(4, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[3]);
+
+			Assert.Equal(1, board.Fields[4]);
+			Assert.True(board.CanBearOff(4, 5, false));
+			service.MoveCheckerTo(board, 4, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(5, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[4]);
+
+			Assert.Equal(1, board.Fields[5]);
+			Assert.True(board.CanBearOff(5, 6, false));
+			service.MoveCheckerTo(board, 5, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(6, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[5]);
+
+			// can bear off white
+			Assert.Equal(-1, board.Fields[23]);
+			Assert.True(board.CanBearOff(23, 1, true));
+			service.MoveCheckerTo(board, 23, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(1, board.BearOffCountWhite);
+			Assert.Equal(0, board.Fields[23]);
+
+			Assert.Equal(-2, board.Fields[22]);
+			Assert.True(board.CanBearOff(22, 2, true));
+			service.MoveCheckerTo(board, 22, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(2, board.BearOffCountWhite);
+			Assert.Equal(-1, board.Fields[22]);
+
+			Assert.Equal(-3, board.Fields[21]);
+			Assert.True(board.CanBearOff(21, 3, true));
+			service.MoveCheckerTo(board, 21, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(3, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[21]);
+
+			Assert.Equal(-3, board.Fields[20]);
+			Assert.True(board.CanBearOff(20, 4, true));
+			service.MoveCheckerTo(board, 20, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(4, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[20]);
+
+			Assert.Equal(-3, board.Fields[19]);
+			Assert.True(board.CanBearOff(19, 5, true));
+			service.MoveCheckerTo(board, 19, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(5, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[19]);
+
+			Assert.Equal(-3, board.Fields[18]);
+			Assert.True(board.CanBearOff(18, 6, true));
+			service.MoveCheckerTo(board, 18, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(6, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[18]);
+
+		}
+
+		[Fact]
+		public void FevgaBearOffHomeRange()
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+
+			// can bear off black
+			Assert.Equal(5, board.Fields[6]);
+			Assert.True(board.CanBearOff(6, 6, false));
+			service.MoveCheckerTo(board, 6, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(1, board.BearOffCountBlack);
+			Assert.Equal(4, board.Fields[6]);
+
+			Assert.Equal(5, board.Fields[7]);
+			Assert.True(board.CanBearOff(7, 5, false));
+			service.MoveCheckerTo(board, 7, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(2, board.BearOffCountBlack);
+			Assert.Equal(4, board.Fields[7]);
+
+			Assert.Equal(2, board.Fields[8]);
+			Assert.True(board.CanBearOff(8, 4, false));
+			service.MoveCheckerTo(board, 8, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(3, board.BearOffCountBlack);
+			Assert.Equal(1, board.Fields[8]);
+
+			Assert.Equal(1, board.Fields[9]);
+			Assert.True(board.CanBearOff(9, 3, false));
+			service.MoveCheckerTo(board, 9, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(4, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[9]);
+
+			Assert.Equal(1, board.Fields[10]);
+			Assert.True(board.CanBearOff(10, 2, false));
+			service.MoveCheckerTo(board, 10, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(5, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[10]);
+
+			Assert.Equal(1, board.Fields[11]);
+			Assert.True(board.CanBearOff(11, 1, false));
+			service.MoveCheckerTo(board, 11, WellKnownBoardPositions.BearOffBlack, false);
+			Assert.Equal(6, board.BearOffCountBlack);
+			Assert.Equal(0, board.Fields[11]);
+
+			// can bear off white
+			Assert.Equal(-1, board.Fields[23]);
+			Assert.True(board.CanBearOff(23, 1, true));
+			service.MoveCheckerTo(board, 23, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(1, board.BearOffCountWhite);
+			Assert.Equal(0, board.Fields[23]);
+
+			Assert.Equal(-2, board.Fields[22]);
+			Assert.True(board.CanBearOff(22, 2, true));
+			service.MoveCheckerTo(board, 22, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(2, board.BearOffCountWhite);
+			Assert.Equal(-1, board.Fields[22]);
+
+			Assert.Equal(-3, board.Fields[21]);
+			Assert.True(board.CanBearOff(21, 3, true));
+			service.MoveCheckerTo(board, 21, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(3, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[21]);
+
+			Assert.Equal(-3, board.Fields[20]);
+			Assert.True(board.CanBearOff(20, 4, true));
+			service.MoveCheckerTo(board, 20, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(4, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[20]);
+
+			Assert.Equal(-3, board.Fields[19]);
+			Assert.True(board.CanBearOff(19, 5, true));
+			service.MoveCheckerTo(board, 19, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(5, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[19]);
+
+			Assert.Equal(-3, board.Fields[18]);
+			Assert.True(board.CanBearOff(18, 6, true));
+			service.MoveCheckerTo(board, 18, WellKnownBoardPositions.BearOffWhite, true);
+			Assert.Equal(6, board.BearOffCountWhite);
+			Assert.Equal(-2, board.Fields[18]);
+		}
+
+		#endregion BearOff
+	}
 }

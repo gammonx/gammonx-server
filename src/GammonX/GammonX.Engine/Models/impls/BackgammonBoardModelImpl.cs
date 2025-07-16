@@ -52,13 +52,13 @@ namespace GammonX.Engine.Models
         public Range HomeRangeBlack => new(5, 0);
 
         // <inheritdoc />
-        public int BearOffCountWhite => 0;
+        public int BearOffCountWhite { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BearOffCountBlack => 0;
+		// <inheritdoc />
+		public int BearOffCountBlack { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BlockAmount => 2;
+		// <inheritdoc />
+		public int BlockAmount => 2;
 
         // <inheritdoc />
         public int HomeBarCountWhite { get; private set; } = 0;
@@ -67,10 +67,10 @@ namespace GammonX.Engine.Models
         public int HomeBarCountBlack { get; private set; } = 0;
 
         // <inheritdoc />
-        public int StartIndexWhite => -1;
+        public int StartIndexWhite => WellKnownBoardPositions.HomeBarWhite;
 
         // <inheritdoc />
-        public int StartIndexBlack => 24;
+        public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
 
         // <inheritdoc />
         public int DoublingCubeValue => 2;
@@ -143,5 +143,24 @@ namespace GammonX.Engine.Models
                 HomeBarCountBlack -= amount;
             }
         }
-    }
+
+		// <inheritdoc />
+		public void BearOffChecker(bool isWhite, int amount)
+        {
+			if (isWhite)
+			{
+				BearOffCountWhite += amount;
+			}
+			else
+			{
+				BearOffCountBlack += amount;
+			}
+		}
+
+		// <inheritdoc />
+		public void SetFields(int[] fields)
+		{
+            fields.CopyTo(Fields, 0);
+		}
+	}
 }

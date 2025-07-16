@@ -50,14 +50,14 @@
         // <inheritdoc />
         public Range HomeRangeBlack => new(6, 11);
 
-        // <inheritdoc />
-        public int BearOffCountWhite => 0;
+		// <inheritdoc />
+		public int BearOffCountWhite { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BearOffCountBlack => 0;
+		// <inheritdoc />
+		public int BearOffCountBlack { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BlockAmount => 1;
+		// <inheritdoc />
+		public int BlockAmount => 1;
 
         // <inheritdoc />
         public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
@@ -98,5 +98,24 @@
             if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
             return true;
         });
-    }
+
+		// <inheritdoc />
+		public void BearOffChecker(bool isWhite, int amount)
+		{
+			if (isWhite)
+			{
+				BearOffCountWhite += amount;
+			}
+			else
+			{
+				BearOffCountBlack += amount;
+			}
+		}
+
+		// <inheritdoc />
+		public void SetFields(int[] fields)
+		{
+			fields.CopyTo(Fields, 0);
+		}
+	}
 }

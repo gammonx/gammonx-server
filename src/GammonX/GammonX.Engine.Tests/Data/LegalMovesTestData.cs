@@ -1,0 +1,694 @@
+﻿using System.Collections;
+
+namespace GammonX.Engine.Tests.Data
+{
+	/// <summary>
+	/// Represents the expected legal moves for a start board for backgammon, tavla and portes.
+	/// </summary>
+	internal class BackgammonStartBoardLegalMovesForWhiteTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+				{
+					1,
+					2,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 1),
+						(0, 2),
+						(11, 13),
+						(16, 17),
+						(16, 18),
+						(18, 19),
+						(18, 20)
+					}
+				};
+			yield return new object[]
+				{
+					1,
+					3,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 1),
+						(0, 3),
+						(11, 14),
+						(16, 17),
+						(16, 19),
+						(18, 19),
+						(18, 21)
+					}
+				};
+			yield return new object[]
+				{
+					1,
+					4,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 1),
+						(0, 4),
+						(11, 15),
+						(16, 17),
+						(16, 20),
+						(18, 19),
+						(18, 22)
+					}
+				};
+			yield return new object[]
+				{
+					1,
+					5,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 1),
+						(11, 16),
+						(16, 17),
+						(16, 21),
+						(18, 19)
+					}
+				};
+			yield return new object[]
+				{
+					1,
+					6,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 1),
+						(0, 6),
+						(11, 17),
+						(16, 17),
+						(16, 22),
+						(18, 19)
+					}
+				};
+			yield return new object[]
+				{
+					2,
+					3,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 2),
+						(0, 3),
+						(11, 13),
+						(11, 14),
+						(16, 18),
+						(16, 19),
+						(18, 20),
+						(18, 21)
+					}
+				};
+			yield return new object[]
+				{
+					2,
+					4,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 2),
+						(0, 4),
+						(11, 13),
+						(11, 15),
+						(16, 18),
+						(16, 20),
+						(18, 20),
+						(18, 22)
+					}
+				};
+			yield return new object[]
+				{
+					2,
+					5,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 2),
+						(11, 13),
+						(11, 16),
+						(16, 18),
+						(16, 21),
+						(18, 20)
+					}
+				};
+			yield return new object[]
+				{
+					2,
+					6,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 2),
+						(0, 6),
+						(11, 13),
+						(11, 17),
+						(16, 18),
+						(16, 22),
+						(18, 20)
+					}
+				};
+			yield return new object[]
+				{
+					3,
+					4,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 3),
+						(0, 4),
+						(11, 14),
+						(11, 15),
+						(16, 19),
+						(16, 20),
+						(18, 21),
+						(18, 22)
+					}
+				};
+			yield return new object[]
+				{
+					3,
+					5,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 3),
+						(11, 14),
+						(11, 16),
+						(16, 19),
+						(16, 21),
+						(18, 21)
+					}
+				};
+			yield return new object[]
+				{
+					3,
+					6,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 3),
+						(0, 6),
+						(11, 14),
+						(11, 17),
+						(16, 19),
+						(16, 22),
+						(18, 21)
+					}
+				};
+			yield return new object[]
+				{
+					4,
+					5,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 4),
+						(11, 15),
+						(11, 16),
+						(16, 20),
+						(16, 21),
+						(18, 22)
+					}
+				};
+			yield return new object[]
+				{
+					4,
+					6,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 4),
+						(0, 6),
+						(11, 15),
+						(11, 17),
+						(16, 20),
+						(16, 22),
+						(18, 22)
+					}
+				};
+			yield return new object[]
+				{
+					5,
+					6,
+					true,
+					new ValueTuple<int, int>[]
+					{
+						(0, 6),
+						(11, 16),
+						(11, 17),
+						(16, 21),
+						(16, 22)
+					}
+				};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for a start board for backgammon, tavla and portes.
+	/// </summary>
+	internal class BackgammonStartBoardLegalMovesForBlackTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+			{
+			1,
+			2,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(5, 3),
+				(7, 6),
+				(7, 5),
+				(12, 10),
+				(23, 22),
+				(23, 21)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			3,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(5, 2),
+				(7, 6),
+				(7, 4),
+				(12, 9),
+				(23, 22),
+				(23, 20)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			4,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(5, 1),
+				(7, 6),
+				(7, 3),
+				(12, 8),
+				(23, 22),
+				(23, 19)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			5,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(7, 6),
+				(7, 2),
+				(12, 7),
+				(23, 22)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(7, 6),
+				(7, 1),
+				(12, 6),
+				(23, 22),
+				(23, 17)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			3,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 3),
+				(5, 2),
+				(7, 5),
+				(7, 4),
+				(12, 10),
+				(12, 9),
+				(23, 21),
+				(23, 20)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			4,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 3),
+				(5, 1),
+				(7, 5),
+				(7, 3),
+				(12, 10),
+				(12, 8),
+				(23, 21),
+				(23, 19)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			5,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 3),
+				(7, 5),
+				(7, 2),
+				(12, 10),
+				(12, 7),
+				(23, 21)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 3),
+				(7, 5),
+				(7, 1),
+				(12, 10),
+				(12, 6),
+				(23, 21),
+				(23, 17)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			4,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 2),
+				(5, 1),
+				(7, 4),
+				(7, 3),
+				(12, 9),
+				(12, 8),
+				(23, 20),
+				(23, 19)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			5,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 2),
+				(7, 4),
+				(7, 2),
+				(12, 9),
+				(12, 7),
+				(23, 20)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 2),
+				(7, 4),
+				(7, 1),
+				(12, 9),
+				(12, 6),
+				(23, 20),
+				(23, 17)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			5,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 1),
+				(7, 3),
+				(7, 2),
+				(12, 8),
+				(12, 7),
+				(23, 19)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 1),
+				(7, 3),
+				(7, 1),
+				(12, 8),
+				(12, 6),
+				(23, 19),
+				(23, 17)
+			}
+			};
+			yield return new object[]
+			{
+			5,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(7, 2),
+				(7, 1),
+				(12, 7),
+				(12, 6),
+				(23, 17)
+			}
+			};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all double rolls (Pasch) for black on the backgammon start board.
+	/// </summary>
+	internal class BackgammonStartBoardDoubleRollsForBlackTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+			{
+			1,
+			1,
+			1,
+			1,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 4),
+				(7, 6),
+				(23, 22)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			2,
+			2,
+			2,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 3),
+				(7, 5),
+				(12, 10),
+				(23, 21),
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			3,
+			3,
+			3,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 2),
+				(7, 4),
+				(12, 9),
+				(23, 20),
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			4,
+			4,
+			4,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(5, 1),
+				(7, 3),
+				(12, 8),
+				(23, 19)
+			}
+			};
+			yield return new object[]
+			{
+			5,
+			5,
+			5,
+			5,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(7, 2),
+				(12, 7)
+			}
+			};
+			yield return new object[]
+			{
+			6,
+			6,
+			6,
+			6,
+			false,
+			new ValueTuple<int, int>[]
+			{
+				(7, 1),
+				(12, 6),
+				(23, 17)
+			}
+			};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all double rolls (Pasch) for white on the backgammon start board.
+	/// </summary>
+	internal class BackgammonStartBoardDoubleRollsForWhiteTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+			{
+			1,
+			1,
+			1,
+			1,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(16, 17),
+				(18, 19),
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			2,
+			2,
+			2,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2),
+				(11, 13),
+				(16, 18),
+				(18, 20),
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			3,
+			3,
+			3,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 3),
+				(11, 14),
+				(16, 19),
+				(18, 21)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			4,
+			4,
+			4,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 4),
+				(11, 15),
+				(16, 20),
+				(18, 22)
+			}
+			};
+			yield return new object[]
+			{
+			5,
+			5,
+			5,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(11, 16),
+				(16, 21)
+			}
+			};
+			yield return new object[]
+			{
+			6,
+			6,
+			6,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 6),
+				(11, 17),
+				(16, 22)
+			}
+			};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+}

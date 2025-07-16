@@ -49,7 +49,7 @@ namespace GammonX.Engine.Services
         /// Use <see cref="CanMoveChecker"/> for validation.
         /// </remarks>
         /// <returns>Indicates success of the move.</returns>
-        bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
+        internal bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
         /// <summary>
         /// Checks if the given piece can be moved from to a given position based

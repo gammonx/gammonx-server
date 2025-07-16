@@ -84,14 +84,14 @@ namespace GammonX.Engine.Models
         // <inheritdoc />
         public Range HomeRangeBlack => new(5, 0);
 
-        // <inheritdoc />
-        public int BearOffCountWhite => 0;
+		// <inheritdoc />
+		public int BearOffCountWhite { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BearOffCountBlack => 0;
+		// <inheritdoc />
+		public int BearOffCountBlack { get; private set; } = 0;
 
-        // <inheritdoc />
-        public int BlockAmount => 2;
+		// <inheritdoc />
+		public int BlockAmount => 2;
 
         // <inheritdoc />
         public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
@@ -132,5 +132,24 @@ namespace GammonX.Engine.Models
             if (!isWhite && (position > HomeRangeBlack.Start.Value || position < HomeRangeBlack.End.Value)) return false;
             return true;
         });
-    }
+
+		// <inheritdoc />
+		public void BearOffChecker(bool isWhite, int amount)
+		{
+			if (isWhite)
+			{
+				BearOffCountWhite += amount;
+			}
+			else
+			{
+				BearOffCountBlack += amount;
+			}
+		}
+
+		// <inheritdoc />
+		public void SetFields(int[] fields)
+		{
+			fields.CopyTo(Fields, 0);
+		}
+	}
 }
