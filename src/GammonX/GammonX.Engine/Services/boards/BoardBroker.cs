@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+using System.ComponentModel;
 
 namespace GammonX.Engine.Services
 {
@@ -159,5 +160,27 @@ namespace GammonX.Engine.Services
             }
             return false;
         }
-    }
+
+		/// <summary>
+		/// Inverts the given fields array
+		/// </summary>
+		/// <remarks>
+		/// There are 24 fields, numbered from 0 to 23.
+        /// Field i is mirrored to 23 - i.
+        /// A positive value(e.g. +3, i.e. 3 black tiles) becomes -3 (3 white tiles) and vice versa.
+		/// </remarks>
+		/// <param name="originalFields"></param>
+		/// <returns>Inverted board fields array</returns>
+		public static int[] InvertBoardFields(int[] originalFields)
+		{
+            // TODO: UNIT TESTS
+			int[] invertedFields = new int[originalFields.Length];
+			for (int i = 0; i < originalFields.Length; i++)
+			{
+				int sourceIndex = (originalFields.Length - 1) - i;
+				invertedFields[i] = -originalFields[sourceIndex];
+			}
+			return invertedFields;
+		}
+	}
 }

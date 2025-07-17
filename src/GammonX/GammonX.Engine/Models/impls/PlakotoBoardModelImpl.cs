@@ -86,5 +86,22 @@ namespace GammonX.Engine.Models
 
 		// <inheritdoc />
 		public override int BlockAmount => 2;
+
+		// <inheritdoc />
+		public override IBoardModel InvertBoard()
+		{
+			var invertedFields = BoardBroker.InvertBoardFields(Fields);
+			var invertedPinnedFields = BoardBroker.InvertBoardFields(PinnedFields);
+			return new PlakotoBoardModelImpl()
+			{
+				// assign white values to black
+				BearOffCountBlack = BearOffCountWhite,
+				// assign black values to white
+				BearOffCountWhite = BearOffCountBlack,
+				// inverted board fieds
+				Fields = invertedFields,
+                PinnedFields = invertedPinnedFields
+			};
+		}
 	}
 }

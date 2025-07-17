@@ -6,6 +6,9 @@ namespace GammonX.Engine.Models
     /// </summary>
     public interface IDoublingCubeModel
     {
+        // TODO: implement increase doubling cube value
+        // TODO: implement change doubling cube owner
+
         /// <summary>
         /// Gets the current value of the doubling cube.
         /// </summary>

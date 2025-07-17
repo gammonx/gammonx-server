@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Engine.Services;
+
+namespace GammonX.Engine.Models
 {
 	/// <summary>
 	/// Fevga implementation.
@@ -92,5 +94,20 @@
 			if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
 			return true;
 		});
+
+		// <inheritdoc />
+		public override IBoardModel InvertBoard()
+		{
+			var invertedFields = BoardBroker.InvertBoardFields(Fields);
+			return new FevgaBoardModelImpl()
+			{
+				// assign white values to black
+				BearOffCountBlack = BearOffCountWhite,
+				// assign black values to white
+				BearOffCountWhite = BearOffCountBlack,
+				// inverted board fieds
+				Fields = invertedFields,
+			};
+		}
 	}
 }

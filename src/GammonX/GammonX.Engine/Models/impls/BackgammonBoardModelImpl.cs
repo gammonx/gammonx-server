@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using GammonX.Engine.Services;
+using System.Drawing;
 
 namespace GammonX.Engine.Models
 {
@@ -67,10 +68,10 @@ namespace GammonX.Engine.Models
         public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
 
         // <inheritdoc />
-        public int DoublingCubeValue => 2;
+        public int DoublingCubeValue { get; private set; } = 1;
 
         // <inheritdoc />
-        public bool DoublingCubeOwner => true;
+        public bool DoublingCubeOwner { get; private set; } = true;
 
         // <inheritdoc />
         public void AddToHomeBar(bool isWhite, int amount)
@@ -97,5 +98,24 @@ namespace GammonX.Engine.Models
                 HomeBarCountBlack -= amount;
             }
         }
+
+		// <inheritdoc />
+		public override IBoardModel InvertBoard()
+		{
+            var invertedFields = BoardBroker.InvertBoardFields(Fields);
+			return new BackgammonBoardModelImpl()
+            {
+				// assign white values to black
+				BearOffCountBlack = BearOffCountWhite,
+                HomeBarCountBlack = HomeBarCountWhite,
+				// assign black values to white
+				BearOffCountWhite = BearOffCountBlack,
+                HomeBarCountWhite = HomeBarCountBlack,
+                // invert doubling cube
+                DoublingCubeOwner = !DoublingCubeOwner,
+                // inverted board fieds
+                Fields = invertedFields,
+			};
+		}
 	}
 }

@@ -19,10 +19,10 @@ namespace GammonX.Engine.Models
 		public abstract Range HomeRangeBlack { get; }
 
 		// <inheritdoc />
-		public virtual int BearOffCountWhite { get; private set; } = 0;
+		public virtual int BearOffCountWhite { get; protected set; } = 0;
 
 		// <inheritdoc />
-		public virtual int BearOffCountBlack { get; private set; } = 0;
+		public virtual int BearOffCountBlack { get; protected set; } = 0;
 
 		// <inheritdoc />
 		public abstract int BlockAmount { get; }
@@ -79,6 +79,9 @@ namespace GammonX.Engine.Models
 				BearOffCountBlack += amount;
 			}
 		}
+
+		// <inheritdoc />
+		public abstract IBoardModel InvertBoard();
 
 		/// <summary>
 		/// Overwrites the <see cref="Fields"/> property.

@@ -78,5 +78,20 @@
 		/// <param name="isWhite">Indicates the player, true for white and false for black.</param>
 		/// <param name="amount">Amount of checkers borne off. Normally just one.</param>
 		void BearOffChecker(bool isWhite, int amount);
+
+        // TODO: UNIT TESTS invert board
+
+		/// <summary>
+		/// Inverts this instance of the board for the other player.
+		/// After inverting, all positions and counts from black are now white and
+		/// all positions and counts from white are now black.
+		/// </summary>
+		/// <remarks>
+		/// The engine only handles one view of the board (e.g. for player1).
+        /// When the board is sent to the other player (e.g. player2) the boards gets inverted.
+        /// All clients plays as white in their point of view.
+		/// </remarks>
+		/// <returns>An inverted board instance.</returns>
+		IBoardModel InvertBoard();
 	}
 }

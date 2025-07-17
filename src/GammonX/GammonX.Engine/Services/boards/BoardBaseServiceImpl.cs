@@ -1,7 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using System.ComponentModel;
-using System.Reflection;
-
 namespace GammonX.Engine.Services
 {
 	/// <summary>
@@ -19,10 +16,10 @@ namespace GammonX.Engine.Services
 		public ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls)
 		{
 			// TODO: UNIT TESTS for home bar (entering)
-			// TODO: UNIT TESTS for blocked
-			// TODO: UNIT TESTS for pinned
-			// TODO: UNIT TESTS for hitting
-			// TODO: UNIT TESTS for bearing off
+			// TODO: UNIT TESTS for blocked (already tested within CanMoveChecker)
+			// TODO: UNIT TESTS for pinned (already tested within CanMoveChecker)
+			// TODO: UNIT TESTS for hitting (already tested within CanMoveChecker)
+			// TODO: UNIT TESTS for bearing off (already tested within CanBearOff)
 
 			var legalMoves = new List<(int from, int to)>();
 			// get only points with relevance for the current player
@@ -30,7 +27,7 @@ namespace GammonX.Engine.Services
 			var homebarCount = GetHomeBarCount(model, isWhite);
 			if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
 			{
-				// if the player has pieces in the home bar, they can only move those pieces
+				// if the player has checkers on the home bar, they can only move those checkers
 				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
 				playerPoints.Add(startPoint);
 			}

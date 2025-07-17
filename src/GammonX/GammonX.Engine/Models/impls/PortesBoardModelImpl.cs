@@ -94,5 +94,22 @@ namespace GammonX.Engine.Models
                 HomeBarCountBlack -= amount;
             }
         }
+
+		// <inheritdoc />
+		public override IBoardModel InvertBoard()
+		{
+			var invertedFields = BoardBroker.InvertBoardFields(Fields);
+			return new PortesBoardModelImpl()
+			{
+				// assign white values to black
+				BearOffCountBlack = BearOffCountWhite,
+				HomeBarCountBlack = HomeBarCountWhite,
+				// assign black values to white
+				BearOffCountWhite = BearOffCountBlack,
+				HomeBarCountWhite = HomeBarCountBlack,
+				// inverted board fieds
+				Fields = invertedFields,
+			};
+		}
 	}
 }
