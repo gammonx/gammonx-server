@@ -78,14 +78,5 @@
 		/// <param name="isWhite">Indicates the player, true for white and false for black.</param>
 		/// <param name="amount">Amount of checkers borne off. Normally just one.</param>
 		void BearOffChecker(bool isWhite, int amount);
-
-        /// <summary>
-        /// Overwrites the <see cref="Fields"/> property.
-        /// </summary>
-        /// <remarks>
-        /// Marked as internal and should only be used for unit test purposes.
-        /// </remarks>
-        /// <param name="fields">Fields array to set.</param>
-        void SetFields(int[] fields);
 	}
 }

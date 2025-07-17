@@ -1,11 +1,11 @@
 ﻿namespace GammonX.Engine.Models
 {
-    /// <summary>
-    /// Fevga implementation.
-    /// <seealso cref="https://www.bkgm.com/variants/Fevga.html"/>
-    /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
-    /// </summary>
-    internal class FevgaBoardModelImpl : IBoardModel
+	/// <summary>
+	/// Fevga implementation.
+	/// <seealso cref="https://www.bkgm.com/variants/Fevga.html"/>
+	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
+	/// </summary>
+	internal sealed class FevgaBoardModelImpl : BoardBaseImpl
     {
         public FevgaBoardModelImpl()
         {
@@ -39,28 +39,22 @@
         }
 
         // <inheritdoc />
-        public GameModus Modus => GameModus.Fevga;
-
-        // <inheritdoc />
-        public int[] Fields { get; private set; }
-
-        // <inheritdoc />
-        public Range HomeRangeWhite => new(18, 23);
-
-        // <inheritdoc />
-        public Range HomeRangeBlack => new(6, 11);
+        public override GameModus Modus => GameModus.Fevga;
 
 		// <inheritdoc />
-		public int BearOffCountWhite { get; private set; } = 0;
+		public override int[] Fields { get; protected set; }
 
 		// <inheritdoc />
-		public int BearOffCountBlack { get; private set; } = 0;
+		public override Range HomeRangeWhite => new(18, 23);
 
 		// <inheritdoc />
-		public int BlockAmount => 1;
+		public override Range HomeRangeBlack => new(6, 11);
+
+		// <inheritdoc />
+		public override int BlockAmount => 1;
 
         // <inheritdoc />
-        public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
+        public override Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
         {
             if (isWhite)
             {
@@ -76,46 +70,27 @@
             }
         });
 
-        // <inheritdoc />
-        public Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
-        {
-            if (isWhite)
-            {
-                int to = MoveOperator(isWhite, currentPosition, moveDistance);
-                return to > HomeRangeWhite.End.Value;
-            }
-            else
-            {
-                int to = MoveOperator(isWhite, currentPosition, moveDistance);
-                return to > HomeRangeBlack.End.Value;
-            }
-        });
-
-        // <inheritdoc />
-        public Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
-        {
-            if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
-            if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
-            return true;
-        });
-
 		// <inheritdoc />
-		public void BearOffChecker(bool isWhite, int amount)
+		public override Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)
 			{
-				BearOffCountWhite += amount;
+				int to = MoveOperator(isWhite, currentPosition, moveDistance);
+				return to > HomeRangeWhite.End.Value;
 			}
 			else
 			{
-				BearOffCountBlack += amount;
+				int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                return to > HomeRangeBlack.End.Value;
 			}
-		}
+		});
 
 		// <inheritdoc />
-		public void SetFields(int[] fields)
+		public override Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
 		{
-			fields.CopyTo(Fields, 0);
-		}
+			if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
+			if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
+			return true;
+		});
 	}
 }

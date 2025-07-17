@@ -1,13 +1,14 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 namespace GammonX.Engine.Models
 {
-    /// <summary>
-    /// Portes implementation
-    /// <seealso cref="https://www.bkgm.com/variants/Portes.html"/>
-    /// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
-    /// </summary>
-    internal class PortesBoardModelImpl : IBoardModel, IHomeBarModel
+	/// <summary>
+	/// Portes implementation
+	/// <seealso cref="https://www.bkgm.com/variants/Portes.html"/>
+	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
+	/// </summary>
+	internal sealed class PortesBoardModelImpl : BoardBaseImpl, IHomeBarModel
     {
         public PortesBoardModelImpl()
         {
@@ -42,25 +43,19 @@ namespace GammonX.Engine.Models
         }
 
         // <inheritdoc />
-        public GameModus Modus => GameModus.Portes;
-
-        // <inheritdoc />
-        public int[] Fields { get; private set; }
-
-        // <inheritdoc />
-        public Range HomeRangeWhite => new(18, 23);
-
-        // <inheritdoc />
-        public Range HomeRangeBlack => new(5, 0);
+        public override GameModus Modus => GameModus.Portes;
 
 		// <inheritdoc />
-		public int BearOffCountWhite { get; private set; } = 0;
+		public override int[] Fields { get; protected set; }
 
 		// <inheritdoc />
-		public int BearOffCountBlack { get; private set; } = 0;
+		public override Range HomeRangeWhite => new(18, 23);
 
 		// <inheritdoc />
-		public int BlockAmount => 2;
+		public override Range HomeRangeBlack => new(5, 0);
+
+		// <inheritdoc />
+		public override int BlockAmount => 2;
 
         // <inheritdoc />
         public int HomeBarCountWhite { get; private set; } = 0;
@@ -73,46 +68,6 @@ namespace GammonX.Engine.Models
 
 		// <inheritdoc />
 		public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
-
-		// <inheritdoc />
-		public Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
-        {
-            if (isWhite)
-            {
-                // White moves from 0 to 23
-                int newPosition = currentPosition + moveDistance;
-                return newPosition;
-            }
-            else
-            {
-                // Black moves from 23 to 0
-                int newPosition = currentPosition - moveDistance;
-                return newPosition;
-            }
-        });
-
-        // <inheritdoc />
-        public Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
-        {
-            if (isWhite)
-            {
-                int to = MoveOperator(isWhite, currentPosition, moveDistance);
-                return to > HomeRangeWhite.End.Value;
-            }
-            else
-            {
-                int to = MoveOperator(isWhite, currentPosition, moveDistance);
-                return to < HomeRangeBlack.End.Value;
-            }
-        });
-
-        // <inheritdoc />
-        public Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
-        {
-            if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
-            if (!isWhite && (position > HomeRangeBlack.Start.Value || position < HomeRangeBlack.End.Value)) return false;
-            return true;
-        });
 
         // <inheritdoc />
         public void AddToHomeBar(bool isWhite, int amount)
@@ -139,24 +94,5 @@ namespace GammonX.Engine.Models
                 HomeBarCountBlack -= amount;
             }
         }
-
-		// <inheritdoc />
-		public void BearOffChecker(bool isWhite, int amount)
-		{
-			if (isWhite)
-			{
-				BearOffCountWhite += amount;
-			}
-			else
-			{
-				BearOffCountBlack += amount;
-			}
-		}
-
-		// <inheritdoc />
-		public void SetFields(int[] fields)
-		{
-			fields.CopyTo(Fields, 0);
-		}
 	}
 }

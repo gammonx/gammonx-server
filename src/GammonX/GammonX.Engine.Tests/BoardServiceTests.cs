@@ -1,6 +1,7 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Engine.Tests.Data;
+using GammonX.Engine.Tests.Utils;
 using Moq;
 
 using Range = System.Range;
