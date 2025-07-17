@@ -691,4 +691,355 @@ namespace GammonX.Engine.Tests.Data
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all regular rolls for white on the fevga start board.
+	/// </summary>
+	internal class FevgaPlakotoStartBoardLegalMovesForWhiteTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+			{
+			1,
+			2,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(0, 2)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			3,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(0, 3)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			4,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(0, 4)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(0, 5)
+			}
+			};
+			yield return new object[]
+			{
+			1,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+				(0, 6)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			3,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2),
+				(0, 3)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			4,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2),
+				(0, 4)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2),
+				(0, 5)
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2),
+				(0, 6)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			4,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 3),
+				(0, 4)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 3),
+				(0, 5)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 3),
+				(0, 6)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 4),
+				(0, 5)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 4),
+				(0, 6)
+			}
+			};
+			yield return new object[]
+			{
+			5,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 5),
+				(0, 6)
+			}
+			};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all double rolls (Pasch) for white on the fevga start board.
+	/// </summary>
+	internal class FevgaPlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[]
+			{
+			1,
+			1,
+			1,
+			1,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 1),
+			}
+			};
+			yield return new object[]
+			{
+			2,
+			2,
+			2,
+			2,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 2)
+			}
+			};
+			yield return new object[]
+			{
+			3,
+			3,
+			3,
+			3,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 3)
+			}
+			};
+			yield return new object[]
+			{
+			4,
+			4,
+			4,
+			4,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 4)
+			}
+			};
+			yield return new object[]
+			{
+			5,
+			5,
+			5,
+			5,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 5)
+			}
+			};
+			yield return new object[]
+			{
+			6,
+			6,
+			6,
+			6,
+			true,
+			new ValueTuple<int, int>[]
+			{
+				(0, 6)
+			}
+			};
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all regular rolls for black on the fevga and plakoto start board.
+	/// </summary>
+	internal class FevgaStartBoardLegalMovesForBlackTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[] { 1, 2, false, new (int, int)[] { (12, 13), (12, 14) } };
+			yield return new object[] { 1, 3, false, new (int, int)[] { (12, 13), (12, 15) } };
+			yield return new object[] { 1, 4, false, new (int, int)[] { (12, 13), (12, 16) } };
+			yield return new object[] { 1, 5, false, new (int, int)[] { (12, 13), (12, 17) } };
+			yield return new object[] { 1, 6, false, new (int, int)[] { (12, 13), (12, 18) } };
+			yield return new object[] { 2, 3, false, new (int, int)[] { (12, 14), (12, 15) } };
+			yield return new object[] { 2, 4, false, new (int, int)[] { (12, 14), (12, 16) } };
+			yield return new object[] { 2, 5, false, new (int, int)[] { (12, 14), (12, 17) } };
+			yield return new object[] { 2, 6, false, new (int, int)[] { (12, 14), (12, 18) } };
+			yield return new object[] { 3, 4, false, new (int, int)[] { (12, 15), (12, 16) } };
+			yield return new object[] { 3, 5, false, new (int, int)[] { (12, 15), (12, 17) } };
+			yield return new object[] { 3, 6, false, new (int, int)[] { (12, 15), (12, 18) } };
+			yield return new object[] { 4, 5, false, new (int, int)[] { (12, 16), (12, 17) } };
+			yield return new object[] { 4, 6, false, new (int, int)[] { (12, 16), (12, 18) } };
+			yield return new object[] { 5, 6, false, new (int, int)[] { (12, 17), (12, 18) } };
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all double rolls (Pasch) for black on the fevga and plakoto start board.
+	/// </summary>
+	internal class FevgaStartBoardLegalMovesForBlackDoublesTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (12, 13) } };
+			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (12, 14) } };
+			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (12, 15) } };
+			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (12, 16) } };
+			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (12, 17) } };
+			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (12, 18) } };
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all regular rolls for black on the plakoto start board.
+	/// </summary>
+	internal class PlakotoStartBoardLegalMovesForBlackTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[] { 1, 2, false, new (int, int)[] { (23, 22), (23, 21) } };
+			yield return new object[] { 1, 3, false, new (int, int)[] { (23, 22), (23, 20) } };
+			yield return new object[] { 1, 4, false, new (int, int)[] { (23, 22), (23, 19) } };
+			yield return new object[] { 1, 5, false, new (int, int)[] { (23, 22), (23, 18) } };
+			yield return new object[] { 1, 6, false, new (int, int)[] { (23, 22), (23, 17) } };
+			yield return new object[] { 2, 3, false, new (int, int)[] { (23, 21), (23, 20) } };
+			yield return new object[] { 2, 4, false, new (int, int)[] { (23, 21), (23, 19) } };
+			yield return new object[] { 2, 5, false, new (int, int)[] { (23, 21), (23, 18) } };
+			yield return new object[] { 2, 6, false, new (int, int)[] { (23, 21), (23, 17) } };
+			yield return new object[] { 3, 4, false, new (int, int)[] { (23, 20), (23, 19) } };
+			yield return new object[] { 3, 5, false, new (int, int)[] { (23, 20), (23, 18) } };
+			yield return new object[] { 3, 6, false, new (int, int)[] { (23, 20), (23, 17) } };
+			yield return new object[] { 4, 5, false, new (int, int)[] { (23, 19), (23, 18) } };
+			yield return new object[] { 4, 6, false, new (int, int)[] { (23, 19), (23, 17) } };
+			yield return new object[] { 5, 6, false, new (int, int)[] { (23, 18), (23, 17) } };
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
+
+	/// <summary>
+	/// Represents the expected legal moves for all double rolls (Pasch) for black on the plakoto start board.
+	/// </summary>
+	internal class PlakotoStartBoardLegalMovesForBlackDoublesTestData : IEnumerable<object[]>
+	{
+		public IEnumerator<object[]> GetEnumerator()
+		{
+			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (23, 22) } };
+			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (23, 21) } };
+			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (23, 20) } };
+			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (23, 19) } };
+			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (23, 18) } };
+			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (23, 17) } };
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+	}
 }

@@ -257,5 +257,173 @@ namespace GammonX.Engine.Tests
 		}
 
 		#endregion Portes
+
+		#region
+
+		[Theory]
+		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesForWhiteTestData))]
+		public void CalculateLegalMovesFevgaBoardRegularDiceRollWhite(
+			int roll1,
+			int roll2,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData))]
+		public void CalculateLegalMovesFevgaBoardDoubleDiceRollWhite(
+			int roll1,
+			int roll2,
+			int roll3,
+			int roll4,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2, roll3, roll4);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(FevgaStartBoardLegalMovesForBlackTestData))]
+		public void CalculateLegalMovesFevgaBoardRegularDiceRollBlack(
+			int roll1,
+			int roll2,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(FevgaStartBoardLegalMovesForBlackDoublesTestData))]
+		public void CalculateLegalMovesFevgaBoardDoubleDiceRollBlack(
+			int roll1,
+			int roll2,
+			int roll3,
+			int roll4,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2, roll3, roll4);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		#endregion Fevga
+
+		#region Plakoto
+
+		[Theory]
+		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesForWhiteTestData))]
+		public void CalculateLegalMovesPlakotoBoardRegularDiceRollWhite(
+			int roll1,
+			int roll2,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Plakoto);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData))]
+		public void CalculateLegalMovesPlakotoBoardDoubleDiceRollWhite(
+			int roll1,
+			int roll2,
+			int roll3,
+			int roll4,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Plakoto);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2, roll3, roll4);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(PlakotoStartBoardLegalMovesForBlackTestData))]
+		public void CalculateLegalMovesPlakotoBoardRegularDiceRollBlack(
+			int roll1,
+			int roll2,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Plakoto);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		[Theory]
+		[ClassData(typeof(PlakotoStartBoardLegalMovesForBlackDoublesTestData))]
+		public void CalculateLegalMovesPlakotoBoardDoubleDiceRollBlack(
+			int roll1,
+			int roll2,
+			int roll3,
+			int roll4,
+			bool isWhite,
+			ValueTuple<int, int>[] expectedMoves)
+		{
+			var service = BoardServiceFactory.Create(GameModus.Plakoto);
+			var board = service.CreateBoard();
+
+			var legalMoves = service.GetLegalMoves(board, isWhite, roll1, roll2, roll3, roll4);
+			Assert.Equal(expectedMoves.Length, legalMoves.Length);
+			for (int i = 0; i < expectedMoves.Length; i++)
+			{
+				Assert.Contains(expectedMoves[i], legalMoves);
+			}
+		}
+
+		#endregion
 	}
 }

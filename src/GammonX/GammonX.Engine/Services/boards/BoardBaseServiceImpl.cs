@@ -18,10 +18,11 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls)
 		{
-			// TODO: UNIT TESTS for doubles
-			// TODO: UNIT TESTS for home bar
-			// TODO: UNIT TESTS for fevga
-			// TODO: UNIT TESTS for plakoto
+			// TODO: UNIT TESTS for home bar (entering)
+			// TODO: UNIT TESTS for blocked
+			// TODO: UNIT TESTS for pinned
+			// TODO: UNIT TESTS for hitting
+			// TODO: UNIT TESTS for bearing off
 
 			var legalMoves = new List<(int from, int to)>();
 			// get only points with relevance for the current player
@@ -56,7 +57,6 @@ namespace GammonX.Engine.Services
 				{
 					if (model.CanBearOff(from, roll, isWhite))
 					{
-						// TODO : UNIT TESTS for bearing off legal moves
 						int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
 						legalMoves.Add((from, to));
 					}
