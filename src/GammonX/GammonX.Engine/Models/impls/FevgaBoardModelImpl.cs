@@ -98,7 +98,7 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
-			var invertedFields = BoardBroker.InvertBoardFields(Fields);
+			var invertedFields = InvertFevgaBoard(Fields);
 			return new FevgaBoardModelImpl()
 			{
 				// assign white values to black
@@ -108,6 +108,20 @@ namespace GammonX.Engine.Models
 				// inverted board fieds
 				Fields = invertedFields,
 			};
+		}
+
+		private static int[] InvertFevgaBoard(int[] originalFields)
+		{
+			int[] invertedFields = new int[24];
+			for (int i = 0; i < 24; i++)
+			{
+				// first half (0–11) mirrors to (12–23)
+				// second half (12–23) mirrors to (0–11)
+				int mirroredIndex = (i < 12) ? i + 12 : i - 12;
+				invertedFields[mirroredIndex] = -originalFields[i];
+			}
+
+			return invertedFields;
 		}
 	}
 }

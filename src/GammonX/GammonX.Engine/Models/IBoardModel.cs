@@ -79,8 +79,6 @@
 		/// <param name="amount">Amount of checkers borne off. Normally just one.</param>
 		void BearOffChecker(bool isWhite, int amount);
 
-        // TODO: UNIT TESTS invert board
-
 		/// <summary>
 		/// Inverts this instance of the board for the other player.
 		/// After inverting, all positions and counts from black are now white and

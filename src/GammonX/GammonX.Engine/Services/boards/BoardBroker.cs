@@ -173,7 +173,6 @@ namespace GammonX.Engine.Services
 		/// <returns>Inverted board fields array</returns>
 		public static int[] InvertBoardFields(int[] originalFields)
 		{
-            // TODO: UNIT TESTS
 			int[] invertedFields = new int[originalFields.Length];
 			for (int i = 0; i < originalFields.Length; i++)
 			{
