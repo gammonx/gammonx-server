@@ -71,10 +71,37 @@ namespace GammonX.Engine.Models
         public int DoublingCubeValue { get; private set; } = 1;
 
         // <inheritdoc />
-        public bool DoublingCubeOwner { get; private set; } = true;
+        public bool DoublingCubeOwner { get; private set; } = false;
 
-        // <inheritdoc />
-        public void AddToHomeBar(bool isWhite, int amount)
+		// <inheritdoc />
+		public void AcceptDoublingCubeOffer()
+		{
+			if (DoublingCubeOwner)
+            {
+                throw new InvalidOperationException("Doubling offer can only be accepted by a non owner of the doubling cube");
+            }
+            else
+            {
+                if (DoublingCubeValue < 64)
+                {
+                    DoublingCubeValue *= 2;
+                    DoublingCubeOwner = !DoublingCubeOwner;
+                }
+                else
+                {
+					throw new InvalidOperationException("The max doubling cube value of 64 is already reached");
+				}
+            }
+		}
+
+		// <inheritdoc />
+		public bool CanOfferDoublingCube()
+        {
+			return DoublingCubeValue < 64 && DoublingCubeOwner;
+        }
+
+		// <inheritdoc />
+		public void AddToHomeBar(bool isWhite, int amount)
         {
             if (isWhite)
             {
@@ -113,6 +140,7 @@ namespace GammonX.Engine.Models
                 HomeBarCountWhite = HomeBarCountBlack,
                 // invert doubling cube
                 DoublingCubeOwner = !DoublingCubeOwner,
+                DoublingCubeValue = DoublingCubeValue,
                 // inverted board fieds
                 Fields = invertedFields,
 			};

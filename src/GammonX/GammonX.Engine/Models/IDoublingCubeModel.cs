@@ -6,9 +6,6 @@ namespace GammonX.Engine.Models
     /// </summary>
     public interface IDoublingCubeModel
     {
-        // TODO: implement increase doubling cube value
-        // TODO: implement change doubling cube owner
-
         /// <summary>
         /// Gets the current value of the doubling cube.
         /// </summary>
@@ -19,5 +16,19 @@ namespace GammonX.Engine.Models
         /// Returns false if white is the owner of the doubling cube.
         /// </summary>
         bool DoublingCubeOwner { get; }
+
+		/// <summary>
+		/// The doubling coube offer is accepted by the opponent.
+		/// </summary>
+		/// <remarks>
+		/// The doubling cube value starts at 1 and is doubled at each accepted offer up to a maximum of 64.
+		/// </remarks>
+		void AcceptDoublingCubeOffer();
+
+        /// <summary>
+        /// Checks if the given board player can offer a doubling cube.
+        /// </summary>
+        /// <returns>Boolean indicating if doubling cube can be offered.</returns>
+        bool CanOfferDoublingCube();
     }
 }
