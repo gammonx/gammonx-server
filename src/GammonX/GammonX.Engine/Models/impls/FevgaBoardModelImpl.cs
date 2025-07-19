@@ -1,6 +1,4 @@
-﻿using GammonX.Engine.Services;
-
-namespace GammonX.Engine.Models
+﻿namespace GammonX.Engine.Models
 {
 	/// <summary>
 	/// Fevga implementation.
@@ -107,6 +105,18 @@ namespace GammonX.Engine.Models
 				BearOffCountWhite = BearOffCountBlack,
 				// inverted board fieds
 				Fields = invertedFields,
+			};
+		}
+
+		// <inheritdoc />
+		public override object Clone()
+		{
+			return new FevgaBoardModelImpl()
+			{
+				BearOffCountWhite = BearOffCountWhite,
+				BearOffCountBlack = BearOffCountBlack,
+				// clone is okay for primitive types
+				Fields = (int[])Fields.Clone(),
 			};
 		}
 

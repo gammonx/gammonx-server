@@ -1,5 +1,4 @@
 ﻿using GammonX.Engine.Services;
-using System.Drawing;
 
 namespace GammonX.Engine.Models
 {
@@ -143,6 +142,22 @@ namespace GammonX.Engine.Models
                 DoublingCubeValue = DoublingCubeValue,
                 // inverted board fieds
                 Fields = invertedFields,
+			};
+		}
+
+		// <inheritdoc />
+		public override object Clone()
+		{
+			return new BackgammonBoardModelImpl()
+			{
+				BearOffCountWhite = BearOffCountWhite,
+				BearOffCountBlack = BearOffCountBlack,
+				HomeBarCountWhite = HomeBarCountWhite,
+				HomeBarCountBlack = HomeBarCountBlack,
+                DoublingCubeOwner = DoublingCubeOwner,
+                DoublingCubeValue = DoublingCubeValue,
+				// clone is okay for primitive types
+				Fields = (int[])Fields.Clone(),
 			};
 		}
 	}

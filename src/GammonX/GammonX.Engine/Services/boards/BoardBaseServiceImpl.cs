@@ -1,4 +1,8 @@
 ﻿using GammonX.Engine.Models;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+
 namespace GammonX.Engine.Services
 {
 	/// <summary>
@@ -20,16 +24,18 @@ namespace GammonX.Engine.Services
 			// TODO: UNIT TESTS for pinned (already tested within CanMoveChecker)
 			// TODO: UNIT TESTS for hitting (already tested within CanMoveChecker)
 			// TODO: UNIT TESTS for bearing off (already tested within CanBearOff)
+			// TODO: UNIT TESTS for combined moves (directly move 2+ rolls)
+			// TODO: need to account for rolls already used when executing combined moves
 
 			var legalMoves = new List<(int from, int to)>();
 			// get only points with relevance for the current player
-			var playerPoints = new List<int>();
+			var playerFields = new List<int>();
 			var homebarCount = GetHomeBarCount(model, isWhite);
 			if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
 			{
 				// if the player has checkers on the home bar, they can only move those checkers
 				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
-				playerPoints.Add(startPoint);
+				playerFields.Add(startPoint);
 			}
 			else
 			{
@@ -38,30 +44,56 @@ namespace GammonX.Engine.Services
 					int pointValue = model.Fields[i];
 					if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
 					{
-						playerPoints.Add(i);
+						playerFields.Add(i);
 					}
 				}
 			}
 
-			// we currently return moves based on a double distinctly
-			// after every move, we remove the used roll and recalculate the legal moves
-			// based on the current board state
-			var distinctRolls = rolls.Distinct().ToArray();
-
-			foreach (var roll in distinctRolls)
+			foreach (var from in playerFields)
 			{
-				foreach (var from in playerPoints)
+				var subsequentMoves = GetSubsequentLegalMoves(model, from, isWhite, rolls.ToArray());
+				legalMoves.AddRange(subsequentMoves);
+			}
+
+			return legalMoves.ToArray();
+		}
+
+		private ValueTuple<int, int>[] GetSubsequentLegalMoves(
+			IBoardModel shadowBoard,
+			int from,
+			bool isWhite,
+			params int[] rolls)
+		{
+			var legalMoves = new List<(int from, int to)>();
+
+			for (int index = 0; index < rolls.Length; index++)
+			{
+				var currentRoll = rolls[index];
+				if (shadowBoard.CanBearOff(from, currentRoll, isWhite))
 				{
-					if (model.CanBearOff(from, roll, isWhite))
+					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
+					legalMoves.Add((from, to));
+				}
+				else if (CanMoveChecker(shadowBoard, from, currentRoll, isWhite))
+				{
+					int to = shadowBoard.MoveOperator(isWhite, from, currentRoll);
+					if (legalMoves.Contains((from, to)))
 					{
-						int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
-						legalMoves.Add((from, to));
+						// we already logged this move, so we skip it
+						continue;
 					}
-					else if (CanMoveChecker(model, from, roll, isWhite))
-					{
-						int to = model.MoveOperator(isWhite, from, roll);
-						legalMoves.Add((from, to));
-					}
+					legalMoves.Add((from, to));
+					// we calculate subsequent legal moves based on a shadow board state with the already logged move made.
+					var deeperShadowBoard = shadowBoard.DeepClone();
+					MoveCheckerTo(deeperShadowBoard, from, to, isWhite);
+					// get all other rolls except the current one
+					var otherRolls = rolls.Where((item, rollsIndex) => rollsIndex != index).ToList();
+					var subsequentMoves = GetSubsequentLegalMoves(deeperShadowBoard, to, isWhite, otherRolls.ToArray());
+					var combinedMoves = subsequentMoves
+						.Select(move => (from, move.Item2))
+						.Where(move => !legalMoves.Contains(move))
+						.ToList();
+					legalMoves.AddRange(combinedMoves);
 				}
 			}
 
@@ -268,6 +300,5 @@ namespace GammonX.Engine.Services
 			}
 			return 0;
 		}
-
 	}
 }

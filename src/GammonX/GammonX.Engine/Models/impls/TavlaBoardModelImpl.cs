@@ -109,5 +109,19 @@ namespace GammonX.Engine.Models
 				Fields = invertedFields,
 			};
 		}
+
+		// <inheritdoc />
+		public override object Clone()
+		{
+			return new TavlaBoardModelImpl()
+			{
+				BearOffCountWhite = BearOffCountWhite,
+				BearOffCountBlack = BearOffCountBlack,
+				HomeBarCountWhite = HomeBarCountWhite,
+				HomeBarCountBlack = HomeBarCountBlack,
+                // clone is okay for primitive types
+				Fields = (int[])Fields.Clone(),
+			};
+		}
 	}
 }

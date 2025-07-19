@@ -181,5 +181,17 @@ namespace GammonX.Engine.Services
 			}
 			return invertedFields;
 		}
+
+        public static IBoardModel DeepClone(this IBoardModel model)
+        {
+            if (model is ICloneable cloneable)
+            {
+                return (IBoardModel)cloneable.Clone();
+            }
+            else
+            {
+                throw new InvalidOperationException("The board model does not support cloning.");
+			}
+		}
 	}
 }

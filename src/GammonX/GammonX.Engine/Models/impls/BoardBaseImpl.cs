@@ -4,7 +4,7 @@ namespace GammonX.Engine.Models
 	/// <summary>
 	/// Provides some standard functionality for the most common board models.
 	/// </summary>
-	internal abstract class BoardBaseImpl : IBoardModel
+	internal abstract class BoardBaseImpl : IBoardModel, ICloneable
 	{
 		// <inheritdoc />
 		public abstract GameModus Modus { get; }
@@ -94,5 +94,8 @@ namespace GammonX.Engine.Models
 		{
 			fields.CopyTo(Fields, 0);
 		}
+
+		// <inheritdoc />
+		public abstract object Clone();
 	}
 }

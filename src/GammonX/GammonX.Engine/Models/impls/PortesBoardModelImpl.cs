@@ -1,5 +1,4 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
 
 namespace GammonX.Engine.Models
 {
@@ -110,6 +109,20 @@ namespace GammonX.Engine.Models
 				// inverted board fieds
 				Fields = invertedFields,
 			};
+		}
+
+		// <inheritdoc />
+		public override object Clone()
+		{
+			return new PortesBoardModelImpl()
+            {
+                BearOffCountWhite = BearOffCountWhite,
+                BearOffCountBlack = BearOffCountBlack,
+                HomeBarCountWhite = HomeBarCountWhite,
+                HomeBarCountBlack = HomeBarCountBlack,
+				// clone is okay for primitive types
+				Fields = (int[])Fields.Clone(),
+            };
 		}
 	}
 }

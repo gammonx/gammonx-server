@@ -103,5 +103,18 @@ namespace GammonX.Engine.Models
                 PinnedFields = invertedPinnedFields
 			};
 		}
+
+		// <inheritdoc />
+		public override object Clone()
+		{
+			return new PlakotoBoardModelImpl()
+			{
+				BearOffCountWhite = BearOffCountWhite,
+				BearOffCountBlack = BearOffCountBlack,
+				// clone is okay for primitive types
+				Fields = (int[])Fields.Clone(),
+                PinnedFields = (int[])PinnedFields.Clone()
+			};
+		}
 	}
 }
