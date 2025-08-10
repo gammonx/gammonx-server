@@ -579,8 +579,17 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(5, 4),
+				(5, 3),
+				(5, 2),
+				(5, 1),
 				(7, 6),
-				(23, 22)
+				(7, 5),
+				(7, 4),
+				(7, 3),
+				(23, 22),
+				(23, 21),
+				(23, 20),
+				(23, 19)
 			}
 			};
 			yield return new object[]
@@ -593,9 +602,18 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(5, 3),
+				(5, 1),
 				(7, 5),
+				(7, 3),
+				(7, 1),
 				(12, 10),
+				(12, 8),
+				(12, 6),
+				(12, 4),
 				(23, 21),
+				(23, 19),
+				(23, 17),
+				(23, 15)
 			}
 			};
 			yield return new object[]
@@ -609,8 +627,13 @@ namespace GammonX.Engine.Tests.Data
 			{
 				(5, 2),
 				(7, 4),
+				(7, 1),
 				(12, 9),
+				(12, 6),
+				(12, 3),
 				(23, 20),
+				(23, 17),
+				(23, 14)
 			}
 			};
 			yield return new object[]
@@ -625,7 +648,9 @@ namespace GammonX.Engine.Tests.Data
 				(5, 1),
 				(7, 3),
 				(12, 8),
-				(23, 19)
+				(12, 4),
+				(23, 19),
+				(23, 15)
 			}
 			};
 			yield return new object[]
@@ -638,7 +663,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(7, 2),
-				(12, 7)
+				(12, 7),
+				(12, 2)
 			}
 			};
 			yield return new object[]
@@ -799,7 +825,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
-				(0, 2)
+				(0, 2),
+				(0, 3),
 			}
 			};
 			yield return new object[]
@@ -810,7 +837,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
-				(0, 3)
+				(0, 3),
+				(0, 4),
 			}
 			};
 			yield return new object[]
@@ -821,7 +849,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
-				(0, 4)
+				(0, 4),
+				(0, 5),
 			}
 			};
 			yield return new object[]
@@ -832,7 +861,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
-				(0, 5)
+				(0, 5),
+				(0, 6),
 			}
 			};
 			yield return new object[]
@@ -843,7 +873,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
-				(0, 6)
+				(0, 6),
+				(0, 7),
 			}
 			};
 			yield return new object[]
@@ -854,7 +885,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 2),
-				(0, 3)
+				(0, 3),
+				(0, 5),
 			}
 			};
 			yield return new object[]
@@ -865,7 +897,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 2),
-				(0, 4)
+				(0, 4),
+				(0, 6),
 			}
 			};
 			yield return new object[]
@@ -876,7 +909,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 2),
-				(0, 5)
+				(0, 5),
+				(0, 7),
 			}
 			};
 			yield return new object[]
@@ -887,7 +921,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 2),
-				(0, 6)
+				(0, 6),
+				(0, 8),
 			}
 			};
 			yield return new object[]
@@ -898,7 +933,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 3),
-				(0, 4)
+				(0, 4),
+				(0, 7),
 			}
 			};
 			yield return new object[]
@@ -909,7 +945,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 3),
-				(0, 5)
+				(0, 5),
+				(0, 8),
 			}
 			};
 			yield return new object[]
@@ -920,7 +957,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 3),
-				(0, 6)
+				(0, 6),
+				(0, 9),
 			}
 			};
 			yield return new object[]
@@ -931,7 +969,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 4),
-				(0, 5)
+				(0, 5),
+				(0, 9),
 			}
 			};
 			yield return new object[]
@@ -942,7 +981,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 4),
-				(0, 6)
+				(0, 6),
+				(0, 10),
 			}
 			};
 			yield return new object[]
@@ -953,7 +993,8 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 5),
-				(0, 6)
+				(0, 6),
+				(0, 11),
 			}
 			};
 		}
@@ -978,6 +1019,9 @@ namespace GammonX.Engine.Tests.Data
 			new ValueTuple<int, int>[]
 			{
 				(0, 1),
+				(0, 2),
+				(0, 3),
+				(0, 4),
 			}
 			};
 			yield return new object[]
@@ -989,7 +1033,10 @@ namespace GammonX.Engine.Tests.Data
 			true,
 			new ValueTuple<int, int>[]
 			{
-				(0, 2)
+				(0, 2),
+				(0, 4),
+				(0, 6),
+				(0, 8),
 			}
 			};
 			yield return new object[]
@@ -1001,7 +1048,10 @@ namespace GammonX.Engine.Tests.Data
 			true,
 			new ValueTuple<int, int>[]
 			{
-				(0, 3)
+				(0, 3),
+				(0, 6),
+				(0, 9),
+				(0, 12)
 			}
 			};
 			yield return new object[]
@@ -1013,7 +1063,10 @@ namespace GammonX.Engine.Tests.Data
 			true,
 			new ValueTuple<int, int>[]
 			{
-				(0, 4)
+				(0, 4),
+				(0, 8),
+				(0, 12),
+				(0, 16)
 			}
 			};
 			yield return new object[]
@@ -1025,7 +1078,10 @@ namespace GammonX.Engine.Tests.Data
 			true,
 			new ValueTuple<int, int>[]
 			{
-				(0, 5)
+				(0, 5),
+				(0, 10),
+				(0, 15),
+				(0, 20),
 			}
 			};
 			yield return new object[]
@@ -1037,7 +1093,9 @@ namespace GammonX.Engine.Tests.Data
 			true,
 			new ValueTuple<int, int>[]
 			{
-				(0, 6)
+				(0, 6),
+				(0, 12),
+				(0, 18),
 			}
 			};
 		}
@@ -1097,21 +1155,21 @@ namespace GammonX.Engine.Tests.Data
 	{
 		public IEnumerator<object[]> GetEnumerator()
 		{
-			yield return new object[] { 1, 2, false, new (int, int)[] { (23, 22), (23, 21) } };
-			yield return new object[] { 1, 3, false, new (int, int)[] { (23, 22), (23, 20) } };
-			yield return new object[] { 1, 4, false, new (int, int)[] { (23, 22), (23, 19) } };
-			yield return new object[] { 1, 5, false, new (int, int)[] { (23, 22), (23, 18) } };
-			yield return new object[] { 1, 6, false, new (int, int)[] { (23, 22), (23, 17) } };
-			yield return new object[] { 2, 3, false, new (int, int)[] { (23, 21), (23, 20) } };
-			yield return new object[] { 2, 4, false, new (int, int)[] { (23, 21), (23, 19) } };
-			yield return new object[] { 2, 5, false, new (int, int)[] { (23, 21), (23, 18) } };
-			yield return new object[] { 2, 6, false, new (int, int)[] { (23, 21), (23, 17) } };
-			yield return new object[] { 3, 4, false, new (int, int)[] { (23, 20), (23, 19) } };
-			yield return new object[] { 3, 5, false, new (int, int)[] { (23, 20), (23, 18) } };
-			yield return new object[] { 3, 6, false, new (int, int)[] { (23, 20), (23, 17) } };
-			yield return new object[] { 4, 5, false, new (int, int)[] { (23, 19), (23, 18) } };
-			yield return new object[] { 4, 6, false, new (int, int)[] { (23, 19), (23, 17) } };
-			yield return new object[] { 5, 6, false, new (int, int)[] { (23, 18), (23, 17) } };
+			yield return new object[] { 1, 2, false, new (int, int)[] { (23, 22), (23, 21), (23, 20) } };
+			yield return new object[] { 1, 3, false, new (int, int)[] { (23, 22), (23, 20), (23, 19) } };
+			yield return new object[] { 1, 4, false, new (int, int)[] { (23, 22), (23, 19), (23, 18) } };
+			yield return new object[] { 1, 5, false, new (int, int)[] { (23, 22), (23, 18), (23, 17) } };
+			yield return new object[] { 1, 6, false, new (int, int)[] { (23, 22), (23, 17), (23, 16) } };
+			yield return new object[] { 2, 3, false, new (int, int)[] { (23, 21), (23, 20), (23, 18) } };
+			yield return new object[] { 2, 4, false, new (int, int)[] { (23, 21), (23, 19), (23, 17) } };
+			yield return new object[] { 2, 5, false, new (int, int)[] { (23, 21), (23, 18), (23, 16) } };
+			yield return new object[] { 2, 6, false, new (int, int)[] { (23, 21), (23, 17), (23, 15) } };
+			yield return new object[] { 3, 4, false, new (int, int)[] { (23, 20), (23, 19), (23, 16) } };
+			yield return new object[] { 3, 5, false, new (int, int)[] { (23, 20), (23, 18), (23, 15) } };
+			yield return new object[] { 3, 6, false, new (int, int)[] { (23, 20), (23, 17), (23, 14) } };
+			yield return new object[] { 4, 5, false, new (int, int)[] { (23, 19), (23, 18), (23, 14) } };
+			yield return new object[] { 4, 6, false, new (int, int)[] { (23, 19), (23, 17), (23, 13) } };
+			yield return new object[] { 5, 6, false, new (int, int)[] { (23, 18), (23, 17), (23, 12) } };
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -1124,12 +1182,12 @@ namespace GammonX.Engine.Tests.Data
 	{
 		public IEnumerator<object[]> GetEnumerator()
 		{
-			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (23, 22) } };
-			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (23, 21) } };
-			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (23, 20) } };
-			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (23, 19) } };
-			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (23, 18) } };
-			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (23, 17) } };
+			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (23, 22), (23, 21), (23, 20), (23, 19) } };
+			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (23, 21), (23, 19), (23, 17), (23, 15) } };
+			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (23, 20), (23, 17), (23, 14), (23, 11) } };
+			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (23, 19), (23, 15), (23, 11), (23, 7) } };
+			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (23, 18), (23, 13), (23, 8), (23, 3) } };
+			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (23, 17), (23, 11), (23, 5) } };
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
