@@ -66,8 +66,14 @@ namespace GammonX.Engine.Models
         // <inheritdoc />
         public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
 
-        // <inheritdoc />
-        public int DoublingCubeValue { get; private set; } = 1;
+		// <inheritdoc />
+		public bool MustEnterFromHomebar => true;
+
+		// <inheritdoc />
+		public bool CanSendToHomeBar => true;
+
+		// <inheritdoc />
+		public int DoublingCubeValue { get; private set; } = 1;
 
         // <inheritdoc />
         public bool DoublingCubeOwner { get; private set; } = false;

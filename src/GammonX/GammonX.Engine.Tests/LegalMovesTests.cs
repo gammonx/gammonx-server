@@ -261,7 +261,7 @@ namespace GammonX.Engine.Tests
 		#region
 
 		[Theory]
-		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesForWhiteTestData))]
+		[ClassData(typeof(FevgaStartBoardLegalMovesForWhiteTestData))]
 		public void CalculateLegalMovesFevgaBoardRegularDiceRollWhite(
 			int roll1,
 			int roll2,
@@ -280,7 +280,7 @@ namespace GammonX.Engine.Tests
 		}
 
 		[Theory]
-		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData))]
+		[ClassData(typeof(FevgaStartBoardLegalMovesDoubleRollsForWhiteTestData))]
 		public void CalculateLegalMovesFevgaBoardDoubleDiceRollWhite(
 			int roll1,
 			int roll2,
@@ -345,7 +345,7 @@ namespace GammonX.Engine.Tests
 		#region Plakoto
 
 		[Theory]
-		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesForWhiteTestData))]
+		[ClassData(typeof(PlakotoStartBoardLegalMovesForWhiteTestData))]
 		public void CalculateLegalMovesPlakotoBoardRegularDiceRollWhite(
 			int roll1,
 			int roll2,
@@ -364,7 +364,7 @@ namespace GammonX.Engine.Tests
 		}
 
 		[Theory]
-		[ClassData(typeof(FevgaPlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData))]
+		[ClassData(typeof(PlakotoStartBoardLegalMovesDoubleRollsForWhiteTestData))]
 		public void CalculateLegalMovesPlakotoBoardDoubleDiceRollWhite(
 			int roll1,
 			int roll2,

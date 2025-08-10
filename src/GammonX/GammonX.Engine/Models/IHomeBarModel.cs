@@ -44,12 +44,30 @@ namespace GammonX.Engine.Models
         /// </remarks>
         int StartIndexBlack { get; }
 
-        /// <summary>
-        /// Adds the given amount of pieces to the home bar for the specified player.
-        /// </summary>
-        /// <param name="isWhite">Indicates the player, true for white and false for black.</param>
-        /// <param name="amount">Amount of checkers sent to the homebar. Normally just one.</param>
-        void AddToHomeBar(bool isWhite, int amount);
+		/// <summary>
+		/// Boolean indicating if the player must enter from the home bar first before moving any other checker
+		/// </summary>
+		/// <remarks>
+		/// Most variants require the player to enter from the home bar first before moving any other checker.
+		/// Some variants such as Fevga allow the player to move other checkers first.
+		/// </remarks>
+		bool MustEnterFromHomebar { get; }
+
+		/// <summary>
+		/// Boolean indicating if the players checkers can be sent back to the home bar.
+		/// </summary>
+		/// <remarks>
+		/// A hitted checker is normally sent to the home bar. Some variants such as Fevga have a home bar but
+        /// do not support hitting the opponents checkers.
+		/// </remarks>
+		bool CanSendToHomeBar { get; }
+
+		/// <summary>
+		/// Adds the given amount of pieces to the home bar for the specified player.
+		/// </summary>
+		/// <param name="isWhite">Indicates the player, true for white and false for black.</param>
+		/// <param name="amount">Amount of checkers sent to the homebar. Normally just one.</param>
+		void AddToHomeBar(bool isWhite, int amount);
 
         /// <summary>
         /// Removes the given amount of pieces from the home bar for the specified player.

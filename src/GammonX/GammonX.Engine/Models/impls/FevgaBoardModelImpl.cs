@@ -5,13 +5,13 @@
 	/// <seealso cref="https://www.bkgm.com/variants/Fevga.html"/>
 	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
 	/// </summary>
-	internal sealed class FevgaBoardModelImpl : BoardBaseImpl
+	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel
     {
         public FevgaBoardModelImpl()
         {
             Fields = new int[24]
             {
-                -15, // Field 1  :: 15 White Checkers
+                -1, // Field 1  :: 1 White Checkers
                 0,  // Field 2
                 0,  // Field 3
                 0,  // Field 4
@@ -23,7 +23,7 @@
                 0,  // Field 10 :: Black Home
                 0,  // Field 11 :: Black Home
                 0,  // Field 12 :: Black Home
-                15, // Field 13 :: 15 Black Checkers
+                1,  // Field 13 :: 1 Black Checkers
                 0,  // Field 14
                 0,  // Field 15
                 0,  // Field 16
@@ -94,6 +94,24 @@
 		});
 
 		// <inheritdoc />
+		public int HomeBarCountWhite { get; private set; } = 14;
+
+		// <inheritdoc />
+		public int HomeBarCountBlack { get; private set; } = 14;
+
+		// <inheritdoc />
+		public int StartIndexWhite => -1;
+
+		// <inheritdoc />
+		public int StartIndexBlack => 11;
+
+		// <inheritdoc />
+		public bool MustEnterFromHomebar => false;
+
+		// <inheritdoc />
+		public bool CanSendToHomeBar => false;
+
+		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
 			var invertedFields = InvertFevgaBoard(Fields);
@@ -118,6 +136,25 @@
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
 			};
+		}
+
+		// <inheritdoc />
+		public void AddToHomeBar(bool isWhite, int amount)
+		{
+			throw new InvalidOperationException("Fevga does not support adding checkers to the home bar.");
+		}
+
+		// <inheritdoc />
+		public void RemoveFromHomeBar(bool isWhite, int amount)
+		{
+			if (isWhite)
+			{
+				HomeBarCountWhite -= amount;
+			}
+			else
+			{
+				HomeBarCountBlack -= amount;
+			}
 		}
 
 		private static int[] InvertFevgaBoard(int[] originalFields)

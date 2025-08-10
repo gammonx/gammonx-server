@@ -9,7 +9,6 @@ namespace GammonX.Engine.Tests
         #region Simple Interface Tests
 
         [Theory]
-        [InlineData(GameModus.Fevga)]
         [InlineData(GameModus.Plakoto)]
         public void HasNoHomeBarAndCanNotHit(GameModus gameModus)
         {
@@ -23,7 +22,7 @@ namespace GammonX.Engine.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Tavla)]
-        public void HasHomeBarAndCanHit(GameModus gameModus)
+		public void HasHomeBarAndCanHit(GameModus gameModus)
         {
             var service = BoardServiceFactory.Create(gameModus);
             var boardModel = service.CreateBoard();
@@ -31,9 +30,25 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(homeBarModel);
             Assert.Equal(-1, homeBarModel.StartIndexWhite);
             Assert.Equal(24, homeBarModel.StartIndexBlack);
-        }
+			Assert.True(homeBarModel.CanSendToHomeBar);
+			Assert.True(homeBarModel.MustEnterFromHomebar);
+		}
 
-        [Theory]
+		[Theory]
+		[InlineData(GameModus.Fevga)]
+		public void HasHomeBarAndCannotnHit(GameModus gameModus)
+		{
+			var service = BoardServiceFactory.Create(gameModus);
+			var boardModel = service.CreateBoard();
+			var homeBarModel = boardModel as IHomeBarModel;
+			Assert.NotNull(homeBarModel);
+			Assert.Equal(-1, homeBarModel.StartIndexWhite);
+			Assert.Equal(11, homeBarModel.StartIndexBlack);
+            Assert.False(homeBarModel.CanSendToHomeBar);
+            Assert.False(homeBarModel.MustEnterFromHomebar);
+		}
+
+		[Theory]
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Tavla)]

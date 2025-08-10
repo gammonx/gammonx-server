@@ -27,74 +27,14 @@ namespace GammonX.Engine.Services
 			// TODO: UNIT TESTS for combined moves (directly move 2+ rolls)
 			// TODO: need to account for rolls already used when executing combined moves
 
-			var legalMoves = new List<(int from, int to)>();
 			// get only points with relevance for the current player
-			var playerFields = new List<int>();
-			var homebarCount = GetHomeBarCount(model, isWhite);
-			if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
-			{
-				// if the player has checkers on the home bar, they can only move those checkers
-				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
-				playerFields.Add(startPoint);
-			}
-			else
-			{
-				for (int i = 0; i < model.Fields.Length; i++)
-				{
-					int pointValue = model.Fields[i];
-					if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
-					{
-						playerFields.Add(i);
-					}
-				}
-			}
+			var moveableCheckers = GetMoveableCheckerFields(model, isWhite);
 
-			foreach (var from in playerFields)
+			var legalMoves = new List<(int from, int to)>();
+			foreach (var from in moveableCheckers)
 			{
 				var subsequentMoves = GetSubsequentLegalMoves(model, from, isWhite, rolls.ToArray());
 				legalMoves.AddRange(subsequentMoves);
-			}
-
-			return legalMoves.ToArray();
-		}
-
-		private ValueTuple<int, int>[] GetSubsequentLegalMoves(
-			IBoardModel shadowBoard,
-			int from,
-			bool isWhite,
-			params int[] rolls)
-		{
-			var legalMoves = new List<(int from, int to)>();
-
-			for (int index = 0; index < rolls.Length; index++)
-			{
-				var currentRoll = rolls[index];
-				if (shadowBoard.CanBearOff(from, currentRoll, isWhite))
-				{
-					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
-					legalMoves.Add((from, to));
-				}
-				else if (CanMoveChecker(shadowBoard, from, currentRoll, isWhite))
-				{
-					int to = shadowBoard.MoveOperator(isWhite, from, currentRoll);
-					if (legalMoves.Contains((from, to)))
-					{
-						// we already logged this move, so we skip it
-						continue;
-					}
-					legalMoves.Add((from, to));
-					// we calculate subsequent legal moves based on a shadow board state with the already logged move made.
-					var deeperShadowBoard = shadowBoard.DeepClone();
-					MoveCheckerTo(deeperShadowBoard, from, to, isWhite);
-					// get all other rolls except the current one
-					var otherRolls = rolls.Where((item, rollsIndex) => rollsIndex != index).ToList();
-					var subsequentMoves = GetSubsequentLegalMoves(deeperShadowBoard, to, isWhite, otherRolls.ToArray());
-					var combinedMoves = subsequentMoves
-						.Select(move => (from, move.Item2))
-						.Where(move => !legalMoves.Contains(move))
-						.ToList();
-					legalMoves.AddRange(combinedMoves);
-				}
 			}
 
 			return legalMoves.ToArray();
@@ -181,6 +121,37 @@ namespace GammonX.Engine.Services
 				Console.WriteLine($"Error moving checker: {ex.Message}");
 				return false;
 			}
+		}
+
+		/// <summary>
+		/// Evaluates all proper <c>from</c> checker fields for the given player and board.
+		/// </summary>
+		/// <param name="model">Model to operate on.</param>
+		/// <param name="isWhite">Indicating if white or black is moving.</param>
+		/// <returns>A list of indexes of fields which are moveable.</returns>
+		protected virtual IEnumerable<int> GetMoveableCheckerFields(IBoardModel model, bool isWhite)
+		{
+			var moveableCheckers = new List<int>();
+			var homebarCount = GetHomeBarCount(model, isWhite);
+			if (homebarCount > 0 && model is IHomeBarModel homeBarModel && homeBarModel.MustEnterFromHomebar)
+			{
+				// if the player has checkers on the home bar, they can only move those checkers
+				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
+				moveableCheckers.Add(startPoint);
+			}
+			else
+			{
+				for (int i = 0; i < model.Fields.Length; i++)
+				{
+					int pointValue = model.Fields[i];
+					if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
+					{
+						moveableCheckers.Add(i);
+					}
+				}
+			}
+
+			return moveableCheckers;
 		}
 
 		/// <summary>
@@ -299,6 +270,48 @@ namespace GammonX.Engine.Services
 				return isWhite ? homebarBoard.HomeBarCountWhite : homebarBoard.HomeBarCountBlack;
 			}
 			return 0;
+		}
+
+		private ValueTuple<int, int>[] GetSubsequentLegalMoves(
+			IBoardModel shadowBoard,
+			int from,
+			bool isWhite,
+			params int[] rolls)
+		{
+			var legalMoves = new List<(int from, int to)>();
+
+			for (int index = 0; index < rolls.Length; index++)
+			{
+				var currentRoll = rolls[index];
+				if (shadowBoard.CanBearOff(from, currentRoll, isWhite))
+				{
+					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
+					legalMoves.Add((from, to));
+				}
+				else if (CanMoveChecker(shadowBoard, from, currentRoll, isWhite))
+				{
+					int to = shadowBoard.MoveOperator(isWhite, from, currentRoll);
+					if (legalMoves.Contains((from, to)))
+					{
+						// we already logged this move, so we skip it
+						continue;
+					}
+					legalMoves.Add((from, to));
+					// we calculate subsequent legal moves based on a shadow board state with the already logged move made.
+					var deeperShadowBoard = shadowBoard.DeepClone();
+					MoveCheckerTo(deeperShadowBoard, from, to, isWhite);
+					// get all other rolls except the current one
+					var otherRolls = rolls.Where((item, rollsIndex) => rollsIndex != index).ToList();
+					var subsequentMoves = GetSubsequentLegalMoves(deeperShadowBoard, to, isWhite, otherRolls.ToArray());
+					var combinedMoves = subsequentMoves
+						.Select(move => (from, move.Item2))
+						.Where(move => !legalMoves.Contains(move))
+						.ToList();
+					legalMoves.AddRange(combinedMoves);
+				}
+			}
+
+			return legalMoves.ToArray();
 		}
 	}
 }

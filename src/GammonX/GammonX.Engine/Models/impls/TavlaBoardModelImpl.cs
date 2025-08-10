@@ -67,8 +67,14 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
 
-        // <inheritdoc />
-        public void AddToHomeBar(bool isWhite, int amount)
+		// <inheritdoc />
+		public bool MustEnterFromHomebar => true;
+
+		// <inheritdoc />
+		public bool CanSendToHomeBar => true;
+
+		// <inheritdoc />
+		public void AddToHomeBar(bool isWhite, int amount)
         {
             if (isWhite)
             {

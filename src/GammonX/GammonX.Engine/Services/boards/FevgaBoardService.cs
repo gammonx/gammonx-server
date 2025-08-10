@@ -1,5 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using System.Reflection;
 
 namespace GammonX.Engine.Services
 {
@@ -9,8 +8,10 @@ namespace GammonX.Engine.Services
         private bool _whiteHasPassedBlackStart = false;
         private bool _blackHasPassedWhiteStart = false;
         
-        private readonly int _whiteStartIndex = 0;
-        private readonly int _blackStartIndex = 12;
+        // black must pass this in order to move others
+        private readonly int _whiteStartCheckerIndex = 0;
+        // white must pass this in order to move others
+        private readonly int _blackStartCheckerIndex = 12;
 
         // <inheritdoc />
         public override GameModus Modus => GameModus.Fevga;
@@ -24,21 +25,56 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public override bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
-            // in Fevga, the first checker needs to pass the start index of the opponent
-            // until then no other checker may be moved.
-            if (HasPassedOpponentsStart(model, isWhite))
-            {
-                return base.CanMoveChecker(model, from, roll, isWhite);
-            }
-            else
-            {
-                int furthest = GetFurthestCheckerIndex(model, isWhite);
-                if (from == furthest)
-                    return base.CanMoveChecker(model, from, roll, isWhite);
-            }            
+			if (model is IHomeBarModel homeBarModel)
+			{
+				// in Fevga, the first checker needs to pass the start index of the opponent
+				// until then no other checker may be moved.
+				if (HasPassedOpponentsStart(model, isWhite))
+				{
+					return base.CanMoveChecker(model, from, roll, isWhite);
+				}
+				else
+				{
+					int furthest = GetFurthestCheckerIndex(model, isWhite);
+					if (from == furthest)
+						return base.CanMoveChecker(model, from, roll, isWhite);
+					else if (furthest == -1)
+                    {
+                        var startIndex = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
+                        if (startIndex == from)
+							return base.CanMoveChecker(model, startIndex, roll, isWhite);
+					}
+				}
 
-            return false;
-        }
+				return false;
+			}
+
+			throw new InvalidOperationException("FevgaBoardService requires a board model that implements IHomeBarModel.");
+		}
+
+		// <inheritdoc />
+		protected override IEnumerable<int> GetMoveableCheckerFields(IBoardModel model, bool isWhite)
+		{
+			if (model is IHomeBarModel homeBarModel)
+            {
+				if (HasPassedOpponentsStart(model, isWhite))
+				{
+					return base.GetMoveableCheckerFields(model, isWhite);
+				}
+				else
+				{
+					var furthest = GetFurthestCheckerIndex(model, isWhite);
+					var startIndex = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
+					if (furthest == -1)
+					{
+						return [startIndex];
+					}
+                    return [furthest];
+				}
+			}
+
+            throw new InvalidOperationException("FevgaBoardService requires a board model that implements IHomeBarModel.");
+		}
 
         private bool HasPassedOpponentsStart(IBoardModel model, bool isWhite)
         {
@@ -47,7 +83,7 @@ namespace GammonX.Engine.Services
             {
                 if (!_whiteHasPassedBlackStart)
                 {
-                    var furthestIndex = fieldList.FindIndex(_blackStartIndex, (i) => i == -1);
+                    var furthestIndex = fieldList.FindIndex(_blackStartCheckerIndex, (i) => i == -1);
                     if (furthestIndex != -1)
                     {
                         _whiteHasPassedBlackStart = true;
@@ -64,8 +100,8 @@ namespace GammonX.Engine.Services
             {
                 if (!_blackHasPassedWhiteStart)
                 {
-                    var furthestIndex = fieldList.FindIndex(_whiteStartIndex, (i) => i == 1);
-                    if (furthestIndex != -1 && furthestIndex < _blackStartIndex)
+                    var furthestIndex = fieldList.FindIndex(_whiteStartCheckerIndex, (i) => i == 1);
+                    if (furthestIndex != -1 && furthestIndex < _blackStartCheckerIndex)
                     {
                         _blackHasPassedWhiteStart = true;
                         return true;
@@ -82,15 +118,27 @@ namespace GammonX.Engine.Services
 
         private int GetFurthestCheckerIndex(IBoardModel model, bool isWhite)
         {
+            // returns -1 if none checkers have been moved
+
             var fieldList = model.Fields.ToList();
             if (isWhite)
             {
-                var furthestWhiteIndex = fieldList.FindIndex(_whiteStartIndex, (i) => i == -1 || i == -15);
-                return furthestWhiteIndex;
-            }
+                // if white rolled an one at start
+                var furthestWhiteIndex = fieldList.FindIndex(_whiteStartCheckerIndex, (i) => i == -2);
+				if (furthestWhiteIndex == -1)
+                {
+					furthestWhiteIndex = fieldList.FindIndex(_whiteStartCheckerIndex + 1, (i) => i == -1);
+				}
+                return furthestWhiteIndex;				
+			}
             else
             {
-                var furthestBlackIndex = fieldList.FindIndex(_blackStartIndex, (i) => i == 1 || i == 15);
+                // if black rolled an one at start
+                var furthestBlackIndex = fieldList.FindIndex(_blackStartCheckerIndex, (i) => i == 2);
+                if (furthestBlackIndex == -1)
+                {
+					furthestBlackIndex = fieldList.FindIndex(_blackStartCheckerIndex + 1, (i) => i == 1);
+				}
                 return furthestBlackIndex;
             }
         }

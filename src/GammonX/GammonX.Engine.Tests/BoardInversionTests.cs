@@ -23,7 +23,7 @@ namespace GammonX.Engine.Tests
 				Assert.False(doublingCubeModel.DoublingCubeOwner);
 			}
 
-			if (boardModel is IHomeBarModel homeBarModel)
+			if (boardModel is IHomeBarModel homeBarModel && homeBarModel.CanSendToHomeBar)
 			{
 				homeBarModel.AddToHomeBar(true, 2);
 				homeBarModel.AddToHomeBar(false, 3);
@@ -42,7 +42,7 @@ namespace GammonX.Engine.Tests
 				Assert.True(invertedDoublingCubeModel.DoublingCubeOwner);
 			}
 
-			if (inverted is IHomeBarModel invertedHomeBarModel)
+			if (inverted is IHomeBarModel invertedHomeBarModel && invertedHomeBarModel.CanSendToHomeBar)
 			{
 				Assert.Equal(3, invertedHomeBarModel.HomeBarCountWhite);
 				Assert.Equal(2, invertedHomeBarModel.HomeBarCountBlack);
