@@ -1111,21 +1111,21 @@ namespace GammonX.Engine.Tests.Data
 	{
 		public IEnumerator<object[]> GetEnumerator()
 		{
-			yield return new object[] { 1, 2, false, new (int, int)[] { (11, 12), (11, 13), (11, 14) } };
-			yield return new object[] { 1, 3, false, new (int, int)[] { (11, 12), (11, 14), (11, 15) } };
-			yield return new object[] { 1, 4, false, new (int, int)[] { (11, 12), (11, 15), (11, 16) } };
-			yield return new object[] { 1, 5, false, new (int, int)[] { (11, 12), (11, 16), (11, 17) } };
-			yield return new object[] { 1, 6, false, new (int, int)[] { (11, 12), (11, 17), (11, 18) } };
-			yield return new object[] { 2, 3, false, new (int, int)[] { (11, 13), (11, 14), (11, 16) } };
-			yield return new object[] { 2, 4, false, new (int, int)[] { (11, 13), (11, 15), (11, 17) } };
-			yield return new object[] { 2, 5, false, new (int, int)[] { (11, 13), (11, 16), (11, 18) } };
-			yield return new object[] { 2, 6, false, new (int, int)[] { (11, 13), (11, 17), (11, 19) } };
-			yield return new object[] { 3, 4, false, new (int, int)[] { (11, 14), (11, 15), (11, 18) } };
-			yield return new object[] { 3, 5, false, new (int, int)[] { (11, 14), (11, 16), (11, 19) } };
-			yield return new object[] { 3, 6, false, new (int, int)[] { (11, 14), (11, 17), (11, 20) } };
-			yield return new object[] { 4, 5, false, new (int, int)[] { (11, 15), (11, 16), (11, 20) } };
-			yield return new object[] { 4, 6, false, new (int, int)[] { (11, 15), (11, 17), (11, 21) } };
-			yield return new object[] { 5, 6, false, new (int, int)[] { (11, 16), (11, 17), (11, 22) } };
+			yield return new object[] { 1, 2, false, new (int, int)[] { (24, 12), (24, 13), (24, 14) } };
+			yield return new object[] { 1, 3, false, new (int, int)[] { (24, 12), (24, 14), (24, 15) } };
+			yield return new object[] { 1, 4, false, new (int, int)[] { (24, 12), (24, 15), (24, 16) } };
+			yield return new object[] { 1, 5, false, new (int, int)[] { (24, 12), (24, 16), (24, 17) } };
+			yield return new object[] { 1, 6, false, new (int, int)[] { (24, 12), (24, 17), (24, 18) } };
+			yield return new object[] { 2, 3, false, new (int, int)[] { (24, 13), (24, 14), (24, 16) } };
+			yield return new object[] { 2, 4, false, new (int, int)[] { (24, 13), (24, 15), (24, 17) } };
+			yield return new object[] { 2, 5, false, new (int, int)[] { (24, 13), (24, 16), (24, 18) } };
+			yield return new object[] { 2, 6, false, new (int, int)[] { (24, 13), (24, 17), (24, 19) } };
+			yield return new object[] { 3, 4, false, new (int, int)[] { (24, 14), (24, 15), (24, 18) } };
+			yield return new object[] { 3, 5, false, new (int, int)[] { (24, 14), (24, 16), (24, 19) } };
+			yield return new object[] { 3, 6, false, new (int, int)[] { (24, 14), (24, 17), (24, 20) } };
+			yield return new object[] { 4, 5, false, new (int, int)[] { (24, 15), (24, 16), (24, 20) } };
+			yield return new object[] { 4, 6, false, new (int, int)[] { (24, 15), (24, 17), (24, 21) } };
+			yield return new object[] { 5, 6, false, new (int, int)[] { (24, 16), (24, 17), (24, 22) } };
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -1138,12 +1138,12 @@ namespace GammonX.Engine.Tests.Data
 	{
 		public IEnumerator<object[]> GetEnumerator()
 		{
-			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (11, 12), (11, 13), (11, 14), (11, 15) } };
-			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (11, 13), (11, 15), (11, 17), (11, 19) } };
-			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (11, 14), (11, 17), (11, 20), (11, 23) } };
-			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (11, 15), (11, 19), (11, 23), (11, 3) } };
-			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (11, 16), (11, 21), (11, 2), (11, 7) } };
-			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (11, 17), (11, 23), (11, 5), (11, 11) } };
+			yield return new object[] { 1, 1, 1, 1, false, new (int, int)[] { (24, 12), (24, 13), (24, 14), (24, 15) } };
+			yield return new object[] { 2, 2, 2, 2, false, new (int, int)[] { (24, 13), (24, 15), (24, 17), (24, 19) } };
+			yield return new object[] { 3, 3, 3, 3, false, new (int, int)[] { (24, 14), (24, 17), (24, 20), (24, 23) } };
+			yield return new object[] { 4, 4, 4, 4, false, new (int, int)[] { (24, 15), (24, 19), (24, 23), (24, 3) } };
+			yield return new object[] { 5, 5, 5, 5, false, new (int, int)[] { (24, 16), (24, 21), (24, 2), (24, 7) } };
+			yield return new object[] { 6, 6, 6, 6, false, new (int, int)[] { (24, 17), (24, 23), (24, 5), (24, 11) } };
 		}
 
 		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

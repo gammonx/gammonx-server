@@ -1,7 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using System;
-using System.Collections.Generic;
-using System.Reflection;
 
 namespace GammonX.Engine.Services
 {
@@ -19,14 +16,6 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls)
 		{
-			// TODO: UNIT TESTS for home bar (entering)
-			// TODO: UNIT TESTS for blocked (already tested within CanMoveChecker)
-			// TODO: UNIT TESTS for pinned (already tested within CanMoveChecker)
-			// TODO: UNIT TESTS for hitting (already tested within CanMoveChecker)
-			// TODO: UNIT TESTS for bearing off (already tested within CanBearOff)
-			// TODO: UNIT TESTS for combined moves (directly move 2+ rolls)
-			// TODO: need to account for rolls already used when executing combined moves
-
 			// get only points with relevance for the current player
 			var moveableCheckers = GetMoveableCheckerFields(model, isWhite);
 

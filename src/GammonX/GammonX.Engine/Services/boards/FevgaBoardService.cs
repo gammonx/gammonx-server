@@ -31,6 +31,20 @@ namespace GammonX.Engine.Services
 				// until then no other checker may be moved.
 				if (HasPassedOpponentsStart(model, isWhite))
 				{
+                    // we have a special case for black fevga checkers.
+                    // their last home field is index 11
+                    // their start field index is 11 aswell
+                    // black checkers must not move past the start field
+                    if (!isWhite)
+                    {
+                        var homeEndField = model.HomeRangeBlack.End.Value;
+						// checkers must not pass their original start field
+						if (from <= homeEndField && from + roll > homeEndField)
+						{
+							return false;
+						}
+					}
+                    
 					return base.CanMoveChecker(model, from, roll, isWhite);
 				}
 				else

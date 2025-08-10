@@ -2,7 +2,6 @@
 using GammonX.Engine.Services;
 using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
-using Moq;
 
 using Range = System.Range;
 
@@ -381,7 +380,7 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(14, homebarModel.HomeBarCountWhite);
 			Assert.Equal(14, homebarModel.HomeBarCountBlack);
 			Assert.Equal(-1, homebarModel.StartIndexWhite);
-			Assert.Equal(11, homebarModel.StartIndexBlack);
+			Assert.Equal(24, homebarModel.StartIndexBlack);
 			Assert.Throws<InvalidOperationException>(() => homebarModel.AddToHomeBar(true, 1));
 			Assert.Throws<InvalidOperationException>(() => homebarModel.AddToHomeBar(false, 1));
 			var doublingCubeModel = boardModel as IDoublingCubeModel;

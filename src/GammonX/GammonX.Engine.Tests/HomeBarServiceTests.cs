@@ -43,7 +43,7 @@ namespace GammonX.Engine.Tests
 			var homeBarModel = boardModel as IHomeBarModel;
 			Assert.NotNull(homeBarModel);
 			Assert.Equal(-1, homeBarModel.StartIndexWhite);
-			Assert.Equal(11, homeBarModel.StartIndexBlack);
+			Assert.Equal(24, homeBarModel.StartIndexBlack);
             Assert.False(homeBarModel.CanSendToHomeBar);
             Assert.False(homeBarModel.MustEnterFromHomebar);
 		}

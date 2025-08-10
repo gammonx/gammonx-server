@@ -50,12 +50,44 @@ namespace GammonX.Engine.Models
 			if (isWhite)
 			{
 				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				return to > HomeRangeWhite.End.Value;
+				// checkers with the perfect bear off roll can always be taken out
+				if (to == HomeRangeWhite.End.Value + 1)
+				{
+					return true;
+				}
+				// checkers with a higher roll than their bear off value can only be taken off
+				// if there does not exist a checker with a higher index/distance.
+				else if (to > HomeRangeWhite.End.Value)
+				{
+					// check if there are any checkers in the home range with above the current position
+					bool highestCheckerIndex = !Fields
+						.Skip(HomeRangeWhite.Start.Value)
+						.Take(currentPosition - HomeRangeWhite.Start.Value + 1)
+						.Any(v => v < 0);
+					return highestCheckerIndex;
+				}
+				return false;
 			}
 			else
 			{
 				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				return to < HomeRangeBlack.End.Value;
+				// checkers with the perfect bear off roll can always be taken out
+				if (to == HomeRangeBlack.End.Value - 1)
+				{
+					return true;
+				}
+				// checkers with a higher roll than their bear off value can only be taken off
+				// if there does not exist a checker with a lower index/distance.
+				else if (to < HomeRangeBlack.End.Value)
+				{
+					// check if there are any checkers in the home range with above the current position
+					bool highestCheckerIndex = !Fields
+						.Skip(HomeRangeBlack.Start.Value)
+						.Take(currentPosition + HomeRangeBlack.Start.Value - 1)
+						.Any(v => v > 0);
+					return highestCheckerIndex;
+				}
+				return false;
 			}
 		});
 
