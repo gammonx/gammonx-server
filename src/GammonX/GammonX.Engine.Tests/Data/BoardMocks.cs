@@ -3,7 +3,7 @@
 	internal static class BoardMocks
 	{
 		public static int[] StandardCanBearOffBoard = new int[24]
-{
+        {
 			 5, // 0 – Black Home
              5, // 1 – Black Home
              3, // 2 – Black Home
@@ -28,7 +28,7 @@
             -3, // 21 – White Home
             -2, // 22 – White Home
             -1  // 23 - White Home
-};
+        };
 
 		public static int[] StandardCanNotBearOffBoard = new int[24]
 		{

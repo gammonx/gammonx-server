@@ -32,13 +32,19 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
 		{
-			if (model.CanBearOff(from, roll, isWhite))
+			if (CanBearOffChecker(model, from, roll, isWhite))
 			{
 				return true;
 			}
 
 			var newPosition = model.MoveOperator(isWhite, from, roll);
 			return model.CanMove(from, newPosition, isWhite);
+		}
+
+		// <inheritdoc />
+		public virtual bool CanBearOffChecker(IBoardModel model, int from, int roll, bool isWhite)
+		{
+			return model.CanBearOff(from, roll, isWhite);
 		}
 
 		// <inheritdoc />
@@ -272,7 +278,7 @@ namespace GammonX.Engine.Services
 			for (int index = 0; index < rolls.Length; index++)
 			{
 				var currentRoll = rolls[index];
-				if (shadowBoard.CanBearOff(from, currentRoll, isWhite))
+				if (CanBearOffChecker(shadowBoard, from, currentRoll, isWhite))
 				{
 					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
 					legalMoves.Add((from, to));

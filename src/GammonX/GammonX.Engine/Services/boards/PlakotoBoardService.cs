@@ -37,6 +37,32 @@ namespace GammonX.Engine.Services
             }
         }
 
+		// <inheritdoc />
+		public override bool CanBearOffChecker(IBoardModel model, int from, int roll, bool isWhite)
+		{
+            if (model is IPinModel pinModel)
+            {
+                if (isWhite)
+                {
+                    var pinnedWhiteCheckers = pinModel.PinnedFields.FirstOrDefault(pf => pf < 0);
+                    if (pinnedWhiteCheckers != default(int))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+					var pinnedBlackCheckers = pinModel.PinnedFields.FirstOrDefault(pf => pf > 0);
+					if (pinnedBlackCheckers != default(int))
+					{
+						return false;
+					}
+				}
+            }
+
+            return base.CanBearOffChecker(model, from, roll, isWhite);
+		}
+
         private static void EvaluatePinnedCheckers(IBoardModel model, int from, int to, bool isWhite)
         {
             // we know that the checker can be pinned, otherwise the move could not have been made

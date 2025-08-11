@@ -2,6 +2,7 @@
 using GammonX.Engine.Services;
 using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
+using NuGet.Frameworks;
 
 namespace GammonX.Engine.Tests
 {
@@ -552,26 +553,344 @@ namespace GammonX.Engine.Tests
 			Assert.Contains((6, WellKnownBoardPositions.BearOffBlack), legalMoves);
 		}
 
-		// TODO: Hit a checker when already bearing off
-		// TODO: Deny bearing off if one of the checkers is pinned in the homefield
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void CannotBearOffOnHittedCheckerLegalMovesWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.StandardCanBearOffBoard);
+			var homeBarModel = board as IHomeBarModel;
+			Assert.NotNull(homeBarModel);
+
+			homeBarModel.AddToHomeBar(true, 1);
+			var legalMoves = service.GetLegalMoves(board, true, 1);
+			// white cannot enter board, black checkers block entry
+			Assert.Empty(legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void CannotBearOffOnHittedCheckerLegalMovesBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.StandardCanBearOffBoard);
+			var homeBarModel = board as IHomeBarModel;
+			Assert.NotNull(homeBarModel);
+
+			homeBarModel.AddToHomeBar(false, 1);
+			var legalMoves = service.GetLegalMoves(board, false, 2);
+			// black cannot enter board, white checkers block entry
+			Assert.Empty(legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void CannotBearOffOnPinnedCheckerLegalMovesWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.StandardCanBearOffBoard);
+			var pinModel = board as IPinModel;
+			Assert.NotNull(pinModel);
+
+			// pin a white checker in opponents home field
+			service.MoveCheckerTo(board, 5, 23, false);
+			// white cannot enter board, black checkers block entry
+			var legalMoves = service.GetLegalMoves(board, true, 2);
+			Assert.Equal(3, legalMoves.Count());
+			Assert.DoesNotContain((23, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.DoesNotContain((21, 23), legalMoves);
+			legalMoves = service.GetLegalMoves(board, true, 6, 2);
+			Assert.Equal(3, legalMoves.Count());
+			Assert.DoesNotContain((22, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.DoesNotContain((18, WellKnownBoardPositions.BearOffWhite), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void CannotBearOffOnPinnedCheckerLegalMovesBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.StandardCanBearOffBoard);
+			var pinModel = board as IPinModel;
+			Assert.NotNull(pinModel);
+
+			// pin a black checker in opponents home field
+			service.MoveCheckerTo(board, 18, 3, true);
+			// black cannot enter board, white checkers block entry
+			var legalMoves = service.GetLegalMoves(board, false, 3);
+			Assert.Equal(2, legalMoves.Count());
+			Assert.DoesNotContain((3, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			legalMoves = service.GetLegalMoves(board, false, 6, 3);
+			Assert.Equal(2, legalMoves.Count());
+			Assert.DoesNotContain((3, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.DoesNotContain((5, WellKnownBoardPositions.BearOffBlack), legalMoves);
+		}
 
 		#endregion Bearing Off Tests
 
 		#region Blockamount Tests
 
-		// TODO: UNIT TESTS for blocked (already tested within CanMoveChecker)
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void BlockedLegalMovesStandardWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, 5, 4, false);
+			service.MoveCheckerTo(board, 5, 4, false);
+			// not blocked
+			service.MoveCheckerTo(board, 5, 3, false);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 5, 5, false));
+						
+			var legalMoves = service.GetLegalMoves(board, true, 3, 4, 5);
+			// single checker does not block
+			Assert.Contains((0, 3), legalMoves);
+			// double checker do block
+			Assert.DoesNotContain((0, 4), legalMoves);
+			Assert.DoesNotContain((0, 5), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void BlockedLegalMovesStandardBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, 18, 19, true);
+			service.MoveCheckerTo(board, 18, 19, true);
+			// not blocked
+			service.MoveCheckerTo(board, 18, 20, true);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 18, 5, true));
+
+			var legalMoves = service.GetLegalMoves(board, false, 3, 4, 5);
+			// single checker does not block
+			Assert.Contains((23, 20), legalMoves);
+			// double checker do block
+			Assert.DoesNotContain((23, 19), legalMoves);
+			Assert.DoesNotContain((23, 18), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Fevga)]
+		public void BlockedLegalMovesFevgaBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, -1, 13, true);
+			service.MoveCheckerTo(board, -1, 14, true);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, -1, 13, true));
+
+			var legalMoves = service.GetLegalMoves(board, false, 1, 2);
+			// single checker do block
+			Assert.DoesNotContain((24, 13), legalMoves);
+			Assert.DoesNotContain((24, 14), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Fevga)]
+		public void BlockedLegalMovesFevgaWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, 24, 1, false);
+			service.MoveCheckerTo(board, 24, 2, false);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 24, 13, false));
+
+			var legalMoves = service.GetLegalMoves(board, false, 1, 2);
+			// single checker do block
+			Assert.DoesNotContain((0, 1), legalMoves);
+			Assert.DoesNotContain((0, 2), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void BlockedLegalMovesPlakotoBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, 0, 22, true);
+			service.MoveCheckerTo(board, 0, 22, true);
+			// not blocked
+			service.MoveCheckerTo(board, 0, 21, true);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 0, 23, true));
+
+			var legalMoves = service.GetLegalMoves(board, false, 1, 2);
+			// double checkers do block
+			Assert.DoesNotContain((24, 22), legalMoves);
+			// single or none checkers do not block
+			Assert.Contains((23, 21), legalMoves);
+			Assert.Contains((23, 20), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void BlockedLegalMovesPlakotoWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+
+			// blocked
+			service.MoveCheckerTo(board, 23, 1, false);
+			service.MoveCheckerTo(board, 23, 1, false);
+			// not blocked
+			service.MoveCheckerTo(board, 23, 2, false);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 23, 23, false));
+
+			var legalMoves = service.GetLegalMoves(board, true, 1, 2);
+			// double checkers do block
+			Assert.DoesNotContain((0, 1), legalMoves);
+			// single or none checkers do not block
+			Assert.Contains((0, 2), legalMoves);
+			Assert.Contains((0, 3), legalMoves);
+		}
 
 		#endregion Blockamount Tests
 
 		#region Pinned Tests
 
-		// TODO: UNIT TESTS for pinned (already tested within CanMoveChecker)
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void PinnedLegalMovesPlakotoBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var pinModel = board as IPinModel;
+			Assert.NotNull(pinModel);
+
+			service.MoveCheckerTo(board, 0, 18, true);
+
+			var legalMoves = service.GetLegalMoves(board, false, 5);
+			// single checkers do not block
+			Assert.Contains((23, 18), legalMoves);
+			service.MoveChecker(board, 23, 5, false);
+			Assert.Equal(-1, pinModel.PinnedFields[18]);
+			// pinned checker cannot be moved
+			legalMoves = service.GetLegalMoves(board, true, 1);
+			Assert.Contains((0, 1), legalMoves);
+			Assert.DoesNotContain((18, 19), legalMoves);
+			// unpin checker
+			service.MoveChecker(board, 18, 1, false);
+			Assert.Equal(0, pinModel.PinnedFields[18]);
+			// unpinned checker cannot be moved
+			legalMoves = service.GetLegalMoves(board, true, 1);
+			Assert.Contains((0, 1), legalMoves);
+			Assert.Contains((18, 19), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Plakoto)]
+		public void PinnedLegalMovesPlakotoWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var pinModel = board as IPinModel;
+			Assert.NotNull(pinModel);
+
+			service.MoveCheckerTo(board, 23, 5, false);
+
+			var legalMoves = service.GetLegalMoves(board, true, 5);
+			// single checkers do not block
+			Assert.Contains((0, 5), legalMoves);
+			service.MoveChecker(board, 0, 5, true);
+			Assert.Equal(1, pinModel.PinnedFields[5]);
+			// pinned checker cannot be moved
+			legalMoves = service.GetLegalMoves(board, false, 1);
+			Assert.Contains((23, 22), legalMoves);
+			Assert.DoesNotContain((5, 4), legalMoves);
+			// unpin checker
+			service.MoveChecker(board, 5, 1, true);
+			Assert.Equal(0, pinModel.PinnedFields[5]);
+			// unpinned checker cannot be moved
+			legalMoves = service.GetLegalMoves(board, false, 1);
+			Assert.Contains((23, 22), legalMoves);
+			Assert.Contains((5, 4), legalMoves);
+		}
 
 		#endregion Pinned Tests
 
 		#region Hitting Tests
 
-		// TODO: UNIT TESTS for hitting (already tested within CanMoveChecker)
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void HitLegalMovesStandardWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var homebarModel = board as IHomeBarModel;
+			Assert.NotNull(homebarModel);
+
+			service.MoveCheckerTo(board, 5, 3, false);
+
+			var legalMoves = service.GetLegalMoves(board, true, 3);
+			// single checker does not block
+			Assert.Contains((0, 3), legalMoves);
+			// hit single checker
+			service.MoveChecker(board, 0, 3, true);
+			Assert.Equal(1, homebarModel.HomeBarCountBlack);
+			legalMoves = service.GetLegalMoves(board, false, 2);
+			// must enter from homebar first
+			Assert.Contains((24, 22), legalMoves);
+			service.MoveChecker(board, 24, 2, false);
+			// hit new single checker
+			legalMoves = service.GetLegalMoves(board, false, 2);
+			Assert.Contains((5, 3), legalMoves);
+			service.MoveChecker(board, 5, 2, false);
+			Assert.Equal(1, homebarModel.HomeBarCountWhite);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void HitLegalMovesStandardBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var homebarModel = board as IHomeBarModel;
+			Assert.NotNull(homebarModel);
+
+			service.MoveCheckerTo(board, 18, 20, true);
+
+			var legalMoves = service.GetLegalMoves(board, false, 3);
+			// single checker does not block
+			Assert.Contains((23, 20), legalMoves);
+			// hit single checker
+			service.MoveChecker(board, 23, 3, false);
+			Assert.Equal(1, homebarModel.HomeBarCountWhite);
+			legalMoves = service.GetLegalMoves(board, true, 2);
+			// must enter from homebar first
+			Assert.Contains((-1, 1), legalMoves);
+			service.MoveChecker(board, -1, 2, true);
+			// hit new single checker
+			legalMoves = service.GetLegalMoves(board, true, 2);
+			Assert.Contains((18, 20), legalMoves);
+			service.MoveChecker(board, 18, 2, true);
+			Assert.Equal(1, homebarModel.HomeBarCountBlack);
+		}
 
 		#endregion Hitting Tests
 	}
