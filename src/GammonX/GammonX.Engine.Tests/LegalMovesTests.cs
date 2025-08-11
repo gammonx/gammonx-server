@@ -2,7 +2,6 @@
 using GammonX.Engine.Services;
 using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
-using NuGet.Frameworks;
 
 namespace GammonX.Engine.Tests
 {
@@ -342,6 +341,69 @@ namespace GammonX.Engine.Tests
 			}
 		}
 
+		[Fact]
+		public void CreatePrimeOnStartRangeFevgaBlack()
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			// open starting field
+			service.MoveChecker(board, -1, 14, true);
+			service.MoveChecker(board, 0, 14, true);
+
+			// cannot create a 6er prime in opponents start field
+			service.MoveChecker(board, 24, 18, false);
+			service.MoveChecker(board, 24, 17, false);
+			service.MoveChecker(board, 24, 16, false);
+			service.MoveChecker(board, 24, 15, false);
+			service.MoveChecker(board, 24, 14, false);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 24, 13, false));
+			var legalMoves = service.GetLegalMoves(board, false, 13);
+			Assert.DoesNotContain((24, 0), legalMoves);
+
+			// can create a 6er prime in opponents start field
+			service.MoveChecker(board, 24, 24, false);
+			service.MoveChecker(board, 24, 23, false);
+			service.MoveChecker(board, 24, 22, false);
+			service.MoveChecker(board, 24, 21, false);
+			service.MoveChecker(board, 24, 20, false);
+			legalMoves = service.GetLegalMoves(board, false, 19);
+			Assert.Contains((24, 6), legalMoves);
+			service.MoveChecker(board, 24, 19, false);
+
+		}
+
+		[Fact]
+		public void CreatePrimeOnStartRangeFevgaWhite()
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+
+			// open starting field
+			service.MoveChecker(board, 24, 14, false);
+			service.MoveChecker(board, 12, 14, false);
+
+			// cannot create a 6er prime in opponents start field
+			service.MoveChecker(board, -1, 18, true);
+			service.MoveChecker(board, -1, 17, true);
+			service.MoveChecker(board, -1, 16, true);
+			service.MoveChecker(board, -1, 15, true);
+			service.MoveChecker(board, -1, 14, true);
+			Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, -1, 13, true));
+			var legalMoves = service.GetLegalMoves(board, true, 13);
+			Assert.DoesNotContain((-1, 23), legalMoves);
+
+			// can create a 6er prime in opponents start field
+			service.MoveChecker(board, -1, 24, true);
+			service.MoveChecker(board, -1, 23, true);
+			service.MoveChecker(board, -1, 22, true);
+			service.MoveChecker(board, -1, 21, true);
+			service.MoveChecker(board, -1, 20, true);
+			legalMoves = service.GetLegalMoves(board, true, 19);
+			Assert.Contains((-1, 18), legalMoves);
+			service.MoveChecker(board, -1, 19, true);
+		}
+
 		#endregion Fevga
 
 		#region Plakoto
@@ -526,6 +588,9 @@ namespace GammonX.Engine.Tests
 			var service = BoardServiceFactory.Create(modus);
 			var board = service.CreateBoard();
 			board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+			var homebarModel = board as IHomeBarModel;
+			Assert.NotNull(homebarModel);
+			homebarModel.RemoveFromHomeBar(true, 14);
 
 			var legalMoves = service.GetLegalMoves(board, true, 1);
 			Assert.Equal(6, legalMoves.Count());
@@ -543,6 +608,9 @@ namespace GammonX.Engine.Tests
 			var service = BoardServiceFactory.Create(modus);
 			var board = service.CreateBoard();
 			board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+			var homebarModel = board as IHomeBarModel;
+			Assert.NotNull(homebarModel);
+			homebarModel.RemoveFromHomeBar(false, 14);
 
 			var legalMoves = service.GetLegalMoves(board, false, 1);
 			Assert.Equal(6, legalMoves.Count());

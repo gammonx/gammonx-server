@@ -19,6 +19,12 @@ namespace GammonX.Engine.Models
 		public abstract Range HomeRangeBlack { get; }
 
 		// <inheritdoc />
+		public virtual Range StartRangeWhite => new(0, 5);
+
+		// <inheritdoc />
+		public virtual Range StartRangeBlack => new(23, 18);
+
+		// <inheritdoc />
 		public virtual int BearOffCountWhite { get; protected set; } = 0;
 
 		// <inheritdoc />

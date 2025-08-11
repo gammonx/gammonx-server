@@ -51,6 +51,9 @@
 		public override Range HomeRangeBlack => new(6, 11);
 
 		// <inheritdoc />
+		public override Range StartRangeBlack => new(12, 17);
+
+		// <inheritdoc />
 		public override int BlockAmount => 1;
 
         // <inheritdoc />

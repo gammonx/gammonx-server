@@ -31,20 +31,23 @@ namespace GammonX.Engine.Services
 				// until then no other checker may be moved.
 				if (HasPassedOpponentsStart(model, isWhite))
 				{
-                    // we have a special case for black fevga checkers.
-                    // their last home field is index 11
-                    // their start field index is 11 aswell
-                    // black checkers must not move past the start field
-                    if (!isWhite)
-                    {
-                        var homeEndField = model.HomeRangeBlack.End.Value;
+					// we have a special case for black fevga checkers.
+					// their last home field is index 11
+					// their start field index is 11 aswell
+					// black checkers must not move past the start field
+					if (!isWhite)
+					{
+						var homeEndField = model.HomeRangeBlack.End.Value;
 						// checkers must not pass their original start field
 						if (from <= homeEndField && from + roll > homeEndField)
 						{
 							return false;
 						}
 					}
-                    
+
+					if (CreatesAnInvalidStartFieldPrime(model, from, roll, isWhite))
+						return false;
+
 					return base.CanMoveChecker(model, from, roll, isWhite);
 				}
 				else
@@ -156,5 +159,57 @@ namespace GammonX.Engine.Services
                 return furthestBlackIndex;
             }
         }
-    }
+
+		private static bool CreatesAnInvalidStartFieldPrime(IBoardModel model, int from, int roll, bool isWhite)
+		{
+			var to = model.MoveOperator(isWhite, from, roll);
+			// check if this move would create a 6er prime on the opponents starting field
+			if (isWhite)
+			{
+				if (IsIndexInRange(to, model.StartRangeBlack, model.Fields.Length))
+				{
+					var (offset, length) = model.StartRangeBlack.GetOffsetAndLength(model.Fields.Length);
+					var primeCounter = 0;
+					for (int i = offset; i <= offset + length; i++)
+					{
+						if (model.Fields[i] < 0)
+							primeCounter++;
+						else if (i == to)
+							primeCounter++;
+						else
+							break;
+					}
+					if (primeCounter == 6)
+						return true;
+				}
+			}
+			else
+			{
+				if (IsIndexInRange(to, model.StartRangeWhite, model.Fields.Length))
+				{
+					var (offset, length) = model.StartRangeWhite.GetOffsetAndLength(model.Fields.Length);
+					var primeCounter = 0;
+					for (int i = offset; i <= offset + length; i++)
+					{
+						if (model.Fields[i] > 0)
+							primeCounter++;
+						else if (i == to)
+							primeCounter++;
+						else
+							break;
+					}
+					if (primeCounter == 6)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		private static bool IsIndexInRange(int index, Range range, int arrayLength)
+		{
+			var (start, length) = range.GetOffsetAndLength(arrayLength);
+			int end = start + length + 1; // end inklusiv
+			return index >= start && index < end;
+		}
+	}
 }

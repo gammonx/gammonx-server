@@ -31,10 +31,20 @@
         /// </summary>
         Range HomeRangeBlack { get; }
 
-        /// <summary>
-        /// Gets the amount of pieces for the white player that are currently borne off.
-        /// </summary>
-        int BearOffCountWhite { get; }
+		/// <summary>
+		/// Gets the index range of the starting point for the white player.
+		/// </summary>
+		Range StartRangeWhite { get; }
+
+		/// <summary>
+		/// Gets the index range of the starting point for the black player.
+		/// </summary>
+		Range StartRangeBlack { get; }
+
+		/// <summary>
+		/// Gets the amount of pieces for the white player that are currently borne off.
+		/// </summary>
+		int BearOffCountWhite { get; }
 
         /// <summary>
         /// Gets the amount of pieces for the black player that are currently borne off.

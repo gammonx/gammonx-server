@@ -30,7 +30,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(24, boardModel.Fields.Length);
             Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
-            Assert.Equal(0, boardModel.BearOffCountWhite);
+			Assert.Equal(new Range(0, 5), boardModel.StartRangeWhite);
+			Assert.Equal(new Range(23, 18), boardModel.StartRangeBlack);
+			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
@@ -143,7 +145,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(24, boardModel.Fields.Length);
             Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
-            Assert.Equal(0, boardModel.BearOffCountWhite);
+			Assert.Equal(new Range(0, 5), boardModel.StartRangeWhite);
+			Assert.Equal(new Range(23, 18), boardModel.StartRangeBlack);
+			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
             Assert.Null(homebarModel);
@@ -264,7 +268,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(24, boardModel.Fields.Length);
             Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
-            Assert.Equal(0, boardModel.BearOffCountWhite);
+			Assert.Equal(new Range(0, 5), boardModel.StartRangeWhite);
+			Assert.Equal(new Range(23, 18), boardModel.StartRangeBlack);
+			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
@@ -371,7 +377,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(24, boardModel.Fields.Length);
             Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
             Assert.Equal(new Range(6, 11), boardModel.HomeRangeBlack);
-            Assert.Equal(0, boardModel.BearOffCountWhite);
+			Assert.Equal(new Range(0, 5), boardModel.StartRangeWhite);
+			Assert.Equal(new Range(12, 17), boardModel.StartRangeBlack);
+			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
@@ -517,7 +525,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(24, boardModel.Fields.Length);
             Assert.Equal(new Range(18, 23), boardModel.HomeRangeWhite);
             Assert.Equal(new Range(5, 0), boardModel.HomeRangeBlack);
-            Assert.Equal(0, boardModel.BearOffCountWhite);
+			Assert.Equal(new Range(0, 5), boardModel.StartRangeWhite);
+			Assert.Equal(new Range(23, 18), boardModel.StartRangeBlack);
+			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);

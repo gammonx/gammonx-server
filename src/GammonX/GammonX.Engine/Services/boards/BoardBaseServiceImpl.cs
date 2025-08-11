@@ -128,22 +128,20 @@ namespace GammonX.Engine.Services
 		{
 			var moveableCheckers = new List<int>();
 			var homebarCount = GetHomeBarCount(model, isWhite);
-			if (homebarCount > 0 && model is IHomeBarModel homeBarModel && homeBarModel.MustEnterFromHomebar)
+			if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
 			{
 				// if the player has checkers on the home bar, they can only move those checkers
 				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
 				moveableCheckers.Add(startPoint);
+
+				if (!homeBarModel.MustEnterFromHomebar)
+				{
+					AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
+				}
 			}
 			else
 			{
-				for (int i = 0; i < model.Fields.Length; i++)
-				{
-					int pointValue = model.Fields[i];
-					if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
-					{
-						moveableCheckers.Add(i);
-					}
-				}
+				AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
 			}
 
 			return moveableCheckers;
@@ -307,6 +305,18 @@ namespace GammonX.Engine.Services
 			}
 
 			return legalMoves.ToArray();
+		}
+
+		private static void AddMoveableCheckersFromFields(IBoardModel model, bool isWhite, List<int> moveableCheckers)
+		{
+			for (int i = 0; i < model.Fields.Length; i++)
+			{
+				int pointValue = model.Fields[i];
+				if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
+				{
+					moveableCheckers.Add(i);
+				}
+			}
 		}
 	}
 }
