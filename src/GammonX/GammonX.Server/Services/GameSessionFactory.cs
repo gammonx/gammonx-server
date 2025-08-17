@@ -1,7 +1,6 @@
 ﻿using GammonX.Engine.Models;
 
 using GammonX.Server.Models;
-using GammonX.Server.Models.gameSession;
 
 namespace GammonX.Server.Services
 {
@@ -22,7 +21,7 @@ namespace GammonX.Server.Services
 			switch (modus)
 			{
 				case GameModus.Portes:
-					return new PortesGameSession(matchId);
+					return new GameSessionImpl(matchId);
 				case GameModus.Plakoto:
 					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
 				case GameModus.Fevga:

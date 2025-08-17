@@ -6,3 +6,4 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Style", "IDE0290:Use primary constructor", Justification = "<Pending>", Scope = "member", Target = "~M:GammonX.Server.Models.TavliMatchSession.#ctor(System.Guid)")]
+[assembly: SuppressMessage("Style", "IDE0028:Simplify collection initialization", Justification = "<Pending>", Scope = "member", Target = "~M:GammonX.Server.Models.GameSessionImpl.Backtrack(GammonX.Server.Contracts.DiceRollContract[],System.Int32,System.Int32,System.Collections.Generic.List{GammonX.Server.Contracts.DiceRollContract},System.Collections.Generic.List{GammonX.Server.Contracts.DiceRollContract}@)~System.Boolean")]

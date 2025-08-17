@@ -3,9 +3,9 @@
 	/// <summary>
 	/// 
 	/// </summary>
-	public class Player
+	public class LobbyEntry
 	{
-		public Player(Guid id) 
+		public LobbyEntry(Guid id) 
 		{
 			Id = id;
 		}
@@ -27,6 +27,16 @@
 		public void SetConnectionId(string? connectionId) 
 		{
 			ConnectionId = connectionId;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns></returns>
+		public PlayerModel ToPlayer()
+		{
+			ArgumentNullException.ThrowIfNull(ConnectionId, nameof(ConnectionId));
+			return new PlayerModel(Id, ConnectionId);
 		}
 	}
 }

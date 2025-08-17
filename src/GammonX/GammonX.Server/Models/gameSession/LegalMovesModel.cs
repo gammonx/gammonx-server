@@ -12,9 +12,9 @@ namespace GammonX.Server.Models
 		/// </summary>
 		public LegalMoveContract[] LegalMoves { get; private set; }
 
-		public LegalMovesModel(LegalMoveContract[] diceRolls)
+		public LegalMovesModel(LegalMoveContract[] legalMoves)
 		{
-			LegalMoves = diceRolls;
+			LegalMoves = legalMoves;
 		}
 
 		/// <summary>

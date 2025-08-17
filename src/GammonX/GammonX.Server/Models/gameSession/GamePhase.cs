@@ -25,5 +25,9 @@
 		/// 
 		/// </summary>
 		Finished = 4,
+		/// <summary>
+		/// 
+		/// </summary>
+		Unknown = 99
 	}
 }

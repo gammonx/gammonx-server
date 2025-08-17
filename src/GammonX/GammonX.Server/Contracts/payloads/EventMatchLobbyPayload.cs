@@ -6,7 +6,7 @@ namespace GammonX.Server.Contracts
 	/// 
 	/// </summary>
 	[DataContract]
-	public sealed class MatchLobbyPayload : EventPayload
+	public sealed class EventMatchLobbyPayload : EventPayload
 	{
 		[DataMember(Name = "matchId")]
 		public Guid Id { get; private set; }
@@ -23,7 +23,7 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "matchFound")]
 		public bool MatchFound => Player2.HasValue;
 
-		public MatchLobbyPayload(Guid id, Guid player1, Guid? player2)
+		public EventMatchLobbyPayload(Guid id, Guid player1, Guid? player2)
 		{
 			Id = id;
 			Player1 = player1;

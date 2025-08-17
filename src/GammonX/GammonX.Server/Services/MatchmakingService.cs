@@ -40,7 +40,7 @@ namespace GammonX.Server.Services
 		/// </summary>
 		/// <param name="newPlayer"></param>
 		/// <returns></returns>
-		public Guid JoinQueue(Player newPlayer, WellKnownMatchVariant matchVariant)
+		public Guid JoinQueue(LobbyEntry newPlayer, WellKnownMatchVariant matchVariant)
 		{
 			if (_queue.Count > 0)
 			{
@@ -91,7 +91,7 @@ namespace GammonX.Server.Services
 			}
 		}
 
-		private MatchLobby GetMatchLobby(Player opponent)
+		private MatchLobby GetMatchLobby(LobbyEntry opponent)
 		{
 			return _matchLobbies.FirstOrDefault(ml => ml.Value.Player1.Id == opponent.Id).Value;
 		}

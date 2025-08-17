@@ -27,8 +27,7 @@ namespace GammonX.Server.Services
 		/// </summary>
 		/// <param name="matchId"></param>
 		/// <returns></returns>
-		/// <exception cref="KeyNotFoundException"></exception>
-		public IMatchSessionModel Get(Guid matchId)
+		public IMatchSessionModel? Get(Guid matchId)
 		{
 			if (_sessions.TryGetValue(matchId, out var session))
 			{
@@ -36,8 +35,24 @@ namespace GammonX.Server.Services
 			}
 			else
 			{
-				throw new KeyNotFoundException($"No match session found for matchId: {matchId}");
+				return null;
 			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="matchId"></param>
+		/// <param name="variant"></param>
+		/// <returns></returns>
+		public IMatchSessionModel GetOrCreate(Guid matchId, WellKnownMatchVariant variant)
+		{
+			var session = Get(matchId);
+			if (session == null)
+			{
+				session = Create(matchId, variant);
+			}
+			return session;
 		}
 
 		/// <summary>

@@ -13,7 +13,22 @@
 		/// <summary>
 		/// 
 		/// </summary>
+		public static string GameWaitingEvent = "game-waiting";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public static string GameStateEvent = "game-state";
+
+		/// <summary>
+		/// 
+		/// </summary>
 		public static string MatchStartedEvent = "match-started";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public static string MatchWaitingEvent = "match-waiting";
 
 		/// <summary>
 		/// 

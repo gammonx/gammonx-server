@@ -6,7 +6,7 @@ namespace GammonX.Server.Contracts
 	/// 
 	/// </summary>
 	[DataContract]
-	public class EventResponseContract<T> where T : EventPayload
+	public class RequestResponseContract<T> where T : RequestPayload
 	{
 		[DataMember(Name = "type")]
 		public string Type { get; set; }
@@ -14,7 +14,7 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "payload")]
 		public T Payload { get; set; }
 
-		public EventResponseContract(string type, T payload)
+		public RequestResponseContract(string type, T payload)
 		{
 			Type = type;
 			Payload = payload;

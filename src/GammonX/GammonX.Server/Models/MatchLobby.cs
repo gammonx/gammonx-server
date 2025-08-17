@@ -5,7 +5,7 @@
 	/// </summary>
 	public class MatchLobby
 	{
-		public MatchLobby(Guid matchId, WellKnownMatchVariant variant, Player player1)
+		public MatchLobby(Guid matchId, WellKnownMatchVariant variant, LobbyEntry player1)
 		{
 			MatchId = matchId;
 			Player1 = player1;
@@ -30,18 +30,18 @@
 		/// <summary>
 		/// 
 		/// </summary>
-		public Player Player1 { get; private set; }
+		public LobbyEntry Player1 { get; private set; }
 		
 		/// <summary>
 		/// 
 		/// </summary>
-		public Player? Player2 { get; private set; }
+		public LobbyEntry? Player2 { get; private set; }
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="player2"></param>
-		public void Join(Player player2)
+		public void Join(LobbyEntry player2)
 		{
 			Player2 = player2;
 		}

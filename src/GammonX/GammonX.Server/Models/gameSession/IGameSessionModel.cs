@@ -45,12 +45,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Get an array of all dice rolls for the active turn.
 		/// </summary>
-		public DiceRollsModel DiceRolls { get; }
+		public DiceRollsModel DiceRollsModel { get; }
 
 		/// <summary>
 		/// Get an array of all legal moves for the active turn.
 		/// </summary>
-		public LegalMovesModel LegalMoves { get; }
+		public LegalMovesModel LegalMovesModel { get; }
 
 		/// <summary>
 		/// Gets the board model and its current state for the player1.
@@ -88,10 +88,26 @@ namespace GammonX.Server.Models
 		public void NextTurn(Guid playerId);
 
 		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="playerId"></param>
+		/// <param name="isWhite"></param>
+		void RollDices(Guid playerId, bool isWhite);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="callingPlayerId"></param>
+		/// <param name="from"></param>
+		/// <param name="to"></param>
+		/// <param name="isWhite"></param>
+		void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
+
+		/// <summary>
 		/// Creates a payload which can be sent to a client.
 		/// </summary>
 		/// <param name="inverted">If set to <c>true</c> the payload is created for player 2. Otherwise for player 1.</param>
-		/// <returns>An instance of <see cref="GameStatePayload"/>.</returns>
-		public GameStatePayload ToPayload(bool inverted);
+		/// <returns>An instance of <see cref="EventGameStatePayload"/>.</returns>
+		public EventGameStatePayload ToPayload(Guid playerId, bool inverted);
 	}
 }

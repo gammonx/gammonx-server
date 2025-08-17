@@ -13,7 +13,12 @@ namespace GammonX.Server.Models
 		/// </summary>
 		public DiceRollContract[] DiceRolls { get; private set; }
 
-		public DiceRollsModel(DiceRollContract[] diceRolls) 
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool HasUnused => DiceRolls.Any(dr => !dr.Used);
+
+		public DiceRollsModel(params DiceRollContract[] diceRolls) 
 		{
 			DiceRolls = diceRolls;
 		}
@@ -32,6 +37,24 @@ namespace GammonX.Server.Models
 			}
 
 			throw new InvalidOperationException($"No unused dice roll with a value of '{diceRoll}' left");
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns></returns>
+		public DiceRollContract[] GetUnusedDiceRolls()
+		{
+			return DiceRolls.Where(dr => !dr.Used).ToArray();
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns></returns>
+		public int[] GetUnusedDiceRollValues()
+		{
+			return DiceRolls.Where(dr => !dr.Used).Select(dr => dr.Roll).ToArray();
 		}
 	}
 }

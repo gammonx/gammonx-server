@@ -1,4 +1,5 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Server.Contracts;
+using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.Mvc;
@@ -27,24 +28,17 @@ namespace GammonX.Server.Controllers
 		{
 			try
 			{
-				var player = new Player(req.ClientId);
+				var player = new LobbyEntry(req.PlayerId);
 				var matchId = _service.JoinQueue(player, req.MatchVariant);
-				return Ok(new
-				{
-					type = "message",
-					message = "Joined matchmaking queue, waiting for opponent to start the game.",
-					data = matchId
-				});
+				var payload = new RequestMatchIdPayload(matchId);
+				var response = new RequestResponseContract<RequestMatchIdPayload>("OK", payload);
+				return Ok(response);
 			}
 			catch (Exception e)
 			{
-				return BadRequest(new
-				{
-					type = "error",
-					code = "LOBBY_ERROR",
-					message = e.Message,
-					data = e
-				});
+				var payload = new RequestErrorPayload("JOIN_ERROR", e.Message);
+				var response = new RequestResponseContract<RequestErrorPayload>("ERROR", payload);
+				return BadRequest(response);
 			}
 		}
 	}

@@ -3,9 +3,9 @@
 	/// <summary>
 	/// 
 	/// </summary>
-	/// <param name="ClientId"></param>
+	/// <param name="PlayerId"></param>
 	/// <param name="MatchVariant"></param>
-	public record JoinRequest(Guid ClientId, WellKnownMatchVariant MatchVariant);
+	public record JoinRequest(Guid PlayerId, WellKnownMatchVariant MatchVariant);
 
 	/// <summary>
 	/// 
@@ -13,5 +13,5 @@
 	/// <param name="Player"></param>
 	/// <param name="MatchVariant"></param>
 	/// <param name="EnqueuedAt"></param>
-	public record QueueEntry(Player Player, WellKnownMatchVariant MatchVariant, DateTime EnqueuedAt);
+	public record QueueEntry(LobbyEntry Player, WellKnownMatchVariant MatchVariant, DateTime EnqueuedAt);
 }

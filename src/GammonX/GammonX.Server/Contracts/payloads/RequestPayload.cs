@@ -3,7 +3,7 @@
 	/// <summary>
 	/// 
 	/// </summary>
-	public sealed class GameStatePayload : EventPayload
+	public abstract class RequestPayload
 	{
 	}
 }

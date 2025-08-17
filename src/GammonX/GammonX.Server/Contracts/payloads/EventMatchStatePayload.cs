@@ -8,7 +8,7 @@ namespace GammonX.Server.Contracts
 	/// 
 	/// </summary>
 	[DataContract]
-	public sealed class MatchStatePayload : EventPayload
+	public sealed class EventMatchStatePayload : EventPayload
 	{
 		[DataMember(Name = "matchId")]
 		public Guid Id { get; private set; }
@@ -19,12 +19,22 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "matchVariant")]
 		public WellKnownMatchVariant Variant { get; private set; }
 
-		[DataMember(Name = "score")]
-		public Dictionary<Guid, int> Score { get; private set; } = new();
+		[DataMember(Name = "player1")]
+		public PlayerContract Player1 { get; set; }
 
-		public MatchStatePayload(Guid id, int round, WellKnownMatchVariant variant)
+		[DataMember(Name = "player2")]
+		public PlayerContract Player2 { get; set; }
+
+		public EventMatchStatePayload(
+			Guid id,
+			PlayerModel player1,
+			PlayerModel player2,
+			int round, 
+			WellKnownMatchVariant variant)
 		{
 			Id = id;
+			Player1 = player1.ToContract();
+			Player2 = player2.ToContract();
 			Round = round;
 			Variant = variant;
 		}

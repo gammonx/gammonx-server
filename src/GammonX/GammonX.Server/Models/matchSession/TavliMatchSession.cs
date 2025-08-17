@@ -2,6 +2,7 @@
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Services;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace GammonX.Server.Models
 {
@@ -32,11 +33,37 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
 
+		// <inheritdoc />
+		public PlayerModel Player1 { get; private set; }
+
+		// <inheritdoc />
+		public PlayerModel Player2 { get; private set; }
+
 		public TavliMatchSession(Guid id)
 		{
 			Id = id;
 			GameRound = 1;
 			Variant = WellKnownMatchVariant.Tavli;
+			Player1 = new PlayerModel(Guid.Empty, string.Empty);
+			Player2 = new PlayerModel(Guid.Empty, string.Empty);
+		}
+
+		// <inheritdoc />
+		public void JoinSession(LobbyEntry player)
+		{
+			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
+			if (Player1.Id == Guid.Empty)
+			{
+				Player1 = new PlayerModel(player.Id, player.ConnectionId);
+			}
+			else if (Player2.Id == Guid.Empty)
+			{
+				Player2 = new PlayerModel(player.Id, player.ConnectionId);
+			}
+			else
+			{
+				throw new InvalidOperationException("Both players are already assigned to this match session.");
+			}
 		}
 
 		// <inheritdoc />
@@ -49,6 +76,7 @@ namespace GammonX.Server.Models
 
 			StartedAt = DateTime.UtcNow;
 			var gameSession = GetOrCreateGameSession(GameRound);
+			gameSession.StartGame(Player1.Id);
 			return gameSession;
 		}
 
@@ -63,10 +91,59 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public IGameSessionModel GetGameSession()
+		public void RollDices(Guid callingPlayerId)
 		{
 			var activeSession = GetOrCreateGameSession(GameRound);
-			return activeSession;
+			var activePlayerId = activeSession.ActiveTurn;
+
+			if (callingPlayerId != activePlayerId)
+			{
+				throw new InvalidOperationException("It is not your turn to roll the dices.");
+			}
+
+			var isWhite = IsWhite(callingPlayerId);
+			activeSession.RollDices(callingPlayerId, isWhite);
+		}
+
+		// <inheritdoc />
+		public void MoveCheckers(Guid callingPlayerId, int from, int to)
+		{
+			var activeSession = GetOrCreateGameSession(GameRound);
+			var activePlayerId = activeSession.ActiveTurn;
+
+			if (callingPlayerId != activePlayerId)
+			{
+				throw new InvalidOperationException("It is not your turn to move the checkers.");
+			}
+
+			var isWhite = IsWhite(callingPlayerId);
+			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
+
+			if (!activeSession.DiceRollsModel.HasUnused)
+			{
+				var otherPlayerId = GetOtherPlayerId(callingPlayerId);
+				activeSession.NextTurn(otherPlayerId);
+			}
+		}
+
+		// <inheritdoc />
+		public EventGameStatePayload GetGameState(Guid playerId)
+		{
+			var activeSession = GetOrCreateGameSession(GameRound);
+
+			if (Player1.Id.Equals(playerId))
+			{
+				var payload = new EventGameStatePayload(activeSession, false);
+				return payload;
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				// invert for player 1
+				var payload = new EventGameStatePayload(activeSession, true);
+				return payload;
+			}
+
+			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
 		// <inheritdoc />
@@ -76,9 +153,15 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public MatchStatePayload ToPayload()
+		public bool CanStartGame()
 		{
-			return new MatchStatePayload(Id, GameRound, Variant);
+			return Player1 != null && Player1.MatchAccepted && Player2 != null && Player2.MatchAccepted;
+		}
+
+		// <inheritdoc />
+		public EventMatchStatePayload ToPayload()
+		{
+			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant);
 		}
 
 		private IGameSessionModel GetOrCreateGameSession(int round)
@@ -91,6 +174,31 @@ namespace GammonX.Server.Models
 				return newSession;
 			}
 			return existingSession;
+		}
+
+		private bool IsWhite(Guid playerId)
+		{
+			if (Player1.Id.Equals(playerId))
+			{
+				return true;
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				return false;
+			}
+			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
+		private Guid GetOtherPlayerId(Guid playerId)
+		{
+			if (Player1.Id.Equals(playerId))
+			{
+				return Player2.Id;
+			}
+			else
+			{
+				return Player1.Id;
+			}
 		}
 	}
 }

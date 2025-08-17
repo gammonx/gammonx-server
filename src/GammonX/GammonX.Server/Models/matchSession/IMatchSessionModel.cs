@@ -25,6 +25,16 @@ namespace GammonX.Server.Models
 		public WellKnownMatchVariant Variant { get; }
 
 		/// <summary>
+		/// 
+		/// </summary>
+		public PlayerModel Player1 { get; }
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		public PlayerModel Player2 { get; }
+
+		/// <summary>
 		/// Match start time.
 		/// </summary>
 		public DateTime StartedAt { get; }
@@ -33,6 +43,12 @@ namespace GammonX.Server.Models
 		/// Match duration in milliseconds.
 		/// </summary>
 		public long Duration { get; }
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="player"></param>
+		public void JoinSession(LobbyEntry player);
 
 		/// <summary>
 		/// 
@@ -49,8 +65,23 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// 
 		/// </summary>
+		/// <param name="callingPlayerId"></param>
+		void RollDices(Guid callingPlayerId);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="callingPlayerId"></param>
+		/// <param name="from"></param>
+		/// <param name="to"></param>
+		void MoveCheckers(Guid callingPlayerId, int from, int to);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="playerId"></param>
 		/// <returns></returns>
-		IGameSessionModel GetGameSession();
+		EventGameStatePayload GetGameState(Guid playerId);
 
 		/// <summary>
 		/// 
@@ -62,6 +93,12 @@ namespace GammonX.Server.Models
 		/// 
 		/// </summary>
 		/// <returns></returns>
-		public MatchStatePayload ToPayload();
+		public bool CanStartGame();
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <returns></returns>
+		public EventMatchStatePayload ToPayload();
 	}
 }
