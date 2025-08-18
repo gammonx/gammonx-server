@@ -5,10 +5,12 @@ using System.Collections.Concurrent;
 namespace GammonX.Server.Services
 {
 	/// <summary>
-	/// 
+	/// Simple matchmaking service that allows players to join a queue and find matches.
 	/// </summary>
-	public class MatchmakingService
+	public class SimpleMatchmakingService
 	{
+		// TODO :: encapsulate this into an interface
+
 		// simple storage for demo: maps queueId -> entry
 		private readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
 		// quick lookup of waiting players per mode
@@ -17,11 +19,11 @@ namespace GammonX.Server.Services
 		private readonly ConcurrentDictionary<Guid, MatchLobby> _matchLobbies = new ConcurrentDictionary<Guid, MatchLobby>();
 
 		/// <summary>
-		/// 
+		/// Tries to find a match lobby by its ID. Returns null if not found.
 		/// </summary>
-		/// <param name="matchId"></param>
-		/// <param name="matchLobby"></param>
-		/// <returns></returns>
+		/// <param name="matchId">Match id to search for.</param>
+		/// <param name="matchLobby">Result.</param>
+		/// <returns>Boolean indicating if a match lobby was found.</returns>
 		public bool TryFindMatchLobby(Guid matchId, out MatchLobby? matchLobby)
 		{
 			var result = _matchLobbies.GetValueOrDefault(matchId);
@@ -36,10 +38,10 @@ namespace GammonX.Server.Services
 		}
 
 		/// <summary>
-		/// 
+		/// Join the given <paramref name="newPlayer"/> to the matchmaking queue.
 		/// </summary>
-		/// <param name="newPlayer"></param>
-		/// <returns></returns>
+		/// <param name="newPlayer">Player to join the queue.</param>
+		/// <returns>A guid of the created match lobby.</returns>
 		public Guid JoinQueue(LobbyEntry newPlayer, WellKnownMatchVariant matchVariant)
 		{
 			if (_queue.Count > 0)
@@ -50,7 +52,7 @@ namespace GammonX.Server.Services
 				// TODO :: multiple join requests from same client
 				if (matchVariantQueue.TryDequeue(out var opponentId))
 				{
-					if (opponentId == newPlayer.Id)
+					if (opponentId == newPlayer.PlayerId)
 					{
 						matchVariantQueue.Enqueue(opponentId);
 						throw new InvalidOperationException("Already part of the match lobby queue");
@@ -75,10 +77,10 @@ namespace GammonX.Server.Services
 			else
 			{
 				var entry = new QueueEntry(newPlayer, matchVariant, DateTime.UtcNow);
-				_queue[newPlayer.Id] = entry;
+				_queue[newPlayer.PlayerId] = entry;
 
 				var mq = _modeQueues.GetOrAdd(matchVariant, _ => new ConcurrentQueue<Guid>());
-				mq.Enqueue(newPlayer.Id);
+				mq.Enqueue(newPlayer.PlayerId);
 
 				var matchId = Guid.NewGuid();
 				var matchLobby = new MatchLobby(matchId, matchVariant, newPlayer);
@@ -93,7 +95,7 @@ namespace GammonX.Server.Services
 
 		private MatchLobby GetMatchLobby(LobbyEntry opponent)
 		{
-			return _matchLobbies.FirstOrDefault(ml => ml.Value.Player1.Id == opponent.Id).Value;
+			return _matchLobbies.FirstOrDefault(ml => ml.Value.Player1.PlayerId == opponent.PlayerId).Value;
 		}
 
 	}

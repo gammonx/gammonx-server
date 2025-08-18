@@ -2,7 +2,6 @@
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Services;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace GammonX.Server.Models
 {
@@ -54,11 +53,11 @@ namespace GammonX.Server.Models
 			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
 			if (Player1.Id == Guid.Empty)
 			{
-				Player1 = new PlayerModel(player.Id, player.ConnectionId);
+				Player1 = new PlayerModel(player.PlayerId, player.ConnectionId);
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
-				Player2 = new PlayerModel(player.Id, player.ConnectionId);
+				Player2 = new PlayerModel(player.PlayerId, player.ConnectionId);
 			}
 			else
 			{
@@ -118,29 +117,46 @@ namespace GammonX.Server.Models
 
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
-
-			if (!activeSession.DiceRollsModel.HasUnused)
-			{
-				var otherPlayerId = GetOtherPlayerId(callingPlayerId);
-				activeSession.NextTurn(otherPlayerId);
-			}
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload GetGameState(Guid playerId)
+		public void EndTurn(Guid callingPlayerId)
+		{
+			var activeSession = GetOrCreateGameSession(GameRound);
+			var activePlayerId = activeSession.ActiveTurn;
+
+			if (callingPlayerId != activePlayerId)
+			{
+				throw new InvalidOperationException("It is not your turn to move the checkers.");
+			}
+
+			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
+			activeSession.NextTurn(otherPlayerId);
+		}
+
+		// <inheritdoc />
+		public EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
 		{
 			var activeSession = GetOrCreateGameSession(GameRound);
 
 			if (Player1.Id.Equals(playerId))
 			{
-				var payload = new EventGameStatePayload(activeSession, false);
-				return payload;
+				if (activeSession.ActiveTurn == Player1.Id)
+				{
+					// only active player can send commands
+					return activeSession.ToPayload(playerId, false, allowedCommands);
+				}
+				return activeSession.ToPayload(playerId, false, Array.Empty<string>());
 			}
 			else if (Player2.Id.Equals(playerId))
 			{
-				// invert for player 1
-				var payload = new EventGameStatePayload(activeSession, true);
-				return payload;
+				// invert for player 2
+				if (activeSession.ActiveTurn == Player2.Id)
+				{
+					// only active player can send commands
+					return activeSession.ToPayload(playerId, true, allowedCommands);
+				}
+				return activeSession.ToPayload(playerId, true, Array.Empty<string>());
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
@@ -159,9 +175,27 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventMatchStatePayload ToPayload()
+		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
 		{
-			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant);
+			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant, allowedCommands);
+		}
+
+		// <inheritdoc />
+		public bool CanEndTurn(Guid callingPlayerId)
+		{
+			var activeSession = GetOrCreateGameSession(GameRound);
+			if (activeSession.ActiveTurn == callingPlayerId)
+			{
+				if (activeSession.DiceRollsModel.HasUnused)
+				{
+					return !activeSession.LegalMovesModel.HasLegalMoves();
+				}
+				else
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private IGameSessionModel GetOrCreateGameSession(int round)
@@ -171,6 +205,7 @@ namespace GammonX.Server.Models
 			{
 				var activeModus = GetGameModus();
 				var newSession = GameSessionFactory.Create(Id, activeModus);
+				_gameSession[round - 1] = newSession;
 				return newSession;
 			}
 			return existingSession;

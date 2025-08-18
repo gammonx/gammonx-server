@@ -2,18 +2,8 @@
 
 namespace GammonX.Server.Services
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	public static class MatchSessionFactory
 	{
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="id"></param>
-		/// <param name="variant"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentOutOfRangeException"></exception>
 		public static IMatchSessionModel Create(Guid id, WellKnownMatchVariant variant)
 		{
 			switch (variant)

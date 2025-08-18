@@ -4,22 +4,13 @@ using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	public static class GameSessionFactory
 	{
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="matchId"></param>
-		/// <param name="modus"></param>
-		/// <returns></returns>
-		/// <exception cref="ArgumentOutOfRangeException"></exception>
 		public static IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
 			switch (modus)
 			{
+				// TODO :: do we need specific game session for each game variant?
 				case GameModus.Portes:
 					return new GameSessionImpl(matchId);
 				case GameModus.Plakoto:

@@ -3,7 +3,7 @@
 namespace GammonX.Server.Contracts
 {
 	/// <summary>
-	/// 
+	/// Base class for all event payloads.
 	/// </summary>
 	[DataContract]
 	public class EventResponseContract<T> where T : EventPayload

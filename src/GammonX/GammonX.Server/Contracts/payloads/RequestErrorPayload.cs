@@ -2,9 +2,6 @@
 
 namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	[DataContract]
 	public class RequestErrorPayload : RequestPayload
 	{

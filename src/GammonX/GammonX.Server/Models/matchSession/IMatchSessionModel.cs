@@ -5,100 +5,114 @@ using GammonX.Server.Contracts;
 namespace GammonX.Server.Models
 {
 	/// <summary>
-	/// 
+	/// Represents a match session model that contains all information about a match session.
 	/// </summary>
 	public interface IMatchSessionModel
 	{
 		/// <summary>
-		/// 
+		/// Gets the match id of this match session.
 		/// </summary>
-		public Guid Id { get; }
+		Guid Id { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the game round.
 		/// </summary>
-		public int GameRound { get; }
+		int GameRound { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the match variant determining the type and amount of games played in this match session.
 		/// </summary>
-		public WellKnownMatchVariant Variant { get; }
+		WellKnownMatchVariant Variant { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the player 1.
 		/// </summary>
-		public PlayerModel Player1 { get; }
+		PlayerModel Player1 { get; }
 		
 		/// <summary>
-		/// 
+		/// Gets the player 2.
 		/// </summary>
-		public PlayerModel Player2 { get; }
+		PlayerModel Player2 { get; }
 
 		/// <summary>
-		/// Match start time.
+		/// Gets the match start time.
 		/// </summary>
-		public DateTime StartedAt { get; }
+		DateTime StartedAt { get; }
 
 		/// <summary>
-		/// Match duration in milliseconds.
+		/// Gets the match duration in milliseconds.
 		/// </summary>
-		public long Duration { get; }
+		long Duration { get; }
 
 		/// <summary>
-		/// 
+		/// Joins a player to the match session.
 		/// </summary>
-		/// <param name="player"></param>
-		public void JoinSession(LobbyEntry player);
+		/// <param name="player">Play to join the match session.</param>
+		void JoinSession(LobbyEntry player);
 
 		/// <summary>
-		/// 
+		/// Starts a match session for the current game round.
 		/// </summary>
-		/// <returns></returns>
-		public IGameSessionModel StartMatch();
+		/// <returns>The state of the started game round.</returns>
+		IGameSessionModel StartMatch();
 
 		/// <summary>
-		/// 
+		/// Starts the next game round in the match session and returns the state of the game session for the next round.
 		/// </summary>
-		/// <returns></returns>
-		public IGameSessionModel NextGameRound();
+		/// <returns>The state of the next game round.</returns>
+		IGameSessionModel NextGameRound();
 
 		/// <summary>
-		/// 
+		/// Rolls the dices for the active player in the current game session and updates the game state accordingly.
 		/// </summary>
-		/// <param name="callingPlayerId"></param>
+		/// <param name="callingPlayerId">Player to roll his dices.</param>
 		void RollDices(Guid callingPlayerId);
 
 		/// <summary>
-		/// 
+		/// Moves the checkers of the active player <paramref name="callingPlayerId"/> from one position to another.
 		/// </summary>
-		/// <param name="callingPlayerId"></param>
-		/// <param name="from"></param>
-		/// <param name="to"></param>
+		/// <param name="callingPlayerId">Player to move his checkers.</param>
+		/// <param name="from">From board array index.</param>
+		/// <param name="to">To board array index.</param>
 		void MoveCheckers(Guid callingPlayerId, int from, int to);
 
 		/// <summary>
-		/// 
+		/// The active player has finished his turn and the next player is now active.
 		/// </summary>
-		/// <param name="playerId"></param>
-		/// <returns></returns>
-		EventGameStatePayload GetGameState(Guid playerId);
+		/// <param name="callingPlayerId">Player to finish his turn.</param>
+		void EndTurn(Guid callingPlayerId);
 
 		/// <summary>
-		/// 
+		/// Creates a game state payload which can be sent to a client.
 		/// </summary>
-		/// <returns></returns>
-		public GameModus GetGameModus();
+		/// <param name="playerId">Player who receives the game state.</param>
+		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
+		/// <returns>Returns the game state payload.</returns>
+		EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands);
 
 		/// <summary>
-		/// 
+		/// Gts the current game modus of the match session.
 		/// </summary>
-		/// <returns></returns>
-		public bool CanStartGame();
+		/// <returns>The active game modus.</returns>
+		GameModus GetGameModus();
 
 		/// <summary>
-		/// 
+		/// Gets a boolean indicating if the game can be started.
 		/// </summary>
-		/// <returns></returns>
-		public EventMatchStatePayload ToPayload();
+		/// <returns>Boolean indicating if the game can be started.</returns>
+		bool CanStartGame();
+
+		/// <summary>
+		/// Constructs and returns the match state payload for both players.
+		/// </summary>
+		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
+		/// <returns>Match state payload.</returns>
+		EventMatchStatePayload ToPayload(params string[] allowedCommands);
+
+		/// <summary>
+		/// Checks if the active player can end his turn.
+		/// </summary>
+		/// <returns>A boolean indicating if the active player can end his turn.</returns>
+		bool CanEndTurn(Guid playerId);
 	}
 }

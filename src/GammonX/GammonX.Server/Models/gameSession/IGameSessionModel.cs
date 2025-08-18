@@ -10,23 +10,26 @@ namespace GammonX.Server.Models
 	public interface IGameSessionModel
 	{
 		/// <summary>
-		/// 
+		/// Gets the modus of this game round.
 		/// </summary>
 		public GameModus Modus { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the match id of the match this game session belongs to.
 		/// </summary>
 		public Guid MatchId { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the game id of this game session.
 		/// </summary>
 		public Guid Id { get; }
 
 		/// <summary>
-		/// 
+		/// Gets the current game phase.
 		/// </summary>
+		/// <remarks>
+		/// The game phase is always different for each player and indicates which player is currently active and what he is allowed to do.
+		/// </remarks>
 		public GamePhase Phase { get; }
 
 		/// <summary>
@@ -77,7 +80,7 @@ namespace GammonX.Server.Models
 		public void StartGame(Guid playerId);
 
 		/// <summary>
-		/// 
+		/// Stops the current game session.
 		/// </summary>
 		public void StopGame();
 
@@ -95,19 +98,24 @@ namespace GammonX.Server.Models
 		void RollDices(Guid playerId, bool isWhite);
 
 		/// <summary>
-		/// 
+		/// Moves the checkers of the active player <paramref name="callingPlayerId"/> from one position to another.
 		/// </summary>
-		/// <param name="callingPlayerId"></param>
-		/// <param name="from"></param>
-		/// <param name="to"></param>
-		/// <param name="isWhite"></param>
+		/// <remarks>
+		/// Validates if the given <paramref name="callingPlayerId"/> is actually the active player and if the move is valid.
+		/// </remarks>
+		/// <param name="callingPlayerId">Active player.</param>
+		/// <param name="from">Board array from index.</param>
+		/// <param name="to">Board array to index.</param>
+		/// <param name="isWhite">Indicates if the <paramref name="callingPlayerId"/> playing the white checkers. False if black checkers.</param>
 		void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
 
 		/// <summary>
 		/// Creates a payload which can be sent to a client.
 		/// </summary>
+		/// <param name="playerId">Player for which the payload is constructed.</param>
 		/// <param name="inverted">If set to <c>true</c> the payload is created for player 2. Otherwise for player 1.</param>
+		/// <param name="allowedCommands">An array of allowed commands for the player.</param>
 		/// <returns>An instance of <see cref="EventGameStatePayload"/>.</returns>
-		public EventGameStatePayload ToPayload(Guid playerId, bool inverted);
+		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands);
 	}
 }

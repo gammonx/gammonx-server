@@ -2,14 +2,8 @@
 
 namespace GammonX.Server.Models
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	public class LegalMovesModel
 	{
-		/// <summary>
-		/// 
-		/// </summary>
 		public LegalMoveContract[] LegalMoves { get; private set; }
 
 		public LegalMovesModel(LegalMoveContract[] legalMoves)
@@ -18,12 +12,12 @@ namespace GammonX.Server.Models
 		}
 
 		/// <summary>
-		/// 
+		/// Uses a legal move from the list of legal moves.
 		/// </summary>
-		/// <param name="from"></param>
-		/// <param name="to"></param>
-		/// <exception cref="InvalidOperationException"></exception>
-		public void UseDice(int from, int to)
+		/// <param name="from">From board array index.</param>
+		/// <param name="to">To board array index.</param>
+		/// <exception cref="InvalidOperationException">Throws if the given legal move is unknown.</exception>
+		public void UseLegalMove(int from, int to)
 		{
 			var usedLegalMove = LegalMoves.FirstOrDefault(r => r.From == from && r.To == to);
 			if (usedLegalMove != null)
@@ -32,6 +26,11 @@ namespace GammonX.Server.Models
 			}
 
 			throw new InvalidOperationException($"No unused legal move from '{from}' to '{to}' left");
+		}
+
+		public bool HasLegalMoves()
+		{
+			return LegalMoves.Any(lm => !lm.Used);
 		}
 	}
 }

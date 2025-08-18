@@ -10,9 +10,9 @@ namespace GammonX.Server.Controllers
 	[Route("api/[controller]")]
 	public class MatchesController : Controller
 	{
-		private readonly MatchmakingService _service;
+		private readonly SimpleMatchmakingService _service;
 
-		public MatchesController(MatchmakingService service)
+		public MatchesController(SimpleMatchmakingService service)
 		{
 			_service = service;
 		}

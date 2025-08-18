@@ -4,20 +4,17 @@ using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	[DataContract]
 	public sealed class EventMatchStatePayload : EventPayload
 	{
-		[DataMember(Name = "matchId")]
-		public Guid Id { get; private set; }
+		[DataMember(Name = "id")]
+		public Guid Id { get; set; }
 
-		[DataMember(Name = "round")]
-		public int Round { get; private set; }
+		[DataMember(Name = "gameRound")]
+		public int GameRound { get; set; }
 
-		[DataMember(Name = "matchVariant")]
-		public WellKnownMatchVariant Variant { get; private set; }
+		[DataMember(Name = "variant")]
+		public WellKnownMatchVariant Variant { get; set; }
 
 		[DataMember(Name = "player1")]
 		public PlayerContract Player1 { get; set; }
@@ -30,12 +27,14 @@ namespace GammonX.Server.Contracts
 			PlayerModel player1,
 			PlayerModel player2,
 			int round, 
-			WellKnownMatchVariant variant)
+			WellKnownMatchVariant variant, 
+			params string[] allowedCommands)
+			: base(allowedCommands)
 		{
 			Id = id;
 			Player1 = player1.ToContract();
 			Player2 = player2.ToContract();
-			Round = round;
+			GameRound = round;
 			Variant = variant;
 		}
 	}

@@ -2,19 +2,17 @@
 
 namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	[DataContract]
 	public sealed class EventErrorPayload : EventPayload
 	{
 		[DataMember(Name = "code")]
-		public string Code { get; private set; }
+		public string Code { get; set; }
 
 		[DataMember(Name = "message")]	
-		public string Message { get; private set; }
+		public string Message { get; set; }
 
-		public EventErrorPayload(string code, string message)
+		public EventErrorPayload(string code, string message, params string[] allowedCommands)
+			: base(allowedCommands)
 		{
 			Code = code;
 			Message = message;

@@ -1,8 +1,5 @@
 ﻿namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	public class PlayerContract
 	{
 		public PlayerContract(Guid id, int score)
@@ -11,14 +8,11 @@
 			Score = score;
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		public Guid Id { get; private set; }
+		public Guid Id { get; set; }
 
 		/// <summary>
-		/// 
+		/// Gets or sets the match score for this player.
 		/// </summary>
-		public int Score { get; private set; } = 0;
+		public int Score { get; set; } = 0;
 	}
 }

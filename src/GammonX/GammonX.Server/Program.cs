@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-builder.Services.AddSingleton<MatchmakingService>();
+builder.Services.AddSingleton<SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 
 builder.Services.AddCors(options =>

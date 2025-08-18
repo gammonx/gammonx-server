@@ -3,7 +3,7 @@
 namespace GammonX.Server.Contracts
 {
 	/// <summary>
-	/// 
+	/// Base class for all REST request payloads.
 	/// </summary>
 	[DataContract]
 	public class RequestResponseContract<T> where T : RequestPayload

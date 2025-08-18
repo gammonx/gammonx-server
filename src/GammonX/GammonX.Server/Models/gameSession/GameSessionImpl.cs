@@ -2,7 +2,6 @@
 using GammonX.Engine.Services;
 
 using GammonX.Server.Contracts;
-using System.ComponentModel;
 
 namespace GammonX.Server.Models
 {
@@ -102,7 +101,7 @@ namespace GammonX.Server.Models
 			else
 			{
 				var diceRoll1 = new DiceRollContract(rolls[0]);
-				var diceRoll2 = new DiceRollContract(rolls[0]);
+				var diceRoll2 = new DiceRollContract(rolls[1]);
 				DiceRollsModel = new DiceRollsModel(diceRoll1, diceRoll2);
 			}
 
@@ -128,7 +127,6 @@ namespace GammonX.Server.Models
 				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, out var usedDices))
 				{
 					_boardService.MoveCheckerTo(BoardModel, from, to, isWhite);
-					// TODO calculate new legal moves if dices left?
 					legalMove.Use();
 					usedDices.ForEach(ud => ud.Use());
 
@@ -145,6 +143,8 @@ namespace GammonX.Server.Models
 					else
 					{
 						// no dices left, so we should switch to the next turn
+						LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
+						Phase = GamePhase.WaitingForEndTurn;
 					}
 				}
 				else
@@ -159,18 +159,24 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload ToPayload(Guid playerId, bool inverted)
-		{
+		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands)
+		{			
+			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
+
 			if (ActiveTurn != playerId)
 			{
-				Phase = GamePhase.WaitingForOpponent;
+				// we need to set the phase on the payload in order to
+				// no disturb the active players game phase
+				payload.Phase = GamePhase.WaitingForOpponent;
 			}
 
-			return new EventGameStatePayload(this, inverted);
+			return payload;
 		}
 
 		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, out List<DiceRollContract> usedDices)
 		{
+			// TODO :: highest roll has to be used first
+			// TODO :: pasch not handled correctly
 			usedDices = new List<DiceRollContract>();
 			return Backtrack(unusedDices, distance, 0, new List<DiceRollContract>(), out usedDices);
 		}

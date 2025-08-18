@@ -2,27 +2,15 @@
 
 namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	[DataContract]
 	public class LegalMoveContract
 	{
-		/// <summary>
-		/// 
-		/// </summary>
 		[DataMember]
 		public int From { get; private set; }
 
-		/// <summary>
-		/// 
-		/// </summary>
 		[DataMember] 
 		public int To { get; private set; }
 
-		/// <summary>
-		/// 
-		/// </summary>
 		[IgnoreDataMember]
 		public bool Used { get; set; }
 
@@ -34,7 +22,7 @@ namespace GammonX.Server.Contracts
 		}
 
 		/// <summary>
-		/// 
+		/// Marks this legal move as used, so it cannot be used again.
 		/// </summary>
 		public void Use()
 		{
@@ -42,7 +30,7 @@ namespace GammonX.Server.Contracts
 		}
 
 		/// <summary>
-		/// 
+		/// Unmarks this legal move, so it can be used again.
 		/// </summary>
 		public void Revert()
 		{

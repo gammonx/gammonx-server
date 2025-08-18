@@ -1,42 +1,32 @@
 ﻿namespace GammonX.Server.Models
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	public class LobbyEntry
 	{
-		public LobbyEntry(Guid id) 
+		public LobbyEntry(Guid playerId) 
 		{
-			Id = id;
+			PlayerId = playerId;
 		}
 
 		/// <summary>
-		/// 
+		/// Gets the web socket connection id of the player in the lobby.
 		/// </summary>
 		public string? ConnectionId { get; private set; }
 		
-		/// <summary>
-		/// 
-		/// </summary>
-		public Guid Id { get; private set; }
+		public Guid PlayerId { get; private set; }
 
 		/// <summary>
-		/// 
+		/// Sets the web socket connection id for this lobby entry.
 		/// </summary>
-		/// <param name="connectionId"></param>
+		/// <param name="connectionId">The web socket connection id.</param>
 		public void SetConnectionId(string? connectionId) 
 		{
 			ConnectionId = connectionId;
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <returns></returns>
 		public PlayerModel ToPlayer()
 		{
 			ArgumentNullException.ThrowIfNull(ConnectionId, nameof(ConnectionId));
-			return new PlayerModel(Id, ConnectionId);
+			return new PlayerModel(PlayerId, ConnectionId);
 		}
 	}
 }

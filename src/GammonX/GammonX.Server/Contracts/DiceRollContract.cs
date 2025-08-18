@@ -2,32 +2,23 @@
 
 namespace GammonX.Server.Contracts
 {
-	/// <summary>
-	/// 
-	/// </summary>
 	[DataContract]
 	public class DiceRollContract
 	{
-		/// <summary>
-		/// 
-		/// </summary>
 		[DataMember(Name = "roll")]
-		public int Roll { get; private set; }
+		public int Roll { get; set; }
 
-		/// <summary>
-		/// 
-		/// </summary>
 		[DataMember(Name = "used")]
-		public bool Used { get; private set; }
+		public bool Used { get; set; }
 
 		public DiceRollContract(int roll)
 		{
 			Roll = roll;
-			Used = true;
+			Used = false;
 		}
 
 		/// <summary>
-		/// 
+		/// Marks the dice as used.
 		/// </summary>
 		public void Use()
 		{
@@ -35,7 +26,7 @@ namespace GammonX.Server.Contracts
 		}
 
 		/// <summary>
-		/// 
+		/// Unmarks the dice as used, allowing it to be reused.
 		/// </summary>
 		public void Revert()
 		{

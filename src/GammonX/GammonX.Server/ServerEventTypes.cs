@@ -1,47 +1,50 @@
-﻿namespace GammonX.Server
+﻿using GammonX.Server.Contracts;
+
+namespace GammonX.Server
 {
 	/// <summary>
-	/// 
+	/// Gets a list of all web socket server event types.
 	/// </summary>
 	internal static class ServerEventTypes
 	{
 		/// <summary>
-		/// 
-		/// </summary>
-		public static string GameStartedEvent = "game-started";
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public static string GameWaitingEvent = "game-waiting";
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public static string GameStateEvent = "game-state";
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public static string MatchStartedEvent = "match-started";
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public static string MatchWaitingEvent = "match-waiting";
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public static string MatchLobbyFoundEvent = "match-lobby-found";
-
-		/// <summary>
-		/// 
+		/// Invoked when a player joins a match lobby and now other player is directly found.
+		/// Returns a <see cref="EventResponseContract{EventMatchLobbyPayload}"/>
 		/// </summary>
 		public static string MatchLobbyWaitingEvent = "match-lobby-waiting";
 
 		/// <summary>
-		/// 
+		/// Invoked when a match lobby is found and the player can join it.
+		/// Returns a <see cref="EventResponseContract{EventMatchLobbyPayload}"/>
+		/// </summary>
+		public static string MatchLobbyFoundEvent = "match-lobby-found";
+
+		/// <summary>
+		/// Invoked when both players joined the match session.
+		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+		/// </summary>
+		public static string MatchStartedEvent = "match-started";
+
+		/// <summary>
+		/// Invoked when the first player started the game round and is waiting for the second player to join.
+		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+		/// </summary>
+		public static string GameWaitingEvent = "game-waiting";
+
+		/// <summary>
+		/// Invoked when both players started the game.
+		/// Returns a <see cref="EventResponseContract{EventGameStatePayload}"/>
+		/// </summary>
+		public static string GameStartedEvent = "game-started";
+
+		/// <summary>
+		/// Invoked while the game is running (e.g. Roll, Move, EndTurn commands).
+		/// Returns a <see cref="EventResponseContract{EventGameStatePayload}"/>
+		/// </summary>
+		public static string GameStateEvent = "game-state";
+
+		/// <summary>
+		/// General error event.
 		/// </summary>
 		public static string ErrorEvent = "error";
 	}
