@@ -10,17 +10,16 @@ namespace GammonX.Server.Services
 		{
 			switch (modus)
 			{
-				// TODO :: do we need specific game session for each game variant?
 				case GameModus.Portes:
-					return new GameSessionImpl(matchId);
+					return new GameSessionImpl(matchId, modus);
 				case GameModus.Plakoto:
-					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
+					return new GameSessionImpl(matchId, modus);
 				case GameModus.Fevga:
-					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
+					return new GameSessionImpl(matchId, modus);
 				case GameModus.Backgammon:
-					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
+					return new GameSessionImpl(matchId, modus);
 				case GameModus.Tavla:
-					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
+					return new GameSessionImpl(matchId, modus);
 				default:
 					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
 			}

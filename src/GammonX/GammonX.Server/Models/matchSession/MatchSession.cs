@@ -6,16 +6,10 @@ using GammonX.Server.Services;
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public class TavliMatchSession : IMatchSessionModel
+	public class MatchSession : IMatchSessionModel
 	{
-		private static readonly GameModus[] _rounds =
-		[
-			GameModus.Portes,
-			GameModus.Plakoto,
-			GameModus.Fevga
-		];
-
-		private readonly IGameSessionModel[] _gameSession = new IGameSessionModel[_rounds.Length];
+		private readonly GameModus[] _rounds;
+		private readonly IGameSessionModel[] _gameSessions;
 
 		// <inheritdoc />
 		public Guid Id { get; }
@@ -38,11 +32,13 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public PlayerModel Player2 { get; private set; }
 
-		public TavliMatchSession(Guid id)
+		public MatchSession(Guid id, WellKnownMatchVariant variant, GameModus[] rounds)
 		{
 			Id = id;
 			GameRound = 1;
-			Variant = WellKnownMatchVariant.Tavli;
+			Variant = variant;
+			_rounds = rounds;
+			_gameSessions = new IGameSessionModel[_rounds.Length];
 			Player1 = new PlayerModel(Guid.Empty, string.Empty);
 			Player2 = new PlayerModel(Guid.Empty, string.Empty);
 		}
@@ -57,6 +53,11 @@ namespace GammonX.Server.Models
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
+				if (player.PlayerId == Player1.Id)
+				{
+					throw new InvalidOperationException("Player 1 cannot join as Player 2.");
+				}
+
 				Player2 = new PlayerModel(player.PlayerId, player.ConnectionId);
 			}
 			else
@@ -82,17 +83,31 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public IGameSessionModel NextGameRound()
 		{
-			var oldSession = GetOrCreateGameSession(GameRound);
+			// TODO what about single round matches? (tavla?)
+			var oldSession = GetGameSession(GameRound);
+
+			if (oldSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
+
 			oldSession.StopGame();
 			GameRound++;
 			var newSession = GetOrCreateGameSession(GameRound);
+			// TODO Game need to be started again?
 			return newSession;
 		}
 
 		// <inheritdoc />
 		public void RollDices(Guid callingPlayerId)
 		{
-			var activeSession = GetOrCreateGameSession(GameRound);
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
+
 			var activePlayerId = activeSession.ActiveTurn;
 
 			if (callingPlayerId != activePlayerId)
@@ -107,7 +122,13 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public void MoveCheckers(Guid callingPlayerId, int from, int to)
 		{
-			var activeSession = GetOrCreateGameSession(GameRound);
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
+
 			var activePlayerId = activeSession.ActiveTurn;
 
 			if (callingPlayerId != activePlayerId)
@@ -117,12 +138,23 @@ namespace GammonX.Server.Models
 
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
+
+			// TODO :: check if the player has won the game
+			// TODO :: assign the scores
+			// TODO :: advances to the next game round if available
+			// TODO :: or conclude the match session
 		}
 
 		// <inheritdoc />
 		public void EndTurn(Guid callingPlayerId)
 		{
-			var activeSession = GetOrCreateGameSession(GameRound);
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
+
 			var activePlayerId = activeSession.ActiveTurn;
 
 			if (callingPlayerId != activePlayerId)
@@ -137,7 +169,12 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
 		{
-			var activeSession = GetOrCreateGameSession(GameRound);
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
 
 			if (Player1.Id.Equals(playerId))
 			{
@@ -172,18 +209,18 @@ namespace GammonX.Server.Models
 		public bool CanStartGame()
 		{
 			return Player1 != null && Player1.MatchAccepted && Player2 != null && Player2.MatchAccepted;
-		}
-
-		// <inheritdoc />
-		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
-		{
-			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant, allowedCommands);
-		}
+		}		
 
 		// <inheritdoc />
 		public bool CanEndTurn(Guid callingPlayerId)
 		{
-			var activeSession = GetOrCreateGameSession(GameRound);
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession == null)
+			{
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
+
 			if (activeSession.ActiveTurn == callingPlayerId)
 			{
 				if (activeSession.DiceRollsModel.HasUnused)
@@ -198,16 +235,28 @@ namespace GammonX.Server.Models
 			return false;
 		}
 
+		// <inheritdoc />
+		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
+		{
+			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant, allowedCommands);
+		}
+
 		private IGameSessionModel GetOrCreateGameSession(int round)
 		{
-			var existingSession = _gameSession[round - 1];
+			var existingSession = GetGameSession(round);
 			if (existingSession == null)
 			{
 				var activeModus = GetGameModus();
 				var newSession = GameSessionFactory.Create(Id, activeModus);
-				_gameSession[round - 1] = newSession;
+				_gameSessions[round - 1] = newSession;
 				return newSession;
 			}
+			return existingSession;
+		}
+
+		private IGameSessionModel? GetGameSession(int round)
+		{
+			var existingSession = _gameSessions[round - 1];
 			return existingSession;
 		}
 

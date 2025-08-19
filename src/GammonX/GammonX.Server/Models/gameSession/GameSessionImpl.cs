@@ -9,9 +9,10 @@ namespace GammonX.Server.Models
 	public class GameSessionImpl : IGameSessionModel
 	{
 		private readonly IBoardService _boardService;
+		private IDiceService _diceService;
 
 		// <inheritdoc />
-		public GameModus Modus => GameModus.Portes;
+		public GameModus Modus { get; private set; }
 
 		// <inheritdoc />
 		public Guid MatchId { get; }
@@ -43,15 +44,17 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
 
-		public GameSessionImpl(Guid matchId)
+		public GameSessionImpl(Guid matchId, GameModus modus)
 		{
 			_boardService = BoardServiceFactory.Create(Modus);
+			_diceService = DiceServiceFactory.Create();
 			BoardModel = _boardService.CreateBoard();
 			MatchId = matchId;
+			Modus = modus;
 			Id = Guid.NewGuid();
 			DiceRollsModel = new DiceRollsModel(Array.Empty<DiceRollContract>());
 			LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
-			Phase = GamePhase.Unknown;
+			Phase = GamePhase.NotStarted;
 		}
 
 		// <inheritdoc />
@@ -68,7 +71,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public void StopGame()
 		{
-			throw new NotImplementedException();
+			// TODO :: what happens here?
 		}
 
 		// <inheritdoc />
@@ -89,14 +92,16 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("It's not your turn to roll the dice.");
 			}
 
-			var diceService = DiceServiceFactory.Create();
-			var rolls = diceService.Roll(2, 6);
+			var rolls = _diceService.Roll(2, 6);
 
 			if (rolls[0].Equals(rolls[1]))
 			{
 				// pasch rolled
-				var diceRoll = new DiceRollContract(rolls[0]);
-				DiceRollsModel = new DiceRollsModel(diceRoll, diceRoll, diceRoll, diceRoll);
+				var diceRoll1 = new DiceRollContract(rolls[0]);
+				var diceRoll2 = new DiceRollContract(rolls[0]);
+				var diceRoll3 = new DiceRollContract(rolls[0]);
+				var diceRoll4 = new DiceRollContract(rolls[0]);
+				DiceRollsModel = new DiceRollsModel(diceRoll1, diceRoll2, diceRoll3, diceRoll4);
 			}
 			else
 			{
@@ -109,7 +114,7 @@ namespace GammonX.Server.Models
 			var legalMoveContracts = legalMoves.Select(lm => new LegalMoveContract(lm.Item1, lm.Item2)).ToArray();
 			LegalMovesModel = new LegalMovesModel(legalMoveContracts);
 
-			Phase = GamePhase.Rolling;			
+			Phase = GamePhase.Rolling;
 		}
 
 		// <inheritdoc />
@@ -128,7 +133,7 @@ namespace GammonX.Server.Models
 				{
 					_boardService.MoveCheckerTo(BoardModel, from, to, isWhite);
 					legalMove.Use();
-					usedDices.ForEach(ud => ud.Use());
+					usedDices.ForEach(ud => DiceRollsModel.UseDice(ud.Roll));
 
 					// if dices left
 					if (DiceRollsModel.HasUnused)
@@ -150,7 +155,7 @@ namespace GammonX.Server.Models
 				else
 				{
 					throw new InvalidOperationException($"The given move from '{from}' to '{to}' is not possible with the given dice rolls");
-				}				
+				}
 			}
 			else
 			{
@@ -160,7 +165,7 @@ namespace GammonX.Server.Models
 
 		// <inheritdoc />
 		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands)
-		{			
+		{
 			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
 
 			if (ActiveTurn != playerId)
@@ -173,19 +178,29 @@ namespace GammonX.Server.Models
 			return payload;
 		}
 
+		/// <summary>
+		/// Sets the internal used instance of <see cref="IDiceService"/> for unit test purposes."/>
+		/// </summary>
+		/// <param name="diceService">Dice service mock/stub to set.</param>
+		/// <exception cref="ArgumentNullException">If instance is null.</exception>
+		internal void SetDiceService(IDiceService diceService)
+		{
+			// unit test purposes only
+			_diceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
+		}
+
 		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, out List<DiceRollContract> usedDices)
 		{
 			// TODO :: highest roll has to be used first
-			// TODO :: pasch not handled correctly
 			usedDices = new List<DiceRollContract>();
 			return Backtrack(unusedDices, distance, 0, new List<DiceRollContract>(), out usedDices);
 		}
 
 		private bool Backtrack(
-			DiceRollContract[] dices, 
-			int distance, 
-			int start, 
-			List<DiceRollContract> current, 
+			DiceRollContract[] dices,
+			int distance,
+			int start,
+			List<DiceRollContract> current,
 			out List<DiceRollContract> result)
 		{
 			// Algorithmus (Subset-Sum auf Dices)

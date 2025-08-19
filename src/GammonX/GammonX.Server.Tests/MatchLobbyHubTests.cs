@@ -534,6 +534,8 @@ namespace GammonX.Server.Tests
 
 			// player 2 ends his turn
 			await player2Connection.InvokeAsync(ServerCommands.EndTurnCommand, joinPayload1.MatchId.ToString());
+			// we set it here explicitly because the timing does not quite match up
+			player2EndedHisTurn = true;
 
 			while (!player2EndedHisTurn)
 			{

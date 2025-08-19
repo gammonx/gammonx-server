@@ -30,6 +30,10 @@
 		/// </summary>
 		WaitingForEndTurn = 5,
 		/// <summary>
+		/// Default game phase as long as the game session is not started yet.
+		/// </summary>
+		NotStarted = 98,
+		/// <summary>
 		/// Unknown game phase, used for debugging purposes.
 		/// </summary>
 		Unknown = 99

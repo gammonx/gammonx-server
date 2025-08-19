@@ -24,6 +24,7 @@ namespace GammonX.Server.Models
 			if (usedDiceRoll != null)
 			{
 				usedDiceRoll.Use();
+				return;
 			}
 
 			throw new InvalidOperationException($"No unused dice roll with a value of '{diceRoll}' left");
