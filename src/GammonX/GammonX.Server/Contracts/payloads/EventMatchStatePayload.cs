@@ -21,21 +21,5 @@ namespace GammonX.Server.Contracts
 
 		[DataMember(Name = "player2")]
 		public PlayerContract Player2 { get; set; }
-
-		public EventMatchStatePayload(
-			Guid id,
-			PlayerModel player1,
-			PlayerModel player2,
-			int round, 
-			WellKnownMatchVariant variant, 
-			params string[] allowedCommands)
-			: base(allowedCommands)
-		{
-			Id = id;
-			Player1 = player1.ToContract();
-			Player2 = player2.ToContract();
-			GameRound = round;
-			Variant = variant;
-		}
 	}
 }

@@ -1,18 +1,17 @@
-﻿namespace GammonX.Server.Contracts
+﻿using System.Runtime.Serialization;
+
+namespace GammonX.Server.Contracts
 {
+	[DataContract]
 	public class PlayerContract
 	{
-		public PlayerContract(Guid id, int score)
-		{
-			Id = id;
-			Score = score;
-		}
-
+		[DataMember(Name = "id")]
 		public Guid Id { get; set; }
 
 		/// <summary>
 		/// Gets or sets the match score for this player.
 		/// </summary>
-		public int Score { get; set; } = 0;
+		[DataMember(Name = "score")]
+		public int Score { get; set; }
 	}
 }

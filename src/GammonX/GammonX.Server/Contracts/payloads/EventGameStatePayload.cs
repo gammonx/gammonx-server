@@ -52,7 +52,7 @@ namespace GammonX.Server.Contracts
 				MatchId = model.MatchId,
 				Id = model.Id,
 				Phase = model.Phase,
-				ActiveTurn = model.ActiveTurn,
+				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
 				DiceRolls = model.DiceRollsModel.DiceRolls,
 				LegalMoves = model.LegalMovesModel.LegalMoves,

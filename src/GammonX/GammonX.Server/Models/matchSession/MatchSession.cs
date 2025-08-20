@@ -10,6 +10,7 @@ namespace GammonX.Server.Models
 	{
 		private readonly GameModus[] _rounds;
 		private readonly IGameSessionModel[] _gameSessions;
+		private readonly IGameSessionFactory _gameSessionFactory;
 
 		// <inheritdoc />
 		public Guid Id { get; }
@@ -32,13 +33,14 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public PlayerModel Player2 { get; private set; }
 
-		public MatchSession(Guid id, WellKnownMatchVariant variant, GameModus[] rounds)
+		public MatchSession(Guid id, WellKnownMatchVariant variant, GameModus[] rounds, IGameSessionFactory gameSessionFactory)
 		{
 			Id = id;
 			GameRound = 1;
 			Variant = variant;
 			_rounds = rounds;
 			_gameSessions = new IGameSessionModel[_rounds.Length];
+			_gameSessionFactory = gameSessionFactory;
 			Player1 = new PlayerModel(Guid.Empty, string.Empty);
 			Player2 = new PlayerModel(Guid.Empty, string.Empty);
 		}
@@ -67,48 +69,52 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public IGameSessionModel StartMatch()
+		public bool CanStartNextGame()
 		{
-			if (GameRound > 1)
-			{
-				throw new InvalidOperationException("Cannot start game session for round 1, use NextRound() to get the next game session.");
-			}
-
-			StartedAt = DateTime.UtcNow;
-			var gameSession = GetOrCreateGameSession(GameRound);
-			gameSession.StartGame(Player1.Id);
-			return gameSession;
+			return
+				Player1 != null &&
+				Player1.NextGameAccepted &&
+				Player2 != null &&
+				Player2.NextGameAccepted &&
+				// game 1 starts next or max the last game round is available
+				(GameRound == 1 || GameRound + 1 <= _rounds.Length);
 		}
 
 		// <inheritdoc />
-		public IGameSessionModel NextGameRound()
+		public IGameSessionModel StartNextGame()
 		{
-			// TODO what about single round matches? (tavla?)
-			var oldSession = GetGameSession(GameRound);
+			// TODO :: which player starts rolling?
+			var gameSession = GetOrCreateGameSession(GameRound);
 
-			if (oldSession == null)
+			if (gameSession.Phase != GamePhase.GameOver)
 			{
-				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
+				if (GameRound == 1)
+					StartedAt = DateTime.UtcNow;
 
-			oldSession.StopGame();
-			GameRound++;
-			var newSession = GetOrCreateGameSession(GameRound);
-			// TODO Game need to be started again?
-			return newSession;
+				gameSession.StartGame(Player1.Id);
+				return gameSession;
+			}
+			else if (GameRound <= _rounds.Length)
+			{
+				GameRound++;
+				var newSession = GetOrCreateGameSession(GameRound);
+				newSession.StartGame(Player1.Id);
+				return newSession;
+			}
+			else
+			{
+				throw new InvalidOperationException($"Cannot start game for round {GameRound}, no more rounds available.");
+			}
 		}
 
 		// <inheritdoc />
 		public void RollDices(Guid callingPlayerId)
 		{
 			var activeSession = GetGameSession(GameRound);
-
 			if (activeSession == null)
-			{
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
 
-			var activePlayerId = activeSession.ActiveTurn;
+			var activePlayerId = activeSession.ActivePlayer;
 
 			if (callingPlayerId != activePlayerId)
 			{
@@ -120,16 +126,13 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public void MoveCheckers(Guid callingPlayerId, int from, int to)
+		public bool MoveCheckers(Guid callingPlayerId, int from, int to)
 		{
 			var activeSession = GetGameSession(GameRound);
-
 			if (activeSession == null)
-			{
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
 
-			var activePlayerId = activeSession.ActiveTurn;
+			var activePlayerId = activeSession.ActivePlayer;
 
 			if (callingPlayerId != activePlayerId)
 			{
@@ -139,89 +142,26 @@ namespace GammonX.Server.Models
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
 
-			// TODO :: check if the player has won the game
-			// TODO :: assign the scores
-			// TODO :: advances to the next game round if available
-			// TODO :: or conclude the match session
+			if (GameOver(callingPlayerId, out var score))
+			{
+				var activePlayer = GetPlayer(callingPlayerId);
+				activePlayer.Score += score;
+				Player1.ActiveGameOver();
+				Player2.ActiveGameOver();
+				return true;
+			}
+
+			return false;
 		}
-
-		// <inheritdoc />
-		public void EndTurn(Guid callingPlayerId)
-		{
-			var activeSession = GetGameSession(GameRound);
-
-			if (activeSession == null)
-			{
-				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
-
-			var activePlayerId = activeSession.ActiveTurn;
-
-			if (callingPlayerId != activePlayerId)
-			{
-				throw new InvalidOperationException("It is not your turn to move the checkers.");
-			}
-
-			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
-			activeSession.NextTurn(otherPlayerId);
-		}
-
-		// <inheritdoc />
-		public EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
-		{
-			var activeSession = GetGameSession(GameRound);
-
-			if (activeSession == null)
-			{
-				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
-
-			if (Player1.Id.Equals(playerId))
-			{
-				if (activeSession.ActiveTurn == Player1.Id)
-				{
-					// only active player can send commands
-					return activeSession.ToPayload(playerId, false, allowedCommands);
-				}
-				return activeSession.ToPayload(playerId, false, Array.Empty<string>());
-			}
-			else if (Player2.Id.Equals(playerId))
-			{
-				// invert for player 2
-				if (activeSession.ActiveTurn == Player2.Id)
-				{
-					// only active player can send commands
-					return activeSession.ToPayload(playerId, true, allowedCommands);
-				}
-				return activeSession.ToPayload(playerId, true, Array.Empty<string>());
-			}
-
-			throw new InvalidOperationException("Player is not part of this match session.");
-		}
-
-		// <inheritdoc />
-		public GameModus GetGameModus()
-		{
-			return _rounds[GameRound - 1];
-		}
-
-		// <inheritdoc />
-		public bool CanStartGame()
-		{
-			return Player1 != null && Player1.MatchAccepted && Player2 != null && Player2.MatchAccepted;
-		}		
 
 		// <inheritdoc />
 		public bool CanEndTurn(Guid callingPlayerId)
 		{
 			var activeSession = GetGameSession(GameRound);
-
 			if (activeSession == null)
-			{
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
-			}
 
-			if (activeSession.ActiveTurn == callingPlayerId)
+			if (activeSession.ActivePlayer == callingPlayerId)
 			{
 				if (activeSession.DiceRollsModel.HasUnused)
 				{
@@ -236,10 +176,125 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
+		public void EndTurn(Guid callingPlayerId)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			var activePlayerId = activeSession.ActivePlayer;
+
+			if (callingPlayerId != activePlayerId)
+			{
+				throw new InvalidOperationException("It is not your turn to move the checkers.");
+			}
+
+			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
+			activeSession.NextTurn(otherPlayerId);
+		}
+
+		// <inheritdoc />
+		public bool IsMatchOver()
+		{
+			return _gameSessions.All(gs => gs?.Phase == GamePhase.GameOver);
+		}
+
+		// <inheritdoc />
+		public GameModus GetGameModus()
+		{
+			return _rounds[GameRound - 1];
+		}
+
+		// <inheritdoc />
+		public EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			if (Player1.Id.Equals(playerId))
+			{
+				if (activeSession.ActivePlayer == Player1.Id)
+				{
+					// only active player can send commands
+					return activeSession.ToPayload(playerId, false, allowedCommands);
+				}
+				return activeSession.ToPayload(playerId, false, Array.Empty<string>());
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				// invert for player 2
+				if (activeSession.ActivePlayer == Player2.Id)
+				{
+					// only active player can send commands
+					return activeSession.ToPayload(playerId, true, allowedCommands);
+				}
+				return activeSession.ToPayload(playerId, true, Array.Empty<string>());
+			}
+
+			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
+		// <inheritdoc />
 		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
 		{
-			return new EventMatchStatePayload(Id, Player1, Player2, GameRound, Variant, allowedCommands);
+			return new EventMatchStatePayload()
+			{
+				Id = Id,
+				Player1 = Player1.ToContract(),
+				Player2 = Player2.ToContract(),
+				GameRound = GameRound,
+				Variant = Variant,
+				AllowedCommands = allowedCommands
+			};
 		}
+
+		#region Protected Virtual Methods
+
+		// <inheritdoc />
+		protected bool GameOver(Guid playerId, out int score)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			score = 0;
+			if (Player1.Id.Equals(playerId))
+			{
+				if (activeSession.BoardModel.BearOffCountWhite == activeSession.BoardModel.WinConditionCount)
+				{
+					score = CalculateScore(playerId);
+					activeSession.StopGame();
+					return true;
+				}
+				return false;
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				if (activeSession.BoardModel.BearOffCountBlack == activeSession.BoardModel.WinConditionCount)
+				{
+					score = CalculateScore(playerId);
+					activeSession.StopGame();
+					return true;
+				}
+				return false;
+			}
+			else
+			{
+				throw new InvalidOperationException("Player is not part of this match session.");
+			}
+		}
+
+		// <inheritdoc />
+		protected virtual int CalculateScore(Guid playerId)
+		{
+			// TODO :: implement score calculation based on the game variant and rules
+			return 1;
+		}
+
+		#endregion Protected Virtual Methods
+
+		#region Private Methods
 
 		private IGameSessionModel GetOrCreateGameSession(int round)
 		{
@@ -247,7 +302,7 @@ namespace GammonX.Server.Models
 			if (existingSession == null)
 			{
 				var activeModus = GetGameModus();
-				var newSession = GameSessionFactory.Create(Id, activeModus);
+				var newSession = _gameSessionFactory.Create(Id, activeModus);
 				_gameSessions[round - 1] = newSession;
 				return newSession;
 			}
@@ -284,5 +339,20 @@ namespace GammonX.Server.Models
 				return Player1.Id;
 			}
 		}
+
+		private PlayerModel GetPlayer(Guid playerId)
+		{
+			if (Player1.Id.Equals(playerId))
+			{
+				return Player1;
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				return Player2;
+			}
+			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
+		#endregion Private Methods
 	}
 }

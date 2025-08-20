@@ -97,7 +97,7 @@
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeWhite.Start.Value)
-						.Take(currentPosition - HomeRangeWhite.Start.Value + 1)
+						.Take(currentPosition - HomeRangeWhite.Start.Value)
 						.Any(v => v < 0);
 					return highestCheckerIndex;
 				}
@@ -118,7 +118,7 @@
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeBlack.Start.Value)
-						.Take(currentPosition - HomeRangeBlack.Start.Value + 1)
+						.Take(currentPosition - HomeRangeBlack.Start.Value)
 						.Any(v => v > 0);
 					return highestCheckerIndex;
 				}

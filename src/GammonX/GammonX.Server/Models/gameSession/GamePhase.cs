@@ -30,6 +30,10 @@
 		/// </summary>
 		WaitingForEndTurn = 5,
 		/// <summary>
+		/// The active player has made his last move and the game is over.
+		/// </summary>
+		GameOver = 6,
+		/// <summary>
 		/// Default game phase as long as the game session is not started yet.
 		/// </summary>
 		NotStarted = 98,

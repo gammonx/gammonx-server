@@ -12,6 +12,9 @@ namespace GammonX.Server.Tests
 {
 	public class MatchSessionTests
 	{
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
+
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
 		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
@@ -19,7 +22,7 @@ namespace GammonX.Server.Tests
 		public void MatchSessionCreated(WellKnownMatchVariant variant, GameModus gameModusToExpect)
 		{
 			var matchId = Guid.NewGuid();
-			var session = MatchSessionFactory.Create(matchId, variant);
+			var session = _matchSessionFactory.Create(matchId, variant);
 			Assert.NotNull(session);
 			Assert.Equal(matchId, session.Id);
 			Assert.Equal(variant, session.Variant);
@@ -31,7 +34,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(0, session.Player1.Score);
 			Assert.Equal(0, session.Player2.Score);
 			Assert.Equal(gameModusToExpect, session.GetGameModus());
-			Assert.False(session.CanStartGame());
+			Assert.False(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
 			Assert.IsType<MatchSession>(session);
@@ -115,48 +118,17 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			Assert.False(session.CanStartGame());
-			session.Player1.AcceptMatch();
-			Assert.False(session.CanStartGame());
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
+			Assert.False(session.CanStartNextGame());
+			session.Player1.AcceptNextGame();
+			Assert.False(session.CanStartNextGame());
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
 			Assert.NotNull(gameSession);
 			Assert.Equal(session.Id, gameSession.MatchId);
 			Assert.Equal(1, session.GameRound);
 			Assert.Equal(variant, session.Variant);
 			Assert.Equal(modusToExpect, session.GetGameModus());
-		}
-
-		[Theory(Skip = "not yet implemented")]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCanStartNextRound(WellKnownMatchVariant variant)
-		{
-			var session = CreateMatchSessionWithPlayers(variant);
-			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
-			Assert.NotNull(gameSession);
-			Assert.Equal(1, session.GameRound);
-			var nextGameSession = session.NextGameRound();
-			Assert.NotNull(nextGameSession);
-			Assert.NotEqual(gameSession.Id, nextGameSession.Id);
-			Assert.Equal(2, session.GameRound);
-		}
-
-		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotStartNextGameRound(WellKnownMatchVariant variant)
-		{
-			var session = CreateMatchSessionWithPlayers(variant);
-			Assert.NotNull(session);
-			Assert.Throws<InvalidOperationException>(() => session.NextGameRound());
 		}
 
 		[Theory]
@@ -167,10 +139,10 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
 			var player1Id = session.Player1.Id;
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(player1Id);
@@ -187,10 +159,10 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
 			var player2Id = session.Player2.Id;
 			Assert.Throws<InvalidOperationException>(() => session.RollDices(player2Id));
 		}
@@ -203,9 +175,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.RollDices(Guid.NewGuid()));
 		}
 
@@ -217,9 +189,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(Guid.NewGuid(), 0 , 1));
 		}
 
@@ -231,9 +203,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartNextGame();
 			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(session.Player2.Id, 0, 1));
 		}
 
@@ -245,10 +217,10 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -276,10 +248,10 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
-			var gameSession = session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -307,8 +279,8 @@ namespace GammonX.Server.Tests
 			Assert.False(session.CanEndTurn(Guid.NewGuid()));
 			session.EndTurn(player1Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
-			Assert.Equal(player2Id, gameSession.ActiveTurn);
-			Assert.NotEqual(player1Id, gameSession.ActiveTurn);
+			Assert.Equal(player2Id, gameSession.ActivePlayer);
+			Assert.NotEqual(player1Id, gameSession.ActivePlayer);
 			Assert.Equal(2, gameSession.TurnNumber);
 			Assert.Empty(gameSession.DiceRollsModel.DiceRolls);
 			Assert.Empty(gameSession.LegalMovesModel.LegalMoves);
@@ -322,9 +294,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.EndTurn(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => session.EndTurn(session.Player2.Id));
 		}
@@ -337,9 +309,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			Assert.True(session.CanStartGame());
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(session.Player2.Id));
 		}
@@ -352,9 +324,9 @@ namespace GammonX.Server.Tests
 		{
 			var session = CreateMatchSessionWithPlayers(variant);
 			Assert.NotNull(session);
-			session.Player1.AcceptMatch();
-			session.Player2.AcceptMatch();
-			session.StartMatch();
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartNextGame();
 			var allowedCommands = new string[] {"testCommand"};			
 			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
 			Assert.NotNull(gameState);
@@ -381,7 +353,7 @@ namespace GammonX.Server.Tests
 		private static dynamic CreateMatchSession(WellKnownMatchVariant variant)
 		{
 			var matchId = Guid.NewGuid();
-			var session = MatchSessionFactory.Create(matchId, variant);
+			var session = _matchSessionFactory.Create(matchId, variant);
 			return new { MatchId = matchId, Session = session };
 		}
 

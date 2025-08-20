@@ -8,10 +8,16 @@ namespace GammonX.Server.Services
 	public class MatchSessionRepository
 	{
 		private readonly Dictionary<Guid, IMatchSessionModel> _sessions = new();
+		private readonly IMatchSessionFactory _matchSessionFactory;
+
+		public MatchSessionRepository(IMatchSessionFactory matchSessionFactory)
+		{
+			_matchSessionFactory = matchSessionFactory;
+		}
 
 		public IMatchSessionModel Create(Guid matchId, WellKnownMatchVariant variant)
 		{
-			var matchSession = MatchSessionFactory.Create(matchId, variant);
+			var matchSession = _matchSessionFactory.Create(matchId, variant);
 			_sessions.Add(matchId, matchSession);
 			return matchSession;
 		}

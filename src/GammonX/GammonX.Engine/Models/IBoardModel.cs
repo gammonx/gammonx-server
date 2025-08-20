@@ -51,10 +51,15 @@
         /// </summary>
         int BearOffCountBlack { get; }
 
-        /// <summary>
-        /// Gets the amount of pieces needed in order to block a point.
-        /// </summary>
-        int BlockAmount { get; }
+		/// <summary>
+		/// Gets the amount of checkers needed to borne off in order to win the game.
+		/// </summary>
+		int WinConditionCount { get; }
+
+		/// <summary>
+		/// Gets the amount of pieces needed in order to block a point.
+		/// </summary>
+		int BlockAmount { get; }
 
         /// <summary>
         /// Operator function for moving a checker for the given player.

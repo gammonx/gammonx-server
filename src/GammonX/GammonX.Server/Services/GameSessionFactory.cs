@@ -1,25 +1,45 @@
 ﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
-	public static class GameSessionFactory
+	/// <summary>
+	/// Provides a factory to create game sessions based on the match id and game modus.
+	/// </summary>
+	public interface IGameSessionFactory
 	{
-		public static IGameSessionModel Create(Guid matchId, GameModus modus)
+		/// <summary>
+		/// Create a new game session model based on the match id and game modus.
+		/// </summary>
+		/// <param name="matchId">Match id.</param>
+		/// <param name="modus">Game modus.</param>
+		/// <returns>A game session</returns>
+		IGameSessionModel Create(Guid matchId, GameModus modus);
+	}
+
+	// <inheritdoc />
+	public class GameSessionFactory : IGameSessionFactory
+	{
+		// <inheritdoc />
+		public IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
+			var diceService = DiceServiceFactory.Create();
+			var boardService = BoardServiceFactory.Create(modus);
+
 			switch (modus)
 			{
 				case GameModus.Portes:
-					return new GameSessionImpl(matchId, modus);
+					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Plakoto:
-					return new GameSessionImpl(matchId, modus);
+					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Fevga:
-					return new GameSessionImpl(matchId, modus);
+					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Backgammon:
-					return new GameSessionImpl(matchId, modus);
+					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Tavla:
-					return new GameSessionImpl(matchId, modus);
+					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				default:
 					throw new ArgumentOutOfRangeException(nameof(modus), modus, "Unknown game variant.");
 			}

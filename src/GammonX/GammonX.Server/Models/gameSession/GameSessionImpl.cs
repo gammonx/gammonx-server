@@ -24,7 +24,7 @@ namespace GammonX.Server.Models
 		public GamePhase Phase { get; set; }
 
 		// <inheritdoc />
-		public Guid ActiveTurn { get; private set; }
+		public Guid ActivePlayer { get; private set; }
 
 		// <inheritdoc />
 		public int TurnNumber { get; private set; }
@@ -44,10 +44,10 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
 
-		public GameSessionImpl(Guid matchId, GameModus modus)
+		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{
-			_boardService = BoardServiceFactory.Create(Modus);
-			_diceService = DiceServiceFactory.Create();
+			_boardService = boardService;
+			_diceService = diceService;
 			BoardModel = _boardService.CreateBoard();
 			MatchId = matchId;
 			Modus = modus;
@@ -65,20 +65,20 @@ namespace GammonX.Server.Models
 			// player 1 starts rolling the dice
 			// player 2 waiting for the opponent to roll and move afterwards
 			Phase = GamePhase.WaitingForRoll;
-			ActiveTurn = playerId;
+			ActivePlayer = playerId;
 		}
 
 		// <inheritdoc />
 		public void StopGame()
 		{
-			// TODO :: what happens here?
+			Phase = GamePhase.GameOver;
 		}
 
 		// <inheritdoc />
 		public void NextTurn(Guid playerId)
 		{
 			TurnNumber++;
-			ActiveTurn = playerId;
+			ActivePlayer = playerId;
 			DiceRollsModel = new DiceRollsModel(Array.Empty<DiceRollContract>());
 			LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
 			Phase = GamePhase.WaitingForRoll;
@@ -87,7 +87,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public void RollDices(Guid callingPlayerId, bool isWhite)
 		{
-			if (ActiveTurn != callingPlayerId)
+			if (ActivePlayer != callingPlayerId)
 			{
 				throw new InvalidOperationException("It's not your turn to roll the dice.");
 			}
@@ -120,7 +120,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite)
 		{
-			if (ActiveTurn != callingPlayerId)
+			if (ActivePlayer != callingPlayerId)
 			{
 				throw new InvalidOperationException("It's not your turn to move the checkers.");
 			}
@@ -128,7 +128,10 @@ namespace GammonX.Server.Models
 			var legalMove = LegalMovesModel.LegalMoves.FirstOrDefault(lm => lm.From == from && lm.To == to);
 			if (legalMove != null && !legalMove.Used)
 			{
-				var distance = Math.Abs(from - to);
+				// TODO :: test different bear off moves
+				// TODO :: test different enter from bar moves
+				var distance = GetMoveDistance(BoardModel, from, to);
+
 				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, out var usedDices))
 				{
 					_boardService.MoveCheckerTo(BoardModel, from, to, isWhite);
@@ -168,7 +171,7 @@ namespace GammonX.Server.Models
 		{
 			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
 
-			if (ActiveTurn != playerId)
+			if (ActivePlayer != playerId)
 			{
 				// we need to set the phase on the payload in order to
 				// no disturb the active players game phase
@@ -188,6 +191,8 @@ namespace GammonX.Server.Models
 			// unit test purposes only
 			_diceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
 		}
+
+		#region Private Methods
 
 		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, out List<DiceRollContract> usedDices)
 		{
@@ -224,5 +229,26 @@ namespace GammonX.Server.Models
 			result = null!;
 			return false;
 		}
+
+		private static int GetMoveDistance(IBoardModel model, int from, int to)
+		{
+			if (to == WellKnownBoardPositions.BearOffWhite)
+			{
+				var distance = Math.Abs(from - model.HomeRangeWhite.End.Value);
+				return distance;
+			}
+			else if (to == WellKnownBoardPositions.BearOffBlack)
+			{
+				var distance = Math.Abs(from - model.HomeRangeBlack.End.Value);
+				return distance;
+			}
+			else
+			{
+				var distance = Math.Abs(from - to);
+				return distance;
+			}
+		}
+
+		#endregion Private Methods
 	}
 }

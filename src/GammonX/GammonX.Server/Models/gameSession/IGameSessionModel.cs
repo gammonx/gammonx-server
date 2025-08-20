@@ -35,7 +35,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the player id of the player whos turn it is.
 		/// </summary>
-		public Guid ActiveTurn { get; }
+		public Guid ActivePlayer { get; }
 
 		/// <summary>
 		/// Gets the amount of turns already played.

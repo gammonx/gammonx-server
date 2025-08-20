@@ -26,6 +26,12 @@ namespace GammonX.Server
 		public static string MatchStartedEvent = "match-started";
 
 		/// <summary>
+		/// Invoked when the active player made his last move to win the last game round.
+		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+		/// </summary>
+		public static string MatchEndedEvent = "match-ended";
+
+		/// <summary>
 		/// Invoked when the first player started the game round and is waiting for the second player to join.
 		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
 		/// </summary>
@@ -42,6 +48,12 @@ namespace GammonX.Server
 		/// Returns a <see cref="EventResponseContract{EventGameStatePayload}"/>
 		/// </summary>
 		public static string GameStateEvent = "game-state";
+
+		/// <summary>
+		/// Invoked when the active player made his last move to win the game.
+		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+		/// </summary>
+		public static string GameEndedEvent = "game-ended";
 
 		/// <summary>
 		/// General error event.

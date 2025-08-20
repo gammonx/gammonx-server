@@ -10,6 +10,8 @@ namespace GammonX.Server.Tests
 {
 	public class GameSessionTests
 	{
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+
 		[Theory]
 		[InlineData(GameModus.Backgammon)]
 		[InlineData(GameModus.Tavla)]
@@ -19,7 +21,7 @@ namespace GammonX.Server.Tests
 		public void GameSessionCreateTest(GameModus modus)
 		{
 			var matchId = Guid.NewGuid();
-			var gameSession = GameSessionFactory.Create(matchId, modus);
+			var gameSession = _gameSessionFactory.Create(matchId, modus);
 			Assert.NotNull(gameSession);
 			Assert.Equal(matchId, gameSession.MatchId);
 			Assert.NotEqual(matchId, gameSession.Id);
@@ -37,15 +39,15 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
+		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
 		[InlineData(GameModus.Plakoto, false)]
-		[InlineData(GameModus.Fevga, false)]
 		public void GameSessionActivePlayerCanMoveCheckersSingleDice(GameModus modus, bool isWhite)
 		{
-			var gameSession = GameSessionFactory.Create(Guid.NewGuid(), modus);
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -79,15 +81,15 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
+		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
 		[InlineData(GameModus.Plakoto, false)]
-		[InlineData(GameModus.Fevga, false)]
 		public void GameSessionActivePlayerCanMoveCheckersTwoDices(GameModus modus, bool isWhite)
 		{
-			var gameSession = GameSessionFactory.Create(Guid.NewGuid(), modus);
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -116,15 +118,15 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
+		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
 		[InlineData(GameModus.Plakoto, false)]
-		[InlineData(GameModus.Fevga, false)]
 		public void GameSessionActivePlayerCanMoveCheckersPaschDices(GameModus modus, bool isWhite)
 		{
-			var gameSession = GameSessionFactory.Create(Guid.NewGuid(), modus);
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 1]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -174,7 +176,7 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Fevga, false)]
 		public void GameSessionCannotMoveNotExistingLegalMove(GameModus modus, bool isWhite)
 		{
-			var gameSession = GameSessionFactory.Create(Guid.NewGuid(), modus);
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);

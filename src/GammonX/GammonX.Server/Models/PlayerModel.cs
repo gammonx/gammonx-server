@@ -17,24 +17,36 @@ namespace GammonX.Server.Models
 
 		public Guid Id { get; private set; }
 
-		public bool MatchAccepted { get; private set; } = false;
+		public bool NextGameAccepted { get; private set; } = false;
 
 		/// <summary>
 		/// Gets the score of the player in the current match session.
 		/// </summary>
-		public int Score { get; private set; } = 0;
+		public int Score { get; internal set; } = 0;
 
 		/// <summary>
-		/// Accepts the match for this player.
+		/// Accepts the next game for this player.
 		/// </summary>
-		public void AcceptMatch()
+		public void AcceptNextGame()
 		{
-			MatchAccepted = true;
+			NextGameAccepted = true;
+		}
+
+		/// <summary>
+		/// Resets the next game accepted state of this player.
+		/// </summary>
+		public void ActiveGameOver()
+		{
+			NextGameAccepted = false;
 		}
 
 		public PlayerContract ToContract()
 		{
-			return new PlayerContract(Id, Score);
+			return new PlayerContract()
+			{
+				Id = Id,
+				Score = Score
+			};
 		}
 	}
 }

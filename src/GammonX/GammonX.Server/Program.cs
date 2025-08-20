@@ -9,6 +9,8 @@ builder.Services.AddSignalR();
 
 builder.Services.AddSingleton<SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
+builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
+builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 
 builder.Services.AddCors(options =>
 {

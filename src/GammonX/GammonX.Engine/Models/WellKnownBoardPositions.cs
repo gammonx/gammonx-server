@@ -3,7 +3,7 @@
 	/// <summary>
 	/// Contains well-known board positions for different game modes.
 	/// </summary>
-	internal static class WellKnownBoardPositions
+	public static class WellKnownBoardPositions
 	{
 		/// <summary>
 		/// Gets the well known <c>to</c> value for bearing off white legal move tuples.

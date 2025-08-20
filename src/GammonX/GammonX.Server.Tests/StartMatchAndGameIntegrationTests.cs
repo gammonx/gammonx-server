@@ -1,8 +1,11 @@
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
+using GammonX.Server.Services;
+using GammonX.Server.Tests.Stubs;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
@@ -10,25 +13,35 @@ using System.Net.Http.Json;
 
 namespace GammonX.Server.Tests
 {
-	public class MatchLobbyHubTests : IClassFixture<WebApplicationFactory<Program>>
+	public class StartMatchAndGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 	{
 		private readonly WebApplicationFactory<Program> _factory;
 
 		private static volatile bool _player1EndedHisTurn;
 
-		public MatchLobbyHubTests(WebApplicationFactory<Program> factory)
+		public StartMatchAndGameIntegrationTests(WebApplicationFactory<Program> factory)
 		{
-			_factory = factory;
+			_factory = factory.WithWebHostBuilder(builder =>
+			{
+				builder.ConfigureServices(services =>
+				{
+					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IGameSessionFactory));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+
+					services.AddSingleton<IGameSessionFactory>(new TavliStartGameSessionFactoryStub());
+				});
+			});
 		}
 
 		[Fact]
-		public async Task MatchAndGameIntegrationTest()
+		public async Task StartMatchAndGameIntegrationTest()
 		{
-			// arrange in memory rest service
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			// arrange player 1
 			var player1 = new {
 				PlayerId = "fdd907ca-794a-43f4-83e6-cadfabc57c45",
 				MatchVariant = WellKnownMatchVariant.Tavli
@@ -45,7 +58,6 @@ namespace GammonX.Server.Tests
 				})
 				.Build();
 
-			// arrange player 2
 			var player2 = new
 			{
 				PlayerId = "f6f9bb06-cbf6-4f42-80bf-5d62be34cff6",
@@ -64,6 +76,20 @@ namespace GammonX.Server.Tests
 				.Build();
 
 			Assert.Equal(joinPayload1.MatchId, joinPayload2.MatchId);
+
+			// ##################################################
+			// ERROR
+			// ##################################################
+
+			player1Connection.On<object>(ServerEventTypes.ErrorEvent, response =>
+			{
+				Assert.Fail();
+			});
+
+			player2Connection.On<object>(ServerEventTypes.ErrorEvent, response =>
+			{
+				Assert.Fail();
+			});
 
 			// ##################################################
 			// PLAYERS JOINING THE MATCH

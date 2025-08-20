@@ -31,6 +31,9 @@ namespace GammonX.Engine.Models
 		public virtual int BearOffCountBlack { get; protected set; } = 0;
 
 		// <inheritdoc />
+		public virtual int WinConditionCount => 15;
+
+		// <inheritdoc />
 		public abstract int BlockAmount { get; }
 
 		// <inheritdoc />
@@ -68,7 +71,7 @@ namespace GammonX.Engine.Models
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeWhite.Start.Value)
-						.Take(currentPosition - HomeRangeWhite.Start.Value + 1)
+						.Take(currentPosition - HomeRangeWhite.Start.Value)
 						.Any(v => v < 0);
 					return highestCheckerIndex;
 				}
@@ -89,7 +92,7 @@ namespace GammonX.Engine.Models
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeBlack.Start.Value)
-						.Take(currentPosition + HomeRangeBlack.Start.Value - 1)
+						.Take(currentPosition + HomeRangeBlack.Start.Value)
 						.Any(v => v > 0);
 					return highestCheckerIndex;
 				}

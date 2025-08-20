@@ -86,14 +86,7 @@ namespace GammonX.Server
 						var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchSession.Player1.Id, matchSession.Player2.Id);
 						var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyPayload);
 						await Clients.Group(groupName).SendAsync(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
-
-						var matchStatePayload = matchSession.ToPayload(ServerCommands.StartGameCommand);
-						var matchStateContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.MatchStartedEvent, matchStatePayload);
-						ArgumentNullException.ThrowIfNull(matchSession.Player1.ConnectionId, nameof(matchSession.Player1.ConnectionId));
-						ArgumentNullException.ThrowIfNull(matchSession.Player2.ConnectionId, nameof(matchSession.Player2.ConnectionId));
-
-						await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(ServerEventTypes.MatchStartedEvent, matchStateContract);
-						await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(ServerEventTypes.MatchStartedEvent, matchStateContract);
+						await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession, ServerCommands.StartGameCommand);
 					}
 					else
 					{
@@ -139,22 +132,22 @@ namespace GammonX.Server
 				{
 					if (matchSession.Player1?.ConnectionId == Context.ConnectionId)
 					{
-						matchSession.Player1.AcceptMatch();
+						matchSession.Player1.AcceptNextGame();
 					}
 
 					if (matchSession.Player2?.ConnectionId == Context.ConnectionId)
 					{
-						matchSession.Player2.AcceptMatch();
+						matchSession.Player2.AcceptNextGame();
 					}
 
-					if (matchSession.CanStartGame())
+					if (matchSession.CanStartNextGame())
 					{
-						var gameSession = matchSession.StartMatch();
+						var gameSession = matchSession.StartNextGame();
 						await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
-					}
+					}					
 					else
 					{
-						var matchPayload = matchSession.ToPayload(Array.Empty<string>());
+						var matchPayload = matchSession.ToPayload();
 						var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
 						await Clients.Caller.SendAsync(ServerEventTypes.GameWaitingEvent, matchContract);
 					}
@@ -236,9 +229,24 @@ namespace GammonX.Server
 				{
 					// calling and active player must be the same
 					var callingPlayerId = GetCallingPlayerId(matchSession);
-					matchSession.MoveCheckers(callingPlayerId, from, to);
+					var gameOver = matchSession.MoveCheckers(callingPlayerId, from, to);
+					// check if this move won the game for the active player
+					if (gameOver)
+					{
+						// check if this was the last move to win the last game and the match
+						if (matchSession.IsMatchOver())
+						{
+							await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+							// TODO :: end web socket connections for both players
+						}
+						else
+						{
+							// TODO :: maybe send game win type (norma,gammon, backgammon)
+							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+						}
+					}					
 					// check if the turn was finished
-					if (matchSession.CanEndTurn(callingPlayerId))
+					else if (matchSession.CanEndTurn(callingPlayerId))
 					{
 						// calling player finished his turn, other player can now roll
 						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
@@ -315,6 +323,15 @@ namespace GammonX.Server
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, player1Contract);
 			await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, player2Contract);
 		}
+
+		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
+		{
+			var matchStatePayload = matchSession.ToPayload(allowedCommands);
+			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
+			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, matchStateContract);
+			await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
+		}
+
 		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null)
 		{
 			var payload = new EventErrorPayload(errorCode, message);

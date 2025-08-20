@@ -51,16 +51,16 @@ namespace GammonX.Server.Models
 		void JoinSession(LobbyEntry player);
 
 		/// <summary>
-		/// Starts a match session for the current game round.
+		/// Gets a boolean indicating if the game can be started or the next round can be player.
 		/// </summary>
-		/// <returns>The state of the started game round.</returns>
-		IGameSessionModel StartMatch();
+		/// <returns>Boolean indicating if the game can be started or the next round started.</returns>
+		bool CanStartNextGame();
 
 		/// <summary>
-		/// Starts the next game round in the match session and returns the state of the game session for the next round.
+		/// Starts a match session and the next game round.	
 		/// </summary>
-		/// <returns>The state of the next game round.</returns>
-		IGameSessionModel NextGameRound();
+		/// <returns>The state of the started game round.</returns>
+		IGameSessionModel StartNextGame();
 
 		/// <summary>
 		/// Rolls the dices for the active player in the current game session and updates the game state accordingly.
@@ -74,13 +74,32 @@ namespace GammonX.Server.Models
 		/// <param name="callingPlayerId">Player to move his checkers.</param>
 		/// <param name="from">From board array index.</param>
 		/// <param name="to">To board array index.</param>
-		void MoveCheckers(Guid callingPlayerId, int from, int to);
+		/// <returns>Boolean indicating if the made move wins the game for the active player.</returns>
+		bool MoveCheckers(Guid callingPlayerId, int from, int to);
+
+		/// <summary>
+		/// Checks if the active player can end his turn.
+		/// </summary>
+		/// <returns>A boolean indicating if the active player can end his turn.</returns>
+		bool CanEndTurn(Guid playerId);
 
 		/// <summary>
 		/// The active player has finished his turn and the next player is now active.
 		/// </summary>
 		/// <param name="callingPlayerId">Player to finish his turn.</param>
 		void EndTurn(Guid callingPlayerId);
+
+		/// <summary>
+		/// Checks if all games are player and over
+		/// </summary>
+		/// <returns>Boolean indicating if the match is over.</returns>
+		bool IsMatchOver();
+
+		/// <summary>
+		/// Gts the current game modus of the match session.
+		/// </summary>
+		/// <returns>The active game modus.</returns>
+		GameModus GetGameModus();
 
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.
@@ -91,28 +110,10 @@ namespace GammonX.Server.Models
 		EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands);
 
 		/// <summary>
-		/// Gts the current game modus of the match session.
-		/// </summary>
-		/// <returns>The active game modus.</returns>
-		GameModus GetGameModus();
-
-		/// <summary>
-		/// Gets a boolean indicating if the game can be started.
-		/// </summary>
-		/// <returns>Boolean indicating if the game can be started.</returns>
-		bool CanStartGame();
-
-		/// <summary>
 		/// Constructs and returns the match state payload for both players.
 		/// </summary>
 		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
 		/// <returns>Match state payload.</returns>
 		EventMatchStatePayload ToPayload(params string[] allowedCommands);
-
-		/// <summary>
-		/// Checks if the active player can end his turn.
-		/// </summary>
-		/// <returns>A boolean indicating if the active player can end his turn.</returns>
-		bool CanEndTurn(Guid playerId);
 	}
 }
