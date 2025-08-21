@@ -37,7 +37,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
-			Assert.IsType<MatchSession>(session);
+			Assert.IsAssignableFrom<MatchSession>(session);
 		}
 
 		[Theory]
@@ -46,7 +46,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPayloadCreated(WellKnownMatchVariant variant)
 		{
-			var result = CreateMatchSession(variant);
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
 			var session = result.Session;
 			var matchId = result.MatchId;
 			var payload = session.ToPayload();
@@ -67,13 +67,13 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayersCanJoin(WellKnownMatchVariant variant)
 		{
-			var result = CreateMatchSession(variant);
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
 
-			var player1 = CreateLobbyEntry();
-			var player2 = CreateLobbyEntry();
-			var player3 = CreateLobbyEntry();
+			var player1 = SessionUtils.CreateLobbyEntry();
+			var player2 = SessionUtils.CreateLobbyEntry();
+			var player3 = SessionUtils.CreateLobbyEntry();
 			session.JoinSession(player1);
 			Assert.Equal(player1.PlayerId, session.Player1.Id);
 			Assert.NotEqual(Guid.Empty, session.Player1.Id);
@@ -89,7 +89,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayersCannotJoin(WellKnownMatchVariant variant)
 		{
-			var result = CreateMatchSession(variant);
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
 			var entry = new LobbyEntry(Guid.NewGuid());
@@ -102,10 +102,10 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayerCannotJoinTwice(WellKnownMatchVariant variant)
 		{
-			var result = CreateMatchSession(variant);
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
-			var entry = CreateLobbyEntry();
+			var entry = SessionUtils.CreateLobbyEntry();
 			session.JoinSession(entry);
 			Assert.Throws<InvalidOperationException>(() => session.JoinSession(entry));
 		}
@@ -116,7 +116,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
 		public void MatchSessionCanStartMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			Assert.False(session.CanStartNextGame());
 			session.Player1.AcceptNextGame();
@@ -137,7 +137,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionActivePlayerCanRollDices(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -157,7 +157,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionNotActivePlayerCannotRollDices(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -173,7 +173,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCannotRollDicesIfNotStarted(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -187,7 +187,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCannotMoveIfNotStarted(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -201,7 +201,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCannotMoveIfNotActivePlayer(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -215,7 +215,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCanMoveCheckers(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -246,7 +246,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCanEndTurn(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -292,7 +292,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCannotEndTurnNotStartedMatch(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -307,7 +307,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCannotReturnProperGameState(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -322,7 +322,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
 		{
-			var session = CreateMatchSessionWithPlayers(variant);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -336,32 +336,6 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(gameState);
 			Assert.Empty(gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
-		}
-
-		private static IMatchSessionModel CreateMatchSessionWithPlayers(WellKnownMatchVariant variant)
-		{
-			var result = CreateMatchSession(variant);
-			var session = result.Session as IMatchSessionModel;
-			Assert.NotNull(session);
-			var player1 = CreateLobbyEntry();
-			var player2 = CreateLobbyEntry();
-			session.JoinSession(player1);
-			session.JoinSession(player2);
-			return session;
-		}
-
-		private static dynamic CreateMatchSession(WellKnownMatchVariant variant)
-		{
-			var matchId = Guid.NewGuid();
-			var session = _matchSessionFactory.Create(matchId, variant);
-			return new { MatchId = matchId, Session = session };
-		}
-
-		private static LobbyEntry CreateLobbyEntry()
-		{
-			var entry = new LobbyEntry(Guid.NewGuid());
-			entry.SetConnectionId(Guid.NewGuid().ToString());
-			return entry;
 		}
 	}
 }

@@ -34,11 +34,11 @@ namespace GammonX.Server.Services
 			switch (variant)
 			{
 				case WellKnownMatchVariant.Backgammon:
-					return new MatchSession(id, variant, [GameModus.Backgammon], _gameSessionFactory);
+					return new BackgammonMatchSession(id, variant, [GameModus.Backgammon], _gameSessionFactory);
 				case WellKnownMatchVariant.Tavla:
-					return new MatchSession(id, variant, [GameModus.Tavla], _gameSessionFactory);
+					return new TavlaMatchSession(id, variant, [GameModus.Tavla], _gameSessionFactory);
 				case WellKnownMatchVariant.Tavli:
-					return new MatchSession(id, variant, [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga], _gameSessionFactory);
+					return new TavliMatchSession(id, variant, [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga], _gameSessionFactory);
 				default:
 					throw new ArgumentOutOfRangeException(nameof(variant), variant, "Unknown match variant.");
 			}

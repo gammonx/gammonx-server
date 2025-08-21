@@ -84,6 +84,8 @@ namespace GammonX.Server.Models
 		public IGameSessionModel StartNextGame()
 		{
 			// TODO :: which player starts rolling?
+			// > decided by a initial single roll by each player
+			// > subsequent game round the winning player always starts
 			var gameSession = GetOrCreateGameSession(GameRound);
 
 			if (gameSession.Phase != GamePhase.GameOver)
@@ -288,7 +290,6 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		protected virtual int CalculateScore(Guid playerId)
 		{
-			// TODO :: implement score calculation based on the game variant and rules
 			return 1;
 		}
 
@@ -309,7 +310,7 @@ namespace GammonX.Server.Models
 			return existingSession;
 		}
 
-		private IGameSessionModel? GetGameSession(int round)
+		protected IGameSessionModel? GetGameSession(int round)
 		{
 			var existingSession = _gameSessions[round - 1];
 			return existingSession;
@@ -328,7 +329,7 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
-		private Guid GetOtherPlayerId(Guid playerId)
+		protected Guid GetOtherPlayerId(Guid playerId)
 		{
 			if (Player1.Id.Equals(playerId))
 			{

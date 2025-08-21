@@ -130,9 +130,9 @@ namespace GammonX.Server.Models
 			{
 				// TODO :: test different bear off moves
 				// TODO :: test different enter from bar moves
-				var distance = GetMoveDistance(BoardModel, from, to);
+				var distance = GetMoveDistance(BoardModel, from, to, out var bearOffMove);
 
-				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, out var usedDices))
+				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, bearOffMove, out var usedDices))
 				{
 					_boardService.MoveCheckerTo(BoardModel, from, to, isWhite);
 					legalMove.Use();
@@ -194,22 +194,26 @@ namespace GammonX.Server.Models
 
 		#region Private Methods
 
-		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, out List<DiceRollContract> usedDices)
+		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, bool bearOffMove, out List<DiceRollContract> usedDices)
 		{
 			// TODO :: highest roll has to be used first
 			usedDices = new List<DiceRollContract>();
-			return Backtrack(unusedDices, distance, 0, new List<DiceRollContract>(), out usedDices);
+			// we order the rolls in ascending order to make sure that the lowest roll
+			// always bears of a potential checker
+			unusedDices = unusedDices.OrderBy(dice => dice.Roll).ToArray();
+			return Backtrack(unusedDices, distance, 0, new List<DiceRollContract>(), bearOffMove, out usedDices);
 		}
 
-		private bool Backtrack(
+		private static bool Backtrack(
 			DiceRollContract[] dices,
 			int distance,
 			int start,
 			List<DiceRollContract> current,
+			bool bearOffMove,
 			out List<DiceRollContract> result)
 		{
 			// Algorithmus (Subset-Sum auf Dices)
-			if (distance == 0)
+			if (distance <= 0)
 			{
 				result = new List<DiceRollContract>(current);
 				return true;
@@ -217,34 +221,50 @@ namespace GammonX.Server.Models
 
 			for (int i = start; i < dices.Length; i++)
 			{
-				if (dices[i].Roll <= distance)
+				if (bearOffMove)
 				{
-					current.Add(dices[i]);
-					if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, out result))
-						return true;
-					current.RemoveAt(current.Count - 1);
+					if (dices[i].Roll >= distance)
+					{
+						current.Add(dices[i]);
+						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
+							return true;
+						current.RemoveAt(current.Count - 1);
+					}
 				}
+				else
+				{
+					if (dices[i].Roll <= distance)
+					{
+						current.Add(dices[i]);
+						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
+							return true;
+						current.RemoveAt(current.Count - 1);
+					}
+				}				
 			}
 
 			result = null!;
 			return false;
 		}
 
-		private static int GetMoveDistance(IBoardModel model, int from, int to)
+		private static int GetMoveDistance(IBoardModel model, int from, int to, out bool bearOffMove)
 		{
 			if (to == WellKnownBoardPositions.BearOffWhite)
 			{
-				var distance = Math.Abs(from - model.HomeRangeWhite.End.Value);
+				var distance = Math.Abs(from + 1 - model.HomeRangeWhite.End.Value);
+				bearOffMove = true;
 				return distance;
 			}
 			else if (to == WellKnownBoardPositions.BearOffBlack)
 			{
-				var distance = Math.Abs(from - model.HomeRangeBlack.End.Value);
+				var distance = Math.Abs(from + 1 - model.HomeRangeBlack.End.Value);
+				bearOffMove = true;
 				return distance;
 			}
 			else
 			{
 				var distance = Math.Abs(from - to);
+				bearOffMove = false;
 				return distance;
 			}
 		}

@@ -160,19 +160,19 @@ namespace GammonX.Server.Tests
 					if (payload.GameRound == 1)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(1, payload.Player1.Score);
+						Assert.Equal(2, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 					else if (payload.GameRound == 2)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(2, payload.Player1.Score);
+						Assert.Equal(4, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 					else if (payload.GameRound == 3)
 					{
 						Assert.Empty(payload.AllowedCommands);
-						Assert.Equal(3, payload.Player1.Score);
+						Assert.Equal(6, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 				}
@@ -191,19 +191,19 @@ namespace GammonX.Server.Tests
 					if (payload.GameRound == 1)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(1, payload.Player1.Score);
+						Assert.Equal(2, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 					else if (payload.GameRound == 2)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(2, payload.Player1.Score);
+						Assert.Equal(4, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 					else if (payload.GameRound == 3)
 					{
 						Assert.Empty(payload.AllowedCommands);
-						Assert.Equal(3, payload.Player1.Score);
+						Assert.Equal(6, payload.Player1.Score);
 						Assert.Equal(0, payload.Player2.Score);
 					}
 				}
@@ -221,7 +221,7 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Empty(payload.AllowedCommands);
-					Assert.Equal(3, payload.Player1.Score);
+					Assert.Equal(6, payload.Player1.Score);
 					Assert.Equal(0, payload.Player2.Score);
 					matchEndedForPlayer1 = true;
 				}
@@ -239,7 +239,7 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Empty(payload.AllowedCommands);
-					Assert.Equal(3, payload.Player1.Score);
+					Assert.Equal(6, payload.Player1.Score);
 					Assert.Equal(0, payload.Player2.Score);
 					matchEndedForPlayer2 = true;
 				}
