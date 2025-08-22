@@ -10,6 +10,9 @@ namespace GammonX.Server.Models
 	{
 		private readonly IBoardService _boardService;
 		private IDiceService _diceService;
+		
+		private int _winnerScore;
+		private Guid _winner;
 
 		// <inheritdoc />
 		public GameModus Modus { get; private set; }
@@ -69,8 +72,10 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public void StopGame()
+		public void StopGame(Guid winnerPlayerId, int score)
 		{
+			_winner = winnerPlayerId;
+			_winnerScore = score;
 			Phase = GamePhase.GameOver;
 		}
 
@@ -179,6 +184,24 @@ namespace GammonX.Server.Models
 			}
 
 			return payload;
+		}
+
+		// <inheritdoc />
+		public GameRoundContract ToContract(int gameRoundIndex)
+		{
+			var contract = new GameRoundContract()
+			{
+				GameRoundIndex = gameRoundIndex,
+				Modus = Modus,
+				Phase = Phase,
+			};
+
+			if (Phase == GamePhase.GameOver)
+			{
+				contract.Winner = _winner;
+				contract.Score = _winnerScore;
+			}
+			return contract;
 		}
 
 		/// <summary>

@@ -26,5 +26,30 @@
 		/// If the active player, the caller can end his turn and switch to the next player.
 		/// </summary>
 		public static readonly string EndTurnCommand = "EndTurn";
+
+		/// <summary>
+		/// The calling player resigns the match and loses automatically.
+		/// </summary>
+		public static readonly string ResignMatch = "ResignMatch";
+
+		/// <summary>
+		/// The calling player resigns the game and loses as a back-/gammon.
+		/// </summary>
+		public static readonly string ResignGame = "ResignGame";
+
+		/// <summary>
+		/// The doubling cube owner offers a double.
+		/// </summary>
+		public static readonly string OfferDouble = "OfferDouble";
+
+		/// <summary>
+		/// The non doubling cube owner accepts the double offering.
+		/// </summary>
+		public static readonly string AcceptDouble = "AcceptDouble";
+
+		/// <summary>
+		/// The non doubling cube owner declines the double offering and automatically loses as a backgammon.
+		/// </summary>
+		public static readonly string DeclineDouble = "DeclineDouble";
 	}
 }

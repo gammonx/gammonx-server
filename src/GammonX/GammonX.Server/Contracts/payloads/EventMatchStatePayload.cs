@@ -13,6 +13,9 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "gameRound")]
 		public int GameRound { get; set; }
 
+		[DataMember(Name = "gameRounds")]
+		public GameRoundContract[] GameRounds { get; set; }
+
 		[DataMember(Name = "variant")]
 		public WellKnownMatchVariant Variant { get; set; }
 

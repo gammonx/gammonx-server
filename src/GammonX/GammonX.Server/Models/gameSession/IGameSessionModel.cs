@@ -82,7 +82,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Stops the current game session.
 		/// </summary>
-		public void StopGame();
+		/// <param name="winner">Player id who won the game.</param>
+		/// <param name="score">Score achieved by the winner.</param>
+		public void StopGame(Guid winner, int score);
 
 		/// <summary>
 		/// The player1 rolled his dices and made his moves. Now the active player is switched to player2.
@@ -117,5 +119,12 @@ namespace GammonX.Server.Models
 		/// <param name="allowedCommands">An array of allowed commands for the player.</param>
 		/// <returns>An instance of <see cref="EventGameStatePayload"/>.</returns>
 		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands);
+
+		/// <summary>
+		/// Creates a game round contract which concludes the game session.
+		/// </summary>
+		/// <param name="gameRoundIndex">Index of the game session played in the match session.</param>
+		/// <returns>An instance of <see cref="GameRoundContract"/>.</returns>
+		public GameRoundContract ToContract(int gameRoundIndex);
 	}
 }

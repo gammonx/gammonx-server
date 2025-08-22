@@ -161,6 +161,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(player2.PlayerId, payload.Player2.Id.ToString());
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
+					Assert.Empty(payload.GameRounds);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
 					player1MatchStarted = true;
 				}
@@ -178,6 +179,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(player2.PlayerId, payload.Player2.Id.ToString());
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
+					Assert.Empty(payload.GameRounds);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
 					player2MatchStarted = true;
 				}
@@ -196,6 +198,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
 					Assert.Equal(player1.PlayerId, payload.Player1.Id.ToString());
 					Assert.Empty(payload.AllowedCommands);
+					Assert.Empty(payload.GameRounds);
 					player1GameWaiting = true;
 				}
 				else

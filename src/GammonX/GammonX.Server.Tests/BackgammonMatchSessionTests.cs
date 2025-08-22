@@ -8,6 +8,9 @@ namespace GammonX.Server.Tests
 {
 	public class BackgammonMatchSessionTests
 	{
+		// TODO doubling cube tests
+		// TODO analogue tests for tavli and tavla
+
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
@@ -38,6 +41,22 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player1.Score);
 			Assert.Equal(0, session.Player2.Score);
+
+			var matchState = session.ToPayload();
+			Assert.Empty(matchState.AllowedCommands);
+			Assert.Equal(1, matchState.GameRound);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.Player1.Score);
+			Assert.Equal(0, matchState.Player2.Score);
+			Assert.Equal(session.Id, matchState.Id);
+			Assert.Equal(WellKnownMatchVariant.Backgammon, matchState.Variant);
+			Assert.Equal(session.Player1.Id, matchState.Player1.Id);
+			Assert.Equal(session.Player2.Id, matchState.Player2.Id);
+			Assert.Single(matchState.GameRounds);
+			Assert.Equal(GameModus.Backgammon, matchState.GameRounds[0].Modus);
+			Assert.Equal(GamePhase.GameOver, matchState.GameRounds[0].Phase);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.GameRounds[0].Score);
+			Assert.Equal(0, matchState.GameRounds[0].GameRoundIndex);
+			Assert.Equal(session.Player1.Id, matchState.GameRounds[0].Winner);
 		}
 
 		[Fact]
@@ -67,6 +86,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player1.Score);
 			Assert.Equal(0, session.Player2.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -99,6 +121,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Score);
 			Assert.Equal(0, session.Player2.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -129,6 +154,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Score);
 			Assert.Equal(0, session.Player2.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -160,6 +188,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player2.Score);
 			Assert.Equal(0, session.Player1.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -191,6 +222,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player2.Score);
 			Assert.Equal(0, session.Player1.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -225,6 +259,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Score);
 			Assert.Equal(0, session.Player1.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
 		}
 
 		[Fact]
@@ -257,6 +294,9 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Score);
 			Assert.Equal(0, session.Player1.Score);
+			var matchState = session.ToPayload();
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
 		}
 	}
 }

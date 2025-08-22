@@ -322,19 +322,21 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
 		{
+			var defaultAllowedCommands = new[] { ServerCommands.ResignGame, ServerCommands.ResignMatch };
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			session.StartNextGame();
-			var allowedCommands = new string[] {"testCommand"};			
+			var allowedCommands = new string[] {"testCommand"};
+			allowedCommands = allowedCommands.Union(defaultAllowedCommands).ToArray();
 			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
 			Assert.NotNull(gameState);
 			Assert.Equal(allowedCommands, gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForRoll, gameState.Phase);
 			gameState = session.GetGameState(session.Player2.Id, allowedCommands);
 			Assert.NotNull(gameState);
-			Assert.Empty(gameState.AllowedCommands);
+			Assert.Equal(defaultAllowedCommands, gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
 		}
 	}

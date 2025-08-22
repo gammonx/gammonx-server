@@ -70,5 +70,12 @@ namespace GammonX.Server.Models
 
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
+
+		// <inheritdoc />
+		protected override int CalculateResignGameScore()
+		{
+			// wins with a gammon
+			return 2;
+		}
 	}
 }

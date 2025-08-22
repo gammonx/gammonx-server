@@ -92,6 +92,13 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
+		// <inheritdoc />
+		protected override int CalculateResignGameScore()
+		{
+			// wins with a back-gammon
+			return 3;
+		}
+
 		private static bool LoserHasCheckersInWinnersHomeBoard(IBoardModel model, bool isWhite)
 		{
 			if (isWhite)

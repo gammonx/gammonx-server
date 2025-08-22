@@ -241,7 +241,6 @@ namespace GammonX.Server
 						}
 						else
 						{
-							// TODO :: maybe send game win type (norma,gammon, backgammon)
 							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
 						}
 					}					
@@ -309,6 +308,77 @@ namespace GammonX.Server
 				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to roll the dices: '{e.Message}'");
 			}
 		}
+
+		public async Task ResignMatch(string matchId)
+		{
+			// TODO ResignMatch
+			throw new NotImplementedException();
+		}
+
+		/// <summary>
+		/// The calling player resigns the active game round of the match with given <paramref name="matchId"/>.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>Task to be awaited.</returns>
+		public async Task ResignGame(string matchId)
+		{
+			// TODO unit tests
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("RESIGN_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					// calling and active player must be the same
+					var callingPlayerId = GetCallingPlayerId(matchSession);
+					matchSession.ResignGame(callingPlayerId);
+					// check if this was the last game round of the match
+					if (matchSession.IsMatchOver())
+					{
+						await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+						// TODO :: end web socket connections for both players
+					}
+					else
+					{
+						await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+					}
+				}
+				else
+				{
+					await SendErrorEventAsync("RESIGN_GAME_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("RESIGN_GAME_ERROR", $"An error occurred while resigning the game: '{e.Message}'");
+			}
+		}
+
+		#region Doubling Cube Commands
+
+		public async Task OfferDouble(string matchId)
+		{
+			// TODO OfferDouble
+			throw new NotImplementedException();
+		}
+
+		public async Task AcceptDouble(string matchId)
+		{
+			// TODO AcceptDouble
+			throw new NotImplementedException();
+		}
+
+		public async Task DeclineDouble(string matchId)
+		{
+			// TODO DeclineDouble
+			throw new NotImplementedException();
+		}
+
+		#endregion Doubling Cube Commands
 
 		#endregion Commands
 
