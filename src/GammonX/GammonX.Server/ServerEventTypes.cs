@@ -64,5 +64,20 @@ namespace GammonX.Server
 		/// Event that signals the clients that they must disconnect the socket connection.
 		/// </summary>
 		public static string ForceDisconnect = "force-disconnect";
+
+		/// <summary>
+		/// Event that signals that the double cube owner offered a double to his opponent.
+		/// </summary>
+		public static string DoubleOffered = "double-offered";
+
+		/// <summary>
+		/// Event that signals that the double offer was accepted.
+		/// </summary>
+		public static string DoubleAccepted = "double-accepted";
+
+		/// <summary>
+		/// Event that signals that the double off was declined.
+		/// </summary>
+		public static string DoubleDeclined = "double-declined";
 	}
 }

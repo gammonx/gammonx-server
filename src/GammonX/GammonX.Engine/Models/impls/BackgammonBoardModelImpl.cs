@@ -76,7 +76,7 @@ namespace GammonX.Engine.Models
 		public int DoublingCubeValue { get; private set; } = 1;
 
         // <inheritdoc />
-        public bool DoublingCubeOwner { get; private set; } = false;
+        public bool DoublingCubeOwner { get; set; } = false;
 
 		// <inheritdoc />
 		public void AcceptDoublingCubeOffer()

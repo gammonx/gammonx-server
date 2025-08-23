@@ -18,5 +18,12 @@ namespace GammonX.Server.Contracts
 		{
 			AllowedCommands = allowedCommands;
 		}
+
+		public void AppendAllowedCommands(params string[] allowedCommands)
+		{
+			var newAllowedCommands = AllowedCommands.ToList();
+			newAllowedCommands.AddRange(allowedCommands);
+			AllowedCommands = newAllowedCommands.ToArray();
+		}
 	}
 }

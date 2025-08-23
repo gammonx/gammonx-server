@@ -262,7 +262,7 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
+		public virtual EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
 		{
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
@@ -272,7 +272,7 @@ namespace GammonX.Server.Models
 			{
 				if (activeSession.ActivePlayer == Player1.Id)
 				{
-					// only active player can send commands
+					// only active player can send allowed commands
 					return activeSession.ToPayload(playerId, false, allowedCommands.Union(_alwaysAvailableCommands).ToArray());
 				}
 				return activeSession.ToPayload(playerId, false, _alwaysAvailableCommands);
@@ -282,7 +282,7 @@ namespace GammonX.Server.Models
 				// invert for player 2
 				if (activeSession.ActivePlayer == Player2.Id)
 				{
-					// only active player can send commands
+					// only active player can send allowed commands
 					return activeSession.ToPayload(playerId, true, allowedCommands.Union(_alwaysAvailableCommands).ToArray());
 				}
 				return activeSession.ToPayload(playerId, true, _alwaysAvailableCommands);
@@ -377,6 +377,19 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
+		protected PlayerModel GetPlayer(Guid playerId)
+		{
+			if (Player1.Id.Equals(playerId))
+			{
+				return Player1;
+			}
+			else if (Player2.Id.Equals(playerId))
+			{
+				return Player2;
+			}
+			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
 		#endregion
 
 		#region Private Methods
@@ -403,19 +416,6 @@ namespace GammonX.Server.Models
 			else if (Player2.Id.Equals(playerId))
 			{
 				return false;
-			}
-			throw new InvalidOperationException("Player is not part of this match session.");
-		}
-
-		private PlayerModel GetPlayer(Guid playerId)
-		{
-			if (Player1.Id.Equals(playerId))
-			{
-				return Player1;
-			}
-			else if (Player2.Id.Equals(playerId))
-			{
-				return Player2;
 			}
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}

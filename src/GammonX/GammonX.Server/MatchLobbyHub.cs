@@ -143,7 +143,7 @@ namespace GammonX.Server
 					{
 						var gameSession = matchSession.StartNextGame();
 						await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
-					}					
+					}
 					else
 					{
 						var matchPayload = matchSession.ToPayload();
@@ -241,7 +241,7 @@ namespace GammonX.Server
 						{
 							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
 						}
-					}					
+					}
 					// check if the turn was finished
 					else if (matchSession.CanEndTurn(callingPlayerId))
 					{
@@ -384,22 +384,146 @@ namespace GammonX.Server
 
 		#region Doubling Cube Commands
 
+		/// <summary>
+		/// The active doubling cube owner offers a double to his opponent who can accept or decline it.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>Task to be awaited.</returns>
 		public async Task OfferDouble(string matchId)
 		{
-			// TODO OfferDouble
-			throw new NotImplementedException();
+			// TODO OfferDouble :: integration test
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+					{
+						var callingPlayerId = GetCallingPlayerId(matchSession);
+						doubleCubeSession.OfferDouble(callingPlayerId);
+
+						var otherPlayerId = GetOtherPlayerId(matchSession);
+						// the player who is offering the double is waiting for a response
+						var callingPlayerGameSession = matchSession.GetGameState(callingPlayerId);
+						var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
+						var callingConnectionId = GetPlayerConnectionId(matchSession, callingPlayerId);
+						await Clients.Client(callingConnectionId).SendAsync(ServerEventTypes.GameWaitingEvent, callingPlayerContract);
+						// the player who got the double offered has to accept or decline it
+						var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDouble, ServerCommands.DeclineDouble]);
+						var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
+						var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
+						await Clients.Client(otherPlayerConnectionId).SendAsync(ServerEventTypes.DoubleOffered, otherPlayerContract);
+					}
+					else
+					{
+						await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
+					}
+				}
+				else
+				{
+					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"An error occurred while a double was offered: '{e.Message}'");
+			}
 		}
 
+		/// <summary>
+		/// The player who got the offer for a doubling cube increase accepted it.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>A task to be awaited.</returns>
 		public async Task AcceptDouble(string matchId)
 		{
-			// TODO AcceptDouble
-			throw new NotImplementedException();
+			// TODO AcceptDouble :: integration test
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+					{
+						var callingPlayerId = GetCallingPlayerId(matchSession);
+						doubleCubeSession.AcceptDouble(callingPlayerId);
+						// doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
+						// Therefore, the next command must be the roll command
+						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+					}
+					else
+					{
+						await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
+					}
+				}
+				else
+				{
+					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"An error occurred while accepting a double offer: '{e.Message}'");
+			}
 		}
 
+		/// <summary>
+		/// The player who got the offer for a doubling cube declines it and loses the active game round.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>A task to be awaited.</returns>
 		public async Task DeclineDouble(string matchId)
 		{
-			// TODO DeclineDouble
-			throw new NotImplementedException();
+			// TODO DeclineDouble :: integration test
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+					{
+						var callingPlayerId = GetCallingPlayerId(matchSession);
+						// declining a double offer automatically loses the current game round
+						doubleCubeSession.DeclineDouble(callingPlayerId);
+						// check if this was the last game round of the match
+						if (matchSession.IsMatchOver())
+						{
+							await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+						}
+						else
+						{
+							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+						}
+					}
+					else
+					{
+						await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
+					}
+				}
+				else
+				{
+					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"An error occurred while declining a double offer: '{e.Message}'");
+			}
 		}
 
 		#endregion Doubling Cube Commands
@@ -463,6 +587,32 @@ namespace GammonX.Server
 			if (matchSession.Player2.ConnectionId == Context.ConnectionId)
 			{
 				return matchSession.Player2.Id;
+			}
+			throw new InvalidOperationException("The calling player is not part of the match session.");
+		}
+
+		private Guid GetOtherPlayerId(IMatchSessionModel matchSession)
+		{
+			if (matchSession.Player1.ConnectionId == Context.ConnectionId)
+			{
+				return matchSession.Player2.Id;
+			}
+			if (matchSession.Player2.ConnectionId == Context.ConnectionId)
+			{
+				return matchSession.Player1.Id;
+			}
+			throw new InvalidOperationException("The calling player is not part of the match session.");
+		}
+
+		private static string GetPlayerConnectionId(IMatchSessionModel matchSession, Guid playerId)
+		{
+			if (matchSession.Player1.Id.Equals(playerId))
+			{
+				return matchSession.Player1.ConnectionId;
+			}
+			else if (matchSession.Player2.Id.Equals(playerId))
+			{
+				return matchSession.Player2.ConnectionId;
 			}
 			throw new InvalidOperationException("The calling player is not part of the match session.");
 		}

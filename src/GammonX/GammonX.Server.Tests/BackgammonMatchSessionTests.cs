@@ -8,16 +8,14 @@ namespace GammonX.Server.Tests
 {
 	public class BackgammonMatchSessionTests
 	{
-		// TODO doubling cube tests
 		// TODO analogue tests for tavli and tavla
-
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Fact]
 		public void BackgammonSingleGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(Models.WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -297,6 +295,145 @@ namespace GammonX.Server.Tests
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
+		}
+
+		[Fact]
+		public void BackgammonPlayersCanOfferDoubleBeforeRolling()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			var player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
+			Assert.Contains(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			var player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
+			Assert.DoesNotContain(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+
+			session.RollDices(session.Player1.Id);
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
+			Assert.DoesNotContain(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
+			Assert.DoesNotContain(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+
+			session.EndTurn(session.Player1.Id);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
+			Assert.DoesNotContain(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
+			Assert.Contains(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+		}
+
+		[Fact]
+		public void BackgammonPlayerCanOfferAndAcceptDoubles()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			Assert.NotNull(session);
+			var doublingCubeSession = session as IDoubleCubeMatchSession;
+			Assert.NotNull(doublingCubeSession);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			doublingCubeSession.OfferDouble(session.Player1.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			doublingCubeSession.AcceptDouble(session.Player2.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+		}
+
+		[Fact]
+		public void BackgammonPlayerCanOfferAndDeclineDoubles()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			Assert.NotNull(session);
+			var doublingCubeSession = session as IDoubleCubeMatchSession;
+			Assert.NotNull(doublingCubeSession);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			doublingCubeSession.OfferDouble(session.Player1.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			doublingCubeSession.DeclineDouble(session.Player2.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+		}
+
+		[Fact]
+		public void BackgammonPlayerCannotDoubles()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			Assert.NotNull(session);
+			var doublingCubeSession = session as IDoubleCubeMatchSession;
+			Assert.NotNull(doublingCubeSession);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame();
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			session.RollDices(session.Player1.Id);
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
+			var move = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault(lm => !lm.Used);
+			Assert.NotNull(move);
+			session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
+			move = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault(lm => !lm.Used);
+			Assert.NotNull(move);
+			session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
+			session.EndTurn(session.Player1.Id);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			// player 2 offers first double
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
+			doublingCubeSession.OfferDouble(session.Player2.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
+			doublingCubeSession.AcceptDouble(session.Player1.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
+			session.EndTurn(session.Player2.Id);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			// player 1 offers another double
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
+			doublingCubeSession.OfferDouble(session.Player1.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
+			doublingCubeSession.DeclineDouble(session.Player2.Id);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
+			// game is lost after double offer decline
+			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+			// score got doubled 1 * 2
+			Assert.Equal(2, session.Player1.Score);
+			Assert.Equal(0, session.Player2.Score);
 		}
 	}
 }
