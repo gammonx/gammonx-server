@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+
 using GammonX.Server.Services;
 
 namespace GammonX.Server.Models
@@ -22,6 +23,7 @@ namespace GammonX.Server.Models
 		/// The first player to bear off all fifteen checkers wins the game. 
 		/// If the losing player has borne off at least one checker, he loses only one point. 
 		/// If the losing player has not borne off any checkers, he loses two points.
+		/// There is no triple game.
 		/// </remarks>
 		/// <param name="playerId">Player id who won the game</param>
 		/// <returns>Score won with the game.</returns>

@@ -8,7 +8,6 @@ namespace GammonX.Server.Tests
 {
 	public class BackgammonMatchSessionTests
 	{
-		// TODO analogue tests for tavli and tavla
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
