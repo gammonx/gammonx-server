@@ -59,5 +59,10 @@ namespace GammonX.Server
 		/// General error event.
 		/// </summary>
 		public static string ErrorEvent = "error";
+
+		/// <summary>
+		/// Event that signals the clients that they must disconnect the socket connection.
+		/// </summary>
+		public static string ForceDisconnect = "force-disconnect";
 	}
 }

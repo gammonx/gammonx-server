@@ -212,9 +212,41 @@ namespace GammonX.Server.Models
 			// Other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			otherPlayer.Score += CalculateResignGameScore();
+			var gameScore = CalculateResignGameScore();
+			otherPlayer.Score += gameScore;
+			activeSession.StopGame(otherPlayerId, gameScore);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
+		}
+
+		// <inheritdoc />
+		public void ResignMatch(Guid callingPlayerId)
+		{
+			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
+			var otherPlayer = GetPlayer(otherPlayerId);
+
+			// get the score for all unplayed/unfinished game rounds
+			var scoreToAdd = 0;
+			for (int i = 0; i < _gameSessions.Length; i++)
+			{
+				var gameSession = _gameSessions[i];
+				if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
+				{
+					var gameScore = CalculateResignGameScore();
+					if (gameSession == null)
+					{
+						gameSession = GetOrCreateGameSession(i + 1);
+					}
+					gameSession.StopGame(otherPlayerId, gameScore);
+					scoreToAdd += gameScore;
+				}
+			}
+
+			Player1.ActiveGameOver();
+			Player2.ActiveGameOver();
+			GameRound = _gameSessions.Length;
+			// Other player gets the points for his score
+			otherPlayer.Score += scoreToAdd;
 		}
 
 		// <inheritdoc />
@@ -326,7 +358,7 @@ namespace GammonX.Server.Models
 			}
 		}
 
-		protected IGameSessionModel? GetGameSession(int round)
+		protected internal IGameSessionModel? GetGameSession(int round)
 		{
 			var existingSession = _gameSessions[round - 1];
 			return existingSession;

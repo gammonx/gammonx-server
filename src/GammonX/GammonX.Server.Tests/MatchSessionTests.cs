@@ -192,7 +192,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(Guid.NewGuid(), 0 , 1));
+			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(Guid.NewGuid(), 0, 1));
 		}
 
 		[Theory]
@@ -328,7 +328,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			session.StartNextGame();
-			var allowedCommands = new string[] {"testCommand"};
+			var allowedCommands = new string[] { "testCommand" };
 			allowedCommands = allowedCommands.Union(defaultAllowedCommands).ToArray();
 			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
 			Assert.NotNull(gameState);
@@ -338,6 +338,222 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(gameState);
 			Assert.Equal(defaultAllowedCommands, gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame();
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignGame(session.Player1.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.True(session.CanStartNextGame());
+				var newGameSession = session.StartNextGame();
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
+				Assert.Equal(2, session.GameRound);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame();
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignGame(session.Player2.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.True(session.CanStartNextGame());
+				var newGameSession = session.StartNextGame();
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
+				Assert.Equal(2, session.GameRound);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame();
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignMatch(session.Player1.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(3, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				var sessionInstace = session as MatchSession;
+				Assert.NotNull(sessionInstace);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame();
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignMatch(session.Player2.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(3, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				var sessionInstace = session as MatchSession;
+				Assert.NotNull(sessionInstace);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+			}
 		}
 	}
 }

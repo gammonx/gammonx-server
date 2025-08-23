@@ -10,6 +10,9 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "id")]
 		public Guid Id { get; set; }
 
+		[DataMember(Name = "groupName")]
+		public string GroupName => $"match_{Id}";
+
 		[DataMember(Name = "gameRound")]
 		public int GameRound { get; set; }
 

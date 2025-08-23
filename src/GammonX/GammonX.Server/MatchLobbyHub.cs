@@ -31,7 +31,6 @@ namespace GammonX.Server
 		// <inheritdoc />
 		public override async Task OnDisconnectedAsync(Exception? exception)
 		{
-			// Optional: Spieler aus Warteschlange entfernen
 			await base.OnDisconnectedAsync(exception);
 		}
 
@@ -237,7 +236,6 @@ namespace GammonX.Server
 						if (matchSession.IsMatchOver())
 						{
 							await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
-							// TODO :: end web socket connections for both players
 						}
 						else
 						{
@@ -309,10 +307,38 @@ namespace GammonX.Server
 			}
 		}
 
+		/// <summary>
+		/// The calling player resigns the match with given <paramref name="matchId"/>.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>Task to be awaited.</returns>
 		public async Task ResignMatch(string matchId)
 		{
-			// TODO ResignMatch
-			throw new NotImplementedException();
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					// calling and active player must be the same
+					var callingPlayerId = GetCallingPlayerId(matchSession);
+					matchSession.ResignMatch(callingPlayerId);
+					// check if this was the last game round of the match
+					await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+				}
+				else
+				{
+					await SendErrorEventAsync("RESIGN_MATCH_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"An error occurred while resigning the game: '{e.Message}'");
+			}
 		}
 
 		/// <summary>
@@ -322,7 +348,6 @@ namespace GammonX.Server
 		/// <returns>Task to be awaited.</returns>
 		public async Task ResignGame(string matchId)
 		{
-			// TODO unit tests
 			try
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
@@ -340,7 +365,6 @@ namespace GammonX.Server
 					if (matchSession.IsMatchOver())
 					{
 						await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
-						// TODO :: end web socket connections for both players
 					}
 					else
 					{
@@ -400,6 +424,13 @@ namespace GammonX.Server
 			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, matchStateContract);
 			await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
+
+			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+			{
+				await Clients.Groups(matchStatePayload.GroupName).SendAsync(ServerEventTypes.ForceDisconnect, default(object));
+				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, matchStateContract.Payload.GroupName);
+				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, matchStateContract.Payload.GroupName);
+			}
 		}
 
 		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null)
@@ -420,7 +451,7 @@ namespace GammonX.Server
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
-			await Clients.Group(groupName).SendAsync(ServerEventTypes.MatchLobbyWaitingEvent, contract);
+			await Clients.Group(groupName).SendAsync(ServerEventTypes.ErrorEvent, contract);
 		}
 
 		private Guid GetCallingPlayerId(IMatchSessionModel matchSession)

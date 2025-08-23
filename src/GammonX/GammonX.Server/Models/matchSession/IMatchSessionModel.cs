@@ -99,6 +99,15 @@ namespace GammonX.Server.Models
 		void ResignGame(Guid callingPlayerId);
 
 		/// <summary>
+		/// The calling player resigns the match resulting in a variant specific amount of points per game round unplayed for the other player.
+		/// </summary>
+		/// <remarks>
+		/// The player who resigns the game must not be the active player. Resigning is possible at any time.
+		/// </remarks>
+		/// <param name="callingPlayerId">Player who resigns the match.</param>
+		void ResignMatch(Guid callingPlayerId);
+
+		/// <summary>
 		/// Checks if all games are player and over
 		/// </summary>
 		/// <returns>Boolean indicating if the match is over.</returns>

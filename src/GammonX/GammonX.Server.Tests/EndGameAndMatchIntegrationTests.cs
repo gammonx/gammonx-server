@@ -329,6 +329,31 @@ namespace GammonX.Server.Tests
 				}
 			});
 
+			// ##################################################
+			// PLAYERS RECEIVE DISCONNECT EVENT
+			// ##################################################
+
+			var player1MustDisconnect = false;
+			player1Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
+			{
+				Assert.Null(response);
+				Assert.Equal(HubConnectionState.Connected, player1Connection.State);
+				player1Connection.StopAsync().ContinueWith(t =>
+				{
+					player1MustDisconnect = true;
+				});
+			});
+
+			var player2MustDisconnect = false;
+			player2Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
+			{
+				Assert.Null(response);
+				Assert.Equal(HubConnectionState.Connected, player2Connection.State);
+				player2Connection.StopAsync().ContinueWith(t =>
+				{
+					player2MustDisconnect = true;
+				});
+			});
 
 			await player1Connection.StartAsync();
 			await player2Connection.StartAsync();
@@ -392,6 +417,14 @@ namespace GammonX.Server.Tests
 			{
 				await Task.Delay(200);
 			}
+
+			while (!player1MustDisconnect || !player2MustDisconnect)
+			{
+				await Task.Delay(200);
+			}
+
+			Assert.Equal(HubConnectionState.Disconnected, player1Connection.State);
+			Assert.Equal(HubConnectionState.Disconnected, player2Connection.State);
 		}
 	}
 }
