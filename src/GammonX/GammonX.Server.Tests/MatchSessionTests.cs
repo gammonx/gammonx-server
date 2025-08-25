@@ -1,0 +1,560 @@
+﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
+
+using GammonX.Server.Models;
+using GammonX.Server.Services;
+
+using GammonX.Server.Tests.Utils;
+
+using Moq;
+
+namespace GammonX.Server.Tests
+{
+	public class MatchSessionTests
+	{
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
+		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionCreated(WellKnownMatchVariant variant, GameModus gameModusToExpect)
+		{
+			var matchId = Guid.NewGuid();
+			var session = _matchSessionFactory.Create(matchId, variant);
+			Assert.NotNull(session);
+			Assert.Equal(matchId, session.Id);
+			Assert.Equal(variant, session.Variant);
+			Assert.Equal(1, session.GameRound);
+			Assert.Equal(Guid.Empty, session.Player1.Id);
+			Assert.Equal(Guid.Empty, session.Player2.Id);
+			Assert.True(string.IsNullOrEmpty(session.Player1.ConnectionId));
+			Assert.True(string.IsNullOrEmpty(session.Player2.ConnectionId));
+			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(gameModusToExpect, session.GetGameModus());
+			Assert.False(session.CanStartNextGame());
+			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
+			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
+			Assert.IsAssignableFrom<MatchSession>(session);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionPayloadCreated(WellKnownMatchVariant variant)
+		{
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var session = result.Session;
+			var matchId = result.MatchId;
+			var payload = session.ToPayload();
+			Assert.NotNull(payload);
+			Assert.Equal(matchId, payload.Id);
+			Assert.Equal(variant, payload.Variant);
+			Assert.Equal(1, payload.GameRound);
+			Assert.Equal(Guid.Empty, payload.Player1.Id);
+			Assert.Equal(Guid.Empty, payload.Player2.Id);
+			Assert.Equal(0, payload.Player1.Score);
+			Assert.Equal(0, payload.Player2.Score);
+
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionPlayersCanJoin(WellKnownMatchVariant variant)
+		{
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var session = result.Session as IMatchSessionModel;
+			Assert.NotNull(session);
+
+			var player1 = SessionUtils.CreateLobbyEntry();
+			var player2 = SessionUtils.CreateLobbyEntry();
+			var player3 = SessionUtils.CreateLobbyEntry();
+			session.JoinSession(player1);
+			Assert.Equal(player1.PlayerId, session.Player1.Id);
+			Assert.NotEqual(Guid.Empty, session.Player1.Id);
+			session.JoinSession(player2);
+			Assert.Equal(player2.PlayerId, session.Player2.Id);
+			Assert.NotEqual(Guid.Empty, session.Player2.Id);
+			Assert.Throws<InvalidOperationException>(() => session.JoinSession(player3));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionPlayersCannotJoin(WellKnownMatchVariant variant)
+		{
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var session = result.Session as IMatchSessionModel;
+			Assert.NotNull(session);
+			var entry = new LobbyEntry(Guid.NewGuid());
+			Assert.Throws<ArgumentNullException>(() => session.JoinSession(entry));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionPlayerCannotJoinTwice(WellKnownMatchVariant variant)
+		{
+			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var session = result.Session as IMatchSessionModel;
+			Assert.NotNull(session);
+			var entry = SessionUtils.CreateLobbyEntry();
+			session.JoinSession(entry);
+			Assert.Throws<InvalidOperationException>(() => session.JoinSession(entry));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionCanStartMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			Assert.False(session.CanStartNextGame());
+			session.Player1.AcceptNextGame();
+			Assert.False(session.CanStartNextGame());
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			Assert.NotNull(gameSession);
+			Assert.Equal(session.Id, gameSession.MatchId);
+			Assert.Equal(1, session.GameRound);
+			Assert.Equal(variant, session.Variant);
+			Assert.Equal(modusToExpect, session.GetGameModus());
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionActivePlayerCanRollDices(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			var player1Id = session.Player1.Id;
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			session.RollDices(player1Id);
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
+			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionNotActivePlayerCannotRollDices(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			var player2Id = session.Player2.Id;
+			Assert.Throws<InvalidOperationException>(() => session.RollDices(player2Id));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCannotRollDicesIfNotStarted(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			Assert.Throws<InvalidOperationException>(() => session.RollDices(Guid.NewGuid()));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCannotMoveIfNotStarted(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(Guid.NewGuid(), 0, 1));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCannotMoveIfNotActivePlayer(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartNextGame(session.Player1.Id);
+			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(session.Player2.Id, 0, 1));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCanMoveCheckers(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			var player1Id = session.Player1.Id;
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			session.RollDices(player1Id);
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
+			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
+			var firstLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotNull(firstLegalMove);
+			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
+			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			var secondLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotNull(secondLegalMove);
+			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCanEndTurn(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			var player1Id = session.Player1.Id;
+			var player2Id = session.Player2.Id;
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			session.RollDices(player1Id);
+			Assert.False(session.CanEndTurn(player1Id));
+			Assert.False(session.CanEndTurn(session.Player2.Id));
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
+			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
+			var firstLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotNull(firstLegalMove);
+			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
+			Assert.False(session.CanEndTurn(player1Id));
+			Assert.False(session.CanEndTurn(session.Player2.Id));
+			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			var secondLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotNull(secondLegalMove);
+			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+			Assert.True(session.CanEndTurn(player1Id));
+			Assert.False(session.CanEndTurn(player2Id));
+			Assert.False(session.CanEndTurn(Guid.NewGuid()));
+			session.EndTurn(player1Id);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.Equal(player2Id, gameSession.ActivePlayer);
+			Assert.NotEqual(player1Id, gameSession.ActivePlayer);
+			Assert.Equal(2, gameSession.TurnNumber);
+			Assert.Empty(gameSession.DiceRollsModel.DiceRolls);
+			Assert.Empty(gameSession.LegalMovesModel.LegalMoves);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCannotEndTurnNotStartedMatch(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			Assert.Throws<InvalidOperationException>(() => session.EndTurn(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => session.EndTurn(session.Player2.Id));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCannotReturnProperGameState(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			Assert.Throws<InvalidOperationException>(() => session.GetGameState(session.Player1.Id));
+			Assert.Throws<InvalidOperationException>(() => session.GetGameState(session.Player2.Id));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
+		{
+			var defaultAllowedCommands = new[] { ServerCommands.ResignGame, ServerCommands.ResignMatch };
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartNextGame(session.Player1.Id);
+			var allowedCommands = new string[] { "testCommand" };
+			allowedCommands = allowedCommands.Union(defaultAllowedCommands).ToArray();
+			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
+			Assert.NotNull(gameState);
+			Assert.Equal(allowedCommands, gameState.AllowedCommands);
+			Assert.Equal(GamePhase.WaitingForRoll, gameState.Phase);
+			gameState = session.GetGameState(session.Player2.Id, allowedCommands);
+			Assert.NotNull(gameState);
+			Assert.Equal(defaultAllowedCommands, gameState.AllowedCommands);
+			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignGame(session.Player1.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.True(session.CanStartNextGame());
+				var newGameSession = session.StartNextGame(session.Player1.Id);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
+				Assert.Equal(2, session.GameRound);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignGame(session.Player2.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Score == 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.True(session.CanStartNextGame());
+				var newGameSession = session.StartNextGame(session.Player1.Id);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
+				Assert.Equal(2, session.GameRound);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignMatch(session.Player1.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player1.Score == 0);
+				Assert.True(session.Player2.Score > 0);
+				Assert.Equal(3, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				var sessionInstace = session as MatchSession;
+				Assert.NotNull(sessionInstace);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			Assert.Equal(modusToExpect, session.GetGameModus());
+			session.ResignMatch(session.Player2.Id);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+
+			if (variant == WellKnownMatchVariant.Backgammon)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavla)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+				Assert.Equal(1, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+			}
+			else if (variant == WellKnownMatchVariant.Tavli)
+			{
+				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Score > 0);
+				Assert.Equal(3, session.GameRound);
+				Assert.False(session.CanStartNextGame());
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				var sessionInstace = session as MatchSession;
+				Assert.NotNull(sessionInstace);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
+				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+			}
+		}
+	}
+}

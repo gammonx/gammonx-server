@@ -1,0 +1,13 @@
+﻿[*.cs]
+
+# IDE0290: Use primary constructor
+csharp_style_prefer_primary_constructors = false
+
+# IDE0028: Simplify collection initialization
+dotnet_style_collection_initializer = false
+
+# IDE0306: Simplify collection initialization
+dotnet_style_prefer_collection_expression = never
+
+# IDE0130: Namespace does not match folder structure
+dotnet_style_namespace_match_folder = false

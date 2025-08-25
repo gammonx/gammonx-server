@@ -9,5 +9,11 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="GammonX.Engine.Tests" />
 	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="GammonX.Server.Tests" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="DynamicProxyGenAssembly2"/>
+	</ItemGroup>
 
 </Project>

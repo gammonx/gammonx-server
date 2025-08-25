@@ -1,15 +1,22 @@
 ﻿namespace GammonX.Engine.Services
 {
     /// <summary>
-    /// Creates instances of <see cref="IDiceService"/>.
+    /// Provides the capability to create a <see cref="IDiceService"/> instance.
     /// </summary>
-    public static class DiceServiceFactory
+    public interface IDiceServiceFactory
     {
-        /// <summary>
-        /// Creates a new instance of <see cref="IDiceService"/>.   
-        /// </summary>
-        /// <returns>An instance of <see cref="IDiceService"/>.</returns>
-        public static IDiceService Create()
+		/// <summary>
+		/// Creates a new instance of <see cref="IDiceService"/>.   
+		/// </summary>
+		/// <returns>An instance of <see cref="IDiceService"/>.</returns>
+		IDiceService Create();
+    }
+
+	// <inheritdoc />
+	public class DiceServiceFactory : IDiceServiceFactory
+    {
+		// <inheritdoc />
+		public IDiceService Create()
         {
             return new SimpleDiceService();
         }

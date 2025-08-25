@@ -1,0 +1,58 @@
+﻿namespace GammonX.Server
+{
+	/// <summary>
+	/// Gets a list of all commands the web socket hub can receive.
+	/// </summary>
+	public static class ServerCommands
+	{
+		/// <summary>
+		/// The caller can join a match session with an existing match id created by the matchmaking service.
+		/// </summary>
+		public static readonly string JoinMatchCommand = "JoinMatch";
+
+		/// <summary>
+		/// The caller can start a game round if successfuly joined a match session.
+		/// </summary>
+		public static readonly string StartGameCommand = "StartGame";
+
+		/// <summary>
+		/// If the active player, the caller can roll the dices and start his turn.
+		/// </summary>
+		public static readonly string RollCommand = "Roll";
+
+		/// <summary>
+		/// If the active player, the caller can move his checkers from one position to another.
+		/// </summary>
+		public static readonly string MoveCommand = "Move";
+
+		/// <summary>
+		/// If the active player, the caller can end his turn and switch to the next player.
+		/// </summary>
+		public static readonly string EndTurnCommand = "EndTurn";
+
+		/// <summary>
+		/// The calling player resigns the match and loses automatically.
+		/// </summary>
+		public static readonly string ResignMatch = "ResignMatch";
+
+		/// <summary>
+		/// The calling player resigns the game and loses as a back-/gammon.
+		/// </summary>
+		public static readonly string ResignGame = "ResignGame";
+
+		/// <summary>
+		/// The doubling cube owner offers a double.
+		/// </summary>
+		public static readonly string OfferDouble = "OfferDouble";
+
+		/// <summary>
+		/// The non doubling cube owner accepts the double offering.
+		/// </summary>
+		public static readonly string AcceptDouble = "AcceptDouble";
+
+		/// <summary>
+		/// The non doubling cube owner declines the double offering and automatically loses as a backgammon.
+		/// </summary>
+		public static readonly string DeclineDouble = "DeclineDouble";
+	}
+}
