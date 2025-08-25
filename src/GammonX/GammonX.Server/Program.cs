@@ -13,7 +13,7 @@ builder.Services.AddSingleton<SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
-builder.Services.AddSingleton<IDiceServiceFactory, IDiceServiceFactory>();
+builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
 
 builder.Services.AddCors(options =>
 {

@@ -1,5 +1,8 @@
 ﻿namespace GammonX.Server
 {
+	/// <summary>
+	/// Gets a list of all commands the web socket hub can receive.
+	/// </summary>
 	public static class ServerCommands
 	{
 		/// <summary>

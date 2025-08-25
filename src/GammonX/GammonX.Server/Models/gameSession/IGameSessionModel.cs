@@ -5,7 +5,7 @@ using GammonX.Server.Contracts;
 namespace GammonX.Server.Models
 {
 	/// <summary>
-	/// 
+	/// Represents a game session model that contains all information about a single game session.
 	/// </summary>
 	public interface IGameSessionModel
 	{

@@ -42,7 +42,6 @@ namespace GammonX.Server
 
 		#region Commands
 
-
 		/// <summary>
 		/// The given player with id <paramref name="playerId"/> joins the match <paramref name="matchId"/>.
 		/// </summary>
@@ -152,7 +151,6 @@ namespace GammonX.Server
 						var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
 						await Clients.Caller.SendAsync(ServerEventTypes.GameWaitingEvent, matchContract);
 					}
-
 				}
 				else
 				{

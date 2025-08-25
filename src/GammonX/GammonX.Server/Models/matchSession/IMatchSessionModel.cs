@@ -127,7 +127,6 @@ namespace GammonX.Server.Models
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
 
-
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.
 		/// </summary>
