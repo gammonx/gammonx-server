@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -9,7 +10,8 @@ namespace GammonX.Server.Tests
 {
 	public class TavliMatchSessionTests
 	{
-		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Fact]
@@ -20,7 +22,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];
@@ -63,7 +65,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];
@@ -95,7 +97,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];
@@ -125,7 +127,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];

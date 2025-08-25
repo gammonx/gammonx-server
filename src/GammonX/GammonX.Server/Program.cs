@@ -1,3 +1,5 @@
+using GammonX.Engine.Services;
+
 using GammonX.Server;
 using GammonX.Server.Services;
 
@@ -11,6 +13,7 @@ builder.Services.AddSingleton<SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
+builder.Services.AddSingleton<IDiceServiceFactory, IDiceServiceFactory>();
 
 builder.Services.AddCors(options =>
 {

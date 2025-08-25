@@ -10,10 +10,12 @@ namespace GammonX.Server.Tests.Stubs
 {
 	internal class TavliStartGameSessionFactoryStub : IGameSessionFactory
 	{
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+
 		public IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
 			// dice service only returns a roll of 2 and 3
-			var diceService = DiceServiceFactory.Create();
+			var diceService = _diceServiceFactory.Create();
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			var boardService = BoardServiceFactory.Create(modus);
@@ -29,10 +31,12 @@ namespace GammonX.Server.Tests.Stubs
 
 	internal class TavliEndGameSessionFactoryStub : IGameSessionFactory
 	{
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+
 		public IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
 			// dice service only returns a roll of 2 and 3
-			var diceService = DiceServiceFactory.Create();
+			var diceService = _diceServiceFactory.Create();
 			var diceServiceMock = new Mock<IDiceService>();
 			diceServiceMock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 

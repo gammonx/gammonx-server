@@ -22,10 +22,17 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	public class GameSessionFactory : IGameSessionFactory
 	{
+		private IDiceServiceFactory _diceServiceFactory;
+
+		public GameSessionFactory(IDiceServiceFactory diceServiceFactory)
+		{
+			_diceServiceFactory = diceServiceFactory;
+		}
+
 		// <inheritdoc />
 		public IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
-			var diceService = DiceServiceFactory.Create();
+			var diceService = _diceServiceFactory.Create();
 			var boardService = BoardServiceFactory.Create(modus);
 
 			switch (modus)

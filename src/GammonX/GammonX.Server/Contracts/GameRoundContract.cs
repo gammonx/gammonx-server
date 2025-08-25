@@ -6,8 +6,6 @@ using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts
 {
-	// TODO expand with game win type (standard, gammon, backgammon)
-
 	[DataContract]
 	public class GameRoundContract
 	{

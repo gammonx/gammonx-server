@@ -4,13 +4,15 @@ using GammonX.Engine.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
+
 using Moq;
 
 namespace GammonX.Server.Tests
 {
 	public class GameSessionTests
 	{
-		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 
 		[Theory]
 		[InlineData(GameModus.Backgammon)]

@@ -1,4 +1,5 @@
 using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -31,8 +32,13 @@ namespace GammonX.Server.Tests
 					{
 						services.Remove(descriptor);
 					}
-
 					services.AddSingleton<IGameSessionFactory>(new TavliEndGameSessionFactoryStub());
+					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDiceServiceFactory));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
 				});
 			});
 		}

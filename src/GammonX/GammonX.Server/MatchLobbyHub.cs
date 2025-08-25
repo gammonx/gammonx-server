@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
@@ -13,11 +15,13 @@ namespace GammonX.Server
 	{
 		private readonly SimpleMatchmakingService _service;
 		private readonly MatchSessionRepository _repository;
+		private readonly IDiceService _diceService;
 
-		public MatchLobbyHub(SimpleMatchmakingService service, MatchSessionRepository repository)
+		public MatchLobbyHub(SimpleMatchmakingService service, MatchSessionRepository repository, IDiceServiceFactory diceServiceFactory)
 		{
 			_service = service;
 			_repository = repository;
+			_diceService = diceServiceFactory.Create();
 		}
 
 		#region Overrides
@@ -112,9 +116,6 @@ namespace GammonX.Server
 		/// If both players accepted the match, the <see cref="ServerEventTypes.GameStartedEvent"/> is sent to both players
 		/// containing the initial game state and the first player to roll his dices.
 		/// </summary>
-		/// <remarks>
-		/// Player 1 always takes the first turn in the game.
-		/// </remarks>
 		/// <param name="matchId">Match containing the game to start.</param>
 		/// <returns>A task to be awaited.</returns>
 		public async Task StartGame(string matchId)
@@ -141,7 +142,8 @@ namespace GammonX.Server
 
 					if (matchSession.CanStartNextGame())
 					{
-						var gameSession = matchSession.StartNextGame();
+						var startingPlayerId = GetStartingPlayerId(matchSession);
+						var gameSession = matchSession.StartNextGame(startingPlayerId);
 						await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
 					}
 					else
@@ -531,6 +533,43 @@ namespace GammonX.Server
 		#endregion Commands
 
 		#region Private Members
+
+		private Guid GetStartingPlayerId(IMatchSessionModel matchSession)
+		{
+			var activeSession = matchSession.GetGameSession(matchSession.GameRound);
+			// if null, the active game session is the first
+			if (activeSession == null)
+			{
+				// we decide which player starts with a single dice roll
+				var player1Roll = 0;
+				var player2Roll = 0;
+				do
+				{
+					player1Roll = _diceService.Roll(1, 6)[0];
+					player2Roll = _diceService.Roll(1, 6)[0];
+				}
+				while (player1Roll == player2Roll);
+
+				if (player1Roll > player2Roll)
+				{
+					return matchSession.Player1.Id;
+				}
+				else
+				{
+					return matchSession.Player2.Id;
+				}
+			}
+			// if not null, the first game session was already played
+			else if (activeSession.Phase == GamePhase.GameOver)
+			{
+				var contract = activeSession.ToContract(matchSession.GameRound);
+				return contract.Winner ?? matchSession.Player1.Id;
+			}			
+			else
+			{
+				throw new InvalidOperationException("An error occurred while determining the last game round winner");
+			}	
+		}
 
 		private async Task SendGameState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
 		{

@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -8,7 +9,8 @@ namespace GammonX.Server.Tests
 {
 	public class BackgammonMatchSessionTests
 	{
-		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Fact]
@@ -19,7 +21,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -64,7 +66,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -96,7 +98,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -131,7 +133,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -164,7 +166,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -198,7 +200,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -232,7 +234,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -269,7 +271,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -304,7 +306,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			var player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
 			Assert.Contains(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
@@ -336,7 +338,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			doublingCubeSession.OfferDouble(session.Player1.Id);
@@ -358,7 +360,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			doublingCubeSession.OfferDouble(session.Player1.Id);
@@ -380,7 +382,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(session.Player1.Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);

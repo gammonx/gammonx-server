@@ -12,7 +12,8 @@ namespace GammonX.Server.Tests
 {
 	public class MatchSessionTests
 	{
-		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory();
+		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
+		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Theory]
@@ -123,7 +124,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.CanStartNextGame());
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.NotNull(gameSession);
 			Assert.Equal(session.Id, gameSession.MatchId);
 			Assert.Equal(1, session.GameRound);
@@ -142,7 +143,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			var player1Id = session.Player1.Id;
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(player1Id);
@@ -162,7 +163,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			var player2Id = session.Player2.Id;
 			Assert.Throws<InvalidOperationException>(() => session.RollDices(player2Id));
 		}
@@ -205,7 +206,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			session.StartNextGame();
+			session.StartNextGame(session.Player1.Id);
 			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(session.Player2.Id, 0, 1));
 		}
 
@@ -220,7 +221,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -251,7 +252,7 @@ namespace GammonX.Server.Tests
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -327,7 +328,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			session.StartNextGame();
+			session.StartNextGame(session.Player1.Id);
 			var allowedCommands = new string[] { "testCommand" };
 			allowedCommands = allowedCommands.Union(defaultAllowedCommands).ToArray();
 			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
@@ -350,7 +351,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignGame(session.Player1.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -365,7 +366,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -376,7 +377,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -388,7 +389,7 @@ namespace GammonX.Server.Tests
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
 				Assert.True(session.CanStartNextGame());
-				var newGameSession = session.StartNextGame();
+				var newGameSession = session.StartNextGame(session.Player1.Id);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
 				Assert.Equal(2, session.GameRound);
@@ -405,7 +406,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignGame(session.Player2.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -420,7 +421,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -431,7 +432,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -443,7 +444,7 @@ namespace GammonX.Server.Tests
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
 				Assert.True(session.CanStartNextGame());
-				var newGameSession = session.StartNextGame();
+				var newGameSession = session.StartNextGame(session.Player1.Id);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(GamePhase.WaitingForRoll, newGameSession.Phase);
 				Assert.Equal(2, session.GameRound);
@@ -460,7 +461,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignMatch(session.Player1.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -475,7 +476,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -486,7 +487,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -494,7 +495,7 @@ namespace GammonX.Server.Tests
 				Assert.True(session.Player2.Score > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 				var sessionInstace = session as MatchSession;
 				Assert.NotNull(sessionInstace);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
@@ -513,7 +514,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignMatch(session.Player2.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -528,7 +529,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -539,7 +540,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -547,7 +548,7 @@ namespace GammonX.Server.Tests
 				Assert.True(session.Player1.Score > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
-				Assert.Throws<IndexOutOfRangeException>(session.StartNextGame);
+				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
 				var sessionInstace = session as MatchSession;
 				Assert.NotNull(sessionInstace);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);

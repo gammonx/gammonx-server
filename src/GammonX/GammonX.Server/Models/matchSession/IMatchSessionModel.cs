@@ -59,8 +59,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Starts a match session and the next game round.	
 		/// </summary>
+		/// <param name="playerId">Id of the player who is starting to roll the dices.</param>
 		/// <returns>The state of the started game round.</returns>
-		IGameSessionModel StartNextGame();
+		IGameSessionModel StartNextGame(Guid playerId);
 
 		/// <summary>
 		/// Rolls the dices for the active player in the current game session and updates the game state accordingly.
@@ -118,6 +119,14 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <returns>The active game modus.</returns>
 		GameModus GetGameModus();
+
+		/// <summary>
+		/// Returns the game session for the given <paramref name="gameRound"/>.
+		/// </summary>
+		/// <param name="gameRound">Game round.</param>
+		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
+		IGameSessionModel? GetGameSession(int gameRound);
+
 
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.
