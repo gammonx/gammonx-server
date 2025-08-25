@@ -4,6 +4,7 @@ using GammonX.Engine.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
+using Moq;
 
 namespace GammonX.Server.Tests
 {
@@ -383,6 +384,10 @@ namespace GammonX.Server.Tests
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartNextGame(session.Player1.Id);
+			// avoid rolling pasch
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(session.Player1.Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
