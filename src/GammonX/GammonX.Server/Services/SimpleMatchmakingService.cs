@@ -7,10 +7,8 @@ namespace GammonX.Server.Services
 	/// <summary>
 	/// Simple matchmaking service that allows players to join a queue and find matches.
 	/// </summary>
-	public class SimpleMatchmakingService
+	public class SimpleMatchmakingService : IMatchmakingService
 	{
-		// TODO :: encapsulate this into an interface
-
 		// simple storage for demo: maps queueId -> entry
 		private readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
 		// quick lookup of waiting players per mode
@@ -18,12 +16,7 @@ namespace GammonX.Server.Services
 
 		private readonly ConcurrentDictionary<Guid, MatchLobby> _matchLobbies = new ConcurrentDictionary<Guid, MatchLobby>();
 
-		/// <summary>
-		/// Tries to find a match lobby by its ID. Returns null if not found.
-		/// </summary>
-		/// <param name="matchId">Match id to search for.</param>
-		/// <param name="matchLobby">Result.</param>
-		/// <returns>Boolean indicating if a match lobby was found.</returns>
+		// <inheritdoc />
 		public bool TryFindMatchLobby(Guid matchId, out MatchLobby? matchLobby)
 		{
 			var result = _matchLobbies.GetValueOrDefault(matchId);
@@ -37,27 +30,36 @@ namespace GammonX.Server.Services
 			return true;
 		}
 
-		/// <summary>
-		/// Join the given <paramref name="newPlayer"/> to the matchmaking queue.
-		/// </summary>
-		/// <param name="newPlayer">Player to join the queue.</param>
-		/// <returns>A guid of the created match lobby.</returns>
+		// <inheritdoc />
+		public bool TryRemoveMatchLobby(Guid matchId)
+		{
+			if (_matchLobbies.TryRemove(matchId, out var _))
+			{
+				return true;
+			}
+			return false;
+		}
+
+		// <inheritdoc />
 		public Guid JoinQueue(LobbyEntry newPlayer, WellKnownMatchVariant matchVariant)
 		{
+			if (_matchLobbies.Any(ml => ml.Value.Player1.PlayerId == newPlayer.PlayerId || ml.Value.Player2?.PlayerId == newPlayer.PlayerId))
+			{
+				throw new InvalidOperationException("Already part of the match lobby queue");
+			}
+
 			if (_queue.Count > 0)
 			{
 				if (!_modeQueues.TryGetValue(matchVariant, out var matchVariantQueue))
 					throw new InvalidOperationException("An error occurred while creating the match lobby");
 
-				// TODO :: multiple join requests from same client
+				if (matchVariantQueue.Contains(newPlayer.PlayerId))
+				{
+					throw new InvalidOperationException("Already part of the match lobby queue");
+				}
+
 				if (matchVariantQueue.TryDequeue(out var opponentId))
 				{
-					if (opponentId == newPlayer.PlayerId)
-					{
-						matchVariantQueue.Enqueue(opponentId);
-						throw new InvalidOperationException("Already part of the match lobby queue");
-					}
-
 					if (!_queue.TryRemove(opponentId, out var opponentQueueEntry))
 						throw new InvalidOperationException("An error occurred while creating the match lobby");
 

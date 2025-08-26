@@ -13,13 +13,13 @@ namespace GammonX.Server
 	/// </summary>
 	internal class MatchLobbyHub : Hub
 	{
-		private readonly SimpleMatchmakingService _service;
+		private readonly IMatchmakingService _matchmakingService;
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
 
-		public MatchLobbyHub(SimpleMatchmakingService service, MatchSessionRepository repository, IDiceServiceFactory diceServiceFactory)
+		public MatchLobbyHub(IMatchmakingService service, MatchSessionRepository repository, IDiceServiceFactory diceServiceFactory)
 		{
-			_service = service;
+			_matchmakingService = service;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
 		}
@@ -63,7 +63,7 @@ namespace GammonX.Server
 				if (!Guid.TryParse(playerId, out var playerIdGuid))
 					await SendErrorEventAsync("LOBBY_ERROR", $"The given playerId '{playerIdGuid}'  is not a valid GUID.");
 
-				if (_service.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
+				if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
 				{
 					var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.Variant);
 					var groupName = matchLobby.GroupName;
@@ -144,6 +144,8 @@ namespace GammonX.Server
 						var startingPlayerId = GetStartingPlayerId(matchSession);
 						var gameSession = matchSession.StartNextGame(startingPlayerId);
 						await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
+						// we clean up the match lobby as soon as the game has started
+						_matchmakingService.TryRemoveMatchLobby(matchSession.Id);
 					}
 					else
 					{
@@ -327,7 +329,6 @@ namespace GammonX.Server
 					// calling and active player must be the same
 					var callingPlayerId = GetCallingPlayerId(matchSession);
 					matchSession.ResignMatch(callingPlayerId);
-					// check if this was the last game round of the match
 					await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
 				}
 				else
@@ -391,7 +392,6 @@ namespace GammonX.Server
 		/// <returns>Task to be awaited.</returns>
 		public async Task OfferDouble(string matchId)
 		{
-			// TODO OfferDouble :: integration test
 			try
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
@@ -442,7 +442,6 @@ namespace GammonX.Server
 		/// <returns>A task to be awaited.</returns>
 		public async Task AcceptDouble(string matchId)
 		{
-			// TODO AcceptDouble :: integration test
 			try
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
@@ -484,7 +483,6 @@ namespace GammonX.Server
 		/// <returns>A task to be awaited.</returns>
 		public async Task DeclineDouble(string matchId)
 		{
-			// TODO DeclineDouble :: integration test
 			try
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))

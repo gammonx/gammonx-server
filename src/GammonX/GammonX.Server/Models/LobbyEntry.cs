@@ -12,6 +12,9 @@
 		/// </summary>
 		public string? ConnectionId { get; private set; }
 		
+		/// <summary>
+		/// Gets the id of the player.
+		/// </summary>
 		public Guid PlayerId { get; private set; }
 
 		/// <summary>

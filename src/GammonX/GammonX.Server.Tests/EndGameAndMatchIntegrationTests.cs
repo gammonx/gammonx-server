@@ -57,7 +57,7 @@ namespace GammonX.Server.Tests
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
-			var joinPayload1 = joinResponse1?.Payload as RequestMatchIdPayload;
+			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
 			var player1Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
@@ -74,7 +74,7 @@ namespace GammonX.Server.Tests
 			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson2);
-			var joinPayload2 = joinResponse2?.Payload as RequestMatchIdPayload;
+			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
 			var player2Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
