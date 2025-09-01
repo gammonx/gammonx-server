@@ -2,16 +2,16 @@
 {
 	public class MatchLobby
 	{
-		public MatchLobby(Guid matchId, WellKnownMatchVariant variant, LobbyEntry player1)
+		public MatchLobby(Guid matchId, QueueKey queueKey, LobbyEntry player1)
 		{
 			MatchId = matchId;
 			Player1 = player1;
-			Variant = variant;
+			QueueKey = queueKey;
 		}
 
 		public Guid MatchId { get; private set; }
 		
-		public WellKnownMatchVariant Variant { get; private set; }
+		public QueueKey QueueKey { get; private set; }
 
 		/// <summary>
 		/// Gets the web socket group name for this match lobby.
@@ -34,6 +34,11 @@
 		/// <param name="player2">Second player.</param>
 		public void Join(LobbyEntry player2)
 		{
+			if (QueueKey.QueueType == WellKnownMatchType.Bot)
+			{
+				throw new InvalidOperationException("Second player cannot join a bot game");
+			}
+
 			Player2 = player2;
 		}
 	}

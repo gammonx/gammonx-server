@@ -51,7 +51,8 @@ namespace GammonX.Server.Tests
 
 			var player1 = new {
 				PlayerId = "fdd907ca-794a-43f4-83e6-cadfabc57c45",
-				MatchVariant = WellKnownMatchVariant.Tavli
+				MatchVariant = WellKnownMatchVariant.Tavli,
+				QueueType = WellKnownMatchType.Normal
 			};
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
@@ -68,7 +69,8 @@ namespace GammonX.Server.Tests
 			var player2 = new
 			{
 				PlayerId = "f6f9bb06-cbf6-4f42-80bf-5d62be34cff6",
-				MatchVariant = WellKnownMatchVariant.Tavli
+				MatchVariant = WellKnownMatchVariant.Tavli,
+				QueueType = WellKnownMatchType.Normal
 			};
 			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();

@@ -10,9 +10,10 @@ namespace GammonX.Server.Models
 		public TavliMatchSession(
 			Guid id,
 			WellKnownMatchVariant variant,
+			WellKnownMatchType type,
 			GameModus[] rounds,
 			IGameSessionFactory gameSessionFactory
-		) : base(id, variant, rounds, gameSessionFactory) 
+		) : base(id, variant, type, rounds, gameSessionFactory) 
 		{
 			// pass
 		}

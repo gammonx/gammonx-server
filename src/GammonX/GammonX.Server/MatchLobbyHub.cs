@@ -16,12 +16,18 @@ namespace GammonX.Server
 		private readonly IMatchmakingService _matchmakingService;
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
+		private readonly IBotService _botService;
 
-		public MatchLobbyHub(IMatchmakingService service, MatchSessionRepository repository, IDiceServiceFactory diceServiceFactory)
+		public MatchLobbyHub(
+			IMatchmakingService service, 
+			MatchSessionRepository repository, 
+			IDiceServiceFactory diceServiceFactory,
+			IBotService botService)
 		{
 			_matchmakingService = service;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
+			_botService = botService;
 		}
 
 		#region Overrides
@@ -65,7 +71,7 @@ namespace GammonX.Server
 
 				if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
 				{
-					var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.Variant);
+					var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
 					var groupName = matchLobby.GroupName;
 					if (matchLobby.Player1.PlayerId == playerIdGuid)
 					{
@@ -73,6 +79,14 @@ namespace GammonX.Server
 						ArgumentNullException.ThrowIfNull(matchLobby.Player1.ConnectionId, nameof(matchLobby.Player1.ConnectionId));
 						matchSession.JoinSession(matchLobby.Player1);
 						await Groups.AddToGroupAsync(matchLobby.Player1.ConnectionId, groupName);
+
+						if (matchLobby.QueueKey.QueueType == WellKnownMatchType.Bot)
+						{
+							// in a bot game, the player 2 is always the "bot"
+							var botPlayer = new LobbyEntry(Guid.NewGuid());
+							botPlayer.SetConnectionId(Guid.Empty.ToString());
+							matchSession.JoinSession(botPlayer);
+						}
 					}
 
 					if (matchLobby.Player2?.PlayerId == playerIdGuid)
@@ -132,6 +146,12 @@ namespace GammonX.Server
 					if (matchSession.Player1?.ConnectionId == Context.ConnectionId)
 					{
 						matchSession.Player1.AcceptNextGame();
+
+						if (matchSession.Type == WellKnownMatchType.Bot)
+						{
+							// in a bot game, the player 2 is always the "bot"
+							matchSession.Player2.AcceptNextGame();
+						}
 					}
 
 					if (matchSession.Player2?.ConnectionId == Context.ConnectionId)
@@ -143,7 +163,14 @@ namespace GammonX.Server
 					{
 						var startingPlayerId = GetStartingPlayerId(matchSession);
 						var gameSession = matchSession.StartNextGame(startingPlayerId);
-						await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
+						if (IsBotTurn(matchSession, startingPlayerId))
+						{
+							await PerfromBotTurnAsync(matchSession, startingPlayerId);
+						}
+						else
+						{
+							await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
+						}
 						// we clean up the match lobby as soon as the game has started
 						_matchmakingService.TryRemoveMatchLobby(matchSession.Id);
 					}
@@ -187,8 +214,7 @@ namespace GammonX.Server
 				if (matchSession != null)
 				{
 					var callingPlayerId = GetCallingPlayerId(matchSession);
-					matchSession.RollDices(callingPlayerId);
-					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+					await PerfromRollAsync(matchSession, callingPlayerId);
 				}
 				else
 				{
@@ -230,31 +256,7 @@ namespace GammonX.Server
 				{
 					// calling and active player must be the same
 					var callingPlayerId = GetCallingPlayerId(matchSession);
-					var gameOver = matchSession.MoveCheckers(callingPlayerId, from, to);
-					// check if this move won the game for the active player
-					if (gameOver)
-					{
-						// check if this was the last move to win the last game and the match
-						if (matchSession.IsMatchOver())
-						{
-							await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
-						}
-						else
-						{
-							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
-						}
-					}
-					// check if the turn was finished
-					else if (matchSession.CanEndTurn(callingPlayerId))
-					{
-						// calling player finished his turn, other player can now roll
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
-					}
-					else
-					{
-						// calling player can still move
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
-					}
+					await PerformMoveAsync(matchSession, callingPlayerId, from, to);
 				}
 				else
 				{
@@ -281,7 +283,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("ROLL_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("END_TURN_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -291,16 +293,25 @@ namespace GammonX.Server
 
 					if (!matchSession.CanEndTurn(callingPlayerId))
 					{
-						await SendErrorEventAsync("ROLL_ERROR", "You cannot end your turn at this moment.");
+						await SendErrorEventAsync("END_TURN_ERROR", "You cannot end your turn at this moment.");
 						return;
 					}
 
 					matchSession.EndTurn(callingPlayerId);
-					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+
+					var otherPlayerId = GetOtherPlayerId(matchSession);
+					if (IsBotTurn(matchSession, otherPlayerId))
+					{
+						await PerfromBotTurnAsync(matchSession, otherPlayerId);
+					}
+					else
+					{
+						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+					}					
 				}
 				else
 				{
-					await SendErrorEventAsync("ROLL_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("END_TURN_ERROR", "No match seesion was found with the given matchId.");
 				}
 			}
 			catch (Exception e)
@@ -526,6 +537,71 @@ namespace GammonX.Server
 
 		#endregion Doubling Cube Commands
 
+		private async Task PerfromRollAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
+		{
+			matchSession.RollDices(callingPlayerId);
+			await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+		}
+
+		private async Task<bool> PerformMoveAsync(IMatchSessionModel matchSession, Guid callingPlayerId, int from, int to)
+		{
+			var gameOver = matchSession.MoveCheckers(callingPlayerId, from, to);
+			// check if this move won the game for the active player
+			if (gameOver)
+			{
+				// check if this was the last move to win the last game and the match
+				if (matchSession.IsMatchOver())
+				{
+					await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+					return false;
+				}
+				else
+				{
+					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+					return false;
+				}
+			}
+			// check if the turn was finished
+			else if (matchSession.CanEndTurn(callingPlayerId))
+			{
+				// calling player finished his turn, other player can now roll
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
+				return false;
+			}
+			else
+			{
+				// calling player can still move
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+				return true;
+			}
+		}
+
+		private async Task PerfromBotTurnAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
+		{
+			await PerfromRollAsync(matchSession, callingPlayerId);
+
+			bool canMove;
+			do
+			{
+				var nextMove = _botService.GetNextMove(matchSession);
+
+				if (nextMove == null)
+				{
+					throw new InvalidOperationException("An error occurred wihle evaluating the next move for the bot");
+				}
+
+				canMove = await PerformMoveAsync(matchSession, callingPlayerId, nextMove.From, nextMove.To);
+			}
+			while (canMove);
+
+			// if we cannot end the current turn, the match/game is probably over
+			if (matchSession.CanEndTurn(callingPlayerId))
+			{
+				matchSession.EndTurn(callingPlayerId);
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+			}
+		}
+		
 		#endregion Commands
 
 		#region Private Members
@@ -637,6 +713,22 @@ namespace GammonX.Server
 				return matchSession.Player1.Id;
 			}
 			throw new InvalidOperationException("The calling player is not part of the match session.");
+		}
+
+		private static bool IsBotTurn(IMatchSessionModel matchSession, Guid playerId)
+		{
+			if (matchSession.Type == WellKnownMatchType.Bot)
+			{
+				if (matchSession.Player1.Id == playerId)
+				{
+					return false;
+				}
+				else if (matchSession.Player2.Id == playerId && matchSession.Player2.IsBot)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private static string GetPlayerConnectionId(IMatchSessionModel matchSession, Guid playerId)

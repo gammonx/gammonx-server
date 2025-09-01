@@ -25,6 +25,11 @@ namespace GammonX.Server.Models
 		public int Score { get; internal set; } = 0;
 
 		/// <summary>
+		/// Gets a boolean indicating if the given player is a bot.
+		/// </summary>
+		public bool IsBot => ConnectionId.Equals(Guid.Empty.ToString());
+
+		/// <summary>
 		/// Accepts the next game for this player.
 		/// </summary>
 		public void AcceptNextGame()

@@ -25,6 +25,11 @@ namespace GammonX.Server.Models
 		WellKnownMatchVariant Variant { get; }
 
 		/// <summary>
+		/// Gets the type of the match.
+		/// </summary>
+		WellKnownMatchType Type { get; }
+
+		/// <summary>
 		/// Gets the player 1.
 		/// </summary>
 		PlayerModel Player1 { get; }

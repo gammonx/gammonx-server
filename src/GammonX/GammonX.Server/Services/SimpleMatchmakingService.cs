@@ -12,7 +12,7 @@ namespace GammonX.Server.Services
 		// simple storage for demo: maps queueId -> entry
 		private readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
 		// quick lookup of waiting players per mode
-		private readonly ConcurrentDictionary<WellKnownMatchVariant, ConcurrentQueue<Guid>> _modeQueues = new();
+		private readonly ConcurrentDictionary<QueueKey, ConcurrentQueue<Guid>> _modeQueues = new();
 
 		private readonly ConcurrentDictionary<Guid, MatchLobby> _matchLobbies = new ConcurrentDictionary<Guid, MatchLobby>();
 
@@ -41,7 +41,7 @@ namespace GammonX.Server.Services
 		}
 
 		// <inheritdoc />
-		public Guid JoinQueue(LobbyEntry newPlayer, WellKnownMatchVariant matchVariant)
+		public Guid JoinQueue(LobbyEntry newPlayer, QueueKey queueKey)
 		{
 			if (_matchLobbies.Any(ml => ml.Value.Player1.PlayerId == newPlayer.PlayerId || ml.Value.Player2?.PlayerId == newPlayer.PlayerId))
 			{
@@ -50,7 +50,7 @@ namespace GammonX.Server.Services
 
 			if (_queue.Count > 0)
 			{
-				if (!_modeQueues.TryGetValue(matchVariant, out var matchVariantQueue))
+				if (!_modeQueues.TryGetValue(queueKey, out var matchVariantQueue))
 					throw new InvalidOperationException("An error occurred while creating the match lobby");
 
 				if (matchVariantQueue.Contains(newPlayer.PlayerId))
@@ -78,14 +78,14 @@ namespace GammonX.Server.Services
 			}
 			else
 			{
-				var entry = new QueueEntry(newPlayer, matchVariant, DateTime.UtcNow);
+				var entry = new QueueEntry(newPlayer, queueKey, DateTime.UtcNow);
 				_queue[newPlayer.PlayerId] = entry;
 
-				var mq = _modeQueues.GetOrAdd(matchVariant, _ => new ConcurrentQueue<Guid>());
+				var mq = _modeQueues.GetOrAdd(queueKey, _ => new ConcurrentQueue<Guid>());
 				mq.Enqueue(newPlayer.PlayerId);
 
 				var matchId = Guid.NewGuid();
-				var matchLobby = new MatchLobby(matchId, matchVariant, newPlayer);
+				var matchLobby = new MatchLobby(matchId, queueKey, newPlayer);
 				if (_matchLobbies.TryAdd(matchLobby.MatchId, matchLobby))
 				{
 					return matchLobby.MatchId;

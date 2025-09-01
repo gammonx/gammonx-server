@@ -30,7 +30,8 @@ namespace GammonX.Server.Tests.Utils
 		public static dynamic CreateMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var session = factory.Create(matchId, variant);
+			var queueKey = new QueueKey(variant, WellKnownMatchType.Normal);
+			var session = factory.Create(matchId, queueKey);
 			return new { MatchId = matchId, Session = session };
 		}
 

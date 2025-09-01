@@ -29,7 +29,8 @@ namespace GammonX.Server.Controllers
 			try
 			{
 				var player = new LobbyEntry(req.PlayerId);
-				var matchId = _matchmakingService.JoinQueue(player, req.MatchVariant);
+				var queueKey = new QueueKey(req.MatchVariant, req.QueueType);
+				var matchId = _matchmakingService.JoinQueue(player, queueKey);
 				var payload = new RequestMatchIdPayload(matchId);
 				var response = new RequestResponseContract<RequestMatchIdPayload>("OK", payload);
 				return Ok(response);

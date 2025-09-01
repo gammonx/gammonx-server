@@ -135,6 +135,7 @@ namespace GammonX.Server.Models
 			{
 				// TODO :: test different bear off moves
 				// TODO :: test different enter from bar moves
+				// TODO :: if possible both dices have to be used up. Using a dice first in order to avoid second is not allowed!
 				var distance = GetMoveDistance(BoardModel, from, to, out var bearOffMove);
 
 				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, bearOffMove, out var usedDices))

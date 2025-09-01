@@ -23,7 +23,8 @@ namespace GammonX.Server.Tests
 		public void MatchSessionCreated(WellKnownMatchVariant variant, GameModus gameModusToExpect)
 		{
 			var matchId = Guid.NewGuid();
-			var session = _matchSessionFactory.Create(matchId, variant);
+			var queueKey = new QueueKey(variant, WellKnownMatchType.Normal);
+			var session = _matchSessionFactory.Create(matchId, queueKey);
 			Assert.NotNull(session);
 			Assert.Equal(matchId, session.Id);
 			Assert.Equal(variant, session.Variant);

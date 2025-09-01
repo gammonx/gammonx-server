@@ -32,8 +32,8 @@ namespace GammonX.Server.Tests
 			var player1Id = Guid.NewGuid();
 			var player2Id = Guid.NewGuid();
 				
-			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon);
-			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon);
+			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
+			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
 			
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
@@ -72,18 +72,19 @@ namespace GammonX.Server.Tests
 		{
 			var player1Id = Guid.NewGuid();
 			var player2Id = Guid.NewGuid();
-			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon);
-			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon);
+			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
+			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
+			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
 
-			_matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), WellKnownMatchVariant.Backgammon);
-			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), WellKnownMatchVariant.Backgammon));
-			_matchmakingService.JoinQueue(new LobbyEntry(player2.PlayerId), WellKnownMatchVariant.Backgammon);
-			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player2.PlayerId), WellKnownMatchVariant.Backgammon));
+			_matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), queueKey);
+			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), queueKey));
+			_matchmakingService.JoinQueue(new LobbyEntry(player2.PlayerId), queueKey);
+			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player2.PlayerId), queueKey));
 		}
 
-		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant)
+		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchType queueType)
 		{
-			return new JoinRequest(playerId, variant);
+			return new JoinRequest(playerId, variant, queueType);
 		}
 	}
 }

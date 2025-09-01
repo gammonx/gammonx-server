@@ -26,7 +26,8 @@ namespace GammonX.Server.Services
 		/// Join the given <paramref name="newPlayer"/> to the matchmaking queue.
 		/// </summary>
 		/// <param name="newPlayer">Player to join the queue.</param>
+		/// <param name="queueKey">Key of the joined queue.</param>
 		/// <returns>A guid of the created match lobby.</returns>
-		Guid JoinQueue(LobbyEntry newPlayer, WellKnownMatchVariant matchVariant);
+		Guid JoinQueue(LobbyEntry newPlayer, QueueKey queueKey);
 	}
 }

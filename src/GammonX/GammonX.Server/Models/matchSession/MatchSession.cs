@@ -27,6 +27,9 @@ namespace GammonX.Server.Models
 		public WellKnownMatchVariant Variant { get; }
 
 		// <inheritdoc />
+		public WellKnownMatchType Type { get; }
+
+		// <inheritdoc />
 		public DateTime StartedAt { get; private set; }
 
 		// <inheritdoc />
@@ -38,11 +41,17 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public PlayerModel Player2 { get; private set; }
 
-		public MatchSession(Guid id, WellKnownMatchVariant variant, GameModus[] rounds, IGameSessionFactory gameSessionFactory)
+		public MatchSession(
+			Guid id, 
+			WellKnownMatchVariant variant,
+			WellKnownMatchType type,
+			GameModus[] rounds, 
+			IGameSessionFactory gameSessionFactory)
 		{
 			Id = id;
 			GameRound = 1;
 			Variant = variant;
+			Type = type;
 			_rounds = rounds;
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
@@ -162,9 +171,15 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public bool CanEndTurn(Guid callingPlayerId)
 		{
+			if (IsMatchOver())
+				return false;
+
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			if (activeSession.Phase == GamePhase.GameOver)
+				return false;
 
 			if (activeSession.ActivePlayer == callingPlayerId)
 			{
