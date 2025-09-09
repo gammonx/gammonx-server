@@ -1,5 +1,5 @@
 ﻿using GammonX.Engine.Services;
-
+using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -13,6 +13,8 @@ namespace GammonX.Server
 	/// </summary>
 	internal class MatchLobbyHub : Hub
 	{
+		// TODO :: match lobby test without web sockets
+
 		private readonly IMatchmakingService _matchmakingService;
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
@@ -580,17 +582,20 @@ namespace GammonX.Server
 		{
 			await PerfromRollAsync(matchSession, callingPlayerId);
 
-			bool canMove;
+			bool canMove = false;
 			do
 			{
-				var nextMove = _botService.GetNextMove(matchSession);
+				var nextMoves = await _botService.GetNextMovesAsync(matchSession, callingPlayerId);
 
-				if (nextMove == null)
+				if (nextMoves == null)
 				{
 					throw new InvalidOperationException("An error occurred wihle evaluating the next move for the bot");
 				}
 
-				canMove = await PerformMoveAsync(matchSession, callingPlayerId, nextMove.From, nextMove.To);
+				foreach (var nextMove in nextMoves)
+				{
+					canMove = await PerformMoveAsync(matchSession, callingPlayerId, nextMove.From, nextMove.To);
+				}
 			}
 			while (canMove);
 
@@ -650,7 +655,10 @@ namespace GammonX.Server
 			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id, allowedCommands);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, player1Contract);
-			await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, player2Contract);
+			if (matchSession.Type != WellKnownMatchType.Bot)
+			{
+				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, player2Contract);
+			}			
 		}
 
 		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
@@ -658,7 +666,10 @@ namespace GammonX.Server
 			var matchStatePayload = matchSession.ToPayload(allowedCommands);
 			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, matchStateContract);
-			await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
+			if (matchSession.Type != WellKnownMatchType.Bot)
+			{
+				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
+			}
 
 			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{

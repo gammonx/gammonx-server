@@ -4,6 +4,8 @@ using GammonX.Engine.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
+using GammonX.Server.Tests.Utils;
+
 using Moq;
 
 namespace GammonX.Server.Tests.Stubs
@@ -41,29 +43,7 @@ namespace GammonX.Server.Tests.Stubs
 			diceServiceMock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 
 			// create boards which only needs one move to finish the game
-			var boardService = BoardServiceFactory.Create(modus);
-			var boardServiceMock = new Mock<IBoardService>();
-			boardServiceMock.Setup(x => x.Modus).Returns(modus);
-			boardServiceMock
-				.As<IBoardService>()
-				.Setup(x => x.MoveCheckerTo(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), true))
-				.Callback<IBoardModel, int, int, bool>((model, from, roll, isWhite) => boardService.MoveCheckerTo(model, from, roll, isWhite));
-			boardServiceMock
-				.As<IBoardService>()
-				.Setup(x => x.MoveChecker(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), true))
-				.Returns<IBoardModel, int, int, bool>((model, from, roll, isWhite) => boardService.MoveChecker(model, from, roll, isWhite));
-			boardServiceMock
-				.As<IBoardService>()
-				.Setup(x => x.GetLegalMoves(It.IsAny<IBoardModel>(), true, It.IsAny<int[]>()))
-				.Returns<IBoardModel, bool, int[]>((model, isWhite, rolls) => boardService.GetLegalMoves(model, isWhite, rolls));
-			boardServiceMock
-				.As<IBoardService>()
-				.Setup(x => x.CanBearOffChecker(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), true))
-				.Returns<IBoardModel, int, int, bool>((model, from, roll, isWhite) => boardService.CanBearOffChecker(model, from, roll, isWhite));
-			boardServiceMock
-				.As<IBoardService>()
-				.Setup(x => x.CanMoveChecker(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), true))
-				.Returns<IBoardModel, int, int, bool>((model, from, roll, isWhite) => boardService.CanMoveChecker(model, from, roll, isWhite));
+			Mock<IBoardService> boardServiceMock = BoardUtils.CreateBoardServiceMock(modus);
 
 			if (modus == GameModus.Portes)
 			{

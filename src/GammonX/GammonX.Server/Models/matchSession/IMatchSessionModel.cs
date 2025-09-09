@@ -24,6 +24,8 @@ namespace GammonX.Server.Models
 		/// </summary>
 		WellKnownMatchVariant Variant { get; }
 
+		// TODO :: introduce bot model with difficulty level
+
 		/// <summary>
 		/// Gets the type of the match.
 		/// </summary>

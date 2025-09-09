@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -14,11 +15,11 @@ using System.Net.Http.Json;
 
 namespace GammonX.Server.Tests
 {
-	public class StartBotGameAndMatchIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+	public class SimpleBotGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 	{
 		private readonly WebApplicationFactory<Program> _factory;
 
-		public StartBotGameAndMatchIntegrationTests(WebApplicationFactory<Program> factory)
+		public SimpleBotGameIntegrationTests(WebApplicationFactory<Program> factory)
 		{
 			_factory = factory.WithWebHostBuilder(builder =>
 			{
@@ -36,6 +37,12 @@ namespace GammonX.Server.Tests
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
+					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IBotService));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+					services.AddSingleton<IBotService>(new SimpleBotService());
 				});
 			});
 		}

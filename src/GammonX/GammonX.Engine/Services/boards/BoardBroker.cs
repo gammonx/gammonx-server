@@ -1,5 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using System.ComponentModel;
 
 namespace GammonX.Engine.Services
 {
@@ -166,8 +165,8 @@ namespace GammonX.Engine.Services
 		/// </summary>
 		/// <remarks>
 		/// There are 24 fields, numbered from 0 to 23.
-        /// Field i is mirrored to 23 - i.
-        /// A positive value(e.g. +3, i.e. 3 black tiles) becomes -3 (3 white tiles) and vice versa.
+		/// Field i is mirrored to 23 - i.
+		/// A positive value(e.g. +3, i.e. 3 black checkers) becomes -3 (3 white checkers) and vice versa.
 		/// </remarks>
 		/// <param name="originalFields"></param>
 		/// <returns>Inverted board fields array</returns>

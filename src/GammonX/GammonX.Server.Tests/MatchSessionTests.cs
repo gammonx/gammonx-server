@@ -48,7 +48,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPayloadCreated(WellKnownMatchVariant variant)
 		{
-			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Session;
 			var matchId = result.MatchId;
 			var payload = session.ToPayload();
@@ -69,7 +69,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayersCanJoin(WellKnownMatchVariant variant)
 		{
-			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
 
@@ -91,7 +91,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayersCannotJoin(WellKnownMatchVariant variant)
 		{
-			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
 			var entry = new LobbyEntry(Guid.NewGuid());
@@ -104,7 +104,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionPlayerCannotJoinTwice(WellKnownMatchVariant variant)
 		{
-			var result = SessionUtils.CreateMatchSession(variant, _matchSessionFactory);
+			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Session as IMatchSessionModel;
 			Assert.NotNull(session);
 			var entry = SessionUtils.CreateLobbyEntry();

@@ -133,9 +133,6 @@ namespace GammonX.Server.Models
 			var legalMove = LegalMovesModel.LegalMoves.FirstOrDefault(lm => lm.From == from && lm.To == to);
 			if (legalMove != null && !legalMove.Used)
 			{
-				// TODO :: test different bear off moves
-				// TODO :: test different enter from bar moves
-				// TODO :: if possible both dices have to be used up. Using a dice first in order to avoid second is not allowed!
 				var distance = GetMoveDistance(BoardModel, from, to, out var bearOffMove);
 
 				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, bearOffMove, out var usedDices))
@@ -220,7 +217,6 @@ namespace GammonX.Server.Models
 
 		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, bool bearOffMove, out List<DiceRollContract> usedDices)
 		{
-			// TODO :: highest roll has to be used first
 			usedDices = new List<DiceRollContract>();
 			// we order the rolls in ascending order to make sure that the lowest roll
 			// always bears of a potential checker

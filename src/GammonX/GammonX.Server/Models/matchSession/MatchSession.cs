@@ -263,6 +263,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public bool IsMatchOver()
 		{
+			// TODO :: support point games
 			return _gameSessions.All(gs => gs?.Phase == GamePhase.GameOver);
 		}
 

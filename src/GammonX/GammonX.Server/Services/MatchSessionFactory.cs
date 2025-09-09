@@ -4,8 +4,6 @@ using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
-	// TODO :: allow the creation of match session with points (e.g. first to reach 5 or 7)
-
 	/// <summary>
 	/// Provides a factory to create match sessions based on the match id and game modus.
 	/// </summary>
