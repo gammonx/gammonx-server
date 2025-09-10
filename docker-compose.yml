@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
+      args:
+        BUILD_CONFIGURATION: debug
     container_name: server
     ports:
       - "8080:8080"   # controller port
@@ -16,8 +18,8 @@ services:
     build:
       context: ../gammonx-wildbg
       dockerfile: ./dockerfile
+      args:
+        BUILD_CONFIGURATION: debug
     container_name: wildbg-bot
     ports:
       - "8082:8082"
-    environment:
-      - RUST_LOG=debug
