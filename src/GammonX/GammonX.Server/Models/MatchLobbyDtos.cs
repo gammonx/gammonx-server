@@ -5,8 +5,9 @@
 	/// </summary>
 	/// <param name="PlayerId">Player who joins the matchmaking process.</param>
 	/// <param name="MatchVariant">Match queue to join.</param>
-	/// <param name="QueueType">Queue type to join.</param>
-	public record JoinRequest(Guid PlayerId, WellKnownMatchVariant MatchVariant, WellKnownMatchType QueueType);
+	/// <param name="MatchModus">Match modus to join.</param>
+	/// <param name="MatchType">Match type to play.</param>
+	public record JoinRequest(Guid PlayerId, WellKnownMatchVariant MatchVariant, WellKnownMatchModus MatchModus, WellKnownMatchType MatchType);
 
 	/// <summary>
 	/// Internal queue entry for a player in the matchmaking queue.
@@ -20,6 +21,7 @@
 	/// Unique ID of a queue entry.
 	/// </summary>
 	/// <param name="MatchVariant">Match variant.</param>
-	/// <param name="QueueType">Queue type.</param>
-	public record QueueKey(WellKnownMatchVariant MatchVariant, WellKnownMatchType QueueType);
+	/// <param name="MatchModus">Match type.</param>
+	/// <param name="MatchType">Match type to play.</param>
+	public record QueueKey(WellKnownMatchVariant MatchVariant, WellKnownMatchModus MatchModus, WellKnownMatchType MatchType);
 }

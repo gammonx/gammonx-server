@@ -49,11 +49,7 @@ namespace GammonX.Server.Tests
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new {
-				PlayerId = "fdd907ca-794a-43f4-83e6-cadfabc57c45",
-				MatchVariant = WellKnownMatchVariant.Tavli,
-				QueueType = WellKnownMatchType.Normal
-			};
+			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
@@ -66,12 +62,7 @@ namespace GammonX.Server.Tests
 				})
 				.Build();
 
-			var player2 = new
-			{
-				PlayerId = "f6f9bb06-cbf6-4f42-80bf-5d62be34cff6",
-				MatchVariant = WellKnownMatchVariant.Tavli,
-				QueueType = WellKnownMatchType.Normal
-			};
+			var player2 = new JoinRequest(Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson2);
@@ -112,7 +103,7 @@ namespace GammonX.Server.Tests
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
 					Assert.False(payload.MatchFound, "Player 1 should not have a match found yet.");
-					Assert.Equal(player1.PlayerId, payload.Player1.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1);
 					Assert.Null(payload.Player2);
 					Assert.Empty(payload.AllowedCommands);
 					player1Waiting = true;
@@ -132,8 +123,8 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchLobbyPayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.ToString());
-					Assert.Equal(player2.PlayerId, payload.Player2.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1);
+					Assert.Equal(player2.PlayerId, payload.Player2);
 					Assert.NotNull(payload.Player2);
 					Assert.True(payload.MatchFound);
 					Assert.Empty(payload.AllowedCommands);
@@ -149,8 +140,8 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchLobbyPayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.ToString());
-					Assert.Equal(player2.PlayerId, payload.Player2.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1);
+					Assert.Equal(player2.PlayerId, payload.Player2);
 					Assert.NotNull(payload.Player2);
 					Assert.True(payload.MatchFound);
 					Assert.Empty(payload.AllowedCommands);
@@ -166,8 +157,8 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id.ToString());
-					Assert.Equal(player2.PlayerId, payload.Player2.Id.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1.Id);
+					Assert.Equal(player2.PlayerId, payload.Player2.Id);
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
 					Assert.Empty(payload.GameRounds);
@@ -184,8 +175,8 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id.ToString());
-					Assert.Equal(player2.PlayerId, payload.Player2.Id.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1.Id);
+					Assert.Equal(player2.PlayerId, payload.Player2.Id);
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
 					Assert.Empty(payload.GameRounds);
@@ -205,7 +196,7 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id.ToString());
+					Assert.Equal(player1.PlayerId, payload.Player1.Id);
 					Assert.Empty(payload.AllowedCommands);
 					Assert.Empty(payload.GameRounds);
 					player1GameWaiting = true;
@@ -232,7 +223,7 @@ namespace GammonX.Server.Tests
 				{
 					Assert.NotEqual(Guid.Empty, payload.Id);
 					gameId = payload.Id;
-					Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
+					Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 					Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
 					Assert.Equal(1, payload.TurnNumber);
 					Assert.Empty(payload.DiceRolls);
@@ -258,7 +249,7 @@ namespace GammonX.Server.Tests
 				{
 					Assert.NotEqual(Guid.Empty, payload.Id);
 					gameId = payload.Id;
-					Assert.NotEqual(player2.PlayerId, payload.ActiveTurn.ToString());
+					Assert.NotEqual(player2.PlayerId, payload.ActiveTurn);
 					Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 					Assert.Equal(1, payload.TurnNumber);
 					Assert.Empty(payload.DiceRolls);
@@ -304,7 +295,7 @@ namespace GammonX.Server.Tests
 					if (!player1RolledTheDice)
 					{
 						Assert.Equal(gameId, payload.Id);
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.Rolling, payload.Phase);
 						Assert.Equal(1, payload.TurnNumber);
 						Assert.NotEmpty(payload.DiceRolls);
@@ -321,7 +312,7 @@ namespace GammonX.Server.Tests
 					}
 					else if (!player1FirstMove)
 					{
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.Moving, payload.Phase);
 						Assert.NotEmpty(payload.DiceRolls);
 						Assert.True(payload.DiceRolls.Length >= 2);
@@ -339,7 +330,7 @@ namespace GammonX.Server.Tests
 					else if (!player1SecondMove)
 					{
 						player1SecondMove = true;
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.WaitingForEndTurn, payload.Phase);
 						Assert.NotEmpty(payload.DiceRolls);
 						Assert.True(payload.DiceRolls.Length >= 2);
@@ -354,7 +345,7 @@ namespace GammonX.Server.Tests
 					else if (!_player1EndedHisTurn)
 					{
 						_player1EndedHisTurn = true;
-						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.Empty(payload.DiceRolls);
@@ -367,8 +358,8 @@ namespace GammonX.Server.Tests
 					else if (!player2EndedHisTurn)
 					{
 						// player 2 turn
-						Assert.Equal(player2.PlayerId, payload.ActiveTurn.ToString());
-						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player2.PlayerId, payload.ActiveTurn);
+						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
@@ -392,7 +383,7 @@ namespace GammonX.Server.Tests
 					{
 						player2StartedTurn = true;
 						Assert.Equal(gameId, payload.Id);
-						Assert.Equal(player2.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player2.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Empty(payload.DiceRolls);
@@ -405,7 +396,7 @@ namespace GammonX.Server.Tests
 					else if (_player1EndedHisTurn && !player2RolledTheDice)
 					{
 						Assert.Equal(gameId, payload.Id);
-						Assert.Equal(player2.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player2.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.Rolling, payload.Phase);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.NotEmpty(payload.DiceRolls);
@@ -424,7 +415,7 @@ namespace GammonX.Server.Tests
 					else if (_player1EndedHisTurn && !player2FirstMove)
 					{
 						player2FirstMove = true;
-						Assert.Equal(player2.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player2.PlayerId, payload.ActiveTurn);
 						// both dices were used in the rolling phase, no moving phase
 						Assert.Equal(GamePhase.WaitingForEndTurn, payload.Phase);
 						Assert.NotEmpty(payload.DiceRolls);
@@ -440,8 +431,8 @@ namespace GammonX.Server.Tests
 					else if (_player1EndedHisTurn && !player2EndedHisTurn)
 					{
 						player2EndedHisTurn = true;
-						Assert.NotEqual(player2.PlayerId, payload.ActiveTurn.ToString());
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
+						Assert.NotEqual(player2.PlayerId, payload.ActiveTurn);
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(3, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.Empty(payload.DiceRolls);
@@ -454,8 +445,8 @@ namespace GammonX.Server.Tests
 					else if (!_player1EndedHisTurn && !player2StartedTurn)
 					{
 						// player 1 turn
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn.ToString());
-						Assert.NotEqual(player2.PlayerId, payload.ActiveTurn.ToString());
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
+						Assert.NotEqual(player2.PlayerId, payload.ActiveTurn);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);

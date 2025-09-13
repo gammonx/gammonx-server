@@ -1,6 +1,6 @@
 # TODO
 - code todos
-- point games
+- point games > DONE
 - auth/user account
 - ranked mode (incl. elo rating)
 - tournament mode

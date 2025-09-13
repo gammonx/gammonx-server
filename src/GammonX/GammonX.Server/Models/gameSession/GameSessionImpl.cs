@@ -10,7 +10,7 @@ namespace GammonX.Server.Models
 	{
 		private readonly IBoardService _boardService;
 		private IDiceService _diceService;
-		
+
 		private int _winnerScore;
 		private Guid _winner;
 
@@ -28,6 +28,9 @@ namespace GammonX.Server.Models
 
 		// <inheritdoc />
 		public Guid ActivePlayer { get; private set; }
+
+		// <inheritdoc />
+		public Guid OtherPlayer { get; private set; }
 
 		// <inheritdoc />
 		public int TurnNumber { get; private set; }
@@ -61,14 +64,15 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public void StartGame(Guid playerId)
+		public void StartGame(Guid activePlayer, Guid otherPLayer)
 		{
 			StartedAt = DateTime.UtcNow;
 			TurnNumber = 1;
-			// player 1 starts rolling the dice
-			// player 2 waiting for the opponent to roll and move afterwards
 			Phase = GamePhase.WaitingForRoll;
-			ActivePlayer = playerId;
+			// otherPlayer waiting for the opponent to roll and move afterwards
+			OtherPlayer = otherPLayer;
+			// activePlayer starts rolling the dice
+			ActivePlayer = activePlayer;
 		}
 
 		// <inheritdoc />
@@ -83,6 +87,7 @@ namespace GammonX.Server.Models
 		public void NextTurn(Guid playerId)
 		{
 			TurnNumber++;
+			OtherPlayer = ActivePlayer;
 			ActivePlayer = playerId;
 			DiceRollsModel = new DiceRollsModel(Array.Empty<DiceRollContract>());
 			LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
@@ -115,6 +120,10 @@ namespace GammonX.Server.Models
 				DiceRollsModel = new DiceRollsModel(diceRoll1, diceRoll2);
 			}
 
+			// TODO both cubes has to be used
+			// TODO higher cube has to be used first
+			// TODO combined move on entering the board
+			// TODO fevga starts at 0
 			var legalMoves = _boardService.GetLegalMoves(BoardModel, isWhite, rolls);
 			var legalMoveContracts = legalMoves.Select(lm => new LegalMoveContract(lm.Item1, lm.Item2)).ToArray();
 			LegalMovesModel = new LegalMovesModel(legalMoveContracts);
@@ -260,7 +269,7 @@ namespace GammonX.Server.Models
 							return true;
 						current.RemoveAt(current.Count - 1);
 					}
-				}				
+				}
 			}
 
 			result = null!;

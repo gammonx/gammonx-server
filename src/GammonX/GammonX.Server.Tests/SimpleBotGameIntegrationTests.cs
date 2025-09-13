@@ -57,7 +57,7 @@ namespace GammonX.Server.Tests
 			{
 				PlayerId = "fdd907ca-794a-43f4-83e6-cadfabc57c45",
 				MatchVariant = WellKnownMatchVariant.Tavli,
-				QueueType = WellKnownMatchType.Bot
+				QueueType = WellKnownMatchModus.Bot
 			};
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();

@@ -82,7 +82,7 @@ namespace GammonX.Server
 						matchSession.JoinSession(matchLobby.Player1);
 						await Groups.AddToGroupAsync(matchLobby.Player1.ConnectionId, groupName);
 
-						if (matchLobby.QueueKey.QueueType == WellKnownMatchType.Bot)
+						if (matchLobby.QueueKey.MatchModus == WellKnownMatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
 							var botPlayer = new LobbyEntry(Guid.NewGuid());
@@ -149,7 +149,7 @@ namespace GammonX.Server
 					{
 						matchSession.Player1.AcceptNextGame();
 
-						if (matchSession.Type == WellKnownMatchType.Bot)
+						if (matchSession.Modus == WellKnownMatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
 							matchSession.Player2.AcceptNextGame();
@@ -655,7 +655,7 @@ namespace GammonX.Server
 			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id, allowedCommands);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, player1Contract);
-			if (matchSession.Type != WellKnownMatchType.Bot)
+			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
 				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, player2Contract);
 			}			
@@ -666,7 +666,7 @@ namespace GammonX.Server
 			var matchStatePayload = matchSession.ToPayload(allowedCommands);
 			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
 			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, matchStateContract);
-			if (matchSession.Type != WellKnownMatchType.Bot)
+			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
 				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
 			}
@@ -728,7 +728,7 @@ namespace GammonX.Server
 
 		private static bool IsBotTurn(IMatchSessionModel matchSession, Guid playerId)
 		{
-			if (matchSession.Type == WellKnownMatchType.Bot)
+			if (matchSession.Modus == WellKnownMatchModus.Bot)
 			{
 				if (matchSession.Player1.Id == playerId)
 				{

@@ -39,8 +39,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 
 			var matchState = session.ToPayload();
 			Assert.Empty(matchState.AllowedCommands);
@@ -84,8 +84,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player1.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.GameRounds[0].Score);
@@ -119,8 +119,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
@@ -152,8 +152,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
@@ -186,8 +186,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.Player2.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.GameRounds[0].Score);
@@ -220,8 +220,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player2.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.GameRounds[0].Score);
@@ -257,8 +257,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
@@ -292,8 +292,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
@@ -438,8 +438,8 @@ namespace GammonX.Server.Tests
 			// game is lost after double offer decline
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			// score got doubled 1 * 2
-			Assert.Equal(2, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(2, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 		}
 	}
 }

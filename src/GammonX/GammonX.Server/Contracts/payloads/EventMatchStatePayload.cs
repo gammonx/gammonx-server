@@ -22,6 +22,12 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "variant")]
 		public WellKnownMatchVariant Variant { get; set; }
 
+		[DataMember(Name = "modus")]
+		public WellKnownMatchModus Modus { get; set; }
+
+		[DataMember(Name = "type")]
+		public WellKnownMatchType Type { get; set; }	
+
 		[DataMember(Name = "player1")]
 		public PlayerContract Player1 { get; set; }
 

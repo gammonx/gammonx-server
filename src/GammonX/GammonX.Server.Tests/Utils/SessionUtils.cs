@@ -43,7 +43,7 @@ namespace GammonX.Server.Tests.Utils
 		public static dynamic CreateHeadToHeadMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, WellKnownMatchType.Normal);
+			var queueKey = new QueueKey(variant, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 			var session = factory.Create(matchId, queueKey);
 			return new { MatchId = matchId, Session = session };
 		}
@@ -51,7 +51,7 @@ namespace GammonX.Server.Tests.Utils
 		public static dynamic CreateHeadToBotMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, WellKnownMatchType.Bot);
+			var queueKey = new QueueKey(variant, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame);
 			var session = factory.Create(matchId, queueKey);
 			return new { MatchId = matchId, Session = session };
 		}

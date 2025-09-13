@@ -7,12 +7,10 @@ namespace GammonX.Server.Models
 	public sealed class TavlaMatchSession : MatchSession
 	{
 		public TavlaMatchSession(
-			Guid id, 
-			WellKnownMatchVariant variant,
-			WellKnownMatchType type,
-			GameModus[] rounds, 
+			Guid id,
+			QueueKey queueKey,
 			IGameSessionFactory gameSessionFactory
-		) : base(id, variant, type, rounds, gameSessionFactory)
+		) : base(id, queueKey, gameSessionFactory)
 		{
 			// pass
 		}
@@ -28,7 +26,7 @@ namespace GammonX.Server.Models
 		/// </remarks>
 		/// <param name="playerId">Player id who won the game</param>
 		/// <returns>Score won with the game.</returns>
-		protected override int CalculateScore(Guid playerId)
+		protected override int CalculatePoints(Guid playerId)
 		{
 			var activeSession = GetGameSession(GameRound);
 
@@ -75,10 +73,34 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override int CalculateResignGameScore()
+		protected override int CalculateResignGamePoints()
 		{
 			// wins with a gammon
 			return 2;
+		}
+
+		// <inheritdoc />
+		protected override GameModus[] GetGameModusList(WellKnownMatchType matchType)
+		{
+			if (matchType == WellKnownMatchType.CashGame)
+			{
+				// we play max 1 round in a cash game
+				return [GameModus.Tavla];
+			}
+			else if (matchType == WellKnownMatchType.FivePointGame)
+			{
+				// we play max 5 rounds in a five point game
+				return [GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla];
+			}
+			else if (matchType == WellKnownMatchType.SevenPointGame)
+			{
+				// we play max 7 rounds in a seven point game
+				return [GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla];
+			}
+			else
+			{
+				throw new InvalidOperationException("the given match type is not supported for tavla match variant");
+			}
 		}
 	}
 }

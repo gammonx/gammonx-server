@@ -6,10 +6,17 @@
 ```json
 {
     "PlayerId": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
-    "MatchVariant": "2"  
+    "MatchVariant": 2,
+    "MatchModus": 0,
+    "MatchType": 2
 }
 ```
-WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+> WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+
+> WellknownMatchModus > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+
+> WellknownMatchType > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+
 - Response
 ```json
 {
@@ -69,6 +76,8 @@ WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
 #### `GameModus` [Link](../../src/GammonX/GammonX.Engine/Models/GameModus.cs)
 #### `WellKnownBoardPositions` [Link](../../src/GammonX/GammonX.Engine/Models/WellKnownBoardPositions.cs)
 #### `WellKnownMatchVariant` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+#### `WellKnownMatchModus` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+#### `WellKnownMatchType` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
 #### `GamePhase` [Link](../../src/GammonX/GammonX.Server/Models/gameSession/GamePhase.cs)
 
 ## GameState Payload
@@ -219,6 +228,8 @@ WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
          }
       ],
       "variant":2,
+      "modus": 0,
+      "type": 2,
       "player1":{
          "id":"fdd907ca-794a-43f4-83e6-cadfabc57c45",
          "score":6

@@ -1,6 +1,4 @@
-﻿using GammonX.Engine.Models;
-
-using GammonX.Server.Models;
+﻿using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
@@ -34,11 +32,11 @@ namespace GammonX.Server.Services
 			switch (queueKey.MatchVariant)
 			{
 				case WellKnownMatchVariant.Backgammon:
-					return new BackgammonMatchSession(id, queueKey.MatchVariant, queueKey.QueueType, [GameModus.Backgammon], _gameSessionFactory);
+					return new BackgammonMatchSession(id, queueKey, _gameSessionFactory);
 				case WellKnownMatchVariant.Tavla:
-					return new TavlaMatchSession(id, queueKey.MatchVariant, queueKey.QueueType, [GameModus.Tavla], _gameSessionFactory);
+					return new TavlaMatchSession(id, queueKey, _gameSessionFactory);
 				case WellKnownMatchVariant.Tavli:
-					return new TavliMatchSession(id, queueKey.MatchVariant, queueKey.QueueType, [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga], _gameSessionFactory);
+					return new TavliMatchSession(id, queueKey, _gameSessionFactory);
 				default:
 					throw new ArgumentOutOfRangeException(nameof(queueKey.MatchVariant), "Unknown match variant.");
 			}

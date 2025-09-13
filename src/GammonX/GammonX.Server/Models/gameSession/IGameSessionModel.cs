@@ -38,6 +38,11 @@ namespace GammonX.Server.Models
 		public Guid ActivePlayer { get; }
 
 		/// <summary>
+		/// Gets the player id of the player who is not the active player.
+		/// </summary>
+		public Guid OtherPlayer { get; }
+
+		/// <summary>
 		/// Gets the amount of turns already played.
 		/// </summary>
 		/// <remarks>
@@ -76,8 +81,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Starts the given game session.
 		/// </summary>
-		/// <param name="playerId">Player id of the player which starts rolling his dices.</param>
-		public void StartGame(Guid playerId);
+		/// <param name="activePlayer">Player id of the player which starts rolling his dices.</param>
+		/// <param name="otherPLayer">Other player id which is not actively playing.</param>
+		public void StartGame(Guid activePlayer, Guid otherPLayer);
 
 		/// <summary>
 		/// Stops the current game session.

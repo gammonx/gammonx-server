@@ -23,7 +23,7 @@ namespace GammonX.Server.Tests
 		public void MatchSessionCreated(WellKnownMatchVariant variant, GameModus gameModusToExpect)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, WellKnownMatchType.Normal);
+			var queueKey = new QueueKey(variant, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 			var session = _matchSessionFactory.Create(matchId, queueKey);
 			Assert.NotNull(session);
 			Assert.Equal(matchId, session.Id);
@@ -33,9 +33,11 @@ namespace GammonX.Server.Tests
 			Assert.Equal(Guid.Empty, session.Player2.Id);
 			Assert.True(string.IsNullOrEmpty(session.Player1.ConnectionId));
 			Assert.True(string.IsNullOrEmpty(session.Player2.ConnectionId));
-			Assert.Equal(0, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(0, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			Assert.Equal(gameModusToExpect, session.GetGameModus());
+			Assert.Equal(WellKnownMatchModus.Normal, session.Modus);
+			Assert.Equal(WellKnownMatchType.CashGame, session.Type);
 			Assert.False(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
@@ -55,6 +57,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(payload);
 			Assert.Equal(matchId, payload.Id);
 			Assert.Equal(variant, payload.Variant);
+			Assert.Equal(WellKnownMatchType.CashGame, payload.Type);
+			Assert.Equal(WellKnownMatchModus.Normal, payload.Modus);
 			Assert.Equal(1, payload.GameRound);
 			Assert.Equal(Guid.Empty, payload.Player1.Id);
 			Assert.Equal(Guid.Empty, payload.Player2.Id);
@@ -282,7 +286,9 @@ namespace GammonX.Server.Tests
 			session.EndTurn(player1Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.Equal(player2Id, gameSession.ActivePlayer);
+			Assert.Equal(player1Id, gameSession.OtherPlayer);
 			Assert.NotEqual(player1Id, gameSession.ActivePlayer);
+			Assert.NotEqual(player2Id, gameSession.OtherPlayer);
 			Assert.Equal(2, gameSession.TurnNumber);
 			Assert.Empty(gameSession.DiceRollsModel.DiceRolls);
 			Assert.Empty(gameSession.LegalMovesModel.LegalMoves);
@@ -360,8 +366,8 @@ namespace GammonX.Server.Tests
 
 			if (variant == WellKnownMatchVariant.Backgammon)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -371,8 +377,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -382,8 +388,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -415,8 +421,8 @@ namespace GammonX.Server.Tests
 
 			if (variant == WellKnownMatchVariant.Backgammon)
 			{
-				Assert.True(session.Player1.Score > 0);
-				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Points > 0);
+				Assert.True(session.Player2.Points == 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -426,8 +432,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
-				Assert.True(session.Player1.Score > 0);
-				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Points > 0);
+				Assert.True(session.Player2.Points == 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -437,8 +443,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
-				Assert.True(session.Player1.Score > 0);
-				Assert.True(session.Player2.Score == 0);
+				Assert.True(session.Player1.Points > 0);
+				Assert.True(session.Player2.Points == 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -470,8 +476,8 @@ namespace GammonX.Server.Tests
 
 			if (variant == WellKnownMatchVariant.Backgammon)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -481,8 +487,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -492,8 +498,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
-				Assert.True(session.Player1.Score == 0);
-				Assert.True(session.Player2.Score > 0);
+				Assert.True(session.Player1.Points == 0);
+				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
 				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
@@ -523,8 +529,8 @@ namespace GammonX.Server.Tests
 
 			if (variant == WellKnownMatchVariant.Backgammon)
 			{
-				Assert.True(session.Player2.Score == 0);
-				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Points == 0);
+				Assert.True(session.Player1.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -534,8 +540,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
-				Assert.True(session.Player2.Score == 0);
-				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Points == 0);
+				Assert.True(session.Player1.Points > 0);
 				Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 				Assert.Equal(1, session.GameRound);
 				Assert.False(session.CanStartNextGame());
@@ -545,8 +551,8 @@ namespace GammonX.Server.Tests
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
-				Assert.True(session.Player2.Score == 0);
-				Assert.True(session.Player1.Score > 0);
+				Assert.True(session.Player2.Points == 0);
+				Assert.True(session.Player1.Points > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
 				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
@@ -555,6 +561,82 @@ namespace GammonX.Server.Tests
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		public void MatchSessionHandleDifferentConfigurations(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		{
+			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
+			Assert.NotNull(matchSession);
+			Assert.Equal(variant, matchSession.Variant);
+			Assert.Equal(modus, matchSession.Modus);
+			Assert.Equal(type, matchSession.Type);
+
+			var pointsToWin = matchSession.PointsAway(matchSession.Player1.Id);
+			Assert.Equal(type.GetMaxPoints(), pointsToWin);
+
+			pointsToWin = matchSession.PointsAway(matchSession.Player2.Id);
+			Assert.Equal(type.GetMaxPoints(), pointsToWin);
+
+			var gameOverFunc = type.GetMatchOverFunc();
+
+			if (type == WellKnownMatchType.CashGame)
+			{
+				var gameSessions = matchSession.GetGameSessions();
+				var startPlayerId = matchSession.Player1.Id;
+				matchSession.Player1.AcceptNextGame();
+				matchSession.Player2.AcceptNextGame();
+				while (matchSession.CanStartNextGame())
+				{
+					matchSession.StartNextGame(startPlayerId);
+					matchSession.ResignGame(startPlayerId);
+					startPlayerId = startPlayerId == matchSession.Player1.Id ? matchSession.Player2.Id : matchSession.Player1.Id;
+					matchSession.Player1.AcceptNextGame();
+					matchSession.Player2.AcceptNextGame();
+				}				
+				Assert.True(gameOverFunc.Invoke(matchSession));
+			}
+			else if (type == WellKnownMatchType.FivePointGame)
+			{
+				matchSession.Player1.Points = 4;
+				Assert.False(gameOverFunc.Invoke(matchSession));
+				matchSession.Player2.Points = 5;
+				Assert.True(gameOverFunc.Invoke(matchSession));
+			}
+			else if (type == WellKnownMatchType.SevenPointGame)
+			{
+				matchSession.Player2.Points = 4;
+				Assert.False(gameOverFunc.Invoke(matchSession));
+				matchSession.Player1.Points = 8;
+				Assert.True(gameOverFunc.Invoke(matchSession));
 			}
 		}
 	}

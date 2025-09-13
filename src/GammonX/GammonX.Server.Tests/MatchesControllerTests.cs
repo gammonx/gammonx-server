@@ -32,8 +32,8 @@ namespace GammonX.Server.Tests
 			var player1Id = Guid.NewGuid();
 			var player2Id = Guid.NewGuid();
 				
-			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
-			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
+			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
+			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
 			
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
@@ -72,9 +72,9 @@ namespace GammonX.Server.Tests
 		{
 			var player1Id = Guid.NewGuid();
 			var player2Id = Guid.NewGuid();
-			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
-			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
-			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, WellKnownMatchType.Normal);
+			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
+			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
+			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 
 			_matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), queueKey);
 			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player1.PlayerId), queueKey));
@@ -82,9 +82,9 @@ namespace GammonX.Server.Tests
 			Assert.Throws<InvalidOperationException>(() => _matchmakingService.JoinQueue(new LobbyEntry(player2.PlayerId), queueKey));
 		}
 
-		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchType queueType)
+		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchModus queueType)
 		{
-			return new JoinRequest(playerId, variant, queueType);
+			return new JoinRequest(playerId, variant, queueType, WellKnownMatchType.CashGame);
 		}
 	}
 }

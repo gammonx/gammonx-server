@@ -26,7 +26,7 @@ namespace GammonX.Server.Bot
 				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
 			var isWhite = IsWhite(matchSession, playerId);
-			var requestParameters = CreateParameters(gameSession, isWhite);
+			var requestParameters = CreateParameters(matchSession, isWhite);
 
 			var client = new WildbgClient(_httpClient);
 			var result = await client.GetMoveAsync(requestParameters);
@@ -47,14 +47,18 @@ namespace GammonX.Server.Bot
 			return Array.Empty<LegalMoveContract>();
 		}
 
-		private static GetMoveParameter CreateParameters(IGameSessionModel gameSession, bool isWhite)
+		private static GetMoveParameter CreateParameters(IMatchSessionModel matchSession, bool isWhite)
 		{
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			if (gameSession == null)
+				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
 			// TODO :: add support for fevga and plakoto
 			if (gameSession.Modus == GameModus.Portes ||
 				gameSession.Modus == GameModus.Backgammon ||
 				gameSession.Modus == GameModus.Tavla)
 			{
-				return CreateStandardParameters(gameSession, isWhite);
+				return CreateStandardParameters(matchSession, isWhite);
 			}
 			else if (gameSession.Modus == GameModus.Plakoto)
 			{
@@ -70,8 +74,12 @@ namespace GammonX.Server.Bot
 			}
 		}
 
-		private static GetMoveParameter CreateStandardParameters(IGameSessionModel gameSession, bool isWhite)
+		private static GetMoveParameter CreateStandardParameters(IMatchSessionModel matchSession, bool isWhite)
 		{
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			if (gameSession == null)
+				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
 			IBoardModel boardModel;
 			if (isWhite)
 			{
@@ -107,9 +115,8 @@ namespace GammonX.Server.Bot
 			{
 				DiceRoll1 = diceRolls[0].Roll,
 				DiceRoll2 = diceRolls[1].Roll,
-				// TODO multiple point games
-				XPointsAway = 0,
-				OPointsAway = 0,
+				XPointsAway = matchSession.PointsAway(gameSession.ActivePlayer),
+				OPointsAway = matchSession.PointsAway(gameSession.OtherPlayer),
 				Points = paramBoard
 			};
 			return requestParameters;

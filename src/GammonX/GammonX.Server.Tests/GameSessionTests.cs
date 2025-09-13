@@ -54,7 +54,8 @@ namespace GammonX.Server.Tests
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
 			var player1Id = Guid.NewGuid();
-			gameSession.StartGame(player1Id);
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
@@ -96,7 +97,8 @@ namespace GammonX.Server.Tests
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
 			var player1Id = Guid.NewGuid();
-			gameSession.StartGame(player1Id);
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
@@ -133,7 +135,8 @@ namespace GammonX.Server.Tests
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 1]);
 			gameSession.InjectDiceServiceMock(mock.Object);
 			var player1Id = Guid.NewGuid();
-			gameSession.StartGame(player1Id);
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
@@ -183,7 +186,8 @@ namespace GammonX.Server.Tests
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
 			var player1Id = Guid.NewGuid();
-			gameSession.StartGame(player1Id);
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, true);
 			Assert.Throws<InvalidOperationException>(() => gameSession.MoveCheckers(player1Id, 0, 0, isWhite));
 		}

@@ -28,8 +28,11 @@ namespace GammonX.Server.Controllers
 		{
 			try
 			{
+				// TODO :: validate join request
+				// e.g. cash game in ranked is not allowed
+
 				var player = new LobbyEntry(req.PlayerId);
-				var queueKey = new QueueKey(req.MatchVariant, req.QueueType);
+				var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType);
 				var matchId = _matchmakingService.JoinQueue(player, queueKey);
 				var payload = new RequestMatchIdPayload(matchId);
 				var response = new RequestResponseContract<RequestMatchIdPayload>("OK", payload);

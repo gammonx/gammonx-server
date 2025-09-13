@@ -34,7 +34,7 @@
 		/// <param name="player2">Second player.</param>
 		public void Join(LobbyEntry player2)
 		{
-			if (QueueKey.QueueType == WellKnownMatchType.Bot)
+			if (QueueKey.MatchModus == WellKnownMatchModus.Bot)
 			{
 				throw new InvalidOperationException("Second player cannot join a bot game");
 			}

@@ -21,9 +21,9 @@
 	}
 
 	/// <summary>
-	/// Each well known queue type describes which match making queue the given player joins.
+	/// Each well known match modus describes which match making queue the given player joins.
 	/// </summary>
-	public enum WellKnownMatchType
+	public enum WellKnownMatchModus
 	{
 		/// <summary>
 		/// Joins the normal queue resulting in matches without any rating.
@@ -37,5 +37,24 @@
 		/// Join the bot queue resulting in matches against a bot/ai.
 		/// </summary>
 		Bot = 2,
+	}
+
+	/// <summary>
+	/// Each well known match type describes whats the winning condition.
+	/// </summary>
+	public enum WellKnownMatchType
+	{
+		/// <summary>
+		/// The given match variant is played until one player reaches 5 points.
+		/// </summary>
+		FivePointGame = 0,
+		/// <summary>
+		/// The given match variant is played until one player reaches 7 points.
+		/// </summary>
+		SevenPointGame = 1,
+		/// <summary>
+		/// The given match variants game rounds are played each a single time.
+		/// </summary>
+		CashGame = 2
 	}
 }

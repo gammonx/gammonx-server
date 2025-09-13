@@ -37,8 +37,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(1, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(1, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 
 			var matchState = session.ToPayload();
 			Assert.Empty(matchState.AllowedCommands);
@@ -82,8 +82,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(1, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(1, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(1, matchState.Player2.Score);
 			Assert.Equal(1, matchState.GameRounds[0].Score);
@@ -112,8 +112,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(2, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(2, matchState.Player1.Score);
 			Assert.Equal(2, matchState.GameRounds[0].Score);
@@ -144,8 +144,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(2, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
 			Assert.Equal(2, matchState.Player2.Score);
 			Assert.Equal(2, matchState.GameRounds[0].Score);
