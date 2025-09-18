@@ -1,3 +1,4 @@
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Server.Contracts;
@@ -227,7 +228,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
 					Assert.Equal(1, payload.TurnNumber);
 					Assert.Empty(payload.DiceRolls);
-					Assert.Empty(payload.LegalMoves);
+					Assert.Empty(payload.MoveSequences);
 					Assert.NotNull(payload.BoardState);
 					Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
 					Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -253,7 +254,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 					Assert.Equal(1, payload.TurnNumber);
 					Assert.Empty(payload.DiceRolls);
-					Assert.Empty(payload.LegalMoves);
+					Assert.Empty(payload.MoveSequences);
 					Assert.NotNull(payload.BoardState);
 					Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 					Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -272,16 +273,16 @@ namespace GammonX.Server.Tests
 
 			var player1RolledTheDice = false;
 			DiceRollContract? player1FirstDiceRoll = null;
-			LegalMoveContract? player1FirstRollMove = null;
+			MoveModel? player1FirstRollMove = null;
 			DiceRollContract? player1SecondDiceRoll = null;
-			LegalMoveContract? player1SecondRollMove = null;
+			MoveModel? player1SecondRollMove = null;
 			var player1FirstMove = false;
 			var player1SecondMove = false;
 
 			var player2StartedTurn = false;
 			var player2RolledTheDice = false;
 			DiceRollContract? player2FirstDiceRoll = null;
-			LegalMoveContract? player2FirstRollMove = null;
+			MoveModel? player2FirstRollMove = null;
 			DiceRollContract? player2SecondDiceRoll = null;
 			var player2FirstMove = false;
 			var player2EndedHisTurn = false;
@@ -302,8 +303,8 @@ namespace GammonX.Server.Tests
 						Assert.True(payload.DiceRolls.Length >= 2);
 						player1FirstDiceRoll = payload.DiceRolls[0];
 						player1SecondDiceRoll = payload.DiceRolls[1];
-						Assert.NotEmpty(payload.LegalMoves);
-						player1FirstRollMove = payload.LegalMoves.First(lm => Math.Abs(lm.From - lm.To) == player1FirstDiceRoll.Roll);
+						Assert.NotEmpty(payload.MoveSequences);
+						player1FirstRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1FirstDiceRoll.Roll);
 						player1RolledTheDice = true;
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
@@ -318,9 +319,9 @@ namespace GammonX.Server.Tests
 						Assert.True(payload.DiceRolls.Length >= 2);
 						Assert.True(payload.DiceRolls[0].Used);
 						Assert.False(payload.DiceRolls[1].Used);
-						Assert.NotEmpty(payload.LegalMoves);
+						Assert.NotEmpty(payload.MoveSequences);
 						Assert.NotNull(player1SecondDiceRoll);
-						player1SecondRollMove = payload.LegalMoves.First(lm => Math.Abs(lm.From - lm.To) == player1SecondDiceRoll.Roll);
+						player1SecondRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1SecondDiceRoll.Roll);
 						player1FirstMove = true;
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
@@ -336,7 +337,7 @@ namespace GammonX.Server.Tests
 						Assert.True(payload.DiceRolls.Length >= 2);
 						Assert.True(payload.DiceRolls[0].Used);
 						Assert.True(payload.DiceRolls[1].Used);
-						Assert.Empty(payload.LegalMoves);
+						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -349,7 +350,7 @@ namespace GammonX.Server.Tests
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.Empty(payload.DiceRolls);
-						Assert.Empty(payload.LegalMoves);
+						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -387,7 +388,7 @@ namespace GammonX.Server.Tests
 						Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Empty(payload.DiceRolls);
-						Assert.Empty(payload.LegalMoves);
+						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
 						Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -403,9 +404,10 @@ namespace GammonX.Server.Tests
 						Assert.True(payload.DiceRolls.Length >= 2);
 						player2FirstDiceRoll = payload.DiceRolls[0];
 						player2SecondDiceRoll = payload.DiceRolls[1];
-						Assert.NotEmpty(payload.LegalMoves);
+						Assert.NotEmpty(payload.MoveSequences);
 						// execute a combined dice roll
-						player2FirstRollMove = payload.LegalMoves.First(lm => Math.Abs(lm.From - lm.To) == player2FirstDiceRoll.Roll + player2SecondDiceRoll.Roll);
+						var moveSeq = payload.MoveSequences.Select(ms => ms.Moves).First(ms => Math.Abs(ms[0].From - ms[1].To) == player2FirstDiceRoll.Roll + player2SecondDiceRoll.Roll);
+						player2FirstRollMove = new MoveModel(moveSeq[0].From, moveSeq[1].To);
 						player2RolledTheDice = true;
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
@@ -422,7 +424,7 @@ namespace GammonX.Server.Tests
 						Assert.True(payload.DiceRolls.Length >= 2);
 						Assert.True(payload.DiceRolls[0].Used);
 						Assert.True(payload.DiceRolls[1].Used);
-						Assert.Empty(payload.LegalMoves);
+						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -436,7 +438,7 @@ namespace GammonX.Server.Tests
 						Assert.Equal(3, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
 						Assert.Empty(payload.DiceRolls);
-						Assert.Empty(payload.LegalMoves);
+						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);

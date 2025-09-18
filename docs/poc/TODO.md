@@ -1,7 +1,10 @@
 # TODO
 - code todos
-- point games > DONE
+- undo/redo moves
+- pip count
+- cube decisions AI
 - auth/user account
+- game history
 - ranked mode (incl. elo rating)
 - tournament mode
 - ?

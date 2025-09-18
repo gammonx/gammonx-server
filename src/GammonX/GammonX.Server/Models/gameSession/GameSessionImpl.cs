@@ -36,10 +36,10 @@ namespace GammonX.Server.Models
 		public int TurnNumber { get; private set; }
 
 		// <inheritdoc />
-		public DiceRollsModel DiceRollsModel { get; private set; }
+		public DiceRolls DiceRolls { get; private set; }
 
 		// <inheritdoc />
-		public LegalMovesModel LegalMovesModel { get; private set; }
+		public MoveSequences MoveSequences { get; private set; }
 
 		// <inheritdoc />
 		public IBoardModel BoardModel { get; }
@@ -58,8 +58,8 @@ namespace GammonX.Server.Models
 			MatchId = matchId;
 			Modus = modus;
 			Id = Guid.NewGuid();
-			DiceRollsModel = new DiceRollsModel(Array.Empty<DiceRollContract>());
-			LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
+			DiceRolls = new DiceRolls();
+			MoveSequences = new MoveSequences();
 			Phase = GamePhase.NotStarted;
 		}
 
@@ -89,8 +89,8 @@ namespace GammonX.Server.Models
 			TurnNumber++;
 			OtherPlayer = ActivePlayer;
 			ActivePlayer = playerId;
-			DiceRollsModel = new DiceRollsModel(Array.Empty<DiceRollContract>());
-			LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
+			DiceRolls = new DiceRolls();
+			MoveSequences = new MoveSequences();
 			Phase = GamePhase.WaitingForRoll;
 		}
 
@@ -111,23 +111,19 @@ namespace GammonX.Server.Models
 				var diceRoll2 = new DiceRollContract(rolls[0]);
 				var diceRoll3 = new DiceRollContract(rolls[0]);
 				var diceRoll4 = new DiceRollContract(rolls[0]);
-				DiceRollsModel = new DiceRollsModel(diceRoll1, diceRoll2, diceRoll3, diceRoll4);
+				DiceRolls = new DiceRolls() { diceRoll1, diceRoll2, diceRoll3, diceRoll4 };
 			}
 			else
 			{
 				var diceRoll1 = new DiceRollContract(rolls[0]);
 				var diceRoll2 = new DiceRollContract(rolls[1]);
-				DiceRollsModel = new DiceRollsModel(diceRoll1, diceRoll2);
+				DiceRolls = new DiceRolls() { diceRoll1, diceRoll2 };
 			}
 
-			// TODO both cubes has to be used
-			// TODO higher cube has to be used first
-			// TODO combined move on entering the board
-			// TODO fevga starts at 0
-			var legalMoves = _boardService.GetLegalMoves(BoardModel, isWhite, rolls);
-			var legalMoveContracts = legalMoves.Select(lm => new LegalMoveContract(lm.Item1, lm.Item2)).ToArray();
-			LegalMovesModel = new LegalMovesModel(legalMoveContracts);
-
+			rolls = DiceRolls.Select(dr => dr.Roll).ToArray();
+			var legalMoves = _boardService.GetLegalMoveSequences(BoardModel, isWhite, rolls);
+			MoveSequences = new MoveSequences();
+			MoveSequences.AddRange(legalMoves);
 			Phase = GamePhase.Rolling;
 		}
 
@@ -139,42 +135,41 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("It's not your turn to move the checkers.");
 			}
 
-			var legalMove = LegalMovesModel.LegalMoves.FirstOrDefault(lm => lm.From == from && lm.To == to);
-			if (legalMove != null && !legalMove.Used)
+			if (!DiceRolls.TryUseDice(BoardModel, from, to))
 			{
-				var distance = GetMoveDistance(BoardModel, from, to, out var bearOffMove);
+				throw new InvalidOperationException($"No unused dice roll for the move '{from}'/'{to}' left");
+			}
 
-				if (TryFindDiceUsage(DiceRollsModel.GetUnusedDiceRolls(), distance, bearOffMove, out var usedDices))
+			var remainingRolls = DiceRolls.GetRemainingRolls();
+
+			if (MoveSequences.TryUseMove(BoardModel, from, to, remainingRolls, out var playedMoves))
+			{
+				if (playedMoves == null || playedMoves.Count == 0)
 				{
-					_boardService.MoveCheckerTo(BoardModel, from, to, isWhite);
-					legalMove.Use();
-					usedDices.ForEach(ud => DiceRollsModel.UseDice(ud.Roll));
+					throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");
+				}				
 
-					// if dices left
-					if (DiceRollsModel.HasUnused)
-					{
-						// still dices left, so we stay in the moving phase
-						var rolls = DiceRollsModel.GetUnusedDiceRollValues();
-						var legalMoves = _boardService.GetLegalMoves(BoardModel, isWhite, rolls);
-						var legalMoveContracts = legalMoves.Select(lm => new LegalMoveContract(lm.Item1, lm.Item2)).ToArray();
-						LegalMovesModel = new LegalMovesModel(legalMoveContracts);
-						Phase = GamePhase.Moving;
-					}
-					else
-					{
-						// no dices left, so we should switch to the next turn
-						LegalMovesModel = new LegalMovesModel(Array.Empty<LegalMoveContract>());
-						Phase = GamePhase.WaitingForEndTurn;
-					}
+				foreach (var move in playedMoves)
+				{
+					_boardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
+				}
+
+				// if dices left
+				if (MoveSequences.CanMove)
+				{
+					// still dices left, so we stay in the moving phase
+					Phase = GamePhase.Moving;
 				}
 				else
 				{
-					throw new InvalidOperationException($"The given move from '{from}' to '{to}' is not possible with the given dice rolls");
+					// no dices left, so we should switch to the next turn
+					MoveSequences = new MoveSequences();
+					Phase = GamePhase.WaitingForEndTurn;
 				}
 			}
 			else
 			{
-				throw new InvalidOperationException($"No legal move exists or was already used from '{from}' to '{to}'.");
+				throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");
 			}
 		}
 
@@ -221,83 +216,5 @@ namespace GammonX.Server.Models
 			// unit test purposes only
 			_diceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
 		}
-
-		#region Private Methods
-
-		private bool TryFindDiceUsage(DiceRollContract[] unusedDices, int distance, bool bearOffMove, out List<DiceRollContract> usedDices)
-		{
-			usedDices = new List<DiceRollContract>();
-			// we order the rolls in ascending order to make sure that the lowest roll
-			// always bears of a potential checker
-			unusedDices = unusedDices.OrderBy(dice => dice.Roll).ToArray();
-			return Backtrack(unusedDices, distance, 0, new List<DiceRollContract>(), bearOffMove, out usedDices);
-		}
-
-		private static bool Backtrack(
-			DiceRollContract[] dices,
-			int distance,
-			int start,
-			List<DiceRollContract> current,
-			bool bearOffMove,
-			out List<DiceRollContract> result)
-		{
-			// Algorithmus (Subset-Sum auf Dices)
-			if (distance <= 0)
-			{
-				result = new List<DiceRollContract>(current);
-				return true;
-			}
-
-			for (int i = start; i < dices.Length; i++)
-			{
-				if (bearOffMove)
-				{
-					if (dices[i].Roll >= distance)
-					{
-						current.Add(dices[i]);
-						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
-							return true;
-						current.RemoveAt(current.Count - 1);
-					}
-				}
-				else
-				{
-					if (dices[i].Roll <= distance)
-					{
-						current.Add(dices[i]);
-						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
-							return true;
-						current.RemoveAt(current.Count - 1);
-					}
-				}
-			}
-
-			result = null!;
-			return false;
-		}
-
-		private static int GetMoveDistance(IBoardModel model, int from, int to, out bool bearOffMove)
-		{
-			if (to == WellKnownBoardPositions.BearOffWhite)
-			{
-				var distance = Math.Abs(from + 1 - model.HomeRangeWhite.End.Value);
-				bearOffMove = true;
-				return distance;
-			}
-			else if (to == WellKnownBoardPositions.BearOffBlack)
-			{
-				var distance = Math.Abs(from + 1 - model.HomeRangeBlack.End.Value);
-				bearOffMove = true;
-				return distance;
-			}
-			else
-			{
-				var distance = Math.Abs(from - to);
-				bearOffMove = false;
-				return distance;
-			}
-		}
-
-		#endregion Private Methods
 	}
 }

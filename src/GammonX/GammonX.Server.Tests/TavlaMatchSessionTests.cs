@@ -33,7 +33,7 @@ namespace GammonX.Server.Tests
 			board.BearOffChecker(false, 1);
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -78,7 +78,7 @@ namespace GammonX.Server.Tests
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -108,7 +108,7 @@ namespace GammonX.Server.Tests
 			// no borne off for black
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -140,7 +140,7 @@ namespace GammonX.Server.Tests
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);

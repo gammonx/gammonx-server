@@ -174,6 +174,8 @@
 			{
 				BearOffCountWhite = BearOffCountWhite,
 				BearOffCountBlack = BearOffCountBlack,
+				HomeBarCountBlack = HomeBarCountBlack,
+				HomeBarCountWhite = HomeBarCountWhite,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
 			};

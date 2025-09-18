@@ -1,4 +1,5 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Engine.Models;
+
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -7,19 +8,19 @@ namespace GammonX.Server.Bot
 	public class SimpleBotService : IBotService
 	{
 		// <inheritdoc />
-		public Task<LegalMoveContract[]> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+		public Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
 		{
 			var activeSession = matchSession.GetGameSession(matchSession.GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
-			var anyMove = activeSession?.LegalMovesModel?.LegalMoves?.FirstOrDefault(lm => !lm.Used);
-			if (anyMove != null)
+			if (activeSession.MoveSequences.CanMove)
 			{
-				return Task.FromResult(new LegalMoveContract[] { anyMove });
+				var result = activeSession.MoveSequences.FirstOrDefault() ?? new MoveSequenceModel();
+				return Task.FromResult(result);
 			}
 
-			return Task.FromResult(Array.Empty<LegalMoveContract>());
+			return Task.FromResult(new MoveSequenceModel());
 		}
 	}
 }

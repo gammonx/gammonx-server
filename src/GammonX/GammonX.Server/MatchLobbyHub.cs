@@ -592,7 +592,7 @@ namespace GammonX.Server
 					throw new InvalidOperationException("An error occurred wihle evaluating the next move for the bot");
 				}
 
-				foreach (var nextMove in nextMoves)
+				foreach (var nextMove in nextMoves.Moves)
 				{
 					canMove = await PerformMoveAsync(matchSession, callingPlayerId, nextMove.From, nextMove.To);
 				}

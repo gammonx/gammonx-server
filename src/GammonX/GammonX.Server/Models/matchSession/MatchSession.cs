@@ -189,9 +189,9 @@ namespace GammonX.Server.Models
 
 			if (activeSession.ActivePlayer == callingPlayerId)
 			{
-				if (activeSession.DiceRollsModel.HasUnused)
+				if (activeSession.DiceRolls.HasUnused)
 				{
-					return !activeSession.LegalMovesModel.HasLegalMoves();
+					return !activeSession.MoveSequences.CanMove;
 				}
 				else
 				{

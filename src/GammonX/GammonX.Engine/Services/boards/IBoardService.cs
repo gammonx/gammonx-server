@@ -76,10 +76,32 @@ namespace GammonX.Engine.Services
         /// Calculates all legal moves for the given player based on the current board state
         /// and the given dice rolls.
         /// </summary>
+        /// <remarks>
+        /// Flattens a combined move. E.g. (0,3) and (3,5) becomes (0,5).
+        /// </remarks>
         /// <param name="model">Board model to operate on.</param>
         /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
         /// <param name="rolls">1:n Dice roll values</param>
-        /// <returns>A tuple array containing all legal moves from to.</returns>
-        ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls);
-    }
+        /// <returns>A tuple array containing all legal moves from to as a flattended array.</returns>
+        ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls);
+
+		/// <summary>
+		/// Calculates all legal moves for the given player based on the current board state
+		/// and the given dice rolls.
+		/// </summary>
+		/// <param name="model">Board model to operate on.</param>
+		/// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
+		/// <param name="rolls">1:n Dice roll values</param>
+		/// <returns>An array of move sequences.</returns>
+		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
+
+		/// <summary>
+		/// Applies the dice rules to the given legal moves and returns only those moves.
+		/// </summary>
+		/// <param name="legalMoves">Legal moves to evaluate.</param>
+		/// <param name="rolls">Rolled dices.</param>
+		/// <returns>A tuple array containing all legal moves from to.</returns>
+		ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls);
+
+	}
 }

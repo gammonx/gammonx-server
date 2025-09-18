@@ -33,8 +33,12 @@ namespace GammonX.Server.Tests.Utils
 				.Returns<IBoardModel, int, int, bool>((model, from, roll, isWhite) => boardService.MoveChecker(model, from, roll, isWhite));
 			boardServiceMock
 				.As<IBoardService>()
-				.Setup(x => x.GetLegalMoves(It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<int[]>()))
-				.Returns<IBoardModel, bool, int[]>((model, isWhite, rolls) => boardService.GetLegalMoves(model, isWhite, rolls));
+				.Setup(x => x.GetLegalMovesAsFlattenedList(It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<int[]>()))
+				.Returns<IBoardModel, bool, int[]>((model, isWhite, rolls) => boardService.GetLegalMovesAsFlattenedList(model, isWhite, rolls));
+			boardServiceMock
+				.As<IBoardService>()
+				.Setup(x => x.GetLegalMoveSequences(It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<int[]>()))
+				.Returns<IBoardModel, bool, int[]>((model, isWhite, rolls) => boardService.GetLegalMoveSequences(model, isWhite, rolls));
 			boardServiceMock
 				.As<IBoardService>()
 				.Setup(x => x.CanBearOffChecker(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))

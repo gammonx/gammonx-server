@@ -1,4 +1,4 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Engine.Models;
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -17,6 +17,6 @@ namespace GammonX.Server.Bot
 		/// <param name="matchSession">Match session to play the bot turn.</param>
 		/// <param name="playerId">Id of the player determining whether black or white is playing.</param>
 		/// <return>Returns a list of legal move based on the current match and game state.</return>
-		Task<LegalMoveContract[]> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId);
+		Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId);
 	}
 }

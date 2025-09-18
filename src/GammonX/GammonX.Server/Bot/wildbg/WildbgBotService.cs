@@ -1,6 +1,5 @@
 ﻿using GammonX.Engine.Models;
 
-using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -19,7 +18,7 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public async Task<LegalMoveContract[]> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+		public async Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
 		{
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			if (gameSession == null)
@@ -35,16 +34,20 @@ namespace GammonX.Server.Bot
 			var bestMove = result.LegalMoves.FirstOrDefault();
 			if (bestMove != null && bestMove.LegalPlays.Any())
 			{
-				var legalMoves = new List<LegalMoveContract>();
+				var legalMoves = new List<Engine.Models.MoveModel>();
 				foreach (var play in bestMove.LegalPlays)
 				{
 					var legalMove = Convert(gameSession, play, isWhite);
 					legalMoves.Add(legalMove);
 				}
-				return legalMoves.ToArray();
+
+				var legalMoveSeq = new MoveSequenceModel();
+				legalMoveSeq.Moves.AddRange(legalMoves);
+				legalMoveSeq.UsedDices.AddRange(gameSession.DiceRolls.Select(dr => dr.Roll));
+				return legalMoveSeq;
 			}
 
-			return Array.Empty<LegalMoveContract>();
+			return new MoveSequenceModel();
 		}
 
 		private static GetMoveParameter CreateParameters(IMatchSessionModel matchSession, bool isWhite)
@@ -91,6 +94,10 @@ namespace GammonX.Server.Bot
 				boardModel = gameSession.BoardModel;
 			}
 
+			var diceRolls = gameSession.DiceRolls;
+			var xPointsAway = matchSession.PointsAway(gameSession.ActivePlayer);
+			var oPointsAway = matchSession.PointsAway(gameSession.OtherPlayer);
+
 			var paramBoard = new Dictionary<int, int>();
 			// we start at black checkers starting field and iterate to its home field
 			for (int boardIndex = 23; boardIndex > 0; boardIndex--)
@@ -110,19 +117,19 @@ namespace GammonX.Server.Bot
 				paramBoard[0] = -homeBar.HomeBarCountWhite;
 			}
 
-			var diceRolls = gameSession.DiceRollsModel.DiceRolls;
+			
 			var requestParameters = new GetMoveParameter
 			{
 				DiceRoll1 = diceRolls[0].Roll,
 				DiceRoll2 = diceRolls[1].Roll,
-				XPointsAway = matchSession.PointsAway(gameSession.ActivePlayer),
-				OPointsAway = matchSession.PointsAway(gameSession.OtherPlayer),
+				XPointsAway = xPointsAway,
+				OPointsAway = oPointsAway,
 				Points = paramBoard
 			};
 			return requestParameters;
 		}
 
-		private static LegalMoveContract Convert(IGameSessionModel gameSession, Play play, bool isWhite)
+		private static Engine.Models.MoveModel Convert(IGameSessionModel gameSession, Play play, bool isWhite)
 		{
 			if (play.From == 0)
 			{
@@ -171,13 +178,13 @@ namespace GammonX.Server.Bot
 					// we need to invert the play for the white checkers perspective
 					convertedTo = (maxFieldIndex) - play.To;
 				}
-				return new LegalMoveContract(convertedFrom, convertedTo);
+				return new MoveModel(convertedFrom, convertedTo);
 				
 			}
 			else
 			{
 				// the wildbg service already returns it from the black checker perspective
-				return new LegalMoveContract(play.From, play.To);
+				return new MoveModel(play.From, play.To);
 			}
 		}
 

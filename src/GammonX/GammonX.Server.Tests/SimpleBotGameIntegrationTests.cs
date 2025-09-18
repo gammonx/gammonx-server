@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -53,12 +54,7 @@ namespace GammonX.Server.Tests
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new
-			{
-				PlayerId = "fdd907ca-794a-43f4-83e6-cadfabc57c45",
-				MatchVariant = WellKnownMatchVariant.Tavli,
-				QueueType = WellKnownMatchModus.Bot
-			};
+			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
@@ -86,24 +82,24 @@ namespace GammonX.Server.Tests
 				Assert.Fail();
 			});
 
-			LegalMoveContract? nextMove = null;
+			MoveModel? nextMove = null;
 			player1Connection.On<object>(ServerEventTypes.GameStateEvent, response =>
 			{
 				Assert.NotNull(response);
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
 				if (contract?.Payload is EventGameStatePayload payload)
 				{
-					nextMove = payload.LegalMoves?.FirstOrDefault();
+					nextMove = payload.MoveSequences.SelectMany(ms => ms.Moves)?.FirstOrDefault();
 
 					if (payload.Phase == GamePhase.WaitingForOpponent)
 					{
 						Assert.Equal(2, payload.TurnNumber);
-						Assert.NotEqual(Guid.Parse(player1.PlayerId), payload.ActiveTurn);
+						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn);
 					}
 
 					if (payload.AllowedCommands.Contains(ServerCommands.RollCommand))
 					{
-						Assert.Equal(Guid.Parse(player1.PlayerId), payload.ActiveTurn);
+						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
 					}
 				}
 			});

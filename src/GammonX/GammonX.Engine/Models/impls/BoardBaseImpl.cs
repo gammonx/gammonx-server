@@ -91,8 +91,7 @@ namespace GammonX.Engine.Models
 				{
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
-						.Skip(HomeRangeBlack.Start.Value)
-						.Take(currentPosition + HomeRangeBlack.Start.Value)
+						.Skip(currentPosition + 1)
 						.Any(v => v > 0);
 					return highestCheckerIndex;
 				}

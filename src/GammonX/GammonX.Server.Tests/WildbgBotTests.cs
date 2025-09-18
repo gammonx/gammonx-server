@@ -42,7 +42,7 @@ namespace GammonX.Server.Tests
 			matchSession.RollDices(botPlayer2Id);
 			var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
 			var canMove = true;
-			foreach (var nextMove in nextMoves)
+			foreach (var nextMove in nextMoves.Moves)
 			{
 				canMove = matchSession.MoveCheckers(botPlayer2Id, nextMove.From, nextMove.To);
 			}
@@ -54,7 +54,7 @@ namespace GammonX.Server.Tests
 			matchSession.RollDices(botPlayer1Id);
 			nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
 			canMove = true;
-			foreach (var nextMove in nextMoves)
+			foreach (var nextMove in nextMoves.Moves)
 			{
 				canMove = matchSession.MoveCheckers(botPlayer1Id, nextMove.From, nextMove.To);
 			}
@@ -183,15 +183,15 @@ namespace GammonX.Server.Tests
 			// black checker bot moves first
 			matchSession.StartNextGame(botPlayer2Id);
 			matchSession.RollDices(botPlayer2Id);
-			var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
+			var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
 			var canMove = true;
 
-			if (nextMoves.Length == 0)
+			if (nextMoveSeq.Moves.Count == 0)
 			{
 				canMove = false;
 			}
 
-			foreach (var nextMove in nextMoves)
+			foreach (var nextMove in nextMoveSeq.Moves)
 			{
 				canMove = matchSession.MoveCheckers(botPlayer2Id, nextMove.From, nextMove.To);
 			}
@@ -201,25 +201,20 @@ namespace GammonX.Server.Tests
 			// white checker bot moves second
 			matchSession.StartNextGame(botPlayer1Id);
 			matchSession.RollDices(botPlayer1Id);
-			nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
+			nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
 			canMove = true;
 
-			if (nextMoves.Length == 0)
+			if (nextMoveSeq.Moves.Count == 0)
 			{
 				canMove = false;
 			}
 
-			foreach (var nextMove in nextMoves)
+			foreach (var nextMove in nextMoveSeq.Moves)
 			{
 				canMove = matchSession.MoveCheckers(botPlayer1Id, nextMove.From, nextMove.To);
 			}
 			Assert.False(canMove);
 			matchSession.EndTurn(botPlayer1Id);
-		}
-
-		private static int GetRandomSeed()
-		{
-			return Random.Shared.Next();
 		}
 	}
 }

@@ -153,8 +153,8 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
-			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
-			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
+			Assert.NotEmpty(gameSession.DiceRolls);
+			Assert.NotEmpty(gameSession.MoveSequences);
 		}
 
 		[Theory]
@@ -234,13 +234,13 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
-			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
-			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
-			var firstLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotEmpty(gameSession.DiceRolls);
+			Assert.NotEmpty(gameSession.MoveSequences);
+			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -268,15 +268,15 @@ namespace GammonX.Server.Tests
 			Assert.False(session.CanEndTurn(player1Id));
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
-			Assert.NotEmpty(gameSession.DiceRollsModel.DiceRolls);
-			Assert.NotEmpty(gameSession.LegalMovesModel.LegalMoves);
-			var firstLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			Assert.NotEmpty(gameSession.DiceRolls);
+			Assert.NotEmpty(gameSession.MoveSequences);
+			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.False(session.CanEndTurn(player1Id));
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -290,8 +290,8 @@ namespace GammonX.Server.Tests
 			Assert.NotEqual(player1Id, gameSession.ActivePlayer);
 			Assert.NotEqual(player2Id, gameSession.OtherPlayer);
 			Assert.Equal(2, gameSession.TurnNumber);
-			Assert.Empty(gameSession.DiceRollsModel.DiceRolls);
-			Assert.Empty(gameSession.LegalMovesModel.LegalMoves);
+			Assert.Empty(gameSession.DiceRolls);
+			Assert.Empty(gameSession.MoveSequences);
 		}
 
 		[Theory]

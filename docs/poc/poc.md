@@ -93,64 +93,52 @@
       "turnNumber":1,
       "diceRolls":[
          {
-            "roll":2,
-            "used":false
+            "roll":2
          },
          {
-            "roll":3,
-            "used":false
+            "roll":2
          }
       ],
-      "legalMoves":[
+      "moveSequences":[
          {
-            "from":0,
-            "to":2,
-            "used":false
+            "moves":[
+               {
+                  "from":0,
+                  "to":2
+               },
+               {
+                  "from":2,
+                  "to":4
+               },
+               {
+                  "from":4,
+                  "to":6
+               },
+               {
+                  "from":10,
+                  "to":12
+               }
+            ]
          },
          {
-            "from":0,
-            "to":3,
-            "used":false
-         },
-         {
-            "from":11,
-            "to":13,
-            "used":false
-         },
-         {
-            "from":11,
-            "to":16,
-            "used":false
-         },
-         {
-            "from":11,
-            "to":14,
-            "used":false
-         },
-         {
-            "from":16,
-            "to":18,
-            "used":false
-         },
-         {
-            "from":16,
-            "to":21,
-            "used":false
-         },
-         {
-            "from":16,
-            "to":19,
-            "used":false
-         },
-         {
-            "from":18,
-            "to":20,
-            "used":false
-         },
-         {
-            "from":18,
-            "to":21,
-            "used":false
+            "moves":[
+               {
+                  "from":0,
+                  "to":2
+               },
+               {
+                  "from":2,
+                  "to":4
+               },
+               {
+                  "from":1,
+                  "to":3
+               },
+               {
+                  "from":3,
+                  "to":5
+               }
+            ]
          }
       ],
       "boardState":{

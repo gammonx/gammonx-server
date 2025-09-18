@@ -53,12 +53,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Get an array of all dice rolls for the active turn.
 		/// </summary>
-		public DiceRollsModel DiceRollsModel { get; }
+		public DiceRolls DiceRolls { get; }
 
 		/// <summary>
 		/// Get an array of all legal moves for the active turn.
 		/// </summary>
-		public LegalMovesModel LegalMovesModel { get; }
+		public MoveSequences  MoveSequences { get; }
 
 		/// <summary>
 		/// Gets the board model and its current state for the player1.
@@ -107,6 +107,7 @@ namespace GammonX.Server.Models
 
 		/// <summary>
 		/// Moves the checkers of the active player <paramref name="callingPlayerId"/> from one position to another.
+		/// The given <paramref name="from"/> <paramref name="to"/> move can be a single move sequence or a combined move sequence.
 		/// </summary>
 		/// <remarks>
 		/// Validates if the given <paramref name="callingPlayerId"/> is actually the active player and if the move is valid.
