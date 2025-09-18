@@ -31,7 +31,6 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "diceRolls")]
 		public DiceRollContract[] DiceRolls { get; set; }
 
-		// TODO doc
 		[DataMember(Name = "moveSequences")]
 		public MoveSequenceModel[] MoveSequences { get; set; }
 

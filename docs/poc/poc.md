@@ -80,6 +80,36 @@
 #### `WellKnownMatchType` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
 #### `GamePhase` [Link](../../src/GammonX/GammonX.Server/Models/gameSession/GamePhase.cs)
 
+## MoveSequences
+A move sequence is an array of from / to moves that are legally playable based on a given pair of dice rolls.
+A sequence can contain between 1 and 4 moves. The standard dice rules apply:
+- If possible, both dice rolls must be used.
+- If not both can be used, then the higher die must be played.
+
+The moves in a sequence are ordered, meaning index 0 always represents the first play. If possible, subsequent moves should be chained:
+- A chain continues as long as moves[i].to == moves[i+1].from.
+- Once this condition breaks, the following moves are not directly related to the chain.
+The client should interpret these chains to allow combined move commands.
+
+### Example
+In the following sequence, moves at index 0 through 2 form a chain (0 → 2 → 4 → 6) and can be collapsed into a single command (0 → 6).
+The fourth move (10 → 12) is unrelated to the chain.
+
+For this specific MoveSequence the client should allow to move from `0` directly to `2`, `4` or `6`. The server will evualate any possible `from`/`to` move combination and back track the used dices and sub moves.
+
+```json
+"moveSequences": [
+  {
+    "moves": [
+      { "from": 0, "to": 2 },
+      { "from": 2, "to": 4 },
+      { "from": 4, "to": 6 },
+      { "from": 10, "to": 12 }
+    ]
+  }
+]
+```
+
 ## GameState Payload
 ```json
 {

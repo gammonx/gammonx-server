@@ -512,8 +512,6 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(2, legalMoves.Count());
 			Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 0), legalMoves);
 			Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 1), legalMoves);
-			// TODO :: combined move on board entering not supported atm
-			// Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 2), legalMoves);
 		}
 
 		[Theory]
@@ -535,8 +533,6 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(2, legalMoves.Count());
 			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 23), legalMoves);
 			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 22), legalMoves);
-			// TODO :: combined move on board entering not supported atm
-			// Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 21), legalMoves);
 		}
 
 		#endregion Homebar Tests
