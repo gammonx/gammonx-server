@@ -13,7 +13,7 @@ namespace GammonX.Server.Tests
 {
 	public class WildbgBotTests
 	{
-		private readonly HttpClient _wildBgClient = new HttpClient() { BaseAddress = new Uri("http://localhost:8082") };
+		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082") };
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
@@ -60,6 +60,63 @@ namespace GammonX.Server.Tests
 			}
 			Assert.False(canMove);
 			matchSession.EndTurn(botPlayer1Id);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes, Skip = "Plakoto and Fevga not yet supported")]
+		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
+		public async Task TwoBotsCanPlayStandalone(WellKnownMatchVariant variant, GameModus modus)
+		{
+			var diceFactory = new DiceServiceFactory();
+			var gameSessionFactory = new GameSessionFactory(diceFactory);
+			var matchFactory = new MatchSessionFactory(gameSessionFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, matchFactory);
+			Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
+			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+			Assert.True(matchSession.Player1.IsBot);
+			Assert.True(matchSession.Player2.IsBot);
+
+			var botService = new WildbgBotService(_wildBgClient);
+
+			matchSession.Player1.AcceptNextGame();
+			matchSession.Player2.AcceptNextGame();
+
+			var botPlayer1Id = matchSession.Player1.Id;
+			var botPlayer2Id = matchSession.Player2.Id;
+			var activePlayerId = botPlayer1Id;
+
+			Assert.Equal(modus, matchSession.GetGameModus());
+			do
+			{
+				matchSession.Player1.AcceptNextGame();
+				matchSession.Player2.AcceptNextGame();
+
+				matchSession.StartNextGame(activePlayerId);
+				matchSession.RollDices(activePlayerId);
+				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+				var hasWon = false;
+				foreach (var nextMove in nextMoves.Moves)
+				{
+					hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
+					if (hasWon)
+						break;
+				}
+
+				if (!hasWon)
+				{
+					matchSession.EndTurn(activePlayerId);
+					activePlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
+				}
+			}
+			while (!matchSession.IsMatchOver());
+
+			Assert.True(matchSession.IsMatchOver());
+			Assert.False(matchSession.CanStartNextGame());
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
 		}
 
 		[Theory]

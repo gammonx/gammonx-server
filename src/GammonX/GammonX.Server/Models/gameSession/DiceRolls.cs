@@ -93,7 +93,7 @@ namespace GammonX.Server.Models
 		{
 			if (to == WellKnownBoardPositions.BearOffWhite)
 			{
-				var distance = Math.Abs(from + 1 - model.HomeRangeWhite.End.Value);
+				var distance = Math.Abs(from - (model.HomeRangeWhite.End.Value + 1));
 				bearOffMove = true;
 				return distance;
 			}

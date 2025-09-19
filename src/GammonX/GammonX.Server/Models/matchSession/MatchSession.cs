@@ -250,10 +250,7 @@ namespace GammonX.Server.Models
 				if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
 				{
 					var gameScore = CalculateResignGamePoints();
-					if (gameSession == null)
-					{
-						gameSession = GetOrCreateGameSession(i + 1);
-					}
+					gameSession ??= GetOrCreateGameSession(i + 1);
 					gameSession.StopGame(otherPlayerId, gameScore);
 					scoreToAdd += gameScore;
 				}

@@ -158,10 +158,11 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id);
-					Assert.Equal(player2.PlayerId, payload.Player2.Id);
+					Assert.Equal(player1.PlayerId, payload.Player1?.Id);
+					Assert.Equal(player2.PlayerId, payload.Player2?.Id);
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
+					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
 					player1MatchStarted = true;
@@ -176,10 +177,11 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id);
-					Assert.Equal(player2.PlayerId, payload.Player2.Id);
+					Assert.Equal(player1.PlayerId, payload.Player1?.Id);
+					Assert.Equal(player2.PlayerId, payload.Player2?.Id);
 					Assert.Equal(1, payload.GameRound);
 					Assert.NotNull(payload.Player2);
+					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
 					player2MatchStarted = true;
@@ -197,8 +199,9 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
-					Assert.Equal(player1.PlayerId, payload.Player1.Id);
+					Assert.Equal(player1.PlayerId, payload.Player1?.Id);
 					Assert.Empty(payload.AllowedCommands);
+					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
 					player1GameWaiting = true;
 				}

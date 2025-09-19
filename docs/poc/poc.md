@@ -91,7 +91,7 @@ The moves in a sequence are ordered, meaning index 0 always represents the first
 - Once this condition breaks, the following moves are not directly related to the chain.
 The client should interpret these chains to allow combined move commands.
 
-### Example
+### Example Move Sequence
 In the following sequence, moves at index 0 through 2 form a chain (0 → 2 → 4 → 6) and can be collapsed into a single command (0 → 6).
 The fourth move (10 → 12) is unrelated to the chain.
 
@@ -108,6 +108,41 @@ For this specific MoveSequence the client should allow to move from `0` directly
     ]
   }
 ]
+```
+
+### Example Implementation Get All Legal Moves based on one `from` Index
+```c#
+public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequence> moveSequences)
+{
+    var results = new HashSet<int>();
+    foreach (var seq in moveSequences)
+    {
+        if (seq.Moves.Count == 0)
+            continue;
+        // search for all moves in sequence which starts from
+        for (int i = 0; i < seq.Moves.Count; i++)
+        {
+            var move = seq.Moves[i];
+            if (move.from != from)
+                continue;
+
+            results.Add(move.to); // first move is valid by definition
+            int currentTo = move.to; // check for chained/combined moves
+            for (int j = i + 1; j < seq.Moves.Count; j++)
+            {
+                var nextMove = seq.Moves[j];
+                if (nextMove.from == currentTo)
+                {
+                    results.Add(nextMove.to);
+                    currentTo = nextMove.to;
+                }
+                else // no chained there or broke up
+                  break;
+            }
+        }
+    }
+    return results;
+}
 ```
 
 ## GameState Payload

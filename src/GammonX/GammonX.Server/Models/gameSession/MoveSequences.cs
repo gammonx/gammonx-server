@@ -65,7 +65,7 @@ namespace GammonX.Server.Models
 					{
 						ms.Moves.Remove(playedMove);
 					}
-					var unplayableMoves = ms.Moves.Where(m => !remainingRolls.Contains(DiceRolls.GetMoveDistance(model, m.From, m.To, out var _))).ToList();
+					var unplayableMoves = ms.Moves.Where(m => !remainingRolls.Contains(DiceRolls.GetMoveDistance(model, m.From, m.To, out var bearOff)) && !bearOff).ToList();
 					foreach (var toRemove in unplayableMoves)
 					{
 						ms.Moves.Remove(toRemove);

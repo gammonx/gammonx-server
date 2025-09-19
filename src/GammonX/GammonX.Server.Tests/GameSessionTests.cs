@@ -12,7 +12,7 @@ namespace GammonX.Server.Tests
 	public class GameSessionTests
 	{
 		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
-		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
+		private static readonly GameSessionFactory _gameSessionFactory = new(_diceServiceFactory);
 
 		[Theory]
 		[InlineData(GameModus.Backgammon)]
@@ -27,7 +27,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(gameSession);
 			Assert.Equal(matchId, gameSession.MatchId);
 			Assert.NotEqual(matchId, gameSession.Id);
-			Assert.Equal(0, gameSession.TurnNumber);
+			Assert.Equal(1, gameSession.TurnNumber);
 			Assert.Equal(GamePhase.NotStarted, gameSession.Phase);
 			Assert.Equal(modus, gameSession.Modus);
 			Assert.NotNull(gameSession.BoardModel);
@@ -59,7 +59,7 @@ namespace GammonX.Server.Tests
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.Equal(2, gameSession.DiceRolls.Count());
+			Assert.Equal(2, gameSession.DiceRolls.Count);
 			Assert.Equal(2, gameSession.DiceRolls[0].Roll);
 			Assert.Equal(3, gameSession.DiceRolls[1].Roll);
 			Assert.False(gameSession.DiceRolls[0].Used);
@@ -102,7 +102,7 @@ namespace GammonX.Server.Tests
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.Equal(2, gameSession.DiceRolls.Count());
+			Assert.Equal(2, gameSession.DiceRolls.Count);
 			Assert.Equal(2, gameSession.DiceRolls[0].Roll);
 			Assert.Equal(3, gameSession.DiceRolls[1].Roll);
 			Assert.False(gameSession.DiceRolls[0].Used);
@@ -140,7 +140,7 @@ namespace GammonX.Server.Tests
 			gameSession.RollDices(player1Id, isWhite);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.Equal(4, gameSession.DiceRolls.Count());
+			Assert.Equal(4, gameSession.DiceRolls.Count);
 			Assert.Equal(1, gameSession.DiceRolls[0].Roll);
 			Assert.Equal(1, gameSession.DiceRolls[1].Roll);
 			Assert.Equal(1, gameSession.DiceRolls[2].Roll);

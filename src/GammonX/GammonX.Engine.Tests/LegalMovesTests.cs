@@ -959,5 +959,109 @@ namespace GammonX.Engine.Tests
 		}
 
 		#endregion Hitting Tests
+
+		#region Dice Rule Tests
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Fevga)]
+		[InlineData(GameModus.Plakoto)]
+		public void BothDicesHasToBeUsedWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.BothDicesMustBeUsedBoardStandardWhite);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.RemoveFromHomeBar(true, 14);
+				homeBar.RemoveFromHomeBar(false, 14);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, true, 4, 5);
+			var legalMoves = moveSequences.SelectMany(ms => ms.Moves).ToArray();
+			Assert.Equal(4, legalMoves.Length); // 2 unique moves
+			Assert.DoesNotContain(new MoveModel(4, 8), legalMoves);
+			Assert.Contains(new MoveModel(0, 4), legalMoves);
+			Assert.Contains(new MoveModel(4, 9), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Fevga, Skip = "need to create proper mock board")]
+		[InlineData(GameModus.Plakoto)]
+		public void BothDicesHasToBeUsedBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.BothDicesMustBeUsedBoardStandardBlack);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.RemoveFromHomeBar(true, 14);
+				homeBar.RemoveFromHomeBar(false, 14);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, false, 4, 5);
+			var legalMoves = moveSequences.SelectMany(ms => ms.Moves).ToArray();
+			Assert.Equal(4, legalMoves.Length); // 2 unique moves
+			Assert.DoesNotContain(new MoveModel(19, 15), legalMoves);
+			Assert.Contains(new MoveModel(23, 19), legalMoves);
+			Assert.Contains(new MoveModel(19, 14), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Fevga)]
+		[InlineData(GameModus.Plakoto)]
+		public void HigherDiceHasToBeUsedWhite(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.HigherRollMustBeUsedBoardStandardWhite);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.RemoveFromHomeBar(true, 14);
+				homeBar.RemoveFromHomeBar(false, 14);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, true, 3, 5);
+			var legalMoves = moveSequences.SelectMany(ms => ms.Moves).ToArray();
+			Assert.Single(legalMoves);
+			Assert.DoesNotContain(new MoveModel(0, 3), legalMoves);
+			Assert.Contains(new MoveModel(0, 5), legalMoves);
+		}
+
+
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Fevga, Skip = "need to create proper mock board")]
+		[InlineData(GameModus.Plakoto)]
+		public void HigherDiceHasToBeUsedBlack(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.HigherRollMustBeUsedBoardStandardBlack);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.RemoveFromHomeBar(true, 14);
+				homeBar.RemoveFromHomeBar(false, 14);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, false, 3, 5);
+			var legalMoves = moveSequences.SelectMany(ms => ms.Moves).ToArray();
+			Assert.Single(legalMoves);
+			Assert.DoesNotContain(new MoveModel(23, 20), legalMoves);
+			Assert.Contains(new MoveModel(23, 18), legalMoves);
+		}
+		
+		#endregion Dice Rule Tests
 	}
 }

@@ -33,7 +33,7 @@ namespace GammonX.Server.Models
 		public Guid OtherPlayer { get; private set; }
 
 		// <inheritdoc />
-		public int TurnNumber { get; private set; }
+		public int TurnNumber { get; private set; } = 1;
 
 		// <inheritdoc />
 		public DiceRolls DiceRolls { get; private set; }
@@ -67,7 +67,6 @@ namespace GammonX.Server.Models
 		public void StartGame(Guid activePlayer, Guid otherPLayer)
 		{
 			StartedAt = DateTime.UtcNow;
-			TurnNumber = 1;
 			Phase = GamePhase.WaitingForRoll;
 			// otherPlayer waiting for the opponent to roll and move afterwards
 			OtherPlayer = otherPLayer;

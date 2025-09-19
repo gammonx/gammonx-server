@@ -1,8 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 
 namespace GammonX.Engine.Services
 {
@@ -29,8 +25,6 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
 		{
-			// TODO test dice rules
-			// TODO test move sequences
 			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
 			var allowed = FilterSequencesByDiceRules(sequences, rolls);
 			return allowed.ToArray();
@@ -96,8 +90,7 @@ namespace GammonX.Engine.Services
 			}
 
 			// we check it here because most of the variants actually use hitting
-			var homeBarModel = model as IHomeBarModel;
-			if (homeBarModel != null)
+			if (model is IHomeBarModel)
 			{
 				// we check if we would hit an opponents checker with this move
 				EvaluateHittedCheckers(model, from, to, isWhite);

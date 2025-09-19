@@ -13,8 +13,6 @@ namespace GammonX.Server
 	/// </summary>
 	internal class MatchLobbyHub : Hub
 	{
-		// TODO :: match lobby test without web sockets
-
 		private readonly IMatchmakingService _matchmakingService;
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
@@ -618,8 +616,8 @@ namespace GammonX.Server
 			if (activeSession == null)
 			{
 				// we decide which player starts with a single dice roll
-				var player1Roll = 0;
-				var player2Roll = 0;
+				int player1Roll;
+				int player2Roll;
 				do
 				{
 					player1Roll = _diceService.Roll(1, 6)[0];

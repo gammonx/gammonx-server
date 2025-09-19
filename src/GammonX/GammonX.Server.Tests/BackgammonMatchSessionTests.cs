@@ -273,7 +273,8 @@ namespace GammonX.Server.Tests
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
-			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Score);
+			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2?.Score);
+			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Score);
 		}
 

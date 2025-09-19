@@ -40,6 +40,20 @@ namespace GammonX.Server.Tests.Utils
 			return session;
 		}
 
+		public static IMatchSessionModel CreateMatchSessionWithTwoBots(WellKnownMatchVariant variant, IMatchSessionFactory factory)
+		{
+			var result = CreateHeadToBotMatchSession(variant, factory);
+			var session = result.Session as IMatchSessionModel;
+			Assert.NotNull(session);
+			var botPlayer2 = new LobbyEntry(Guid.NewGuid());
+			var botPlayer1 = new LobbyEntry(Guid.NewGuid());
+			botPlayer1.SetConnectionId(Guid.Empty.ToString());
+			botPlayer2.SetConnectionId(Guid.Empty.ToString());
+			session.JoinSession(botPlayer2);
+			session.JoinSession(botPlayer1);
+			return session;
+		}
+
 		public static dynamic CreateHeadToHeadMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();

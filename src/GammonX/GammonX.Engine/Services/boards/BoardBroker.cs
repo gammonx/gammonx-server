@@ -181,6 +181,12 @@ namespace GammonX.Engine.Services
 			return invertedFields;
 		}
 
+        /// <summary>
+        /// Creates a deep clone of the given <paramref name="model"/>.
+        /// </summary>
+        /// <param name="model">Board model to clone.</param>
+        /// <returns>A deep cloned model.</returns>
+        /// <exception cref="InvalidOperationException">If <paramref name="model"/> does not implement <see cref="ICloneable"/>.</exception>
         public static IBoardModel DeepClone(this IBoardModel model)
         {
             if (model is ICloneable cloneable)
@@ -191,6 +197,44 @@ namespace GammonX.Engine.Services
             {
                 throw new InvalidOperationException("The board model does not support cloning.");
 			}
+		}
+
+        /// <summary>
+        /// Searches all legal <c>to</c> positions based on the given <paramref name="moveSequences"/> and <paramref name="from"/>.
+        /// </summary>
+        /// <param name="from">From position to move from.</param>
+        /// <param name="moveSequences">Legal move sequences.</param>
+        /// <returns>A list of valid <c>to</c> positions.</returns>
+		public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequenceModel> moveSequences)
+		{
+			var results = new HashSet<int>();
+			foreach (var seq in moveSequences)
+			{
+				if (seq.Moves.Count == 0)
+					continue;
+				// search for all moves in sequence which starts from
+				for (int i = 0; i < seq.Moves.Count; i++)
+				{
+					var move = seq.Moves[i];
+					if (move.From != from)
+						continue;
+
+					results.Add(move.To); // first move is valid by definition
+					int currentTo = move.To; // check for chained/combined moves
+					for (int j = i + 1; j < seq.Moves.Count; j++)
+					{
+						var nextMove = seq.Moves[j];
+						if (nextMove.From == currentTo)
+						{
+							results.Add(nextMove.To);
+							currentTo = nextMove.To;
+						}
+						else // no chained there or broke up
+							break;
+					}
+				}
+			}
+			return results;
 		}
 	}
 }

@@ -1,12 +1,14 @@
 # TODO
-- code todos
-- undo/redo moves
 - pip count
 - cube decisions AI
+- bot dificulty levels
+- fevga/plakoto bot support
 - auth/user account
 - game history
+- undo/redo moves
 - ranked mode (incl. elo rating)
 - tournament mode
+- error/debug server logging
 - ?
 
 # Open Points
