@@ -1,0 +1,25 @@
+services:
+  game-service:
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      args:
+        BUILD_CONFIGURATION: debug
+    container_name: server
+    ports:
+      - "8080:8080"   # controller port
+      - "8081:8081"   # signalR port
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+    depends_on:
+      - bot-service
+
+  bot-service:
+    build:
+      context: ../gammonx-wildbg
+      dockerfile: ./dockerfile
+      args:
+        BUILD_CONFIGURATION: debug
+    container_name: wildbg-bot
+    ports:
+      - "8082:8082"

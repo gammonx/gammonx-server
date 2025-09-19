@@ -57,7 +57,7 @@
 		public override int BlockAmount => 1;
 
         // <inheritdoc />
-        public override Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
+        public override Func<bool, int, int, int> MoveOperator => new((isWhite, currentPosition, moveDistance) =>
         {
             if (isWhite)
             {
@@ -80,7 +80,7 @@
         });
 
 		// <inheritdoc />
-		public override Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
+		public override Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)
 			{
@@ -127,7 +127,7 @@
 		});
 
 		// <inheritdoc />
-		public override Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
+		public override Func<bool, int, bool> IsInHomeOperator => new((isWhite, position) =>
 		{
 			if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
 			if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
@@ -174,6 +174,8 @@
 			{
 				BearOffCountWhite = BearOffCountWhite,
 				BearOffCountBlack = BearOffCountBlack,
+				HomeBarCountBlack = HomeBarCountBlack,
+				HomeBarCountWhite = HomeBarCountWhite,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
 			};

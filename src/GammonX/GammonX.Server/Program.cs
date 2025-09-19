@@ -1,19 +1,30 @@
 using GammonX.Engine.Services;
 
 using GammonX.Server;
+using GammonX.Server.Bot;
 using GammonX.Server.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// add services to the container.
+builder.Services.Configure<BotServiceOptions>(
+	builder.Configuration.GetSection("BotService"));
+
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-builder.Services.AddSingleton<SimpleMatchmakingService>();
+builder.Services.AddSingleton<IMatchmakingService, SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
+
+builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
+{
+	var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+	client.BaseAddress = new Uri(options.BaseUrl);
+	client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
 
 builder.Services.AddCors(options =>
 {

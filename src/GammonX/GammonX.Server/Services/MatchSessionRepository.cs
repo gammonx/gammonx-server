@@ -15,9 +15,9 @@ namespace GammonX.Server.Services
 			_matchSessionFactory = matchSessionFactory;
 		}
 
-		public IMatchSessionModel Create(Guid matchId, WellKnownMatchVariant variant)
+		public IMatchSessionModel Create(Guid matchId, QueueKey queueKey)
 		{
-			var matchSession = _matchSessionFactory.Create(matchId, variant);
+			var matchSession = _matchSessionFactory.Create(matchId, queueKey);
 			_sessions.Add(matchId, matchSession);
 			return matchSession;
 		}
@@ -34,12 +34,12 @@ namespace GammonX.Server.Services
 			}
 		}
 
-		public IMatchSessionModel GetOrCreate(Guid matchId, WellKnownMatchVariant variant)
+		public IMatchSessionModel GetOrCreate(Guid matchId, QueueKey queueKey)
 		{
 			var session = Get(matchId);
 			if (session == null)
 			{
-				session = Create(matchId, variant);
+				session = Create(matchId, queueKey);
 			}
 			return session;
 		}

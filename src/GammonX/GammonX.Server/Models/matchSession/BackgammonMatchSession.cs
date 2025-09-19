@@ -10,10 +10,9 @@ namespace GammonX.Server.Models
 	{
 		public BackgammonMatchSession(
 			Guid id,
-			WellKnownMatchVariant variant,
-			GameModus[] rounds,
+			QueueKey queueKey,
 			IGameSessionFactory gameSessionFactory
-		) : base(id, variant, rounds, gameSessionFactory)
+		) : base(id, queueKey, gameSessionFactory)
 		{
 			// pass
 		}
@@ -30,7 +29,7 @@ namespace GammonX.Server.Models
 		/// </remarks>
 		/// <param name="playerId">Player id who won the game</param>
 		/// <returns>Score won with the game.</returns>
-		protected override int CalculateScore(Guid playerId)
+		protected override int CalculatePoints(Guid playerId)
 		{
 			var activeSession = GetGameSession(GameRound);
 
@@ -142,10 +141,34 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override int CalculateResignGameScore()
+		protected override int CalculateResignGamePoints()
 		{
 			// wins with a back-gammon
 			return 3;
+		}
+
+		// <inheritdoc />
+		protected override GameModus[] GetGameModusList(WellKnownMatchType matchType)
+		{
+			if (matchType == WellKnownMatchType.CashGame)
+			{
+				// we play max 1 round in a cash game
+				return [GameModus.Backgammon];
+			}
+			else if (matchType == WellKnownMatchType.FivePointGame)
+			{
+				// we play max 5 rounds in a five point game
+				return [GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon];
+			}
+			else if (matchType == WellKnownMatchType.SevenPointGame)
+			{
+				// we play max 7 rounds in a seven point game
+				return [GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon];
+			}
+			else
+			{
+				throw new InvalidOperationException("the given match type is not supported for backgammon match variant");
+			}
 		}
 
 		private Guid? _doubleCubeOfferPlayerId = null;
@@ -266,7 +289,7 @@ namespace GammonX.Server.Models
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
 			var gameScore = 1 * doublingCubeModel.DoublingCubeValue;
-			otherPlayer.Score += gameScore;
+			otherPlayer.Points += gameScore;
 			activeSession.StopGame(otherPlayerId, gameScore);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();

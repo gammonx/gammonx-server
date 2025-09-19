@@ -1,6 +1,4 @@
-﻿using GammonX.Engine.Models;
-
-using GammonX.Server.Models;
+﻿using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
@@ -10,12 +8,12 @@ namespace GammonX.Server.Services
 	public interface IMatchSessionFactory
 	{
 		/// <summary>
-		/// Create a new match session model based on the match id and match variant.
+		/// Create a new match session model based on the match id and queue key.
 		/// </summary>
 		/// <param name="id">Match id.</param>
-		/// <param name="variant">match variant.</param>
+		/// <param name="queueKey">Queue key.</param>
 		/// <returns>A match session</returns>
-		IMatchSessionModel Create(Guid id, WellKnownMatchVariant variant);
+		IMatchSessionModel Create(Guid id, QueueKey queueKey);
 	}
 
 	// <inheritdoc />
@@ -29,18 +27,18 @@ namespace GammonX.Server.Services
 		}
 
 		// <inheritdoc />
-		public IMatchSessionModel Create(Guid id, WellKnownMatchVariant variant)
+		public IMatchSessionModel Create(Guid id, QueueKey queueKey)
 		{
-			switch (variant)
+			switch (queueKey.MatchVariant)
 			{
 				case WellKnownMatchVariant.Backgammon:
-					return new BackgammonMatchSession(id, variant, [GameModus.Backgammon], _gameSessionFactory);
+					return new BackgammonMatchSession(id, queueKey, _gameSessionFactory);
 				case WellKnownMatchVariant.Tavla:
-					return new TavlaMatchSession(id, variant, [GameModus.Tavla], _gameSessionFactory);
+					return new TavlaMatchSession(id, queueKey, _gameSessionFactory);
 				case WellKnownMatchVariant.Tavli:
-					return new TavliMatchSession(id, variant, [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga], _gameSessionFactory);
+					return new TavliMatchSession(id, queueKey, _gameSessionFactory);
 				default:
-					throw new ArgumentOutOfRangeException(nameof(variant), variant, "Unknown match variant.");
+					throw new ArgumentOutOfRangeException(nameof(queueKey.MatchVariant), "Unknown match variant.");
 			}
 		}
 	}

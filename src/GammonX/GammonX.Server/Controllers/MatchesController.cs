@@ -10,11 +10,11 @@ namespace GammonX.Server.Controllers
 	[Route("api/[controller]")]
 	public class MatchesController : Controller
 	{
-		private readonly SimpleMatchmakingService _service;
+		private readonly IMatchmakingService _matchmakingService;
 
-		public MatchesController(SimpleMatchmakingService service)
+		public MatchesController(IMatchmakingService service)
 		{
-			_service = service;
+			_matchmakingService = service;
 		}
 
 		[HttpGet]
@@ -28,8 +28,12 @@ namespace GammonX.Server.Controllers
 		{
 			try
 			{
+				// TODO :: validate join request
+				// e.g. cash game in ranked is not allowed
+
 				var player = new LobbyEntry(req.PlayerId);
-				var matchId = _service.JoinQueue(player, req.MatchVariant);
+				var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType);
+				var matchId = _matchmakingService.JoinQueue(player, queueKey);
 				var payload = new RequestMatchIdPayload(matchId);
 				var response = new RequestResponseContract<RequestMatchIdPayload>("OK", payload);
 				return Ok(response);

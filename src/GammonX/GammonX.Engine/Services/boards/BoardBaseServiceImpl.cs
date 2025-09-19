@@ -14,19 +14,52 @@ namespace GammonX.Engine.Services
 		public abstract IBoardModel CreateBoard();
 
 		// <inheritdoc />
-		public ValueTuple<int, int>[] GetLegalMoves(IBoardModel model, bool isWhite, params int[] rolls)
+		public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
 		{
-			// get only points with relevance for the current player
-			var moveableCheckers = GetMoveableCheckerFields(model, isWhite);
+			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+			var allowed = FilterSequencesByDiceRules(sequences, rolls);
+			var moves = ConvertToFlattenedMoves(allowed, model, isWhite);
+			return moves.Select(m => new ValueTuple<int, int>(m.From, m.To)).ToArray();
+		}
 
-			var legalMoves = new List<(int from, int to)>();
-			foreach (var from in moveableCheckers)
-			{
-				var subsequentMoves = GetSubsequentLegalMoves(model, from, isWhite, rolls.ToArray());
-				legalMoves.AddRange(subsequentMoves);
-			}
+		// <inheritdoc />
+		public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
+		{
+			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+			var allowed = FilterSequencesByDiceRules(sequences, rolls);
+			return allowed.ToArray();
+		}
 
-			return legalMoves.ToArray();
+		// <inheritdoc />
+		public virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
+		{
+			// only relevant for two dice rolls
+			if (rolls.Length != 2)
+				return legalMoves;
+
+			int maxRoll = rolls.Max();
+			int combined = rolls.Sum();
+
+			// are there any combined moves (e.g. 0 > 3 for {1,2})
+			var combinedMoves = legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
+				.ToArray();
+
+			if (combinedMoves.Length > 0)
+				return combinedMoves;
+
+			// can the rolls be used individually?
+			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
+			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
+
+			// if both rolls can be used, return all legal moves
+			if (canUseRoll1 && canUseRoll2)
+				return legalMoves;
+
+			// otherwise return only moves with the maximum roll
+			return legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
+				.ToArray();
 		}
 
 		// <inheritdoc />
@@ -57,8 +90,7 @@ namespace GammonX.Engine.Services
 			}
 
 			// we check it here because most of the variants actually use hitting
-			var homeBarModel = model as IHomeBarModel;
-			if (homeBarModel != null)
+			if (model is IHomeBarModel)
 			{
 				// we check if we would hit an opponents checker with this move
 				EvaluateHittedCheckers(model, from, to, isWhite);
@@ -265,48 +297,6 @@ namespace GammonX.Engine.Services
 			return 0;
 		}
 
-		private ValueTuple<int, int>[] GetSubsequentLegalMoves(
-			IBoardModel shadowBoard,
-			int from,
-			bool isWhite,
-			params int[] rolls)
-		{
-			var legalMoves = new List<(int from, int to)>();
-
-			for (int index = 0; index < rolls.Length; index++)
-			{
-				var currentRoll = rolls[index];
-				if (CanBearOffChecker(shadowBoard, from, currentRoll, isWhite))
-				{
-					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
-					legalMoves.Add((from, to));
-				}
-				else if (CanMoveChecker(shadowBoard, from, currentRoll, isWhite))
-				{
-					int to = shadowBoard.MoveOperator(isWhite, from, currentRoll);
-					if (legalMoves.Contains((from, to)))
-					{
-						// we already logged this move, so we skip it
-						continue;
-					}
-					legalMoves.Add((from, to));
-					// we calculate subsequent legal moves based on a shadow board state with the already logged move made.
-					var deeperShadowBoard = shadowBoard.DeepClone();
-					MoveCheckerTo(deeperShadowBoard, from, to, isWhite);
-					// get all other rolls except the current one
-					var otherRolls = rolls.Where((item, rollsIndex) => rollsIndex != index).ToList();
-					var subsequentMoves = GetSubsequentLegalMoves(deeperShadowBoard, to, isWhite, otherRolls.ToArray());
-					var combinedMoves = subsequentMoves
-						.Select(move => (from, move.Item2))
-						.Where(move => !legalMoves.Contains(move))
-						.ToList();
-					legalMoves.AddRange(combinedMoves);
-				}
-			}
-
-			return legalMoves.ToArray();
-		}
-
 		private static void AddMoveableCheckersFromFields(IBoardModel model, bool isWhite, List<int> moveableCheckers)
 		{
 			for (int i = 0; i < model.Fields.Length; i++)
@@ -317,6 +307,221 @@ namespace GammonX.Engine.Services
 					moveableCheckers.Add(i);
 				}
 			}
+		}
+
+		private List<MoveSequenceModel> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
+		{
+			var results = new List<MoveSequenceModel>();
+			ExploreBoardRecursively(model, isWhite, rolls.ToList(), new List<MoveModel>(), new List<int>(), results);
+			return results
+				.GroupBy(s => s.SequenceKey())
+				.Select(g => g.First())
+				.ToList();
+		}
+
+		private void ExploreBoardRecursively(
+			IBoardModel board,
+			bool isWhite,
+			List<int> remainingRolls,
+			IEnumerable<MoveModel> currentMoves,
+			IEnumerable<int> usedDices,
+			List<MoveSequenceModel> results)
+		{
+			bool anyMovePossible = false;
+			for (int i = 0; i < remainingRolls.Count; i++)
+			{
+				int die = remainingRolls[i];
+				var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
+
+				if (possibleMoves.Count == 0)
+					continue;
+
+				anyMovePossible = true;
+
+				foreach (var move in possibleMoves)
+				{
+					var shadowBoard = board.DeepClone();
+					MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
+
+					var newRemaining = new List<int>(remainingRolls);
+					newRemaining.RemoveAt(i);
+
+					var newMoves = new List<MoveModel>(currentMoves) { move };
+					var newUsedDice = new List<int>(usedDices) { die };
+
+					ExploreBoardRecursively(shadowBoard, isWhite, newRemaining, newMoves, newUsedDice, results);
+				}
+			}
+
+			if (!anyMovePossible && currentMoves.Any())
+			{
+				var seq = new MoveSequenceModel();
+				currentMoves = ReorderByChains(currentMoves.ToList());
+				seq.Moves.AddRange(currentMoves);
+				seq.UsedDices.AddRange(usedDices);
+				results.Add(seq);
+			}
+		}
+
+		private List<MoveModel> GetMovesForDiceRoll(IBoardModel board, bool isWhite, int diceRoll)
+		{
+			var shadowBoard = board.DeepClone();
+			var moves = new List<MoveModel>();
+			var moveable = GetMoveableCheckerFields(shadowBoard, isWhite);
+
+			foreach (var from in moveable)
+			{
+				if (CanBearOffChecker(shadowBoard, from, diceRoll, isWhite))
+				{
+					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
+					moves.Add(new MoveModel(from, to));
+				}
+				else if (CanMoveChecker(shadowBoard, from, diceRoll, isWhite))
+				{
+					int to = shadowBoard.MoveOperator(isWhite, from, diceRoll);
+					moves.Add(new MoveModel(from, to));
+				}
+			}
+
+			return moves;
+		}
+
+		private static List<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel> sequences, int[] rolls)
+		{
+			// if possible: only sequences that use all dice
+			// if not possible: only sequences that use the highest dice
+			if (sequences == null || sequences.Count == 0)
+				return new List<MoveSequenceModel>();
+
+			int totalDice = rolls.Length;
+			int maxRoll = rolls.Max();
+
+			var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice).ToList();
+			if (usingAll.Count > 0)
+				return usingAll;
+
+			// no sequence has used all the dice -> only sequences are allowed that
+			// who have used at least the highest die
+			var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll)).ToList();
+			if (usingMax.Count > 0)
+				return usingMax;
+			// we return all found moves if the max roll can not be used at all
+			return sequences;
+		}
+
+		private IEnumerable<MoveModel> ConvertToFlattenedMoves(List<MoveSequenceModel> sequences, IBoardModel model, bool isWhite)
+		{
+			// flatten sequences into a set of (from,to):
+			// add all single moves from allowed sequences
+			// additionally add “collapsed” chains (e.g. (0->1,1->3) -> collapsed (0->3)) 
+			// only if all moves in the sequence form a continuous chain.
+			var flattenedMoves = new HashSet<(int from, int to)>();
+			var sequenceCopies = sequences.Select(s => s.DeepClone());
+			var initialMovableFields = new HashSet<int>(GetMoveableCheckerFields(model, isWhite));
+			foreach (var seq in sequenceCopies)
+			{
+				var combinedMoves = GetCombinedMoves(seq, initialMovableFields, true);
+				foreach (var move in combinedMoves)
+				{
+					flattenedMoves.Add(move);
+				}
+			}
+			return flattenedMoves.Select(s => new MoveModel(s.from, s.to));
+		}
+
+		private static HashSet<(int from, int to)> GetCombinedMoves(
+			MoveSequenceModel seq,
+			HashSet<int> initialMovableFields,
+			bool partialCombinedMoves)
+		{
+			var set = new HashSet<(int from, int to)>();
+			if (seq.Moves.Count >= 2)
+			{
+				// check whether the moves form a genuine chain of the same checkers.
+				bool isContinuousChain = true;
+				for (int i = 1; i < seq.Moves.Count; i++)
+				{
+					if (seq.Moves[i - 1].To != seq.Moves[i].From)
+					{
+						if (partialCombinedMoves)
+						{
+							// the sequence may contain a partial continuous chain move
+							// substract it from the sequence and handle the remaining moves
+							var partialCollapsed = (seq.Moves[0].From, seq.Moves[i - 1].To);
+							// only add if it is not a no-op such as (5->5)
+							if (partialCollapsed.From != partialCollapsed.To)
+							{
+								set.Add(partialCollapsed);
+								seq.Moves.RemoveRange(0, i);
+							}
+						}
+						isContinuousChain = false;
+						break;
+					}
+				}
+
+				if (isContinuousChain)
+				{
+					var collapsed = (seq.Moves.First().From, seq.Moves.Last().To);
+
+					// only add if it is not a no-op such as (5->5)
+					if (collapsed.From != collapsed.To)
+					{
+						set.Add(collapsed);
+					}
+
+					return set;
+				}
+			}
+
+			if (partialCombinedMoves)
+			{
+				// check individual moves and adopt them if necessary
+				for (int i = 0; i < seq.Moves.Count; i++)
+				{
+					if (initialMovableFields.Contains(seq.Moves[i].From))
+					{
+						var m = seq.Moves[i];
+						set.Add((m.From, m.To));
+					}
+				}
+			}
+
+			return set;
+		}
+
+		private static List<MoveModel> ReorderByChains(List<MoveModel> moves)
+		{
+			var result = new List<MoveModel>();
+			var remaining = new List<MoveModel>(moves);
+
+			while (remaining.Count > 0)
+			{
+				// we start with the first move
+				var chain = new List<MoveModel> { remaining[0] };
+				remaining.RemoveAt(0);
+
+				bool extended;
+				do
+				{
+					extended = false;
+
+					// we search for a move that can be chained at the beginning
+					var next = remaining.FirstOrDefault(m => m.From == chain.Last().To);
+					if (next != default)
+					{
+						chain.Add(next);
+						remaining.Remove(next);
+						extended = true;
+					}
+				}
+				while (extended);
+
+				// Füge die Chain an den Result-Anfang
+				result.AddRange(chain);
+			}
+
+			return result;
 		}
 	}
 }

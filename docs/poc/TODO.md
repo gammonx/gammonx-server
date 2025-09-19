@@ -1,10 +1,15 @@
 # TODO
-- guid parsing client? > Armin .NET GUID version
-    - RFC 4122-konforme UUIDs
-    - `import { v4 as uuidv4 } from 'uuid';`
-- server deployment for client development?
-    - As local container from main/master
-    - create proper dockerfile
+- pip count
+- cube decisions AI
+- bot dificulty levels
+- fevga/plakoto bot support
+- auth/user account
+- game history
+- undo/redo moves
+- ranked mode (incl. elo rating)
+- tournament mode
+- error/debug server logging
+- ?
 
 # Open Points
 - different integration tests?
@@ -26,3 +31,4 @@
 - bot support
 - turn timer event (auto-pass, auto-ff, ff-on-timeout, bot-move)
 - analytics hook
+- blunder database > quizes (subscription)

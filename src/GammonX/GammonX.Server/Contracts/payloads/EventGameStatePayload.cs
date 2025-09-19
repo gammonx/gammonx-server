@@ -31,8 +31,8 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "diceRolls")]
 		public DiceRollContract[] DiceRolls { get; set; }
 
-		[DataMember(Name = "legalMoves")]
-		public LegalMoveContract[] LegalMoves { get; set; }
+		[DataMember(Name = "moveSequences")]
+		public MoveSequenceModel[] MoveSequences { get; set; }
 
 		[DataMember(Name = "boardState")]
 		public BoardStateContract BoardState { get; set; }
@@ -40,7 +40,7 @@ namespace GammonX.Server.Contracts
 		public EventGameStatePayload(params string[] allowedCommands) : base(allowedCommands)
 		{
 			DiceRolls = Array.Empty<DiceRollContract>();
-			LegalMoves = Array.Empty<LegalMoveContract>();
+			MoveSequences = Array.Empty<MoveSequenceModel>();
 			BoardState = new BoardStateContract();
 		}
 
@@ -54,8 +54,8 @@ namespace GammonX.Server.Contracts
 				Phase = model.Phase,
 				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
-				DiceRolls = model.DiceRollsModel.DiceRolls,
-				LegalMoves = model.LegalMovesModel.LegalMoves,
+				DiceRolls = model.DiceRolls.ToArray(),
+				MoveSequences = model.MoveSequences.ToArray(),
 				BoardState = model.BoardModel.ToContract(inverted)
 			};
 		}

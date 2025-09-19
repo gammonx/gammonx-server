@@ -33,28 +33,29 @@ namespace GammonX.Server.Tests
 			board.BearOffChecker(false, 1);
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(1, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(1, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 
 			var matchState = session.ToPayload();
 			Assert.Empty(matchState.AllowedCommands);
 			Assert.Equal(1, matchState.GameRound);
-			Assert.Equal(1, matchState.Player1.Score);
-			Assert.Equal(0, matchState.Player2.Score);
+			Assert.Equal(1, matchState.Player1?.Score);
+			Assert.Equal(0, matchState.Player2?.Score);
 			Assert.Equal(session.Id, matchState.Id);
 			Assert.Equal(WellKnownMatchVariant.Tavla, matchState.Variant);
-			Assert.Equal(session.Player1.Id, matchState.Player1.Id);
-			Assert.Equal(session.Player2.Id, matchState.Player2.Id);
+			Assert.Equal(session.Player1.Id, matchState.Player1?.Id);
+			Assert.Equal(session.Player2.Id, matchState.Player2?.Id);
+			Assert.NotNull(matchState.GameRounds);
 			Assert.Single(matchState.GameRounds);
 			Assert.Equal(GameModus.Tavla, matchState.GameRounds[0].Modus);
 			Assert.Equal(GamePhase.GameOver, matchState.GameRounds[0].Phase);
 			Assert.Equal(1, matchState.GameRounds[0].Score);
 			Assert.Equal(0, matchState.GameRounds[0].GameRoundIndex);
-			Assert.Equal(session.Player1.Id, matchState.GameRounds[0].Winner);
+			Assert.Equal(session.Player1?.Id, matchState.GameRounds[0].Winner);
 		}
 
 		[Fact]
@@ -78,14 +79,15 @@ namespace GammonX.Server.Tests
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(1, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(1, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
-			Assert.Equal(1, matchState.Player2.Score);
+			Assert.Equal(1, matchState.Player2?.Score);
+			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(1, matchState.GameRounds[0].Score);
 		}
 
@@ -108,14 +110,15 @@ namespace GammonX.Server.Tests
 			// no borne off for black
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player1.Score);
-			Assert.Equal(0, session.Player2.Score);
+			Assert.Equal(2, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload();
-			Assert.Equal(2, matchState.Player1.Score);
+			Assert.Equal(2, matchState.Player1?.Score);
+			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(2, matchState.GameRounds[0].Score);
 		}
 
@@ -140,14 +143,15 @@ namespace GammonX.Server.Tests
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.LegalMovesModel.LegalMoves.FirstOrDefault();
+			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player2.Score);
-			Assert.Equal(0, session.Player1.Score);
+			Assert.Equal(2, session.Player2.Points);
+			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload();
-			Assert.Equal(2, matchState.Player2.Score);
+			Assert.Equal(2, matchState.Player2?.Score);
+			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(2, matchState.GameRounds[0].Score);
 		}
 	}

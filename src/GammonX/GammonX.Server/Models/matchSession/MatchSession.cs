@@ -8,10 +8,11 @@ namespace GammonX.Server.Models
 	// <inheritdoc />
 	public abstract class MatchSession : IMatchSessionModel
 	{
+		private readonly Func<IMatchSessionModel, bool> _isMatchOver;
 		private readonly GameModus[] _rounds;
 		private readonly IGameSessionModel[] _gameSessions;
 		private readonly IGameSessionFactory _gameSessionFactory;
-		private static string[] _alwaysAvailableCommands =
+		private static readonly string[] _alwaysAvailableCommands =
 			[
 				ServerCommands.ResignGame,
 				ServerCommands.ResignMatch,
@@ -27,6 +28,12 @@ namespace GammonX.Server.Models
 		public WellKnownMatchVariant Variant { get; }
 
 		// <inheritdoc />
+		public WellKnownMatchModus Modus { get; }
+
+		// <inheritdoc />
+		public WellKnownMatchType Type { get; }
+
+		// <inheritdoc />
 		public DateTime StartedAt { get; private set; }
 
 		// <inheritdoc />
@@ -38,16 +45,22 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public PlayerModel Player2 { get; private set; }
 
-		public MatchSession(Guid id, WellKnownMatchVariant variant, GameModus[] rounds, IGameSessionFactory gameSessionFactory)
+		public MatchSession(
+			Guid id, 
+			QueueKey queueKey, 
+			IGameSessionFactory gameSessionFactory)
 		{
 			Id = id;
 			GameRound = 1;
-			Variant = variant;
-			_rounds = rounds;
+			Variant = queueKey.MatchVariant;
+			Modus = queueKey.MatchModus;
+			Type = queueKey.MatchType;
+			_rounds = GetGameModusList(queueKey.MatchType);
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
 			Player1 = new PlayerModel(Guid.Empty, string.Empty);
 			Player2 = new PlayerModel(Guid.Empty, string.Empty);
+			_isMatchOver = Type.GetMatchOverFunc();
 		}
 
 		// <inheritdoc />
@@ -77,6 +90,7 @@ namespace GammonX.Server.Models
 		public bool CanStartNextGame()
 		{
 			return
+				!IsMatchOver() &&
 				Player1 != null &&
 				Player1.NextGameAccepted &&
 				Player2 != null &&
@@ -89,6 +103,7 @@ namespace GammonX.Server.Models
 		public IGameSessionModel StartNextGame(Guid playerId)
 		{
 			var gameSession = GetOrCreateGameSession(GameRound);
+			var otherPlayerId = GetOtherPlayerId(playerId);
 
 			if (gameSession.Phase != GamePhase.GameOver)
 			{
@@ -96,14 +111,14 @@ namespace GammonX.Server.Models
 				{
 					StartedAt = DateTime.UtcNow;
 				}
-				gameSession.StartGame(playerId);
+				gameSession.StartGame(playerId, otherPlayerId);
 				return gameSession;
 			}
 			else if (GameRound <= _rounds.Length)
 			{
 				GameRound++;
 				var newSession = GetOrCreateGameSession(GameRound);
-				newSession.StartGame(playerId);
+				newSession.StartGame(playerId, otherPlayerId);
 				return newSession;
 			}
 			else
@@ -147,10 +162,10 @@ namespace GammonX.Server.Models
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
 
-			if (GameOver(callingPlayerId, out var score))
+			if (GameOver(callingPlayerId, out var points))
 			{
 				var activePlayer = GetPlayer(callingPlayerId);
-				activePlayer.Score += score;
+				activePlayer.Points += points;
 				Player1.ActiveGameOver();
 				Player2.ActiveGameOver();
 				return true;
@@ -162,15 +177,21 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public bool CanEndTurn(Guid callingPlayerId)
 		{
+			if (IsMatchOver())
+				return false;
+
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
+			if (activeSession.Phase == GamePhase.GameOver)
+				return false;
+
 			if (activeSession.ActivePlayer == callingPlayerId)
 			{
-				if (activeSession.DiceRollsModel.HasUnused)
+				if (activeSession.DiceRolls.HasUnused)
 				{
-					return !activeSession.LegalMovesModel.HasLegalMoves();
+					return !activeSession.MoveSequences.CanMove;
 				}
 				else
 				{
@@ -208,9 +229,9 @@ namespace GammonX.Server.Models
 			// Other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			var gameScore = CalculateResignGameScore();
-			otherPlayer.Score += gameScore;
-			activeSession.StopGame(otherPlayerId, gameScore);
+			var gamePoints = CalculateResignGamePoints();
+			otherPlayer.Points += gamePoints;
+			activeSession.StopGame(otherPlayerId, gamePoints);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
 		}
@@ -228,11 +249,8 @@ namespace GammonX.Server.Models
 				var gameSession = _gameSessions[i];
 				if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
 				{
-					var gameScore = CalculateResignGameScore();
-					if (gameSession == null)
-					{
-						gameSession = GetOrCreateGameSession(i + 1);
-					}
+					var gameScore = CalculateResignGamePoints();
+					gameSession ??= GetOrCreateGameSession(i + 1);
 					gameSession.StopGame(otherPlayerId, gameScore);
 					scoreToAdd += gameScore;
 				}
@@ -242,13 +260,21 @@ namespace GammonX.Server.Models
 			Player2.ActiveGameOver();
 			GameRound = _gameSessions.Length;
 			// Other player gets the points for his score
-			otherPlayer.Score += scoreToAdd;
+			otherPlayer.Points += scoreToAdd;
 		}
 
 		// <inheritdoc />
 		public bool IsMatchOver()
 		{
-			return _gameSessions.All(gs => gs?.Phase == GamePhase.GameOver);
+			return _isMatchOver(this);
+		}
+
+		// <inheritdoc />
+		public int PointsAway(Guid callingPlayerId)
+		{
+			var maxPoints = Type.GetMaxPoints();
+			var player = GetPlayer(callingPlayerId);
+			return maxPoints - player.Points;
 		}
 
 		// <inheritdoc />
@@ -298,6 +324,8 @@ namespace GammonX.Server.Models
 				GameRound = GameRound,
 				GameRounds = GetGameRoundContracts(),
 				Variant = Variant,
+				Modus = Modus,
+				Type = Type,
 				AllowedCommands = allowedCommands
 			};
 		}
@@ -309,6 +337,12 @@ namespace GammonX.Server.Models
 			return existingSession;
 		}
 
+		// <inheritdoc />
+		public IGameSessionModel[] GetGameSessions()
+		{
+			return _gameSessions;
+		}
+
 		#region Abstract Methods
 
 		/// <summary>
@@ -316,31 +350,38 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <param name="playerId">Player who won the game round.</param>
 		/// <returns>Amount of points/score.</returns>
-		protected abstract int CalculateScore(Guid playerId);
+		protected abstract int CalculatePoints(Guid playerId);
 
 		/// <summary>
 		/// Calculates the amout of points for the score of the non-resigning player.
 		/// </summary>
 		/// <returns>Amount of points/score.</returns>
-		protected abstract int CalculateResignGameScore();
+		protected abstract int CalculateResignGamePoints();
+
+		/// <summary>
+		/// Gets the amount and order of the max playable game modus
+		/// </summary>
+		/// <param name="matchType">Match type which determines the game modus played.</param>
+		/// <returns>A ordered list of game modus played in this match.</returns>
+		protected abstract GameModus[] GetGameModusList(WellKnownMatchType matchType);
 
 		#endregion Abstract Methods
 
 		#region Protected Methods
 
-		protected bool GameOver(Guid playerId, out int score)
+		protected bool GameOver(Guid playerId, out int points)
 		{
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			score = 0;
+			points = 0;
 			if (Player1.Id.Equals(playerId))
 			{
 				if (activeSession.BoardModel.BearOffCountWhite == activeSession.BoardModel.WinConditionCount)
 				{
-					score = CalculateScore(playerId);
-					activeSession.StopGame(playerId, score);
+					points = CalculatePoints(playerId);
+					activeSession.StopGame(playerId, points);
 					return true;
 				}
 				return false;
@@ -349,8 +390,8 @@ namespace GammonX.Server.Models
 			{
 				if (activeSession.BoardModel.BearOffCountBlack == activeSession.BoardModel.WinConditionCount)
 				{
-					score = CalculateScore(playerId);
-					activeSession.StopGame(playerId, score);
+					points = CalculatePoints(playerId);
+					activeSession.StopGame(playerId, points);
 					return true;
 				}
 				return false;

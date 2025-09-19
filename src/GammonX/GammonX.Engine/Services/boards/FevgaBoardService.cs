@@ -5,9 +5,6 @@ namespace GammonX.Engine.Services
     // <inheritdoc />
     internal class FevgaBoardService : BoardBaseServiceImpl
     {
-        private bool _whiteHasPassedBlackStart = false;
-        private bool _blackHasPassedWhiteStart = false;
-        
         // black must pass this in order to move others
         private readonly int _whiteStartCheckerIndex = 0;
         // white must pass this in order to move others
@@ -98,38 +95,21 @@ namespace GammonX.Engine.Services
             var fieldList = model.Fields.ToList();
             if (isWhite)
             {
-                if (!_whiteHasPassedBlackStart)
-                {
-                    var furthestIndex = fieldList.FindIndex(_blackStartCheckerIndex, (i) => i == -1);
-                    if (furthestIndex != -1)
-                    {
-                        _whiteHasPassedBlackStart = true;
-                        return true;
-                    }
-                }
-                else
-                {
-                    return true;
-                }
-                
+				var furthestIndex = fieldList.FindIndex(_blackStartCheckerIndex, (i) => i == -1);
+				if (furthestIndex != -1)
+				{
+					return true;
+				}                
             }
             else if (!isWhite)
             {
-                if (!_blackHasPassedWhiteStart)
-                {
-                    var furthestIndex = fieldList.FindIndex(_whiteStartCheckerIndex, (i) => i == 1);
-                    if (furthestIndex != -1 && furthestIndex < _blackStartCheckerIndex)
-                    {
-                        _blackHasPassedWhiteStart = true;
-                        return true;
-                    }
-                }
-                else
-                {
-                    return true;
-                }
-               
-            }
+				var furthestIndex = fieldList.FindIndex(_whiteStartCheckerIndex, (i) => i == 1);
+				if (furthestIndex != -1 && furthestIndex < _blackStartCheckerIndex)
+				{
+					return true;
+				}
+
+			}
             return false;
         }
 

@@ -1,6 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
 using GammonX.Server.Services;
+using Microsoft.AspNetCore.SignalR;
 
 namespace GammonX.Server.Models
 {
@@ -9,10 +10,9 @@ namespace GammonX.Server.Models
 	{
 		public TavliMatchSession(
 			Guid id,
-			WellKnownMatchVariant variant,
-			GameModus[] rounds,
+			QueueKey queueKey,
 			IGameSessionFactory gameSessionFactory
-		) : base(id, variant, rounds, gameSessionFactory) 
+		) : base(id, queueKey, gameSessionFactory) 
 		{
 			// pass
 		}
@@ -27,7 +27,7 @@ namespace GammonX.Server.Models
 		/// </remarks>
 		/// <param name="playerId">Player id who won the game</param>
 		/// <returns>Score won with the game.</returns>
-		protected override int CalculateScore(Guid playerId)
+		protected override int CalculatePoints(Guid playerId)
 		{
 			var activeSession = GetGameSession(GameRound);
 
@@ -74,10 +74,34 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override int CalculateResignGameScore()
+		protected override int CalculateResignGamePoints()
 		{
 			// wins with a gammon
 			return 2;
+		}
+
+		// <inheritdoc />
+		protected override GameModus[] GetGameModusList(WellKnownMatchType matchType)
+		{
+			if (matchType == WellKnownMatchType.CashGame)
+			{
+				// we play max 3 rounds in a cash game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga];
+			}
+			else if (matchType == WellKnownMatchType.FivePointGame)
+			{
+				// we play max 5 rounds in a five point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];
+			}
+			else if (matchType == WellKnownMatchType.SevenPointGame)
+			{
+				// we play max 7 rounds in a seven point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes];
+			}
+			else
+			{
+				throw new InvalidOperationException("the given match type is not supported for tavli match variant");
+			}
 		}
 	}
 }

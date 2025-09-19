@@ -507,5 +507,67 @@ namespace GammonX.Engine.Tests
 			var result = board.CanMove(5, 6, isWhite);
 			Assert.True(result);
 		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon, true)]
+		[InlineData(GameModus.Portes, true)]
+		[InlineData(GameModus.Tavla, true)]
+		[InlineData(GameModus.Plakoto, true)]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Backgammon, false)]
+		[InlineData(GameModus.Portes, false)]
+		[InlineData(GameModus.Tavla, false)]
+		[InlineData(GameModus.Plakoto, false)]
+		[InlineData(GameModus.Fevga, false)]
+		public void CanGetLegalToPositionsTwoDiceRoll(GameModus modus, bool isWhite)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var moveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+
+			int fromIndex;
+			if (modus == GameModus.Fevga)
+			{
+				fromIndex = isWhite ? -1 : 24;
+			}
+			else
+			{
+				fromIndex = isWhite ? 0 : 23;
+			}
+
+			var legalToPositions = BoardBroker.GetLegalToPositions(fromIndex, moveSequences);
+			Assert.NotEmpty(legalToPositions);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon, true)]
+		[InlineData(GameModus.Portes, true)]
+		[InlineData(GameModus.Tavla, true)]
+		[InlineData(GameModus.Plakoto, true)]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Backgammon, false)]
+		[InlineData(GameModus.Portes, false)]
+		[InlineData(GameModus.Tavla, false)]
+		[InlineData(GameModus.Plakoto, false)]
+		[InlineData(GameModus.Fevga, false)]
+		public void CanGetLegalToPositionsPaschDiceRoll(GameModus modus, bool isWhite)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			var moveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 2, 2, 2);
+
+			int fromIndex;
+			if (modus == GameModus.Fevga)
+			{
+				fromIndex = isWhite ? -1 : 24;
+			}
+			else
+			{
+				fromIndex = isWhite ? 0 : 23;
+			}
+
+			var legalToPositions = BoardBroker.GetLegalToPositions(fromIndex, moveSequences);
+			Assert.NotEmpty(legalToPositions);
+		}
 	}
 }

@@ -22,7 +22,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the score of the player in the current match session.
 		/// </summary>
-		public int Score { get; internal set; } = 0;
+		public int Points { get; internal set; } = 0;
+
+		/// <summary>
+		/// Gets a boolean indicating if the given player is a bot.
+		/// </summary>
+		public bool IsBot => ConnectionId.Equals(Guid.Empty.ToString());
 
 		/// <summary>
 		/// Accepts the next game for this player.
@@ -45,7 +50,7 @@ namespace GammonX.Server.Models
 			return new PlayerContract()
 			{
 				Id = Id,
-				Score = Score
+				Score = Points
 			};
 		}
 	}

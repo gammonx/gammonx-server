@@ -25,6 +25,16 @@ namespace GammonX.Server.Models
 		WellKnownMatchVariant Variant { get; }
 
 		/// <summary>
+		/// Gets the modus of the match.
+		/// </summary>
+		WellKnownMatchModus Modus { get; }
+
+		/// <summary>
+		/// Gets the type of the match determining the winning condition.
+		/// </summary>
+		WellKnownMatchType Type { get; }
+
+		/// <summary>
 		/// Gets the player 1.
 		/// </summary>
 		PlayerModel Player1 { get; }
@@ -115,6 +125,13 @@ namespace GammonX.Server.Models
 		bool IsMatchOver();
 
 		/// <summary>
+		/// Calculates how many points the calling player needs to win the match.
+		/// </summary>
+		/// <param name="callingPlayerId">Calling player id.</param>
+		/// <returns>Amount of points needed to win the match.</returns>
+		int PointsAway(Guid callingPlayerId);
+
+		/// <summary>
 		/// Gts the current game modus of the match session.
 		/// </summary>
 		/// <returns>The active game modus.</returns>
@@ -126,6 +143,12 @@ namespace GammonX.Server.Models
 		/// <param name="gameRound">Game round.</param>
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
+
+		/// <summary>
+		/// Returns all game sessions of this match session.
+		/// </summary>
+		/// <returns>An array of <see cref="IGameSessionModel"/> instances.</returns>
+		IGameSessionModel[] GetGameSessions();
 
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.
