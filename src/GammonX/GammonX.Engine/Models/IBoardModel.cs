@@ -62,6 +62,16 @@
 		int BlockAmount { get; }
 
         /// <summary>
+        /// Gets the remaining pip count needed for the white player to bear off all checkers.
+        /// </summary>
+        int PipCountWhite { get; }
+
+		/// <summary>
+		/// Gets the remaining pip count needed for the black player to bear off all checkers.
+		/// </summary>
+		int PipCountBlack { get; }
+
+        /// <summary>
         /// Operator function for moving a checker for the given player.
         /// First parameter true for white player, false for black player.
         /// Second int represents the current position of the checker,

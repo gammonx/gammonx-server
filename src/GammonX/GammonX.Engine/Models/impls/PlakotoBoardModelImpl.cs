@@ -116,5 +116,21 @@ namespace GammonX.Engine.Models
                 PinnedFields = (int[])PinnedFields.Clone()
 			};
 		}
+
+		// <inheritdoc />
+		protected override int GetPipCount(bool isWhite)
+		{
+			var pipCount = base.GetPipCount(isWhite);
+            var fieldsCopy = PinnedFields.ToArray();
+			if (isWhite)
+            {
+				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeWhite.End.Value, (i) => i < 0);
+			}
+            else
+            {
+				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeBlack.End.Value, (i) => i > 0);
+			}
+            return pipCount;
+		}
 	}
 }

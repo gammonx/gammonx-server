@@ -1,5 +1,5 @@
 # TODO
-- pip count
+- pip count > DOC/armin
 - cube decisions AI
 - bot dificulty levels
 - fevga/plakoto bot support
@@ -12,13 +12,10 @@
 - ?
 
 # Open Points
-- different integration tests?
-- local game AI?
 - enhance matchmaking?
 - user auth?
 - Chat
 - Spectator mode
-- undo system
 - replay system
 - elo rating calculation
 - timer per turn (e.g. max 60s)
@@ -28,7 +25,7 @@
 - game paused event
 - player-disconnected event
 - player-reconnected event
-- bot support
 - turn timer event (auto-pass, auto-ff, ff-on-timeout, bot-move)
 - analytics hook
 - blunder database > quizes (subscription)
+- hide pipcount (option and in ranked mode)

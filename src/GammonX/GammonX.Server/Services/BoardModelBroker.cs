@@ -24,6 +24,8 @@ namespace GammonX.Server.Services
 			boardState.Fields = model.Fields;
 			boardState.BearOffCountWhite = model.BearOffCountWhite;
 			boardState.BearOffCountBlack = model.BearOffCountBlack;
+			boardState.PipCountWhite = model.PipCountWhite;
+			boardState.PipCountBlack = model.PipCountBlack;
 
 			if (model is IPinModel pinModel)
 			{
