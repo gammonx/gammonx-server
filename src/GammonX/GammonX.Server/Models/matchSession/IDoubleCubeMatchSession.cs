@@ -21,6 +21,11 @@
 	public interface IDoubleCubeMatchSession
 	{
 		/// <summary>
+		/// Gets a boolean indicating if a double offer is pending
+		/// </summary>
+		bool IsDoubleOfferPending { get; }
+
+		/// <summary>
 		/// The player with id <paramref name="callingPlayerId"/> offers a double to his opponent.
 		/// </summary>
 		/// <param name="callingPlayerId">Calling player id.</param>
@@ -41,5 +46,12 @@
 		/// </summary>
 		/// <param name="callingPlayerId">Calling player id.</param>
 		void DeclineDouble(Guid callingPlayerId);
+
+		/// <summary>
+		/// Checks if the player with id <paramref name="callingPlayerId"/> can offer a double.
+		/// </summary>
+		/// <param name="callingPlayerId">Calling player id.</param>
+		/// <returns>True if double can be offered. Otherwise, false.</returns>
+		bool CanOfferDouble(Guid callingPlayerId);
 	}
 }

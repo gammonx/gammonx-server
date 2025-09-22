@@ -342,7 +342,12 @@ namespace GammonX.Server.Tests
 			var player1MustDisconnect = false;
 			player1Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
 			{
-				Assert.Null(response);
+				Assert.NotNull(response);
+				var contract = JsonConvert.DeserializeObject<EventResponseContract<EmptyEventPayload>>(response.ToString() ?? "");
+				if (contract?.Payload is EmptyEventPayload payload)
+				{
+					Assert.Empty(payload.AllowedCommands);
+				}
 				Assert.Equal(HubConnectionState.Connected, player1Connection.State);
 				player1Connection.StopAsync().ContinueWith(t =>
 				{
@@ -353,7 +358,12 @@ namespace GammonX.Server.Tests
 			var player2MustDisconnect = false;
 			player2Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
 			{
-				Assert.Null(response);
+				Assert.NotNull(response);
+				var contract = JsonConvert.DeserializeObject<EventResponseContract<EmptyEventPayload>>(response.ToString() ?? "");
+				if (contract?.Payload is EmptyEventPayload payload)
+				{
+					Assert.Empty(payload.AllowedCommands);
+				}
 				Assert.Equal(HubConnectionState.Connected, player2Connection.State);
 				player2Connection.StopAsync().ContinueWith(t =>
 				{

@@ -5,7 +5,7 @@ using System.Runtime.Serialization;
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public sealed class EventMatchStatePayload : EventPayload
+	public sealed class EventMatchStatePayload : EventPayloadBase
 	{
 		[DataMember(Name = "id")]
 		public Guid Id { get; set; }

@@ -6,7 +6,7 @@ namespace GammonX.Server.Contracts
 	/// Base class for all event payloads.
 	/// </summary>
 	[DataContract]
-	public class EventResponseContract<T> where T : EventPayload
+	public class EventResponseContract<T> where T : EventPayloadBase
 	{
 		[DataMember(Name = "type")]
 		public string Type { get; set; }

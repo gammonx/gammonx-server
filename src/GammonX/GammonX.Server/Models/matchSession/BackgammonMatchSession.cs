@@ -174,6 +174,9 @@ namespace GammonX.Server.Models
 		private Guid? _doubleCubeOfferPlayerId = null;
 
 		// <inheritdoc />
+		public bool IsDoubleOfferPending => _doubleCubeOfferPlayerId != null;
+
+		// <inheritdoc />
 		public void OfferDouble(Guid callingPlayerId)
 		{
 			var activeSession = GetGameSession(GameRound);
@@ -296,6 +299,49 @@ namespace GammonX.Server.Models
 
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
+		}
+
+		// <inheritdoc />
+		public bool CanOfferDouble(Guid callingPlayerId)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+			{
+				return false;
+			}
+
+			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
+			{
+				return false;
+			}
+
+			if (activeSession.ActivePlayer != callingPlayerId || activeSession.Phase != GamePhase.WaitingForRoll)
+			{
+				return false;
+			}
+
+			if (doublingCubeModel.DoublingCubeValue > 1)
+			{
+				if (Player1.Id.Equals(callingPlayerId) && !doublingCubeModel.DoublingCubeOwner)
+				{
+					// plays white checkers (non inverted board)
+					return false;
+				}
+				else if (Player2.Id.Equals(callingPlayerId) && doublingCubeModel.DoublingCubeOwner)
+				{
+					// plays black checkers (inverted board)
+					return false;
+				}
+			}
+
+			if (_doubleCubeOfferPlayerId == null)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 
 		private static bool LoserHasCheckersInWinnersHomeBoard(IBoardModel model, bool isWhite)

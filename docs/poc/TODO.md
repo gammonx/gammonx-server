@@ -1,6 +1,6 @@
 # TODO
 - pip count > DOC/armin
-- cube decisions AI
+- cube decisions AI > DOC/armin + Testing
 - bot dificulty levels
 - fevga/plakoto bot support
 - auth/user account

@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -18,5 +19,21 @@ namespace GammonX.Server.Bot
 		/// <param name="playerId">Id of the player determining whether black or white is playing.</param>
 		/// <return>Returns a list of legal move based on the current match and game state.</return>
 		Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId);
+
+		/// <summary>
+		/// Evaluates if the bot should accept a double offered by the opponent.
+		/// </summary>
+		/// <param name="matchSession">Match session providing the board state.</param>
+		/// <param name="playerId">Calling player id.</param>
+		/// <returns>True if double should be accepted. Otherwise, false.</returns>
+		Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId);
+
+		/// <summary>
+		/// Evalaute if the bot should offer a double to the opponent.
+		/// </summary>
+		/// <param name="matchSession">Match session providing the board state.</param>
+		/// <param name="playerId">Calling player id.</param>
+		/// <returns>True if double should be offered. Otherwise, false.</returns>
+		Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId);
 	}
 }

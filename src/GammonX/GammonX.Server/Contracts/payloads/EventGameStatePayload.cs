@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public sealed class EventGameStatePayload : EventPayload
+	public sealed class EventGameStatePayload : EventPayloadBase
 	{
 		[DataMember(Name = "modus")]
 		public GameModus Modus { get; set; }

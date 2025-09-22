@@ -3,7 +3,7 @@
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public sealed class EventMatchLobbyPayload : EventPayload
+	public sealed class EventMatchLobbyPayload : EventPayloadBase
 	{
 		[DataMember(Name = "id")]
 		public Guid Id { get; set; }
