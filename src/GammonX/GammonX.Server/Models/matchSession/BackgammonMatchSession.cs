@@ -157,13 +157,13 @@ namespace GammonX.Server.Models
 			}
 			else if (matchType == WellKnownMatchType.FivePointGame)
 			{
-				// we play max 5 rounds in a five point game
-				return [GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon];
+				// we play max 9 rounds in a five point game
+				return Enumerable.Repeat(GameModus.Backgammon, 9).ToArray();
 			}
 			else if (matchType == WellKnownMatchType.SevenPointGame)
 			{
-				// we play max 7 rounds in a seven point game
-				return [GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon, GameModus.Backgammon];
+				// we play max 13 rounds in a seven point game
+				return Enumerable.Repeat(GameModus.Backgammon, 13).ToArray();
 			}
 			else
 			{
@@ -175,6 +175,19 @@ namespace GammonX.Server.Models
 
 		// <inheritdoc />
 		public bool IsDoubleOfferPending => _doubleCubeOfferPlayerId != null;
+
+		// <inheritdoc />
+		public int GetDoublingCubeValue()
+		{
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
+			{
+				throw new InvalidOperationException("The match does not support doubling cubes.");
+			}
+
+			return doublingCubeModel.DoublingCubeValue;
+		}
 
 		// <inheritdoc />
 		public void OfferDouble(Guid callingPlayerId)

@@ -26,6 +26,11 @@
 		bool IsDoubleOfferPending { get; }
 
 		/// <summary>
+		/// Gets the doubling cube value.
+		/// </summary>
+		int GetDoublingCubeValue();
+
+		/// <summary>
 		/// The player with id <paramref name="callingPlayerId"/> offers a double to his opponent.
 		/// </summary>
 		/// <param name="callingPlayerId">Calling player id.</param>

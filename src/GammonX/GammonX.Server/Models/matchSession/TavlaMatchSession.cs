@@ -89,13 +89,13 @@ namespace GammonX.Server.Models
 			}
 			else if (matchType == WellKnownMatchType.FivePointGame)
 			{
-				// we play max 5 rounds in a five point game
-				return [GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla];
+				// we play max 9 rounds in a five point game
+				return Enumerable.Repeat(GameModus.Tavla, 9).ToArray();
 			}
 			else if (matchType == WellKnownMatchType.SevenPointGame)
 			{
-				// we play max 7 rounds in a seven point game
-				return [GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla, GameModus.Tavla];
+				// we play max 13 rounds in a seven point game
+				return Enumerable.Repeat(GameModus.Tavla, 13).ToArray();
 			}
 			else
 			{

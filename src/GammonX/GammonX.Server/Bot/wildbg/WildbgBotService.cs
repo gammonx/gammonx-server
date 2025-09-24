@@ -30,6 +30,8 @@ namespace GammonX.Server.Bot
 				var requestParameters = GetMoveParameters(matchSession, isWhite);
 
 				// wildbg bot only supports cash and single point games
+				// we also use cash games for all match variants
+				// a five/seven point game equals in this context to multiple cash games
 				if (matchSession.Type == WellKnownMatchType.CashGame)
 				{
 					requestParameters.XPointsAway = 0;
@@ -37,8 +39,8 @@ namespace GammonX.Server.Bot
 				}
 				else
 				{
-					requestParameters.XPointsAway = 1;
-					requestParameters.OPointsAway = 1;
+					requestParameters.XPointsAway = 0;
+					requestParameters.OPointsAway = 0;
 				}
 
 				var client = new WildbgClient(_httpClient);

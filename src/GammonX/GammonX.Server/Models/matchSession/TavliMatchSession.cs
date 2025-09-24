@@ -90,13 +90,13 @@ namespace GammonX.Server.Models
 			}
 			else if (matchType == WellKnownMatchType.FivePointGame)
 			{
-				// we play max 5 rounds in a five point game
-				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];
+				// we play max 9 rounds in a five point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga];
 			}
 			else if (matchType == WellKnownMatchType.SevenPointGame)
 			{
-				// we play max 7 rounds in a seven point game
-				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes];
+				// we play max 13 rounds in a seven point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];
 			}
 			else
 			{
