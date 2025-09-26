@@ -22,5 +22,17 @@ namespace GammonX.Server.Bot
 
 			return Task.FromResult(new MoveSequenceModel());
 		}
+
+		// <inheritdoc />
+		public Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
+		{
+			return Task.FromResult(false);
+		}
+
+		// <inheritdoc />
+		public Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+		{
+			return Task.FromResult(false);
+		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -22,9 +23,9 @@ namespace GammonX.Server.Tests
 
 		public SimpleBotGameIntegrationTests(WebApplicationFactory<Program> factory)
 		{
-			_factory = factory.WithWebHostBuilder(builder =>
+			_factory = factory.WithWebHostBuilder((Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder>)(builder =>
 			{
-				builder.ConfigureServices(services =>
+				builder.ConfigureServices((Action<IServiceCollection>)(services =>
 				{
 					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IGameSessionFactory));
 					if (descriptor != null)
@@ -43,9 +44,9 @@ namespace GammonX.Server.Tests
 					{
 						services.Remove(descriptor);
 					}
-					services.AddSingleton<IBotService>(new SimpleBotService());
-				});
-			});
+					services.AddSingleton<IBotService>((IBotService)new SimpleBotService());
+				}));
+			}));
 		}
 
 		[Fact]

@@ -3,7 +3,7 @@
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public sealed class EventErrorPayload : EventPayload
+	public sealed class EventErrorPayload : EventPayloadBase
 	{
 		[DataMember(Name = "code")]
 		public string Code { get; set; }

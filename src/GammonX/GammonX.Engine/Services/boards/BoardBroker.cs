@@ -5,7 +5,7 @@ namespace GammonX.Engine.Services
     /// <summary>
     /// Helper class for checking and validating a specific board state or move.
     /// </summary>
-    internal static class BoardBroker
+    public static class BoardBroker
     {
         /// <summary>
         /// Checks if the given move can be made on the board.

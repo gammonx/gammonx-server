@@ -62,6 +62,16 @@
 		int BlockAmount { get; }
 
         /// <summary>
+        /// Gets the remaining pip count needed for the white player to bear off all checkers.
+        /// </summary>
+        int PipCountWhite { get; }
+
+		/// <summary>
+		/// Gets the remaining pip count needed for the black player to bear off all checkers.
+		/// </summary>
+		int PipCountBlack { get; }
+
+        /// <summary>
         /// Operator function for moving a checker for the given player.
         /// First parameter true for white player, false for black player.
         /// Second int represents the current position of the checker,
@@ -95,7 +105,7 @@
 		void BearOffChecker(bool isWhite, int amount);
 
 		/// <summary>
-		/// Inverts this instance of the board for the other player.
+		/// Inverts this instance of the board horizontally (white>black/black>white) for the other player.
 		/// After inverting, all positions and counts from black are now white and
 		/// all positions and counts from white are now black.
 		/// </summary>

@@ -40,7 +40,7 @@ namespace GammonX.Server.Services
 				case GameModus.Portes:
 					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Plakoto:
-					return new GameSessionImpl(matchId, modus, boardService, diceService);
+					return new PlakotoGameSession(matchId, modus, boardService, diceService);
 				case GameModus.Fevga:
 					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Backgammon:

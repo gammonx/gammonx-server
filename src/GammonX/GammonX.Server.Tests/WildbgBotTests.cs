@@ -64,7 +64,7 @@ namespace GammonX.Server.Tests
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes, Skip = "Plakoto and Fevga not yet supported")]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
 		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
 		public async Task TwoBotsCanPlayStandalone(WellKnownMatchVariant variant, GameModus modus)
 		{
@@ -117,6 +117,91 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(gameSession);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
+		public async Task TwoBotsCanPlayStandaloneWithCubeDecisions(WellKnownMatchVariant variant, GameModus modus)
+		{
+			var diceFactory = new DiceServiceFactory();
+			var gameSessionFactory = new GameSessionFactory(diceFactory);
+			var matchFactory = new MatchSessionFactory(gameSessionFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, matchFactory);
+			var cubeSession = matchSession as IDoubleCubeMatchSession;
+			Assert.NotNull(cubeSession);
+			Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
+			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+			Assert.True(matchSession.Player1.IsBot);
+			Assert.True(matchSession.Player2.IsBot);
+
+			var botService = new WildbgBotService(_wildBgClient);
+
+			matchSession.Player1.AcceptNextGame();
+			matchSession.Player2.AcceptNextGame();
+
+			var botPlayer1Id = matchSession.Player1.Id;
+			var botPlayer2Id = matchSession.Player2.Id;
+			var activePlayerId = botPlayer1Id;
+			var otherPlayerId = botPlayer2Id;
+			var doubleAccepted = false;
+
+			Assert.Equal(modus, matchSession.GetGameModus());
+			do
+			{
+				matchSession.Player1.AcceptNextGame();
+				matchSession.Player2.AcceptNextGame();
+
+				matchSession.StartNextGame(activePlayerId);
+
+				if (cubeSession.CanOfferDouble(activePlayerId))
+				{
+					var shouldOffer = await botService.ShouldOfferDouble(matchSession, activePlayerId);
+					if (shouldOffer)
+					{
+						cubeSession.OfferDouble(activePlayerId);
+						var shouldAccept = await botService.ShouldAcceptDouble(matchSession, otherPlayerId);
+						if (shouldAccept)
+						{
+							cubeSession.AcceptDouble(otherPlayerId);
+							doubleAccepted = true;
+						}
+						else
+						{
+							cubeSession.DeclineDouble(otherPlayerId);
+							break;
+						}
+					}
+				}
+
+				matchSession.RollDices(activePlayerId);
+				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+				var hasWon = false;
+				foreach (var nextMove in nextMoves.Moves)
+				{
+					hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
+					if (hasWon)
+						break;
+				}
+
+				if (!hasWon)
+				{
+					matchSession.EndTurn(activePlayerId);
+					activePlayerId = otherPlayerId;
+					otherPlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
+				}
+			}
+			while (!matchSession.IsMatchOver());
+
+			Assert.True(matchSession.IsMatchOver());
+			Assert.False(matchSession.CanStartNextGame());
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
+			if (doubleAccepted)
+			{
+				Assert.True(matchSession.Player1.Points > 1 || matchSession.Player2.Points > 1);
+			}
 		}
 
 		[Theory]

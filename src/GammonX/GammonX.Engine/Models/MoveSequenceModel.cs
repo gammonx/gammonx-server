@@ -7,7 +7,7 @@ namespace GammonX.Engine.Models
 	/// A move sequence represents a set of plays (from/to) which can be made with a set of dices.
 	/// </summary>
 	[DataContract]
-	public class MoveSequenceModel
+	public class MoveSequenceModel : IEquatable<MoveSequenceModel>
 	{
 		/// <summary>
 		/// Gets a list of plays. Contains 4 moves for a pasch and 2 moves for 2 different dice values.
@@ -24,8 +24,7 @@ namespace GammonX.Engine.Models
 		public string SequenceKey()
 		{
 			var movesPart = string.Join(";", Moves.Select(m => $"{m.From}->{m.To}"));
-			var dicePart = string.Join(",", UsedDices);
-			return movesPart + "|" + dicePart;
+			return movesPart;
 		}
 
 		public MoveSequenceModel DeepClone()
@@ -35,6 +34,30 @@ namespace GammonX.Engine.Models
 			seqModel.Moves.AddRange(moves);
 			seqModel.UsedDices.AddRange(UsedDices);
 			return seqModel;
+		}
+
+		// <inheritdoc />
+		public bool Equals(MoveSequenceModel? other)
+		{
+			return other != null && SequenceKey() == other.SequenceKey();
+		}
+	}
+
+	// <inheritdoc />
+	public class MoveSequenceModelComparer : IEqualityComparer<MoveSequenceModel>
+	{
+		// <inheritdoc />
+		public bool Equals(MoveSequenceModel? x, MoveSequenceModel? y)
+		{
+			if (x == null && y == null) return true;
+			if (x == null || y == null) return false;
+			return x.Equals(y);
+		}
+
+		// <inheritdoc />
+		public int GetHashCode(MoveSequenceModel obj)
+		{
+			return obj.SequenceKey().GetHashCode();
 		}
 	}
 

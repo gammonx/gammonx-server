@@ -88,6 +88,9 @@ namespace GammonX.Engine.Models
 		public override int BlockAmount => 2;
 
 		// <inheritdoc />
+		public bool BothMothersArePinned => PinnedFields[0] < 0 && PinnedFields[23] > 0;
+
+		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
 			var invertedFields = BoardBroker.InvertBoardFields(Fields);
@@ -115,6 +118,22 @@ namespace GammonX.Engine.Models
 				Fields = (int[])Fields.Clone(),
                 PinnedFields = (int[])PinnedFields.Clone()
 			};
+		}
+
+		// <inheritdoc />
+		protected override int GetPipCount(bool isWhite)
+		{
+			var pipCount = base.GetPipCount(isWhite);
+            var fieldsCopy = PinnedFields.ToArray();
+			if (isWhite)
+            {
+				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeWhite.End.Value, (i) => i < 0);
+			}
+            else
+            {
+				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeBlack.End.Value, (i) => i > 0);
+			}
+            return pipCount;
 		}
 	}
 }

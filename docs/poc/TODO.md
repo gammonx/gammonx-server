@@ -1,24 +1,28 @@
-# TODO
+## DONE
 - pip count
 - cube decisions AI
-- bot dificulty levels
 - fevga/plakoto bot support
-- auth/user account
+
+## Active
+- palamedes schreiben
+
+## TODO 
 - game history
+- match equity/stats afer match
+- database
+- auth/user account
 - undo/redo moves
 - ranked mode (incl. elo rating)
+- win percentage to user
 - tournament mode
 - error/debug server logging
+- bot dificulty levels
 - ?
 
-# Open Points
-- different integration tests?
-- local game AI?
+## Open Points
 - enhance matchmaking?
-- user auth?
 - Chat
 - Spectator mode
-- undo system
 - replay system
 - elo rating calculation
 - timer per turn (e.g. max 60s)
@@ -28,7 +32,7 @@
 - game paused event
 - player-disconnected event
 - player-reconnected event
-- bot support
 - turn timer event (auto-pass, auto-ff, ff-on-timeout, bot-move)
 - analytics hook
 - blunder database > quizes (subscription)
+- hide pipcount (option and in ranked mode)

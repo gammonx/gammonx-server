@@ -34,6 +34,13 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
+			// if both players hit heir opponents mother checker
+			// the game ends in a tie and concluded with 0 points
+			if (activeSession.BoardModel is IPinModel pinModel && pinModel.BothMothersArePinned)
+			{
+				return 0;
+			}
+
 			if (Player1.Id.Equals(playerId))
 			{
 				if (activeSession.BoardModel.BearOffCountWhite != activeSession.BoardModel.WinConditionCount)
@@ -90,13 +97,13 @@ namespace GammonX.Server.Models
 			}
 			else if (matchType == WellKnownMatchType.FivePointGame)
 			{
-				// we play max 5 rounds in a five point game
-				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];
+				// we play max 9 rounds in a five point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga];
 			}
 			else if (matchType == WellKnownMatchType.SevenPointGame)
 			{
-				// we play max 7 rounds in a seven point game
-				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes];
+				// we play max 13 rounds in a seven point game
+				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];
 			}
 			else
 			{

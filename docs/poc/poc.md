@@ -239,7 +239,9 @@ public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequenc
          "homeBarCountWhite":0,
          "homeBarCountBlack":0,
          "doublingCubeValue":0,
-         "doublingCubeOwner":false
+         "doublingCubeOwner":false,
+         "pipCountBlack": 157,
+         "pipCountWhite": 157
       },
       "allowedCommands":[
          "Move",

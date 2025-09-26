@@ -11,6 +11,8 @@ namespace GammonX.Server.Bot
 	public class WildbgBotService : IBotService
 	{
 		private readonly HttpClient _httpClient;
+		private readonly SimplePlakotoBotService _simplePlakotoBot = new();
+		private readonly SimpleFevgaBotService _simpleFevgaBot = new();
 
 		public WildbgBotService(HttpClient httpClient)
 		{
@@ -26,27 +28,43 @@ namespace GammonX.Server.Bot
 				if (gameSession == null)
 					throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
+				if (gameSession.Modus == GameModus.Plakoto)
+				{
+					// plakoto is not supported by wildbg bot
+					return await _simplePlakotoBot.GetNextMovesAsync(matchSession, playerId);
+				}
+				else if (gameSession.Modus == GameModus.Fevga)
+				{
+					// fevga is not supported by wildbg bot
+					return await _simpleFevgaBot.GetNextMovesAsync(matchSession, playerId);
+				}
+
 				var isWhite = IsWhite(matchSession, playerId);
-				var requestParameters = CreateParameters(matchSession, isWhite);
+				var requestParameters = GetMoveParameters(matchSession, isWhite);
+
+				// wildbg bot only supports cash and single point games
+				// we also use cash games for all match variants
+				// a five/seven point game equals in this context to multiple cash games
+				if (matchSession.Type == WellKnownMatchType.CashGame)
+				{
+					requestParameters.XPointsAway = 0;
+					requestParameters.OPointsAway = 0;
+				}
+				else
+				{
+					requestParameters.XPointsAway = 0;
+					requestParameters.OPointsAway = 0;
+				}
 
 				var client = new WildbgClient(_httpClient);
 				var result = await client.GetMoveAsync(requestParameters);
+				var legalMoveSequences = result.LegalMoves.Select(lm => ConvertMoveToSequence(gameSession, lm, isWhite)).ToList();
 
-				// get best move by equity
-				var bestMove = result.LegalMoves.FirstOrDefault();
-				if (bestMove != null && bestMove.LegalPlays.Count > 0)
-				{
-					var legalMoves = new List<MoveModel>();
-					foreach (var play in bestMove.LegalPlays)
-					{
-						var legalMove = Convert(gameSession, play, isWhite);
-						legalMoves.Add(legalMove);
-					}
-
-					var legalMoveSeq = new MoveSequenceModel();
-					legalMoveSeq.Moves.AddRange(legalMoves);
-					legalMoveSeq.UsedDices.AddRange(gameSession.DiceRolls.Select(dr => dr.Roll));
-					return legalMoveSeq;
+				// get first move which has the highest match equity
+				var bestMoveSequence = legalMoveSequences.FirstOrDefault();
+				if (bestMoveSequence != null && bestMoveSequence.Moves.Count > 0)
+				{					
+					return bestMoveSequence;
 				}
 
 				return new MoveSequenceModel();
@@ -58,7 +76,55 @@ namespace GammonX.Server.Bot
 			}
 		}
 
-		private static GetMoveParameter CreateParameters(IMatchSessionModel matchSession, bool isWhite)
+		// <inheritdoc />
+		public async Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
+		{
+			try
+			{
+				var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+				if (gameSession == null)
+					throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+				var isWhite = IsWhite(matchSession, playerId);
+				var requestParameters = GetEvalParameters(matchSession, isWhite);
+
+				var client = new WildbgClient(_httpClient);
+				var result = await client.GetEvalAsync(requestParameters);
+
+				return result.CubeDecision.Accept;
+			}
+			catch (Exception)
+			{
+				// debugging purposes only
+				throw;
+			}
+		}
+
+		// <inheritdoc />
+		public async Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+		{
+			try
+			{
+				var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+				if (gameSession == null)
+					throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+				var isWhite = IsWhite(matchSession, playerId);
+				var requestParameters = GetEvalParameters(matchSession, isWhite);
+
+				var client = new WildbgClient(_httpClient);
+				var result = await client.GetEvalAsync(requestParameters);
+
+				return result.CubeDecision.Double;
+			}
+			catch (Exception)
+			{
+				// debugging purposes only
+				throw;
+			}
+		}
+
+		private static GetMoveParameter GetMoveParameters(IMatchSessionModel matchSession, bool isWhite)
 		{
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			if (gameSession == null)
@@ -68,15 +134,15 @@ namespace GammonX.Server.Bot
 				gameSession.Modus == GameModus.Backgammon ||
 				gameSession.Modus == GameModus.Tavla)
 			{
-				return CreateStandardParameters(matchSession, isWhite);
+				return CreateMoveParameters(matchSession, isWhite);
 			}
 			else if (gameSession.Modus == GameModus.Plakoto)
 			{
-				throw new InvalidOperationException("The plakoto game modus is not yet supported for bot games.");
+				throw new InvalidOperationException("Plakoto is not supported by the wildbg bot.");
 			}
 			else if (gameSession.Modus == GameModus.Fevga)
 			{
-				throw new InvalidOperationException("The fevga game modus is not yet supported for bot games.");
+				throw new InvalidOperationException("Plakoto is not supported by the wildbg bot.");
 			}
 			else
 			{
@@ -84,26 +150,73 @@ namespace GammonX.Server.Bot
 			}
 		}
 
-		private static GetMoveParameter CreateStandardParameters(IMatchSessionModel matchSession, bool isWhite)
+		private static GetEvalParameter GetEvalParameters(IMatchSessionModel matchSession, bool isWhite)
 		{
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			if (gameSession == null)
 				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
+			if (gameSession.Modus == GameModus.Backgammon)
+			{
+				return CreateEvalParameters(matchSession, isWhite);
+			}
+			else
+			{
+				throw new InvalidOperationException("The given game modus does not support cube decisions.");
+			}
+		}
+
+		private static GetMoveParameter CreateMoveParameters(IMatchSessionModel matchSession, bool isWhite)
+		{
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			if (gameSession == null)
+				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+			
+			var diceRolls = gameSession.DiceRolls;
+			var xPointsAway = matchSession.PointsAway(gameSession.ActivePlayer);
+			var oPointsAway = matchSession.PointsAway(gameSession.OtherPlayer);
+			var pointsParam = GetBoardStateAsPointsParam(gameSession, isWhite);
+
+			var requestParameters = new GetMoveParameter
+			{
+				DiceRoll1 = diceRolls[0].Roll,
+				DiceRoll2 = diceRolls[1].Roll,
+				XPointsAway = xPointsAway,
+				OPointsAway = oPointsAway,
+				Points = pointsParam
+			};
+			return requestParameters;
+		}
+
+		private static GetEvalParameter CreateEvalParameters(IMatchSessionModel matchSession, bool isWhite)
+		{
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			if (gameSession == null)
+				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+			var pointsParam = GetBoardStateAsPointsParam(gameSession, isWhite);
+
+			var requestParameters = new GetEvalParameter
+			{
+				Points = pointsParam
+			};
+			return requestParameters;
+		}
+
+		private static Dictionary<int, int> GetBoardStateAsPointsParam(IGameSessionModel gameSession, bool isWhite)
+		{
 			IBoardModel boardModel;
 			if (isWhite)
 			{
 				// we need to create a board from the black perspective
+				// also applies for fevga board, white plays from 0 to 23
 				boardModel = gameSession.BoardModel.InvertBoard();
 			}
 			else
 			{
+				// black plays from 23 to 0
 				boardModel = gameSession.BoardModel;
 			}
-
-			var diceRolls = gameSession.DiceRolls;
-			var xPointsAway = matchSession.PointsAway(gameSession.ActivePlayer);
-			var oPointsAway = matchSession.PointsAway(gameSession.OtherPlayer);
 
 			var paramBoard = new Dictionary<int, int>();
 			// we start at black checkers starting field and iterate to its home field
@@ -123,19 +236,20 @@ namespace GammonX.Server.Bot
 				paramBoard[25] = homeBar.HomeBarCountBlack;
 				paramBoard[0] = -homeBar.HomeBarCountWhite;
 			}
-			
-			var requestParameters = new GetMoveParameter
-			{
-				DiceRoll1 = diceRolls[0].Roll,
-				DiceRoll2 = diceRolls[1].Roll,
-				XPointsAway = xPointsAway,
-				OPointsAway = oPointsAway,
-				Points = paramBoard
-			};
-			return requestParameters;
+
+			return paramBoard;
 		}
 
-		private static MoveModel Convert(IGameSessionModel gameSession, Play play, bool isWhite)
+		private static MoveSequenceModel ConvertMoveToSequence(IGameSessionModel gameSession, Move move, bool isWhite)
+		{
+			var moveModels = move.LegalPlays.Select(p => ConvertPlayToMove(gameSession, p, isWhite)).ToList();
+			var sequenceModel = new MoveSequenceModel();
+			sequenceModel.Moves.AddRange(moveModels);
+			sequenceModel.UsedDices.AddRange(gameSession.DiceRolls.GetRemainingRolls());
+			return sequenceModel;
+		}
+
+		private static MoveModel ConvertPlayToMove(IGameSessionModel gameSession, Play play, bool isWhite)
 		{
 			// 25 is homebar index
 			if (play.From == 25)
@@ -187,7 +301,6 @@ namespace GammonX.Server.Bot
 					convertedTo = (maxFieldIndex) - play.To;
 				}
 				return new MoveModel(convertedFrom, convertedTo);
-				
 			}
 			else
 			{
@@ -208,6 +321,5 @@ namespace GammonX.Server.Bot
 			}
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
-
 	}
 }

@@ -35,6 +35,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
             Assert.Equal(15, boardModel.WinConditionCount);
+            Assert.Equal(167, boardModel.PipCountWhite);
+			Assert.Equal(167, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
@@ -151,6 +153,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
 			Assert.Equal(15, boardModel.WinConditionCount);
+			Assert.Equal(360, boardModel.PipCountWhite);
+			Assert.Equal(360, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.Null(homebarModel);
             var doublingCubeModel = boardModel as IDoublingCubeModel;
@@ -275,6 +279,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
 			Assert.Equal(15, boardModel.WinConditionCount);
+			Assert.Equal(167, boardModel.PipCountWhite);
+			Assert.Equal(167, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);
@@ -385,6 +391,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
 			Assert.Equal(15, boardModel.WinConditionCount);
+			Assert.Equal(360, boardModel.PipCountWhite);
+			Assert.Equal(360, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
 			Assert.False(homebarModel.CanSendToHomeBar);
@@ -534,6 +542,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
 			Assert.Equal(15, boardModel.WinConditionCount);
+			Assert.Equal(167, boardModel.PipCountWhite);
+			Assert.Equal(167, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
             Assert.Equal(0, homebarModel.HomeBarCountWhite);

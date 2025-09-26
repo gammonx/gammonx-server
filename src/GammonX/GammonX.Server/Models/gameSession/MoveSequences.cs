@@ -16,10 +16,9 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <param name="from">From move index.</param>
 		/// <param name="to">To move index.</param>
-		/// <param name="remainingRolls">The remaining rolls.</param>
 		/// <param name="playedMoves">Played moves.</param>
-		/// <returns>A list of moves which can be played.</returns>
-		public bool TryUseMove(IBoardModel model, int from, int to, int[] remainingRolls, out List<MoveModel> playedMoves)
+		/// <returns>A boolean indicating if the given from to move was present.</returns>
+		public bool TryUseMove(int from, int to, out List<MoveModel> playedMoves)
 		{
 			playedMoves = new List<MoveModel>();
 
@@ -54,28 +53,6 @@ namespace GammonX.Server.Models
 					break;
 				}
 			}
-
-			// we need to strip down the remaining possible move sequences
-			// we strip out the already made move from the remaining sequences
-			if (potentialMoveSequences.Count > 0)
-			{
-				foreach (var ms in potentialMoveSequences)
-				{
-					foreach (var playedMove in playedMoves)
-					{
-						ms.Moves.Remove(playedMove);
-					}
-					var unplayableMoves = ms.Moves.Where(m => !remainingRolls.Contains(DiceRolls.GetMoveDistance(model, m.From, m.To, out var bearOff)) && !bearOff).ToList();
-					foreach (var toRemove in unplayableMoves)
-					{
-						ms.Moves.Remove(toRemove);
-					}
-				}
-				var strippedMoveSequences = potentialMoveSequences.Where(pms => pms.Moves.Count > 0);
-				Clear();
-				AddRange(strippedMoveSequences);
-			}
-
 			return playedMoves.Count > 0;
 		}
 	}

@@ -14,6 +14,12 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "bearOffCountBlack", IsRequired = true)]
 		public int BearOffCountBlack { get; set; }
 
+		[DataMember(Name = "pipCountWhite", IsRequired = true)]
+		public int PipCountWhite { get; set; }
+
+		[DataMember(Name = "pipCountBlack", IsRequired = true)]
+		public int PipCountBlack { get; set; }
+
 		[DataMember(Name = "pinnedFields", IsRequired = false, EmitDefaultValue = false)]
 		public int[]? PinnedFields { get; set; }
 

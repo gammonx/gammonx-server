@@ -37,6 +37,12 @@ namespace GammonX.Engine.Models
 		public abstract int BlockAmount { get; }
 
 		// <inheritdoc />
+		public int PipCountWhite => GetPipCount(true);
+
+		// <inheritdoc />
+		public int PipCountBlack => GetPipCount(true);
+
+		// <inheritdoc />
 		public virtual Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)
@@ -137,5 +143,43 @@ namespace GammonX.Engine.Models
 
 		// <inheritdoc />
 		public abstract object Clone();
+
+		protected virtual int GetPipCount(bool isWhite)
+		{
+			var fieldsCopy = Fields.ToList();
+			var pipCount = 0;
+			if (isWhite)
+			{
+				pipCount += GetPipeCountForBoard(fieldsCopy.ToArray(), HomeRangeWhite.End.Value, (i) => i < 0);
+				if (this is IHomeBarModel homeBar)
+				{
+					pipCount += homeBar.HomeBarCountWhite * 24;
+				}
+			}
+			else
+			{
+				pipCount += GetPipeCountForBoard(fieldsCopy.ToArray(), HomeRangeBlack.End.Value, (i) => i > 0);
+				if (this is IHomeBarModel homeBar)
+				{
+					pipCount += homeBar.HomeBarCountBlack * 24;
+				}
+			}
+			return pipCount;
+		}
+
+		protected static int GetPipeCountForBoard(int[] fields, int homeRangeEndIndex, Func<int, bool> valueChecker)
+		{
+			var pipCount = 0;
+			for (int i = 0; i < fields.Length; i++)
+			{
+				var checkers = fields[i];
+				if (valueChecker.Invoke(checkers))
+				{
+					int distance = homeRangeEndIndex + 1 - i;
+					pipCount += Math.Abs(checkers * distance);
+				}
+			}
+			return pipCount;
+		}
 	}
 }

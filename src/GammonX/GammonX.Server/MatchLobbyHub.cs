@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -59,7 +60,8 @@ namespace GammonX.Server
 		/// <param name="matchId">Match to join.</param>
 		/// <param name="playerId">Player who wants to join the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		public async Task JoinMatch(string matchId, string playerId)
+		[HubMethodName("JoinMatch")]
+		public async Task JoinMatchAsync(string matchId, string playerId)
 		{
 			try
 			{
@@ -101,14 +103,14 @@ namespace GammonX.Server
 					{
 						var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchSession.Player1.Id, matchSession.Player2.Id);
 						var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyPayload);
-						await Clients.Group(groupName).SendAsync(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
+						await SendToGroup(groupName, ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
 						await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession, ServerCommands.StartGameCommand);
 					}
 					else
 					{
 						var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchLobby.Player1.PlayerId, null);
 						var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyPayload);
-						await Clients.Group(groupName).SendAsync(ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
+						await SendToGroup(groupName, ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
 					}
 				}
 				else
@@ -131,7 +133,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Match containing the game to start.</param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task StartGame(string matchId)
+		[HubMethodName("StartGame")]
+		public async Task StartGameAsync(string matchId)
 		{
 			try
 			{
@@ -178,7 +181,7 @@ namespace GammonX.Server
 					{
 						var matchPayload = matchSession.ToPayload();
 						var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
-						await Clients.Caller.SendAsync(ServerEventTypes.GameWaitingEvent, matchContract);
+						await SendToCaller(ServerEventTypes.GameWaitingEvent, matchContract);
 					}
 				}
 				else
@@ -201,7 +204,8 @@ namespace GammonX.Server
 		/// </remarks>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task Roll(string matchId)
+		[HubMethodName("Roll")]
+		public async Task RollAsync(string matchId)
 		{
 			try
 			{
@@ -242,7 +246,8 @@ namespace GammonX.Server
 		/// <param name="from"></param>
 		/// <param name="to"></param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task Move(string matchId, int from, int to)
+		[HubMethodName("Move")]
+		public async Task MoveAsync(string matchId, int from, int to)
 		{
 			try
 			{
@@ -277,7 +282,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task EndTurn(string matchId)
+		[HubMethodName("EndTurn")]
+		public async Task EndTurnAsync(string matchId)
 		{
 			try
 			{
@@ -325,7 +331,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		public async Task ResignMatch(string matchId)
+		[HubMethodName("ResignMatch")]
+		public async Task ResignMatchAsync(string matchId)
 		{
 			try
 			{
@@ -358,7 +365,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		public async Task ResignGame(string matchId)
+		[HubMethodName("ResignGame")]
+		public async Task ResignGameAsync(string matchId)
 		{
 			try
 			{
@@ -401,7 +409,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		public async Task OfferDouble(string matchId)
+		[HubMethodName("OfferDouble")]
+		public async Task OfferDoubleAsync(string matchId)
 		{
 			try
 			{
@@ -413,27 +422,24 @@ namespace GammonX.Server
 				var matchSession = _repository.Get(matchGuid);
 				if (matchSession != null)
 				{
-					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+					var otherPlayerId = GetOtherPlayerId(matchSession);
+					if (IsBotTurn(matchSession, otherPlayerId))
 					{
-						var callingPlayerId = GetCallingPlayerId(matchSession);
-						doubleCubeSession.OfferDouble(callingPlayerId);
-
-						var otherPlayerId = GetOtherPlayerId(matchSession);
-						// the player who is offering the double is waiting for a response
-						var callingPlayerGameSession = matchSession.GetGameState(callingPlayerId);
-						var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
-						var callingConnectionId = GetPlayerConnectionId(matchSession, callingPlayerId);
-						await Clients.Client(callingConnectionId).SendAsync(ServerEventTypes.GameWaitingEvent, callingPlayerContract);
-						// the player who got the double offered has to accept or decline it
-						var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDouble, ServerCommands.DeclineDouble]);
-						var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
-						var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
-						await Clients.Client(otherPlayerConnectionId).SendAsync(ServerEventTypes.DoubleOffered, otherPlayerContract);
+						var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, otherPlayerId);
+						if (shouldAccept)
+						{
+							await PerformAcceptDoubleAsync(matchSession, otherPlayerId);
+						}
+						else
+						{
+							await PerformDeclineDoubleAsync(matchSession, otherPlayerId);
+						}
 					}
 					else
 					{
-						await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
-					}
+						var callingPlayerId = GetCallingPlayerId(matchSession);
+						await PerformOfferDoubleAsync(matchSession, callingPlayerId);
+					}					
 				}
 				else
 				{
@@ -451,7 +457,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task AcceptDouble(string matchId)
+		[HubMethodName("AcceptDouble")]
+		public async Task AcceptDoubleAsync(string matchId)
 		{
 			try
 			{
@@ -463,18 +470,8 @@ namespace GammonX.Server
 				var matchSession = _repository.Get(matchGuid);
 				if (matchSession != null)
 				{
-					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
-					{
-						var callingPlayerId = GetCallingPlayerId(matchSession);
-						doubleCubeSession.AcceptDouble(callingPlayerId);
-						// doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
-						// Therefore, the next command must be the roll command
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
-					}
-					else
-					{
-						await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
-					}
+					var callingPlayerId = GetCallingPlayerId(matchSession);
+					await PerformAcceptDoubleAsync(matchSession, callingPlayerId);
 				}
 				else
 				{
@@ -492,7 +489,8 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		public async Task DeclineDouble(string matchId)
+		[HubMethodName("DeclineDoube")]
+		public async Task DeclineDoubleAsync(string matchId)
 		{
 			try
 			{
@@ -504,25 +502,8 @@ namespace GammonX.Server
 				var matchSession = _repository.Get(matchGuid);
 				if (matchSession != null)
 				{
-					if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
-					{
-						var callingPlayerId = GetCallingPlayerId(matchSession);
-						// declining a double offer automatically loses the current game round
-						doubleCubeSession.DeclineDouble(callingPlayerId);
-						// check if this was the last game round of the match
-						if (matchSession.IsMatchOver())
-						{
-							await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
-						}
-						else
-						{
-							await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
-						}
-					}
-					else
-					{
-						await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The match with matchId '{matchId}' does not support doubling cubes.");
-					}
+					var callingPlayerId = GetCallingPlayerId(matchSession);
+					await PerformDeclineDoubleAsync(matchSession, callingPlayerId);
 				}
 				else
 				{
@@ -533,6 +514,94 @@ namespace GammonX.Server
 			{
 				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"An error occurred while declining a double offer: '{e.Message}'");
 			}
+		}
+
+		private async Task PerformOfferDoubleAsync(IMatchSessionModel matchSession, Guid offeringPlayerId)
+		{
+			if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+			{
+				doubleCubeSession.OfferDouble(offeringPlayerId);
+				var otherPlayerId = GetOtherPlayerId(matchSession);
+				// the player who is offering the double is waiting for a response
+				var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
+				var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
+				var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
+				await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
+				// the player who got the double offered has to accept or decline it
+				var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDouble, ServerCommands.DeclineDouble]);
+				var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
+				var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
+				await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
+			}
+			else
+			{
+				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+			}
+		}
+
+		private async Task PerformAcceptDoubleAsync(IMatchSessionModel matchSession, Guid offeredPlayerId)
+		{
+			if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+			{
+				doubleCubeSession.AcceptDouble(offeredPlayerId);
+
+				var offeringPlayerId = GetOtherPlayerId(matchSession);
+				if (IsBotTurn(matchSession, offeringPlayerId))
+				{
+					// the bot offered the double and the human player accepted it
+					// bot executes the next turn
+					await PerfromBotTurnAsync(matchSession, offeringPlayerId);
+				}
+				else
+				{
+					// doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
+					// Therefore, the next command must be the roll command
+					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+				}
+			}
+			else
+			{
+				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+			}
+		}
+
+		private async Task PerformDeclineDoubleAsync(IMatchSessionModel matchSession, Guid offeredPlayerId)
+		{
+			if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
+			{
+				// declining a double offer automatically loses the current game round
+				doubleCubeSession.DeclineDouble(offeredPlayerId);
+				// check if this was the last game round of the match
+				if (matchSession.IsMatchOver())
+				{
+					// match ended bot does not have another turn
+					await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+				}
+				else
+				{
+					// game ended, a potential bot turn is handled in the start game command
+					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+				}
+			}
+			else
+			{
+				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+			}
+		}
+
+		private async Task<bool> PerformShouldBotAcceptsDoubleAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
+		{
+			if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(callingPlayerId))
+			{
+				var shouldAccept = await _botService.ShouldAcceptDouble(matchSession, callingPlayerId);
+				return shouldAccept;
+			}
+			else
+			{
+				await SendErrorEventAsync("BOT_ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+			}
+
+			return false;
 		}
 
 		#endregion Doubling Cube Commands
@@ -576,14 +645,25 @@ namespace GammonX.Server
 			}
 		}
 
-		private async Task PerfromBotTurnAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
+		private async Task PerfromBotTurnAsync(IMatchSessionModel matchSession, Guid botPlayerId)
 		{
-			await PerfromRollAsync(matchSession, callingPlayerId);
+			if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
+			{
+				var shouldOffer = await _botService.ShouldOfferDouble(matchSession, botPlayerId);
+				if (shouldOffer)
+				{
+					await PerformOfferDoubleAsync(matchSession, botPlayerId);
+					// the bot turn ends here, waiting for the player to accept or decline the double
+					return;
+				}
+			}
+
+			await PerfromRollAsync(matchSession, botPlayerId);
 
 			bool canMove = false;
 			do
 			{
-				var nextMoves = await _botService.GetNextMovesAsync(matchSession, callingPlayerId);
+				var nextMoves = await _botService.GetNextMovesAsync(matchSession, botPlayerId);
 
 				if (nextMoves == null)
 				{
@@ -592,15 +672,15 @@ namespace GammonX.Server
 
 				foreach (var nextMove in nextMoves.Moves)
 				{
-					canMove = await PerformMoveAsync(matchSession, callingPlayerId, nextMove.From, nextMove.To);
+					canMove = await PerformMoveAsync(matchSession, botPlayerId, nextMove.From, nextMove.To);
 				}
 			}
 			while (canMove);
 
 			// if we cannot end the current turn, the match/game is probably over
-			if (matchSession.CanEndTurn(callingPlayerId))
+			if (matchSession.CanEndTurn(botPlayerId))
 			{
-				matchSession.EndTurn(callingPlayerId);
+				matchSession.EndTurn(botPlayerId);
 				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
 			}
 		}
@@ -652,10 +732,10 @@ namespace GammonX.Server
 			var player1Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer1);
 			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id, allowedCommands);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
-			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, player1Contract);
+			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
 			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
-				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, player2Contract);
+				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
 			}			
 		}
 
@@ -663,17 +743,18 @@ namespace GammonX.Server
 		{
 			var matchStatePayload = matchSession.ToPayload(allowedCommands);
 			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
-			await Clients.Client(matchSession.Player1.ConnectionId).SendAsync(serverEventName, matchStateContract);
+			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, matchStateContract);
 			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
-				await Clients.Client(matchSession.Player2.ConnectionId).SendAsync(serverEventName, matchStateContract);
+				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, matchStateContract);
 			}
 
 			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{
-				await Clients.Groups(matchStatePayload.GroupName).SendAsync(ServerEventTypes.ForceDisconnect, default(object));
-				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, matchStateContract.Payload.GroupName);
-				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, matchStateContract.Payload.GroupName);
+				var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
+				await SendToGroup(matchStatePayload.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
+				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, matchStatePayload.GroupName);
+				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, matchStatePayload.GroupName);
 			}
 		}
 
@@ -683,11 +764,11 @@ namespace GammonX.Server
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
 			if (!string.IsNullOrEmpty(connectionId))
 			{
-				await Clients.Client(connectionId).SendAsync(ServerEventTypes.ErrorEvent, contract);
+				await SendToClient(connectionId, ServerEventTypes.ErrorEvent, contract);
 			}
 			else
 			{
-				await Clients.Caller.SendAsync(ServerEventTypes.ErrorEvent, contract);
+				await SendToCaller(ServerEventTypes.ErrorEvent, contract);
 			}
 		}
 
@@ -695,7 +776,7 @@ namespace GammonX.Server
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
-			await Clients.Group(groupName).SendAsync(ServerEventTypes.ErrorEvent, contract);
+			await SendToGroup(groupName, ServerEventTypes.ErrorEvent, contract);
 		}
 
 		private Guid GetCallingPlayerId(IMatchSessionModel matchSession)
@@ -751,6 +832,21 @@ namespace GammonX.Server
 				return matchSession.Player2.ConnectionId;
 			}
 			throw new InvalidOperationException("The calling player is not part of the match session.");
+		}
+
+		private async Task SendToGroup<T>(string groupName, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+		{
+			await Clients.Group(groupName).SendAsync(serverEventName, response);
+		}
+
+		private async Task SendToCaller<T>(string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+		{
+			await Clients.Caller.SendAsync(serverEventName, response);
+		}
+
+		private async Task SendToClient<T>(string connectionId, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+		{
+			await Clients.Client(connectionId).SendAsync(serverEventName, response);
 		}
 
 		#endregion Private Members
