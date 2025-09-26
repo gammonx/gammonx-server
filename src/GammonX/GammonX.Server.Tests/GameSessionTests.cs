@@ -41,8 +41,8 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
-		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, false)]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
@@ -65,14 +65,14 @@ namespace GammonX.Server.Tests
 			Assert.False(gameSession.DiceRolls[0].Used);
 			Assert.False(gameSession.DiceRolls[1].Used);
 			Assert.NotEmpty(gameSession.MoveSequences);
-			var legalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault(ms => Math.Abs(ms.From - ms.To) == 2);
+			var legalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault(ms => DiceRolls.GetMoveDistance(gameSession.BoardModel, ms.From, ms.To, out var _) == 2);
 			Assert.NotNull(legalMove);
 			gameSession.MoveCheckers(player1Id, legalMove.From, legalMove.To, isWhite);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
 			Assert.True(gameSession.DiceRolls[0].Used);
 			Assert.False(gameSession.DiceRolls[1].Used);
 			Assert.NotEmpty(gameSession.MoveSequences);
-			Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => Math.Abs(ms[0].From - ms[0].To) == 3));
+			Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => DiceRolls.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 3));
 			legalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(legalMove);
 			gameSession.MoveCheckers(player1Id, legalMove.From, legalMove.To, isWhite);
@@ -84,8 +84,8 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
-		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, false)]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
@@ -108,7 +108,7 @@ namespace GammonX.Server.Tests
 			Assert.False(gameSession.DiceRolls[0].Used);
 			Assert.False(gameSession.DiceRolls[1].Used);
 			Assert.NotEmpty(gameSession.MoveSequences);
-			var movSeq = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => Math.Abs(ms[0].From - ms[1].To) == 5);
+			var movSeq = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => DiceRolls.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 5);
 			Assert.NotNull(movSeq);
 			gameSession.MoveCheckers(player1Id, movSeq[0].From, movSeq[1].To, isWhite);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -122,8 +122,8 @@ namespace GammonX.Server.Tests
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Plakoto, true)]
-		[InlineData(GameModus.Fevga, true, Skip = "fevga is played from index 24 (bar) to 12 (start)")]
-		[InlineData(GameModus.Fevga, false, Skip = "fevga is played from index -24 (bar) to 0 (start)")]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Fevga, false)]
 		[InlineData(GameModus.Backgammon, false)]
 		[InlineData(GameModus.Tavla, false)]
 		[InlineData(GameModus.Portes, false)]
@@ -152,7 +152,7 @@ namespace GammonX.Server.Tests
 			Assert.NotEmpty(gameSession.MoveSequences);
 			// use up 2 dices
 			// so we search a move sequence were move 1 and 2 are using two 1 roll dices
-			var legalMoves = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => Math.Abs(ms[0].From - ms[1].To) == 2);
+			var legalMoves = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => DiceRolls.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2);
 			Assert.NotNull(legalMoves);
 			gameSession.MoveCheckers(player1Id, legalMoves[0].From, legalMoves[1].To, isWhite);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
@@ -162,7 +162,7 @@ namespace GammonX.Server.Tests
 			Assert.False(gameSession.DiceRolls[3].Used);
 			Assert.NotEmpty(gameSession.MoveSequences);
 			// two dices with 1 roll value left
-			Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => Math.Abs(ms[0].From - ms[1].To) == 2 || Math.Abs(ms[0].From - ms[0].To) == 1));
+			Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => DiceRolls.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2 || DiceRolls.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 1));
 			legalMoves = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(lm => Math.Abs(lm[0].From - lm[1].To) == 2);
 			Assert.NotNull(legalMoves);
 			gameSession.MoveCheckers(player1Id, legalMoves[0].From, legalMoves[1].To, isWhite);

@@ -3,8 +3,8 @@
 namespace GammonX.Engine.Services
 {
     // <inheritdoc />
-    internal class FevgaBoardService : BoardBaseServiceImpl
-    {
+    internal class FevgaBoardService : BoardBaseServiceImpl, IFevgaBoardService
+	{
         // black must pass this in order to move others
         private readonly int _whiteStartCheckerIndex = 0;
         // white must pass this in order to move others
@@ -30,7 +30,7 @@ namespace GammonX.Engine.Services
 				{
 					// we have a special case for black fevga checkers.
 					// their last home field is index 11
-					// their start field index is 11 aswell
+					// their start field index is 12 (24)
 					// black checkers must not move past the start field
 					if (!isWhite)
 					{
@@ -90,11 +90,22 @@ namespace GammonX.Engine.Services
             throw new InvalidOperationException("FevgaBoardService requires a board model that implements IHomeBarModel.");
 		}
 
-        private bool HasPassedOpponentsStart(IBoardModel model, bool isWhite)
+		// <inheritdoc />
+		public bool HasPassedOpponentsStart(IBoardModel model, bool isWhite)
         {
             var fieldList = model.Fields.ToList();
             if (isWhite)
             {
+				// white already passed if a checker got borne off
+				if (model.BearOffCountWhite > 0)
+					return true;
+
+				// white already passed if 3 checkers are on the board
+				var alreadyPassed = fieldList.Where(f => f < 0).Sum(f => f);
+				if (alreadyPassed <= -3)
+					return true;
+
+				// only applicable for start
 				var furthestIndex = fieldList.FindIndex(_blackStartCheckerIndex, (i) => i == -1);
 				if (furthestIndex != -1)
 				{
@@ -103,6 +114,16 @@ namespace GammonX.Engine.Services
             }
             else if (!isWhite)
             {
+				// black already passed if a checker got borne off
+				if (model.BearOffCountBlack > 0)
+					return true;
+
+				// black already passed if 3 checkers are on the board
+				var alreadyPassed = fieldList.Where(f => f > 0).Sum(f => f);
+				if (alreadyPassed >= 3)
+					return true;
+
+				// only applicable for start
 				var furthestIndex = fieldList.FindIndex(_whiteStartCheckerIndex, (i) => i == 1);
 				if (furthestIndex != -1 && furthestIndex < _blackStartCheckerIndex)
 				{

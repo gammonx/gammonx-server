@@ -7,6 +7,8 @@ namespace GammonX.Engine.Services
 	/// </summary>
 	internal abstract class BoardBaseServiceImpl : IBoardService
 	{
+		private readonly MoveSequenceModelComparer _moveSequenceModelComparer = new();
+
 		// <inheritdoc />
 		public abstract GameModus Modus { get; }
 
@@ -27,7 +29,8 @@ namespace GammonX.Engine.Services
 		{
 			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
 			var allowed = FilterSequencesByDiceRules(sequences, rolls);
-			return allowed.ToArray();
+			var unique = allowed.ToHashSet(_moveSequenceModelComparer);
+			return unique.ToArray();
 		}
 
 		// <inheritdoc />

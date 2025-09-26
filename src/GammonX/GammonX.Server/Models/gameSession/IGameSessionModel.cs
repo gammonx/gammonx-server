@@ -119,6 +119,13 @@ namespace GammonX.Server.Models
 		void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
 
 		/// <summary>
+		/// Checks if the given game session is over.
+		/// </summary>
+		/// <param name="isWhite">True for white checkers. False for black checkers</param>
+		/// <returns>A boolean indicating if the active game session is over.</returns>
+		bool GameOver(bool isWhite);
+
+		/// <summary>
 		/// Creates a payload which can be sent to a client.
 		/// </summary>
 		/// <param name="playerId">Player for which the payload is constructed.</param>

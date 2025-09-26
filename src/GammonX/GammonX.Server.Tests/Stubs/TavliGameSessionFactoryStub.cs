@@ -22,12 +22,24 @@ namespace GammonX.Server.Tests.Stubs
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			var boardService = BoardServiceFactory.Create(modus);
 
-			return new GameSessionImpl(
+			if (modus == GameModus.Plakoto)
+			{
+				return new PlakotoGameSession(
 				matchId,
 				modus,
 				boardService,
 				mock.Object
 			);
+			}
+			else
+			{
+				return new GameSessionImpl(
+				matchId,
+				modus,
+				boardService,
+				mock.Object
+			);
+			}
 		}
 	}
 
@@ -70,7 +82,7 @@ namespace GammonX.Server.Tests.Stubs
 				plakotoBoard.Fields[23] = -1;
 				boardServiceMock.Setup(x => x.CreateBoard()).Returns(plakotoBoard);
 
-				return new GameSessionImpl(
+				return new PlakotoGameSession(
 					matchId,
 					modus,
 					boardServiceMock.Object,

@@ -5,7 +5,7 @@
 	/// <seealso cref="https://www.bkgm.com/variants/Fevga.html"/>
 	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
 	/// </summary>
-	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel
+	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel, IFevgaBoardModel
     {
         public FevgaBoardModelImpl()
         {
@@ -155,7 +155,7 @@
 		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
-			var invertedFields = InvertFevgaBoard(Fields);
+			var invertedFields = InvertFevgaBoardHorizontally(Fields);
 			return new FevgaBoardModelImpl()
 			{
 				// assign white values to black
@@ -165,6 +165,23 @@
 				// inverted board fieds
 				Fields = invertedFields,
 			};
+		}
+
+		// <inheritdoc />
+		public IBoardModel InvertBoardVertically()
+		{
+			var invertedFields = InvertFevgaBoardVertically(Fields);
+			return new FevgaBoardModelImpl()
+			{
+				// inverted board fieds
+				Fields = invertedFields,
+			};
+		}
+
+		// <inheritdoc />
+		public bool HasPassedOpponentStart(bool isWhite)
+		{
+			throw new NotImplementedException();
 		}
 
 		// <inheritdoc />
@@ -200,7 +217,7 @@
 			}
 		}
 
-		private static int[] InvertFevgaBoard(int[] originalFields)
+		private static int[] InvertFevgaBoardHorizontally(int[] originalFields)
 		{
 			int[] invertedFields = new int[24];
 			for (int i = 0; i < 24; i++)
@@ -209,6 +226,26 @@
 				// second half (12–23) mirrors to (0–11)
 				int mirroredIndex = (i < 12) ? i + 12 : i - 12;
 				invertedFields[mirroredIndex] = -originalFields[i];
+			}
+
+			return invertedFields;
+		}
+
+		private static int[] InvertFevgaBoardVertically(int[] originalFields)
+		{
+			int[] invertedFields = new int[24];
+			for (int i = 0; i < 12; i++)
+			{
+				// inverts upper half index 0 to 11
+				int mirroredIndex = 11 - i;
+				invertedFields[mirroredIndex] = originalFields[i];
+			}
+
+			for (int i = 12; i < 24; i++)
+			{
+				// inverts lower half index 12 to 23
+				int mirroredIndex = 35 - i;
+				invertedFields[mirroredIndex] = originalFields[i];
 			}
 
 			return invertedFields;

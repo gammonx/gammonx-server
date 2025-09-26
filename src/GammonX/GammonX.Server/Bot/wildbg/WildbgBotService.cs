@@ -11,6 +11,8 @@ namespace GammonX.Server.Bot
 	public class WildbgBotService : IBotService
 	{
 		private readonly HttpClient _httpClient;
+		private readonly SimplePlakotoBotService _simplePlakotoBot = new();
+		private readonly SimpleFevgaBotService _simpleFevgaBot = new();
 
 		public WildbgBotService(HttpClient httpClient)
 		{
@@ -25,6 +27,17 @@ namespace GammonX.Server.Bot
 				var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 				if (gameSession == null)
 					throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+				if (gameSession.Modus == GameModus.Plakoto)
+				{
+					// plakoto is not supported by wildbg bot
+					return await _simplePlakotoBot.GetNextMovesAsync(matchSession, playerId);
+				}
+				else if (gameSession.Modus == GameModus.Fevga)
+				{
+					// fevga is not supported by wildbg bot
+					return await _simpleFevgaBot.GetNextMovesAsync(matchSession, playerId);
+				}
 
 				var isWhite = IsWhite(matchSession, playerId);
 				var requestParameters = GetMoveParameters(matchSession, isWhite);
@@ -45,22 +58,13 @@ namespace GammonX.Server.Bot
 
 				var client = new WildbgClient(_httpClient);
 				var result = await client.GetMoveAsync(requestParameters);
+				var legalMoveSequences = result.LegalMoves.Select(lm => ConvertMoveToSequence(gameSession, lm, isWhite)).ToList();
 
-				// get best move by equity
-				var bestMove = result.LegalMoves.FirstOrDefault();
-				if (bestMove != null && bestMove.LegalPlays.Count > 0)
-				{
-					var legalMoves = new List<MoveModel>();
-					foreach (var play in bestMove.LegalPlays)
-					{
-						var legalMove = Convert(gameSession, play, isWhite);
-						legalMoves.Add(legalMove);
-					}
-
-					var legalMoveSeq = new MoveSequenceModel();
-					legalMoveSeq.Moves.AddRange(legalMoves);
-					legalMoveSeq.UsedDices.AddRange(gameSession.DiceRolls.Select(dr => dr.Roll));
-					return legalMoveSeq;
+				// get first move which has the highest match equity
+				var bestMoveSequence = legalMoveSequences.FirstOrDefault();
+				if (bestMoveSequence != null && bestMoveSequence.Moves.Count > 0)
+				{					
+					return bestMoveSequence;
 				}
 
 				return new MoveSequenceModel();
@@ -134,11 +138,11 @@ namespace GammonX.Server.Bot
 			}
 			else if (gameSession.Modus == GameModus.Plakoto)
 			{
-				throw new InvalidOperationException("The plakoto game modus is not yet supported for bot games.");
+				throw new InvalidOperationException("Plakoto is not supported by the wildbg bot.");
 			}
 			else if (gameSession.Modus == GameModus.Fevga)
 			{
-				throw new InvalidOperationException("The fevga game modus is not yet supported for bot games.");
+				throw new InvalidOperationException("Plakoto is not supported by the wildbg bot.");
 			}
 			else
 			{
@@ -205,10 +209,12 @@ namespace GammonX.Server.Bot
 			if (isWhite)
 			{
 				// we need to create a board from the black perspective
+				// also applies for fevga board, white plays from 0 to 23
 				boardModel = gameSession.BoardModel.InvertBoard();
 			}
 			else
 			{
+				// black plays from 23 to 0
 				boardModel = gameSession.BoardModel;
 			}
 
@@ -234,7 +240,16 @@ namespace GammonX.Server.Bot
 			return paramBoard;
 		}
 
-		private static MoveModel Convert(IGameSessionModel gameSession, Play play, bool isWhite)
+		private static MoveSequenceModel ConvertMoveToSequence(IGameSessionModel gameSession, Move move, bool isWhite)
+		{
+			var moveModels = move.LegalPlays.Select(p => ConvertPlayToMove(gameSession, p, isWhite)).ToList();
+			var sequenceModel = new MoveSequenceModel();
+			sequenceModel.Moves.AddRange(moveModels);
+			sequenceModel.UsedDices.AddRange(gameSession.DiceRolls.GetRemainingRolls());
+			return sequenceModel;
+		}
+
+		private static MoveModel ConvertPlayToMove(IGameSessionModel gameSession, Play play, bool isWhite)
 		{
 			// 25 is homebar index
 			if (play.From == 25)
@@ -286,7 +301,6 @@ namespace GammonX.Server.Bot
 					convertedTo = (maxFieldIndex) - play.To;
 				}
 				return new MoveModel(convertedFrom, convertedTo);
-
 			}
 			else
 			{
@@ -307,6 +321,5 @@ namespace GammonX.Server.Bot
 			}
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
-
 	}
 }

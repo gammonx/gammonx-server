@@ -376,25 +376,21 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
 			points = 0;
+			var isWhite = IsWhite(playerId);
+			if (!activeSession.GameOver(isWhite))
+				return false;
+			
 			if (Player1.Id.Equals(playerId))
 			{
-				if (activeSession.BoardModel.BearOffCountWhite == activeSession.BoardModel.WinConditionCount)
-				{
-					points = CalculatePoints(playerId);
-					activeSession.StopGame(playerId, points);
-					return true;
-				}
-				return false;
+				points = CalculatePoints(playerId);
+				activeSession.StopGame(playerId, points);
+				return true;
 			}
 			else if (Player2.Id.Equals(playerId))
 			{
-				if (activeSession.BoardModel.BearOffCountBlack == activeSession.BoardModel.WinConditionCount)
-				{
-					points = CalculatePoints(playerId);
-					activeSession.StopGame(playerId, points);
-					return true;
-				}
-				return false;
+				points = CalculatePoints(playerId);
+				activeSession.StopGame(playerId, points);
+				return true;
 			}
 			else
 			{

@@ -139,9 +139,7 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException($"No unused dice roll for the move '{from}'/'{to}' left");
 			}
 
-			var remainingRolls = DiceRolls.GetRemainingRolls();
-
-			if (MoveSequences.TryUseMove(BoardModel, from, to, remainingRolls, out var playedMoves))
+			if (MoveSequences.TryUseMove(from, to, out var playedMoves))
 			{
 				if (playedMoves == null || playedMoves.Count == 0)
 				{
@@ -152,6 +150,12 @@ namespace GammonX.Server.Models
 				{
 					_boardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
 				}
+
+				// we recalculate the remaining move for the given unused dices
+				var remainingRolls = DiceRolls.GetRemainingRolls();
+				var legalMoves = _boardService.GetLegalMoveSequences(BoardModel, isWhite, remainingRolls);
+				MoveSequences = new MoveSequences();
+				MoveSequences.AddRange(legalMoves);
 
 				// if dices left
 				if (MoveSequences.CanMove)
@@ -169,6 +173,27 @@ namespace GammonX.Server.Models
 			else
 			{
 				throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");
+			}
+		}
+
+		// <inheritdoc />
+		public virtual bool GameOver(bool isWhite)
+		{
+			if (isWhite)
+			{
+				if (BoardModel.BearOffCountWhite == BoardModel.WinConditionCount)
+				{
+					return true;
+				}
+				return false;
+			}
+			else
+			{
+				if (BoardModel.BearOffCountBlack == BoardModel.WinConditionCount)
+				{
+					return true;
+				}
+				return false;
 			}
 		}
 

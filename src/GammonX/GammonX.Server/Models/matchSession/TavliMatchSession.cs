@@ -34,6 +34,13 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
+			// if both players hit heir opponents mother checker
+			// the game ends in a tie and concluded with 0 points
+			if (activeSession.BoardModel is IPinModel pinModel && pinModel.BothMothersArePinned)
+			{
+				return 0;
+			}
+
 			if (Player1.Id.Equals(playerId))
 			{
 				if (activeSession.BoardModel.BearOffCountWhite != activeSession.BoardModel.WinConditionCount)

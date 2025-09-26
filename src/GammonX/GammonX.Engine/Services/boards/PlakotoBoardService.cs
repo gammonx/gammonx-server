@@ -79,7 +79,7 @@ namespace GammonX.Engine.Services
                 // we detect a white checker on the target field
                 if (model.Fields[to] < 0)
                 {
-                    PinChecker(model, to, isWhite);
+					PinChecker(model, to, isWhite);
                 }
             }
         }

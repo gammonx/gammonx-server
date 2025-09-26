@@ -1,19 +1,26 @@
-# TODO
-- pip count > DOC/armin
-- cube decisions AI > DOC/armin + Testing
-- bot dificulty levels
+## DONE
+- pip count
+- cube decisions AI
 - fevga/plakoto bot support
-- auth/user account
+
+## Active
+- palamedes schreiben
+
+## TODO 
 - game history
+- match equity/stats afer match
+- database
+- auth/user account
 - undo/redo moves
 - ranked mode (incl. elo rating)
+- win percentage to user
 - tournament mode
 - error/debug server logging
+- bot dificulty levels
 - ?
 
-# Open Points
+## Open Points
 - enhance matchmaking?
-- user auth?
 - Chat
 - Spectator mode
 - replay system

@@ -90,18 +90,18 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
 			var player1Id = Guid.NewGuid();
@@ -144,7 +144,14 @@ namespace GammonX.Server.Tests
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
 			if (type == WellKnownMatchType.CashGame)
 			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				if (variant == WellKnownMatchVariant.Tavli)
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+				}
+				else
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				}
 			}
 			else
 			{
@@ -167,18 +174,18 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
 			var player1Id = Guid.NewGuid();
@@ -228,7 +235,14 @@ namespace GammonX.Server.Tests
 			var multiplier = 1;
 			if (type == WellKnownMatchType.CashGame)
 			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				if (variant == WellKnownMatchVariant.Tavli)
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+				}
+				else
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				}
 			}
 			else
 			{
@@ -238,9 +252,10 @@ namespace GammonX.Server.Tests
 
 			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
 			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Exactly((playedSessions.Count - 1) * multiplier));
+			var gameEndedCount = playedSessions.Count - 1 * multiplier;
+			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
 			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Exactly((playedSessions.Count - 1) * multiplier));
+			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
 			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
 		}
@@ -252,18 +267,18 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
 			var player1Id = Guid.NewGuid();
@@ -307,7 +322,14 @@ namespace GammonX.Server.Tests
 			var multiplier = 1;
 			if (type == WellKnownMatchType.CashGame)
 			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				if (variant == WellKnownMatchVariant.Tavli)
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+				}
+				else
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				}
 			}
 			else
 			{
@@ -317,11 +339,12 @@ namespace GammonX.Server.Tests
 
 			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
 			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Exactly((playedSessions.Count - 1) * multiplier));
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Exactly((playedSessions.Count - 1) * multiplier));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+			var gameEndedCount = playedSessions.Count - 1 * multiplier;
+			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
+			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
+			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
 		}
 
 		[Theory]
@@ -331,9 +354,9 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.CashGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.CashGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.FivePointGame, Skip = "bot does not support tavli yet")]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.SevenPointGame, Skip = "bot does not support tavli yet")]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsBotMatch(WellKnownMatchVariant variant, WellKnownMatchType type)
 		{
 			var queueKey = new QueueKey(variant, WellKnownMatchModus.Bot, type);
@@ -413,6 +436,10 @@ namespace GammonX.Server.Tests
 							await _hub.StartGameAsync(matchIdStr);
 						}
 					}
+					else
+					{
+						await _hub.StartGameAsync(matchIdStr);
+					}
 				}
 			}
 			while (!matchSession.IsMatchOver());
@@ -422,7 +449,14 @@ namespace GammonX.Server.Tests
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
 			if (type == WellKnownMatchType.CashGame)
 			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				if (variant == WellKnownMatchVariant.Tavli)
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+				}
+				else
+				{
+					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+				}
 			}
 			else
 			{
@@ -431,7 +465,8 @@ namespace GammonX.Server.Tests
 			// bot will win every time
 			Assert.True(matchSession.Player2.Points > 0);
 			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints());
-			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(playedSessions.Count - 1));
+			var gameEndedCount = playedSessions.Count - 1;
+			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
 			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
 		}

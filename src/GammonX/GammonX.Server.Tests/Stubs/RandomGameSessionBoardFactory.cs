@@ -57,12 +57,24 @@ namespace GammonX.Server.Tests.Stubs
 
 		public IGameSessionModel Create(Guid matchId, GameModus modus)
 		{
-			return new GameSessionImpl(
+			if (modus == GameModus.Plakoto)
+			{
+				return new PlakotoGameSession(
 					matchId,
 					modus,
 					_boardServiceMock.Object,
 					_diceFactory.Create()
 				);
+			}
+			else
+			{
+				return new GameSessionImpl(
+					matchId,
+					modus,
+					_boardServiceMock.Object,
+					_diceFactory.Create()
+				);
+			}
 		}
 	}
 }

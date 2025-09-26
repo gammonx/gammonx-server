@@ -105,7 +105,7 @@
 		void BearOffChecker(bool isWhite, int amount);
 
 		/// <summary>
-		/// Inverts this instance of the board for the other player.
+		/// Inverts this instance of the board horizontally (white>black/black>white) for the other player.
 		/// After inverting, all positions and counts from black are now white and
 		/// all positions and counts from white are now black.
 		/// </summary>

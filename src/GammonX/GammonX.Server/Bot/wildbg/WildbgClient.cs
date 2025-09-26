@@ -81,9 +81,17 @@ namespace GammonX.Server.Bot
 			}
 
 			var uri = new Uri($"/move?{sb}", UriKind.Relative);
-
 			using var resp = await _httpClient.GetAsync(uri);
-			resp.EnsureSuccessStatusCode();
+
+			try
+			{
+				resp.EnsureSuccessStatusCode();
+			}
+			catch (Exception)
+			{
+				// debugging purposes
+				throw;
+			}
 
 			var response = await resp.Content.ReadAsStringAsync();
 			var moveResponse = JsonConvert.DeserializeObject<GetMoveResponse>(response);

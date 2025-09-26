@@ -88,6 +88,9 @@ namespace GammonX.Engine.Models
 		public override int BlockAmount => 2;
 
 		// <inheritdoc />
+		public bool BothMothersArePinned => PinnedFields[0] < 0 && PinnedFields[23] > 0;
+
+		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
 			var invertedFields = BoardBroker.InvertBoardFields(Fields);

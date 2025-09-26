@@ -17,8 +17,13 @@ namespace GammonX.Server.Models
 			var moveDistance = GetMoveDistance(model, from, to, out var bearOffMove);
 			var unused = GetUnusedDiceRolls();
 			var result = TryFindDiceUsage(unused, moveDistance, bearOffMove, out var usedDices);
-			usedDices.ForEach(dice => dice.Use());
-			return result;
+			if (usedDices != null)
+			{
+				usedDices.ForEach(dice => dice.Use());
+				return result;
+			}
+
+			throw new InvalidOperationException($"An error occurred while determining the used dices for move '{from}' > '{to}'");
 		}
 
 		public DiceRollContract[] GetUnusedDiceRolls()
@@ -99,8 +104,33 @@ namespace GammonX.Server.Models
 			}
 			else if (to == WellKnownBoardPositions.BearOffBlack)
 			{
-				var distance = Math.Abs(from + 1 - model.HomeRangeBlack.End.Value);
-				bearOffMove = true;
+				// black checkers in fevga move same direction as white in others
+				if (model.Modus == GameModus.Fevga)
+				{
+					var distance = Math.Abs(from - (model.HomeRangeBlack.End.Value + 1));
+					bearOffMove = true;
+					return distance;
+				}
+				else
+				{
+					var distance = Math.Abs(from + 1 - model.HomeRangeBlack.End.Value);
+					bearOffMove = true;
+					return distance;
+				}
+			}
+			// black checkers in fevga mode start from index 12
+			else if (from == WellKnownBoardPositions.HomeBarBlack && model.Modus == GameModus.Fevga)
+			{
+				var distance = Math.Abs(model.StartRangeBlack.Start.Value - 1 - to);
+				bearOffMove = false;
+				return distance;
+			}
+			// black checkers in fevga move from 12 > 23 > 0 > 11
+			else if (from > to && model.Modus == GameModus.Fevga)
+			{
+				var size = model.Fields.Length;
+				var distance = (to - from + size) % size;
+				bearOffMove = false;
 				return distance;
 			}
 			else

@@ -64,7 +64,7 @@ namespace GammonX.Server.Tests
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes, Skip = "Plakoto and Fevga not yet supported")]
+		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
 		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
 		public async Task TwoBotsCanPlayStandalone(WellKnownMatchVariant variant, GameModus modus)
 		{
@@ -153,8 +153,6 @@ namespace GammonX.Server.Tests
 
 				matchSession.StartNextGame(activePlayerId);
 
-				// TODO :: some issues if two doubles get offered in a game round
-				// TODO :: implemented for match hub > test it
 				if (cubeSession.CanOfferDouble(activePlayerId))
 				{
 					var shouldOffer = await botService.ShouldOfferDouble(matchSession, activePlayerId);
@@ -188,8 +186,8 @@ namespace GammonX.Server.Tests
 				if (!hasWon)
 				{
 					matchSession.EndTurn(activePlayerId);
-					activePlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
-					otherPlayerId = otherPlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
+					activePlayerId = otherPlayerId;
+					otherPlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
 				}
 			}
 			while (!matchSession.IsMatchOver());
