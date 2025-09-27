@@ -4,10 +4,10 @@
 - fevga/plakoto bot support
 
 ## Active
+- game history
 - palamedes schreiben
 
 ## TODO 
-- game history
 - match equity/stats afer match
 - database
 - auth/user account
@@ -15,6 +15,7 @@
 - ranked mode (incl. elo rating)
 - win percentage to user
 - tournament mode
+- export matches to sgf/.mat format
 - error/debug server logging
 - bot dificulty levels
 - ?

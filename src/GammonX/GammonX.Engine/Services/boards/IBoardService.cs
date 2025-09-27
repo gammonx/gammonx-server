@@ -94,14 +94,5 @@ namespace GammonX.Engine.Services
 		/// <param name="rolls">1:n Dice roll values</param>
 		/// <returns>An array of move sequences.</returns>
 		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
-
-		/// <summary>
-		/// Applies the dice rules to the given legal moves and returns only those moves.
-		/// </summary>
-		/// <param name="legalMoves">Legal moves to evaluate.</param>
-		/// <param name="rolls">Rolled dices.</param>
-		/// <returns>A tuple array containing all legal moves from to.</returns>
-		ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls);
-
 	}
 }

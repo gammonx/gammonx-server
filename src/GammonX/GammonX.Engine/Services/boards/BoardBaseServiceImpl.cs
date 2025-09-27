@@ -34,38 +34,6 @@ namespace GammonX.Engine.Services
 		}
 
 		// <inheritdoc />
-		public virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
-		{
-			// only relevant for two dice rolls
-			if (rolls.Length != 2)
-				return legalMoves;
-
-			int maxRoll = rolls.Max();
-			int combined = rolls.Sum();
-
-			// are there any combined moves (e.g. 0 > 3 for {1,2})
-			var combinedMoves = legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
-				.ToArray();
-
-			if (combinedMoves.Length > 0)
-				return combinedMoves;
-
-			// can the rolls be used individually?
-			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
-			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
-
-			// if both rolls can be used, return all legal moves
-			if (canUseRoll1 && canUseRoll2)
-				return legalMoves;
-
-			// otherwise return only moves with the maximum roll
-			return legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
-				.ToArray();
-		}
-
-		// <inheritdoc />
 		public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
 		{
 			if (CanBearOffChecker(model, from, roll, isWhite))
@@ -262,6 +230,43 @@ namespace GammonX.Engine.Services
 			if (!isWhite && to == WellKnownBoardPositions.BearOffBlack)
 				return true;
 			return false;
+		}
+
+		/// <summary>
+		/// Applies the dice rules to the given legal moves and returns only those moves.
+		/// </summary>
+		/// <param name="legalMoves">Legal moves to evaluate.</param>
+		/// <param name="rolls">Rolled dices.</param>
+		/// <returns>A tuple array containing all legal moves from to.</returns>
+		protected virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
+		{
+			// only relevant for two dice rolls
+			if (rolls.Length != 2)
+				return legalMoves;
+
+			int maxRoll = rolls.Max();
+			int combined = rolls.Sum();
+
+			// are there any combined moves (e.g. 0 > 3 for {1,2})
+			var combinedMoves = legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
+				.ToArray();
+
+			if (combinedMoves.Length > 0)
+				return combinedMoves;
+
+			// can the rolls be used individually?
+			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
+			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
+
+			// if both rolls can be used, return all legal moves
+			if (canUseRoll1 && canUseRoll2)
+				return legalMoves;
+
+			// otherwise return only moves with the maximum roll
+			return legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
+				.ToArray();
 		}
 
 		private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)

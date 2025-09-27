@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Engine.History;
+
+namespace GammonX.Engine.Models
 {
     /// <summary>
     /// Represents the basic model of a game board in a backgammon variant.
@@ -18,6 +20,11 @@
         /// while positive numbers represent the peices for the black player.
         /// </remarks>
         int[] Fields { get; }
+
+        /// <summary>
+        /// Gets the history of all events happened on the given board.
+        /// </summary>
+        IBoardHistory History { get; }
 
         /// <summary>
         /// Gets the index range of the home point for the white player.
