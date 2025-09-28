@@ -621,7 +621,7 @@ namespace GammonX.Server.Tests
 					startPlayerId = startPlayerId == matchSession.Player1.Id ? matchSession.Player2.Id : matchSession.Player1.Id;
 					matchSession.Player1.AcceptNextGame();
 					matchSession.Player2.AcceptNextGame();
-				}				
+				}
 				Assert.True(gameOverFunc.Invoke(matchSession));
 			}
 			else if (type == WellKnownMatchType.FivePointGame)
@@ -637,6 +637,117 @@ namespace GammonX.Server.Tests
 				Assert.False(gameOverFunc.Invoke(matchSession));
 				matchSession.Player1.Points = 8;
 				Assert.True(gameOverFunc.Invoke(matchSession));
+			}
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		public void MatchSessionReturnsProperHistory(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		{
+			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
+			Assert.NotNull(matchSession);
+
+			var player1Id = Guid.NewGuid();
+			var lobbyEntry1 = new LobbyEntry(player1Id);
+			lobbyEntry1.SetConnectionId("none1");
+			var player2Id = Guid.NewGuid();
+			var lobbyEntry2 = new LobbyEntry(player2Id);
+			lobbyEntry2.SetConnectionId("none2");
+
+			matchSession.JoinSession(lobbyEntry1);
+			matchSession.JoinSession(lobbyEntry2);
+
+			matchSession.Player1.AcceptNextGame();
+			matchSession.Player2.AcceptNextGame();
+			matchSession.StartNextGame(player1Id);
+
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+
+			do
+			{
+				if (gameSession.Phase == GamePhase.GameOver)
+				{
+					Assert.NotNull(matchSession);
+					gameSession = matchSession.GetGameSession(matchSession.GameRound);
+					Assert.NotNull(gameSession);
+				}
+
+				if (gameSession.ActivePlayer == player1Id)
+				{
+					ExecutePlayerTurn(matchSession, gameSession);
+				}
+				else if (gameSession.ActivePlayer == player2Id)
+				{
+					ExecutePlayerTurn(matchSession, gameSession);
+				}
+			}
+			while (!matchSession.IsMatchOver());
+
+			Assert.True(matchSession.IsMatchOver());
+			var matchHistory = matchSession.GetHistory();
+			Assert.NotNull(matchHistory);
+			var historyStr = matchHistory.ToString();
+			Assert.NotNull(historyStr);
+		}
+
+		private static void ExecutePlayerTurn(IMatchSessionModel matchSession, IGameSessionModel gameSession)
+		{
+			var matchIdStr = matchSession.Id.ToString();
+
+			matchSession.RollDices(gameSession.ActivePlayer);
+
+			var ms = gameSession.MoveSequences.FirstOrDefault();
+			if (ms != null)
+			{
+				var moves = ms.Moves.ToList();
+				foreach (var move in moves)
+				{
+					matchSession.MoveCheckers(gameSession.ActivePlayer, move.From, move.To);
+				}
+			}
+
+			if (gameSession.Phase != GamePhase.GameOver)
+			{
+				matchSession.EndTurn(gameSession.ActivePlayer);
+				if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
+				{
+					matchSession.Player1.AcceptNextGame();
+					matchSession.Player2.AcceptNextGame();
+					matchSession.StartNextGame(gameSession.ActivePlayer);
+				}
+			}
+			else if (!matchSession.IsMatchOver())
+			{
+				matchSession.Player1.AcceptNextGame();
+				matchSession.Player2.AcceptNextGame();
+				matchSession.StartNextGame(gameSession.ActivePlayer);
 			}
 		}
 	}

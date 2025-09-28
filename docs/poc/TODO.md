@@ -8,10 +8,10 @@
 - palamedes schreiben
 
 ## TODO 
+- undo/redo moves
 - match equity/stats afer match
 - database
 - auth/user account
-- undo/redo moves
 - ranked mode (incl. elo rating)
 - win percentage to user
 - tournament mode

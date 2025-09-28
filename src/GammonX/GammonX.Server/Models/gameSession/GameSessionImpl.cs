@@ -1,7 +1,9 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Models.gameSession;
 
 namespace GammonX.Server.Models
 {
@@ -11,8 +13,8 @@ namespace GammonX.Server.Models
 		private readonly IBoardService _boardService;
 		private IDiceService _diceService;
 
-		private int _winnerScore;
-		private Guid _winner;
+		private int _winnerPoints;
+		private Guid _winnerPlayerId;
 
 		// <inheritdoc />
 		public GameModus Modus { get; private set; }
@@ -48,6 +50,9 @@ namespace GammonX.Server.Models
 		public DateTime StartedAt { get; private set; }
 
 		// <inheritdoc />
+		public DateTime EndedAt { get; private set; }
+
+		// <inheritdoc />
 		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
 
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
@@ -75,11 +80,12 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public void StopGame(Guid winnerPlayerId, int score)
+		public void StopGame(Guid winnerPlayerId, int points)
 		{
-			_winner = winnerPlayerId;
-			_winnerScore = score;
+			_winnerPlayerId = winnerPlayerId;
+			_winnerPoints = points;
 			Phase = GamePhase.GameOver;
+			EndedAt = DateTime.UtcNow;
 		}
 
 		// <inheritdoc />
@@ -124,6 +130,7 @@ namespace GammonX.Server.Models
 			MoveSequences = new MoveSequences();
 			MoveSequences.AddRange(legalMoves);
 			Phase = GamePhase.Rolling;
+			AddEventToHistory(isWhite, rolls);
 		}
 
 		// <inheritdoc />
@@ -149,6 +156,7 @@ namespace GammonX.Server.Models
 				foreach (var move in playedMoves)
 				{
 					_boardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
+					AddEventToHistory(isWhite, move);
 				}
 
 				// we recalculate the remaining move for the given unused dices
@@ -224,10 +232,16 @@ namespace GammonX.Server.Models
 
 			if (Phase == GamePhase.GameOver)
 			{
-				contract.Winner = _winner;
-				contract.Score = _winnerScore;
+				contract.Winner = _winnerPlayerId;
+				contract.Score = _winnerPoints;
 			}
 			return contract;
+		}
+
+		// <inheritdoc />
+		public IGameHistory GetHistory()
+		{
+			return GameHistoryImpl.Create(this, _winnerPlayerId, _winnerPoints);
 		}
 
 		/// <summary>
@@ -239,6 +253,22 @@ namespace GammonX.Server.Models
 		{
 			// unit test purposes only
 			_diceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
+		}
+
+		private void AddEventToHistory(bool isWhite, object eventValues)
+		{
+			var boardHistory = BoardModel.History;
+
+			if (eventValues is int[] rolls)
+			{
+				var rollEvent = HistoryEventFactory.CreateRollEvent(isWhite, rolls);
+				boardHistory.Add(rollEvent);
+			}
+			else if (eventValues is MoveModel move)
+			{
+				var moveEvent = HistoryEventFactory.CreateMoveEvent(isWhite, move);
+				boardHistory.Add(moveEvent);
+			}
 		}
 	}
 }

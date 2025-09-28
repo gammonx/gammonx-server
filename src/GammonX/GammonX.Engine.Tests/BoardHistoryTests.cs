@@ -63,5 +63,35 @@ namespace GammonX.Engine.Tests
 			removed = board.History.TryRemoveLast();
 			Assert.False(removed);
 		}
+
+		[Fact]
+		public void CanCreateMoveEvent()
+		{
+			var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+			var board = boardService.CreateBoard();
+			Assert.NotNull(board.History);
+			Assert.Empty(board.History.Events);
+			var moveModel1 = new MoveModel(0, 5);
+			var moveModel2 = new MoveModel(5, 10);
+			var moveEvent = HistoryEventFactory.CreateMoveEvent(true, new[] { moveModel1, moveModel2 });
+			Assert.True(moveEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Move, moveEvent.Type);
+			Assert.IsType<Tuple<int, int>[]>(moveEvent.Value.GetValue());
+			Assert.Equal("0/5 5/10", moveEvent.Value.ToString());
+		}
+
+		[Fact]
+		public void CanCreateRollEvent()
+		{
+			var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+			var board = boardService.CreateBoard();
+			Assert.NotNull(board.History);
+			Assert.Empty(board.History.Events);
+			var rollEvent = HistoryEventFactory.CreateRollEvent(true, 1, 1, 1, 1);
+			Assert.True(rollEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Roll, rollEvent.Type);
+			Assert.IsType<int[]>(rollEvent.Value.GetValue());
+			Assert.Equal($"1 1 1 1", rollEvent.Value.ToString());
+		}
 	}
 }

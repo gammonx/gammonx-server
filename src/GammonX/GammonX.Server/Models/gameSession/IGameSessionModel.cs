@@ -69,9 +69,14 @@ namespace GammonX.Server.Models
 		public IBoardModel BoardModel { get; }
 
 		/// <summary>
-		/// Game start time.
+		/// Gets game utc start time.
 		/// </summary>
 		public DateTime StartedAt { get; }
+
+		/// <summary>
+		/// Gets game utc end/stop time.
+		/// </summary>
+		public DateTime EndedAt { get; }
 
 		/// <summary>
 		/// Game duration in milliseconds.
@@ -140,5 +145,11 @@ namespace GammonX.Server.Models
 		/// <param name="gameRoundIndex">Index of the game session played in the match session.</param>
 		/// <returns>An instance of <see cref="GameRoundContract"/>.</returns>
 		public GameRoundContract ToContract(int gameRoundIndex);
+
+		/// <summary>
+		/// Gets the game history including all move and roll events.
+		/// </summary>
+		/// <returns>Returns an instance of <see cref="IGameHistory"/>.</returns>
+		IGameHistory GetHistory();
 	}
 }

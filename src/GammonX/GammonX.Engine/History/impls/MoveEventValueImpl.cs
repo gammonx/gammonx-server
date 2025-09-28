@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.History
+﻿using GammonX.Engine.Models;
+
+namespace GammonX.Engine.History
 {
 	// <inheritdoc />
 	internal sealed class MoveEventValueImpl : IHistoryEventValue
@@ -22,7 +24,20 @@
 		/// <returns>Converted string representation.</returns>
 		public override string ToString()
 		{
-			return string.Join(' ', _moves.Select(m => $"{m.Item1}/{m.Item2}"));
+			return string.Join(' ', _moves.Select(m => $"{Convert(m.Item1)}/{Convert(m.Item2)}"));
+		}
+
+		private static string Convert(int position)
+		{
+			if (position == WellKnownBoardPositions.BearOffWhite || position == WellKnownBoardPositions.BearOffBlack)
+			{
+				return "off";
+			}
+			if (position == WellKnownBoardPositions.HomeBarWhite || position == WellKnownBoardPositions.HomeBarBlack)
+			{
+				return "bar";
+			}
+			return $"{position}";
 		}
 	}
 }

@@ -50,6 +50,11 @@ namespace GammonX.Server.Models
 		DateTime StartedAt { get; }
 
 		/// <summary>
+		/// Gets game utc end/stop time.
+		/// </summary>
+		public DateTime? EndedAt { get; }
+
+		/// <summary>
 		/// Gets the match duration in milliseconds.
 		/// </summary>
 		long Duration { get; }
@@ -164,5 +169,11 @@ namespace GammonX.Server.Models
 		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
 		/// <returns>Match state payload.</returns>
 		EventMatchStatePayload ToPayload(params string[] allowedCommands);
+
+		/// <summary>
+		/// Gets the history of all contained gamesession, board and the match itself.
+		/// </summary>
+		/// <returns>Returns an instance of <see cref="IMatchHistory"/>.</returns>
+		IMatchHistory GetHistory();
 	}
 }

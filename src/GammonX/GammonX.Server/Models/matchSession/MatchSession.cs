@@ -37,7 +37,10 @@ namespace GammonX.Server.Models
 		public DateTime StartedAt { get; private set; }
 
 		// <inheritdoc />
-		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
+		public DateTime? EndedAt { get; private set; }
+
+		// <inheritdoc />
+		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;
 
 		// <inheritdoc />
 		public PlayerModel Player1 { get; private set; }
@@ -266,7 +269,12 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public bool IsMatchOver()
 		{
-			return _isMatchOver(this);
+			var matchOver = _isMatchOver(this);
+			if (matchOver)
+			{
+				EndedAt = DateTime.UtcNow;
+			}
+			return matchOver;
 		}
 
 		// <inheritdoc />
@@ -311,6 +319,12 @@ namespace GammonX.Server.Models
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
+		// <inheritdoc />
+		public IMatchHistory GetHistory()
+		{
+			return MatchHistoryImpl.Create(this);
 		}
 
 		// <inheritdoc />
