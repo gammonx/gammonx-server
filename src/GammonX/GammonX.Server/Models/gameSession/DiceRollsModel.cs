@@ -3,11 +3,11 @@ using GammonX.Server.Contracts;
 
 namespace GammonX.Server.Models
 {	
-	public class DiceRolls : List<DiceRollContract>
+	public class DiceRollsModel : List<DiceRollContract>
 	{
 		public bool HasUnused => this.Any(dr => !dr.Used);
 
-		public DiceRolls() 
+		public DiceRollsModel() 
 		{
 			// pass
 		}
@@ -24,6 +24,17 @@ namespace GammonX.Server.Models
 			}
 
 			throw new InvalidOperationException($"An error occurred while determining the used dices for move '{from}' > '{to}'");
+		}
+
+		public void UndoDiceRoll(int roll)
+		{
+			var diceRoll = this.FirstOrDefault(dr => dr.Used && dr.Roll == roll);
+			if (diceRoll != null) 
+			{
+				diceRoll.Used = false;
+				return;
+			}
+			throw new InvalidOperationException("An error occurred while undoing a dice roll");
 		}
 
 		public DiceRollContract[] GetUnusedDiceRolls()

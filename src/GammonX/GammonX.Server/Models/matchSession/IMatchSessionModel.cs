@@ -94,10 +94,23 @@ namespace GammonX.Server.Models
 		bool MoveCheckers(Guid callingPlayerId, int from, int to);
 
 		/// <summary>
+		/// Undoes the last move made by the given player with <paramref name="callingPlayerId"/>.
+		/// </summary>
+		/// <param name="callingPlayerId">Player to undo the last move.</param>
+		void UndoLastMove(Guid callingPlayerId);
+
+		/// <summary>
+		/// Checks if the given <paramref name="callingPlayerId"/> can undo hist last move.
+		/// </summary>
+		/// <param name="callingPlayerId">Player to undo his last move.</param>
+		/// <returns>Returns <c>true</c> if player can undo hist last move. Otherwise, <c>false</c>.</returns>
+		bool CanUndoLastMove(Guid callingPlayerId);
+
+		/// <summary>
 		/// Checks if the active player can end his turn.
 		/// </summary>
 		/// <returns>A boolean indicating if the active player can end his turn.</returns>
-		bool CanEndTurn(Guid playerId);
+		bool CanEndTurn(Guid callingPlayerId);
 
 		/// <summary>
 		/// The active player has finished his turn and the next player is now active.

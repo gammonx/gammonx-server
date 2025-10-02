@@ -61,7 +61,7 @@ namespace GammonX.Server.Models.gameSession
 			stringBuilder.AppendLine($";[Points '{Points}']");
 			stringBuilder.AppendLine($";[Started At '{StartedAt}']");
 			stringBuilder.AppendLine($";[Ended At '{EndedAt}']");
-			foreach (var historyEvent in  BoardHistory.Events)
+			foreach (var historyEvent in  BoardHistory.Events.Reverse())
 			{
 				stringBuilder.AppendLine(historyEvent.ToString());
 			}

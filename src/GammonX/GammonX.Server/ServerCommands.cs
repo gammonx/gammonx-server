@@ -8,51 +8,56 @@
 		/// <summary>
 		/// The caller can join a match session with an existing match id created by the matchmaking service.
 		/// </summary>
-		public static readonly string JoinMatchCommand = "JoinMatch";
+		public const string JoinMatchCommand = "JoinMatch";
 
 		/// <summary>
 		/// The caller can start a game round if successfuly joined a match session.
 		/// </summary>
-		public static readonly string StartGameCommand = "StartGame";
+		public const string StartGameCommand = "StartGame";
 
 		/// <summary>
 		/// If the active player, the caller can roll the dices and start his turn.
 		/// </summary>
-		public static readonly string RollCommand = "Roll";
+		public const string RollCommand = "Roll";
 
 		/// <summary>
 		/// If the active player, the caller can move his checkers from one position to another.
 		/// </summary>
-		public static readonly string MoveCommand = "Move";
+		public const string MoveCommand = "Move";
+
+		/// <summary>
+		/// If the active player, the caller can undo hist last move.
+		/// </summary>
+		public const string UndoMoveCommand = "UndoMove";
 
 		/// <summary>
 		/// If the active player, the caller can end his turn and switch to the next player.
 		/// </summary>
-		public static readonly string EndTurnCommand = "EndTurn";
+		public const string EndTurnCommand = "EndTurn";
 
 		/// <summary>
 		/// The calling player resigns the match and loses automatically.
 		/// </summary>
-		public static readonly string ResignMatch = "ResignMatch";
+		public const string ResignMatchCommand = "ResignMatch";
 
 		/// <summary>
 		/// The calling player resigns the game and loses as a back-/gammon.
 		/// </summary>
-		public static readonly string ResignGame = "ResignGame";
+		public const string ResignGameCommand = "ResignGame";
 
 		/// <summary>
 		/// The doubling cube owner offers a double.
 		/// </summary>
-		public static readonly string OfferDouble = "OfferDouble";
+		public const string OfferDoubleCommands = "OfferDouble";
 
 		/// <summary>
 		/// The non doubling cube owner accepts the double offering.
 		/// </summary>
-		public static readonly string AcceptDouble = "AcceptDouble";
+		public const string AcceptDoubleCommands = "AcceptDouble";
 
 		/// <summary>
 		/// The non doubling cube owner declines the double offering and automatically loses as a backgammon.
 		/// </summary>
-		public static readonly string DeclineDouble = "DeclineDouble";
+		public const string DeclineDoubleCommands = "DeclineDouble";
 	}
 }

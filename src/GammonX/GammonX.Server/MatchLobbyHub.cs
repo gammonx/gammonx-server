@@ -20,8 +20,8 @@ namespace GammonX.Server
 		private readonly IBotService _botService;
 
 		public MatchLobbyHub(
-			IMatchmakingService service, 
-			MatchSessionRepository repository, 
+			IMatchmakingService service,
+			MatchSessionRepository repository,
 			IDiceServiceFactory diceServiceFactory,
 			IBotService botService)
 		{
@@ -60,7 +60,7 @@ namespace GammonX.Server
 		/// <param name="matchId">Match to join.</param>
 		/// <param name="playerId">Player who wants to join the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		[HubMethodName("JoinMatch")]
+		[HubMethodName(ServerCommands.JoinMatchCommand)]
 		public async Task JoinMatchAsync(string matchId, string playerId)
 		{
 			try
@@ -133,7 +133,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Match containing the game to start.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("StartGame")]
+		[HubMethodName(ServerCommands.StartGameCommand)]
 		public async Task StartGameAsync(string matchId)
 		{
 			try
@@ -204,7 +204,7 @@ namespace GammonX.Server
 		/// </remarks>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("Roll")]
+		[HubMethodName(ServerCommands.RollCommand)]
 		public async Task RollAsync(string matchId)
 		{
 			try
@@ -246,7 +246,7 @@ namespace GammonX.Server
 		/// <param name="from"></param>
 		/// <param name="to"></param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("Move")]
+		[HubMethodName(ServerCommands.MoveCommand)]
 		public async Task MoveAsync(string matchId, int from, int to)
 		{
 			try
@@ -275,6 +275,56 @@ namespace GammonX.Server
 		}
 
 		/// <summary>
+		/// The active player undoes, if possible, his last move in his move stack.
+		/// </summary>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>A task to be awaited.</returns>
+		[HubMethodName(ServerCommands.UndoMoveCommand)]
+		public async Task UndoMoveAsync(string matchId)
+		{
+			try
+			{
+				if (!Guid.TryParse(matchId, out var matchGuid))
+				{
+					await SendErrorEventAsync("UNDO_MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+				}
+
+				var matchSession = _repository.Get(matchGuid);
+				if (matchSession != null)
+				{
+					var callingPlayerId = GetCallingPlayerId(matchSession);
+
+					if (!matchSession.CanUndoLastMove(callingPlayerId))
+					{
+						await SendErrorEventAsync("UNDO_MOVE_ERROR", "You cannot undo a move at this moment.");
+						return;
+					}
+
+					matchSession.UndoLastMove(callingPlayerId);
+
+					if (matchSession.CanUndoLastMove(callingPlayerId))
+					{
+						// has still moves to undo
+						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand, ServerCommands.UndoMoveCommand);
+					}
+					else
+					{
+						// no moves to undo left
+						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+					}
+				}
+				else
+				{
+					await SendErrorEventAsync("UNDO_MOVE_ERROR", "No match seesion was found with the given matchId.");
+				}
+			}
+			catch (Exception e)
+			{
+				await SendErrorEventAsync("UNDO_MOVE_ERROR", $"An error occurred while trying to undo the last move: '{e.Message}'");
+			}
+		}
+
+		/// <summary>
 		/// The active player ends his turn. The active player is switched to the other player.
 		/// The former active players game phase advances to <see cref="GamePhase.WaitingForRoll"/>.
 		/// The new active players game phase advances to <see cref="GamePhase.WaitingForRoll"/>.
@@ -282,7 +332,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("EndTurn")]
+		[HubMethodName(ServerCommands.EndTurnCommand)]
 		public async Task EndTurnAsync(string matchId)
 		{
 			try
@@ -313,7 +363,7 @@ namespace GammonX.Server
 					else
 					{
 						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
-					}					
+					}
 				}
 				else
 				{
@@ -322,7 +372,7 @@ namespace GammonX.Server
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to roll the dices: '{e.Message}'");
+				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'");
 			}
 		}
 
@@ -331,7 +381,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		[HubMethodName("ResignMatch")]
+		[HubMethodName(ServerCommands.ResignMatchCommand)]
 		public async Task ResignMatchAsync(string matchId)
 		{
 			try
@@ -365,7 +415,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		[HubMethodName("ResignGame")]
+		[HubMethodName(ServerCommands.ResignGameCommand)]
 		public async Task ResignGameAsync(string matchId)
 		{
 			try
@@ -409,7 +459,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		[HubMethodName("OfferDouble")]
+		[HubMethodName(ServerCommands.OfferDoubleCommands)]
 		public async Task OfferDoubleAsync(string matchId)
 		{
 			try
@@ -439,7 +489,7 @@ namespace GammonX.Server
 					{
 						var callingPlayerId = GetCallingPlayerId(matchSession);
 						await PerformOfferDoubleAsync(matchSession, callingPlayerId);
-					}					
+					}
 				}
 				else
 				{
@@ -457,7 +507,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("AcceptDouble")]
+		[HubMethodName(ServerCommands.AcceptDoubleCommands)]
 		public async Task AcceptDoubleAsync(string matchId)
 		{
 			try
@@ -489,7 +539,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName("DeclineDoube")]
+		[HubMethodName(ServerCommands.DeclineDoubleCommands)]
 		public async Task DeclineDoubleAsync(string matchId)
 		{
 			try
@@ -528,7 +578,7 @@ namespace GammonX.Server
 				var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
 				await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
 				// the player who got the double offered has to accept or decline it
-				var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDouble, ServerCommands.DeclineDouble]);
+				var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDoubleCommands, ServerCommands.DeclineDoubleCommands]);
 				var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
 				var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
 				await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
@@ -634,57 +684,64 @@ namespace GammonX.Server
 			else if (matchSession.CanEndTurn(callingPlayerId))
 			{
 				// calling player finished his turn, other player can now roll
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand, ServerCommands.UndoMoveCommand);
 				return false;
 			}
 			else
 			{
 				// calling player can still move
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand, ServerCommands.UndoMoveCommand);
 				return true;
 			}
 		}
 
 		private async Task PerfromBotTurnAsync(IMatchSessionModel matchSession, Guid botPlayerId)
 		{
-			if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
+			try
 			{
-				var shouldOffer = await _botService.ShouldOfferDouble(matchSession, botPlayerId);
-				if (shouldOffer)
+				if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
 				{
-					await PerformOfferDoubleAsync(matchSession, botPlayerId);
-					// the bot turn ends here, waiting for the player to accept or decline the double
-					return;
+					var shouldOffer = await _botService.ShouldOfferDouble(matchSession, botPlayerId);
+					if (shouldOffer)
+					{
+						await PerformOfferDoubleAsync(matchSession, botPlayerId);
+						// the bot turn ends here, waiting for the player to accept or decline the double
+						return;
+					}
+				}
+
+				await PerfromRollAsync(matchSession, botPlayerId);
+
+				bool canMove = false;
+				do
+				{
+					var nextMoves = await _botService.GetNextMovesAsync(matchSession, botPlayerId);
+
+					if (nextMoves == null)
+					{
+						throw new InvalidOperationException("An error occurred while evaluating the next move for the bot");
+					}
+
+					foreach (var nextMove in nextMoves.Moves)
+					{
+						canMove = await PerformMoveAsync(matchSession, botPlayerId, nextMove.From, nextMove.To);
+					}
+				}
+				while (canMove);
+
+				// if we cannot end the current turn, the match/game is probably over
+				if (matchSession.CanEndTurn(botPlayerId))
+				{
+					matchSession.EndTurn(botPlayerId);
+					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
 				}
 			}
-
-			await PerfromRollAsync(matchSession, botPlayerId);
-
-			bool canMove = false;
-			do
+			catch (Exception e)
 			{
-				var nextMoves = await _botService.GetNextMovesAsync(matchSession, botPlayerId);
-
-				if (nextMoves == null)
-				{
-					throw new InvalidOperationException("An error occurred wihle evaluating the next move for the bot");
-				}
-
-				foreach (var nextMove in nextMoves.Moves)
-				{
-					canMove = await PerformMoveAsync(matchSession, botPlayerId, nextMove.From, nextMove.To);
-				}
-			}
-			while (canMove);
-
-			// if we cannot end the current turn, the match/game is probably over
-			if (matchSession.CanEndTurn(botPlayerId))
-			{
-				matchSession.EndTurn(botPlayerId);
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+				throw;
 			}
 		}
-		
+
 		#endregion Commands
 
 		#region Private Members
@@ -719,11 +776,11 @@ namespace GammonX.Server
 			{
 				var contract = activeSession.ToContract(matchSession.GameRound);
 				return contract.Winner ?? matchSession.Player1.Id;
-			}			
+			}
 			else
 			{
 				throw new InvalidOperationException("An error occurred while determining the last game round winner");
-			}	
+			}
 		}
 
 		private async Task SendGameState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
@@ -736,7 +793,7 @@ namespace GammonX.Server
 			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
 				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
-			}			
+			}
 		}
 
 		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)

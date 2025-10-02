@@ -250,6 +250,46 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Backgammon)]
 		[InlineData(WellKnownMatchVariant.Tavli)]
 		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionCanUndoLastMoves(WellKnownMatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			var player1Id = session.Player1.Id;
+			var player2Id = session.Player2.Id;
+			session.RollDices(player1Id);
+
+			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
+			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+
+			Assert.True(session.CanUndoLastMove(player1Id));
+			Assert.False(session.CanUndoLastMove(player2Id));
+			session.UndoLastMove(player1Id);
+			Assert.Throws<InvalidOperationException>(() => session.UndoLastMove(player2Id));
+			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			Assert.True(session.CanUndoLastMove(player1Id));
+			Assert.False(session.CanUndoLastMove(player2Id));
+			session.UndoLastMove(player1Id);
+			Assert.Throws<InvalidOperationException>(() => session.UndoLastMove(player2Id));
+			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			Assert.False(session.CanUndoLastMove(player1Id));
+			Assert.False(session.CanUndoLastMove(player2Id));
+			Assert.Throws<InvalidOperationException>(() => session.UndoLastMove(player1Id));
+			Assert.Throws<InvalidOperationException>(() => session.UndoLastMove(player2Id));
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon)]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionCanEndTurn(WellKnownMatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
@@ -330,7 +370,7 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavla)]
 		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
 		{
-			var defaultAllowedCommands = new[] { ServerCommands.ResignGame, ServerCommands.ResignMatch };
+			var defaultAllowedCommands = new[] { ServerCommands.ResignGameCommand, ServerCommands.ResignMatchCommand };
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();

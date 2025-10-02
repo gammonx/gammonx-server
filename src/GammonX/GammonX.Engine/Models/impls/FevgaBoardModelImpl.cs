@@ -201,7 +201,14 @@
 		// <inheritdoc />
 		public void AddToHomeBar(bool isWhite, int amount)
 		{
-			throw new InvalidOperationException("Fevga does not support adding checkers to the home bar.");
+			if (isWhite)
+			{
+				HomeBarCountWhite += amount;
+			}
+			else
+			{
+				HomeBarCountBlack += amount;
+			}
 		}
 
 		// <inheritdoc />

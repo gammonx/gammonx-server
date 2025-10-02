@@ -401,8 +401,9 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(14, homebarModel.HomeBarCountBlack);
 			Assert.Equal(-1, homebarModel.StartIndexWhite);
 			Assert.Equal(24, homebarModel.StartIndexBlack);
-			Assert.Throws<InvalidOperationException>(() => homebarModel.AddToHomeBar(true, 1));
-			Assert.Throws<InvalidOperationException>(() => homebarModel.AddToHomeBar(false, 1));
+            homebarModel.AddToHomeBar(true, 1); homebarModel.AddToHomeBar(false, 1);
+			Assert.Equal(15, homebarModel.HomeBarCountWhite);
+			Assert.Equal(15, homebarModel.HomeBarCountBlack);
 			var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.Null(doublingCubeModel);
         }

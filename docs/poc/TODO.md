@@ -2,13 +2,15 @@
 - pip count
 - cube decisions AI
 - fevga/plakoto bot support
+- game history
+- undo/redo moves
 
 ## Active
-- game history
 - palamedes schreiben
 
 ## TODO 
-- undo/redo moves
+- error/debug server logging
+- dice roller backgammon galaxy // urandom crypto
 - match equity/stats afer match
 - database
 - auth/user account
@@ -16,7 +18,6 @@
 - win percentage to user
 - tournament mode
 - export matches to sgf/.mat format
-- error/debug server logging
 - bot dificulty levels
 - ?
 

@@ -8,7 +8,7 @@
 		/// <summary>
 		/// Gets the list of events of this board history.
 		/// </summary>
-		IEnumerable<IHistoryEvent> Events { get; }
+		Stack<IHistoryEvent> Events { get; }
 
 		/// <summary>
 		/// Adds the given <paramref name="historyEvent"/> to <see cref="Events"/>.
@@ -27,5 +27,12 @@
 		/// </summary>
 		/// <returns>True if remove. False if not.</returns>
 		bool TryRemoveLast();
+
+		/// <summary>
+		/// Tries to peek if there is a last history event available.
+		/// </summary>
+		/// <param name="lastEvent">Last event added to history or null if non there.</param>
+		/// <returns>Last history event added to the stack.</returns>
+		bool TryPeekLast(out IHistoryEvent? lastEvent);
 	}
 }

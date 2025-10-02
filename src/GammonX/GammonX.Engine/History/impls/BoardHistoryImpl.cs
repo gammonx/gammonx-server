@@ -4,39 +4,40 @@ namespace GammonX.Engine.History
 	// <inheritdoc />
 	internal sealed class BoardHistoryImpl : IBoardHistory
 	{
-		private readonly List<IHistoryEvent> _history;
+		private Stack<IHistoryEvent> _history;
 
 		// <inheritdoc />
-		public IEnumerable<IHistoryEvent> Events => _history;
+		public Stack<IHistoryEvent> Events => _history;
 
 		public BoardHistoryImpl()
 		{
-			_history = new List<IHistoryEvent>();
+			_history = new Stack<IHistoryEvent>();
 		}
 
 		// <inheritdoc />
 		public void Add(IHistoryEvent historyEvent)
 		{
-			_history.Add(historyEvent);
+			_history.Push(historyEvent);
 		}
 
 		// <inheritdoc />
 		public void Remove(IHistoryEvent historyEvent)
 		{
-			_history.Remove(historyEvent);
+			var history = _history.ToList();
+			history.Remove(historyEvent);
+			_history = new Stack<IHistoryEvent>(history);
 		}
 
 		// <inheritdoc />
 		public bool TryRemoveLast()
 		{
-			var lastEvent = _history.LastOrDefault();
-			if (lastEvent != null)
-			{
-				var index = _history.IndexOf(lastEvent);
-				_history.RemoveAt(index);
-				return true;
-			}
-			return false;
+			return _history.TryPop(out var _);
+		}
+
+		// <inheritdoc />
+		public bool TryPeekLast(out IHistoryEvent? lastEvent)
+		{
+			return _history.TryPeek(out lastEvent);
 		}
 	}
 }
