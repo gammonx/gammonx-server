@@ -51,16 +51,24 @@ namespace GammonX.Engine.Services
         /// <returns>Indicates success of the move.</returns>
         internal bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
-        /// <summary>
-        /// Checks if the given checker can be moved from to a given position based
-        /// on the roll.
-        /// </summary>
-        /// <param name="model">The board model to operate on.</param>
-        /// <param name="from">Position to move from.</param>
-        /// <param name="roll">Value of the used dice roll.</param>
-        /// <param name="isWhite">Indicates if the white or black pieces move.</param>
-        /// <returns>Indicates if the given dice roll value can be moved from.</returns>
-        bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite);
+		/// <summary>
+		/// Adds the given <paramref name="eventValues"/> to the board history for player <paramref name="isWhite"/>.
+		/// </summary>
+		/// <param name="model">Provides the history to add on.</param>
+		/// <param name="isWhite">Indicates if white or black pieces move.</param>
+		/// <param name="eventValues">Event values to add.</param>
+		void AddEventToHistory(IBoardModel model, bool isWhite, object eventValues);
+
+		/// <summary>
+		/// Checks if the given checker can be moved from to a given position based
+		/// on the roll.
+		/// </summary>
+		/// <param name="model">The board model to operate on.</param>
+		/// <param name="from">Position to move from.</param>
+		/// <param name="roll">Value of the used dice roll.</param>
+		/// <param name="isWhite">Indicates if the white or black pieces move.</param>
+		/// <returns>Indicates if the given dice roll value can be moved from.</returns>
+		bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
 		/// <summary>
 		/// Checks if the given checker can be born off.
@@ -94,14 +102,5 @@ namespace GammonX.Engine.Services
 		/// <param name="rolls">1:n Dice roll values</param>
 		/// <returns>An array of move sequences.</returns>
 		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
-
-		/// <summary>
-		/// Applies the dice rules to the given legal moves and returns only those moves.
-		/// </summary>
-		/// <param name="legalMoves">Legal moves to evaluate.</param>
-		/// <param name="rolls">Rolled dices.</param>
-		/// <returns>A tuple array containing all legal moves from to.</returns>
-		ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls);
-
 	}
 }

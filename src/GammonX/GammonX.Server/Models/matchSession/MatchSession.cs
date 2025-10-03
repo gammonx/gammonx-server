@@ -14,8 +14,8 @@ namespace GammonX.Server.Models
 		private readonly IGameSessionFactory _gameSessionFactory;
 		private static readonly string[] _alwaysAvailableCommands =
 			[
-				ServerCommands.ResignGame,
-				ServerCommands.ResignMatch,
+				ServerCommands.ResignGameCommand,
+				ServerCommands.ResignMatchCommand,
 			];
 
 		// <inheritdoc />
@@ -37,7 +37,10 @@ namespace GammonX.Server.Models
 		public DateTime StartedAt { get; private set; }
 
 		// <inheritdoc />
-		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
+		public DateTime? EndedAt { get; private set; }
+
+		// <inheritdoc />
+		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;
 
 		// <inheritdoc />
 		public PlayerModel Player1 { get; private set; }
@@ -175,6 +178,41 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
+		public void UndoLastMove(Guid callingPlayerId)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			var activePlayerId = activeSession.ActivePlayer;
+
+			if (callingPlayerId != activePlayerId)
+			{
+				throw new InvalidOperationException("It is not your turn to undo the last move.");
+			}
+
+			var isWhite = IsWhite(callingPlayerId);
+			activeSession.UndoLastMove(callingPlayerId, isWhite);
+		}
+
+		// <inheritdoc />
+		public bool CanUndoLastMove(Guid callingPlayerId)
+		{
+			var activeSession = GetGameSession(GameRound);
+			if (activeSession == null)
+				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+
+			var activePlayerId = activeSession.ActivePlayer;
+
+			if (callingPlayerId == activePlayerId)
+			{
+				return activeSession.CanUndoLastMove(callingPlayerId);
+			}
+
+			return false;
+		}
+
+		// <inheritdoc />
 		public bool CanEndTurn(Guid callingPlayerId)
 		{
 			if (IsMatchOver())
@@ -212,7 +250,7 @@ namespace GammonX.Server.Models
 
 			if (callingPlayerId != activePlayerId)
 			{
-				throw new InvalidOperationException("It is not your turn to move the checkers.");
+				throw new InvalidOperationException("It is not your turn to end the turn.");
 			}
 
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
@@ -266,7 +304,12 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public bool IsMatchOver()
 		{
-			return _isMatchOver(this);
+			var matchOver = _isMatchOver(this);
+			if (matchOver)
+			{
+				EndedAt = DateTime.UtcNow;
+			}
+			return matchOver;
 		}
 
 		// <inheritdoc />
@@ -311,6 +354,12 @@ namespace GammonX.Server.Models
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
+		// <inheritdoc />
+		public IMatchHistory GetHistory()
+		{
+			return MatchHistoryImpl.Create(this);
 		}
 
 		// <inheritdoc />

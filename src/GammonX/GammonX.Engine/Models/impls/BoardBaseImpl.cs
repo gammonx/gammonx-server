@@ -1,4 +1,6 @@
 ﻿
+using GammonX.Engine.History;
+
 namespace GammonX.Engine.Models
 {
 	/// <summary>
@@ -11,6 +13,9 @@ namespace GammonX.Engine.Models
 
 		// <inheritdoc />
 		public abstract int[] Fields { get; protected set; }
+
+		// <inheritdoc />
+		public IBoardHistory History { get; } = new BoardHistoryImpl();
 
 		// <inheritdoc />
 		public abstract Range HomeRangeWhite { get; }

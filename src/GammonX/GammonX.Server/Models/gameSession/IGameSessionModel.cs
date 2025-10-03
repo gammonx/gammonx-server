@@ -53,7 +53,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Get an array of all dice rolls for the active turn.
 		/// </summary>
-		public DiceRolls DiceRolls { get; }
+		public DiceRollsModel DiceRolls { get; }
 
 		/// <summary>
 		/// Get an array of all legal moves for the active turn.
@@ -69,9 +69,14 @@ namespace GammonX.Server.Models
 		public IBoardModel BoardModel { get; }
 
 		/// <summary>
-		/// Game start time.
+		/// Gets game utc start time.
 		/// </summary>
 		public DateTime StartedAt { get; }
+
+		/// <summary>
+		/// Gets game utc end/stop time.
+		/// </summary>
+		public DateTime EndedAt { get; }
 
 		/// <summary>
 		/// Game duration in milliseconds.
@@ -119,6 +124,20 @@ namespace GammonX.Server.Models
 		void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
 
 		/// <summary>
+		/// Undoes the last move made by the given player with <paramref name="callingPlayerId"/>.
+		/// </summary>
+		/// <param name="callingPlayerId">Player to undo the last move.</param>
+		/// <param name="isWhite">Indicates if the <paramref name="callingPlayerId"/> playing the white checkers. False if black checkers.</param>
+		void UndoLastMove(Guid callingPlayerId, bool isWhite);
+
+		/// <summary>
+		/// Checks if the given <paramref name="callingPlayerId"/> can undo hist last move.
+		/// </summary>
+		/// <param name="callingPlayerId">Player to undo his last move.</param>
+		/// <returns>Returns <c>true</c> if player can undo hist last move. Otherwise, <c>false</c>.</returns>
+		bool CanUndoLastMove(Guid callingPlayerId);
+
+		/// <summary>
 		/// Checks if the given game session is over.
 		/// </summary>
 		/// <param name="isWhite">True for white checkers. False for black checkers</param>
@@ -140,5 +159,11 @@ namespace GammonX.Server.Models
 		/// <param name="gameRoundIndex">Index of the game session played in the match session.</param>
 		/// <returns>An instance of <see cref="GameRoundContract"/>.</returns>
 		public GameRoundContract ToContract(int gameRoundIndex);
+
+		/// <summary>
+		/// Gets the game history including all move and roll events.
+		/// </summary>
+		/// <returns>Returns an instance of <see cref="IGameHistory"/>.</returns>
+		IGameHistory GetHistory();
 	}
 }

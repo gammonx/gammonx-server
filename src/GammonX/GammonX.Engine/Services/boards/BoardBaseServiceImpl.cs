@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Models;
 
 namespace GammonX.Engine.Services
 {
@@ -31,38 +32,6 @@ namespace GammonX.Engine.Services
 			var allowed = FilterSequencesByDiceRules(sequences, rolls);
 			var unique = allowed.ToHashSet(_moveSequenceModelComparer);
 			return unique.ToArray();
-		}
-
-		// <inheritdoc />
-		public virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
-		{
-			// only relevant for two dice rolls
-			if (rolls.Length != 2)
-				return legalMoves;
-
-			int maxRoll = rolls.Max();
-			int combined = rolls.Sum();
-
-			// are there any combined moves (e.g. 0 > 3 for {1,2})
-			var combinedMoves = legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
-				.ToArray();
-
-			if (combinedMoves.Length > 0)
-				return combinedMoves;
-
-			// can the rolls be used individually?
-			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
-			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
-
-			// if both rolls can be used, return all legal moves
-			if (canUseRoll1 && canUseRoll2)
-				return legalMoves;
-
-			// otherwise return only moves with the maximum roll
-			return legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
-				.ToArray();
 		}
 
 		// <inheritdoc />
@@ -111,8 +80,16 @@ namespace GammonX.Engine.Services
 				{
 					// remove a negative checker from the old position
 					model.Fields.SetValue(model.Fields[from] += 1, from);
-					// add a negative checker to the new position
-					model.Fields.SetValue(model.Fields[to] -= 1, to);
+					// check if its an undo move back to the homebar
+					if (to == WellKnownBoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
+					{
+						homeBarModel.AddToHomeBar(isWhite, 1);
+					}
+					else
+					{
+						// add a negative checker to the new position
+						model.Fields.SetValue(model.Fields[to] -= 1, to);
+					}
 				}
 			}
 			else
@@ -127,13 +104,21 @@ namespace GammonX.Engine.Services
 				{
 					// remove a positive checker from the old position
 					model.Fields.SetValue(model.Fields[from] -= 1, from);
-					// add a positive checker to the new position
-					model.Fields.SetValue(model.Fields[to] += 1, to);
+					// check if its an undo move back to the homebar
+					if (to == WellKnownBoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
+					{
+						homeBarModel.AddToHomeBar(isWhite, 1);
+					}
+					else
+					{
+						// add a positive checker to the new position
+						model.Fields.SetValue(model.Fields[to] += 1, to);
+					}
 				}
 			}
 		}
 
-		// <inheritdoc />
+		
 		bool IBoardService.MoveChecker(IBoardModel model, int from, int roll, bool isWhite)
 		{
 			// we probably can remove this later on
@@ -150,6 +135,23 @@ namespace GammonX.Engine.Services
 			{
 				Console.WriteLine($"Error moving checker: {ex.Message}");
 				return false;
+			}
+		}
+
+		// <inheritdoc />
+		public void AddEventToHistory(IBoardModel model, bool isWhite, object eventValues)
+		{
+			var boardHistory = model.History;
+
+			if (eventValues is int[] rolls)
+			{
+				var rollEvent = HistoryEventFactory.CreateRollEvent(isWhite, rolls);
+				boardHistory.Add(rollEvent);
+			}
+			else if (eventValues is MoveModel move)
+			{
+				var moveEvent = HistoryEventFactory.CreateMoveEvent(isWhite, move);
+				boardHistory.Add(moveEvent);
 			}
 		}
 
@@ -194,6 +196,10 @@ namespace GammonX.Engine.Services
 		/// <param name="isWhite">Indicates if white or black checker.</param>
 		protected virtual void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
 		{
+			// ignore undo last moves here
+			if (to == WellKnownBoardPositions.HomeBarWhite || to == WellKnownBoardPositions.HomeBarBlack)
+				return;
+
 			// we know that the opponents checker can be hit, otherwise the move could not have been made
 			if (isWhite)
 			{
@@ -262,6 +268,43 @@ namespace GammonX.Engine.Services
 			if (!isWhite && to == WellKnownBoardPositions.BearOffBlack)
 				return true;
 			return false;
+		}
+
+		/// <summary>
+		/// Applies the dice rules to the given legal moves and returns only those moves.
+		/// </summary>
+		/// <param name="legalMoves">Legal moves to evaluate.</param>
+		/// <param name="rolls">Rolled dices.</param>
+		/// <returns>A tuple array containing all legal moves from to.</returns>
+		protected virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
+		{
+			// only relevant for two dice rolls
+			if (rolls.Length != 2)
+				return legalMoves;
+
+			int maxRoll = rolls.Max();
+			int combined = rolls.Sum();
+
+			// are there any combined moves (e.g. 0 > 3 for {1,2})
+			var combinedMoves = legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
+				.ToArray();
+
+			if (combinedMoves.Length > 0)
+				return combinedMoves;
+
+			// can the rolls be used individually?
+			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
+			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
+
+			// if both rolls can be used, return all legal moves
+			if (canUseRoll1 && canUseRoll2)
+				return legalMoves;
+
+			// otherwise return only moves with the maximum roll
+			return legalMoves
+				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
+				.ToArray();
 		}
 
 		private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)

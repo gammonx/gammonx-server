@@ -326,23 +326,23 @@ namespace GammonX.Server.Tests
 			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			var player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.Contains(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			Assert.Contains(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
 			var player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
 
 			session.RollDices(session.Player1.Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
 			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
 
 			session.EndTurn(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDouble, player1GameState.AllowedCommands);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
 			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.Contains(ServerCommands.OfferDouble, player2GameState.AllowedCommands);
+			Assert.Contains(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
 		}
 
 		[Fact]

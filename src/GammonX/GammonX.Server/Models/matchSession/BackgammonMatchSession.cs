@@ -112,12 +112,12 @@ namespace GammonX.Server.Models
 				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
 				if (doublingCubeModel.DoublingCubeValue == 1)
 				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDouble);
+					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
 				}
 				// Afterwards only the cube owner can offer one
 				else if (doublingCubeModel.CanOfferDoublingCube())
 				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDouble);
+					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
 				}
 			}
 			else if (Player2.Id.Equals(playerId)
@@ -128,12 +128,12 @@ namespace GammonX.Server.Models
 				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
 				if (doublingCubeModel.DoublingCubeValue == 1)
 				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDouble);
+					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
 				}
 				// Afterwards only the cube owner can offer one
 				else if (doublingCubeModel.CanOfferDoublingCube())
 				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDouble);
+					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
 				}
 			}
 
