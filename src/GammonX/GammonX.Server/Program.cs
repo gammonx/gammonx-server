@@ -6,6 +6,8 @@ using GammonX.Server.Services;
 
 using Microsoft.Extensions.Options;
 
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<BotServiceOptions>(
@@ -36,6 +38,13 @@ builder.Services.AddCors(options =>
 			.AllowAnyMethod()
 			.AllowAnyHeader();
 	});
+});
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+	configuration
+		.Enrich.FromLogContext()
+		.WriteTo.Console();
 });
 
 var app = builder.Build();

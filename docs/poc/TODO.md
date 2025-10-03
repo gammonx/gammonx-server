@@ -4,17 +4,18 @@
 - fevga/plakoto bot support
 - game history
 - undo/redo moves
+- error/debug server logging
 
 ## Active
 - palamedes schreiben
-
-## TODO 
-- error/debug server logging
-- dice roller backgammon galaxy // urandom crypto
-- match equity/stats afer match
 - database
 - auth/user account
 - ranked mode (incl. elo rating)
+
+## TODO 
+- bot service issues
+- dice roller backgammon galaxy // urandom crypto
+- match equity/stats afer match
 - win percentage to user
 - tournament mode
 - export matches to sgf/.mat format

@@ -6,6 +6,7 @@ using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.SignalR;
+using Serilog;
 
 namespace GammonX.Server
 {
@@ -66,10 +67,10 @@ namespace GammonX.Server
 			try
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
-					await SendErrorEventAsync("LOBBY_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("LOBBY_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 
 				if (!Guid.TryParse(playerId, out var playerIdGuid))
-					await SendErrorEventAsync("LOBBY_ERROR", $"The given playerId '{playerIdGuid}'  is not a valid GUID.");
+					await SendErrorEventAsync("LOBBY_ERROR", $"The given playerId '{playerIdGuid}'  is not a valid GUID.", Context.ConnectionId);
 
 				if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
 				{
@@ -115,12 +116,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("LOBBY_ERROR", "No match lobby was found with the given matchId.");
+					await SendErrorEventAsync("LOBBY_ERROR", "No match lobby was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("LOBBY_ERROR", $"An error occurred while trying to join the match lobby: '{e.Message}'");
+				await SendErrorEventAsync("LOBBY_ERROR", $"An error occurred while trying to join the match lobby: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -140,7 +141,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -186,12 +187,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("MATCH_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("MATCH_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("MATCH_ERROR", $"An error occurred while trying to start the game: '{e.Message}'");
+				await SendErrorEventAsync("MATCH_ERROR", $"An error occurred while trying to start the game: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -211,7 +212,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("ROLL_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("ROLL_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -222,12 +223,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("ROLL_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("ROLL_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to roll the dices: '{e.Message}'");
+				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to roll the dices: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -253,7 +254,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -265,12 +266,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("MOVE_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("MOVE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("MOVE_ERROR", $"An error occurred while trying to move checkers: '{e.Message}'");
+				await SendErrorEventAsync("MOVE_ERROR", $"An error occurred while trying to move checkers: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -286,7 +287,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("UNDO_MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("UNDO_MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -296,7 +297,7 @@ namespace GammonX.Server
 
 					if (!matchSession.CanUndoLastMove(callingPlayerId))
 					{
-						await SendErrorEventAsync("UNDO_MOVE_ERROR", "You cannot undo a move at this moment.");
+						await SendErrorEventAsync("UNDO_MOVE_ERROR", "You cannot undo a move at this moment.", Context.ConnectionId);
 						return;
 					}
 
@@ -315,12 +316,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("UNDO_MOVE_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("UNDO_MOVE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("UNDO_MOVE_ERROR", $"An error occurred while trying to undo the last move: '{e.Message}'");
+				await SendErrorEventAsync("UNDO_MOVE_ERROR", $"An error occurred while trying to undo the last move: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -339,7 +340,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("END_TURN_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("END_TURN_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -349,7 +350,7 @@ namespace GammonX.Server
 
 					if (!matchSession.CanEndTurn(callingPlayerId))
 					{
-						await SendErrorEventAsync("END_TURN_ERROR", "You cannot end your turn at this moment.");
+						await SendErrorEventAsync("END_TURN_ERROR", "You cannot end your turn at this moment.", Context.ConnectionId);
 						return;
 					}
 
@@ -367,12 +368,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("END_TURN_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("END_TURN_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'");
+				await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -388,7 +389,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -401,12 +402,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("RESIGN_MATCH_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("RESIGN_MATCH_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"An error occurred while resigning the game: '{e.Message}'");
+				await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"An error occurred while resigning the game: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -422,7 +423,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("RESIGN_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("RESIGN_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -443,12 +444,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("RESIGN_GAME_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("RESIGN_GAME_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("RESIGN_GAME_ERROR", $"An error occurred while resigning the game: '{e.Message}'");
+				await SendErrorEventAsync("RESIGN_GAME_ERROR", $"An error occurred while resigning the game: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -466,7 +467,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -493,12 +494,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"An error occurred while a double was offered: '{e.Message}'");
+				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"An error occurred while a double was offered: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -514,7 +515,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -525,12 +526,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"An error occurred while accepting a double offer: '{e.Message}'");
+				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"An error occurred while accepting a double offer: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -546,7 +547,7 @@ namespace GammonX.Server
 			{
 				if (!Guid.TryParse(matchId, out var matchGuid))
 				{
-					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.");
+					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
 
 				var matchSession = _repository.Get(matchGuid);
@@ -557,12 +558,12 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", "No match seesion was found with the given matchId.");
+					await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
 				}
 			}
 			catch (Exception e)
 			{
-				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"An error occurred while declining a double offer: '{e.Message}'");
+				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"An error occurred while declining a double offer: '{e.Message}'", Context.ConnectionId, e);
 			}
 		}
 
@@ -585,7 +586,7 @@ namespace GammonX.Server
 			}
 			else
 			{
-				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+				await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.", Context.ConnectionId);
 			}
 		}
 
@@ -611,7 +612,7 @@ namespace GammonX.Server
 			}
 			else
 			{
-				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+				await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.", Context.ConnectionId);
 			}
 		}
 
@@ -635,7 +636,7 @@ namespace GammonX.Server
 			}
 			else
 			{
-				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+				await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.", Context.ConnectionId);
 			}
 		}
 
@@ -648,7 +649,7 @@ namespace GammonX.Server
 			}
 			else
 			{
-				await SendErrorEventAsync("BOT_ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.");
+				await SendErrorEventAsync("BOT_ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.", Context.ConnectionId);
 			}
 
 			return false;
@@ -736,8 +737,9 @@ namespace GammonX.Server
 					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
 				}
 			}
-			catch (Exception e)
+			catch (Exception ex)
 			{
+				Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_TURN_ERROR", "An Error occurred while executing the bot turn");
 				throw;
 			}
 		}
@@ -815,7 +817,7 @@ namespace GammonX.Server
 			}
 		}
 
-		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null)
+		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
@@ -827,13 +829,16 @@ namespace GammonX.Server
 			{
 				await SendToCaller(ServerEventTypes.ErrorEvent, contract);
 			}
+
+			Log.Logger.Error(ex, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
 		}
 
-		private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName)
+		private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? ex = null)
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
 			await SendToGroup(groupName, ServerEventTypes.ErrorEvent, contract);
+			Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
 		}
 
 		private Guid GetCallingPlayerId(IMatchSessionModel matchSession)
