@@ -10,11 +10,13 @@
 - palamedes schreiben
 - database
 - auth/user account
+- deployment :: env variables
 - ranked mode (incl. elo rating)
 
 ## TODO 
 - bot service issues
 - dice roller backgammon galaxy // urandom crypto
+- time out // turn timer
 - match equity/stats afer match
 - win percentage to user
 - tournament mode

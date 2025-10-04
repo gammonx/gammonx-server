@@ -44,6 +44,8 @@
 - matchId: string
 - from: int
 - to: int
+#### `UndoMove`
+- matchId: string
 #### `EndTurn`
 - matchId: string
 #### `ResignMatch`

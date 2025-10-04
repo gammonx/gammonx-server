@@ -2,31 +2,54 @@ using GammonX.Engine.Services;
 
 using GammonX.Server;
 using GammonX.Server.Bot;
+using GammonX.Server.EntityFramework;
 using GammonX.Server.Services;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+// -------------------------------------------------------------------------------
+// DATABASE SETUP
+// -------------------------------------------------------------------------------
+builder.Services.Configure<DatabaseOptions>(
+	builder.Configuration.GetSection("Database"));
 
-builder.Services.Configure<BotServiceOptions>(
-	builder.Configuration.GetSection("BotService"));
-
-builder.Services.AddControllers();
-builder.Services.AddSignalR();
-
+builder.Services.AddDbContext<GammonXDbContext>((sp, dbContextBuilder)=>
+{
+	var options = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+	dbContextBuilder.UseNpgsql(options.ConnectionString);
+});
+// -------------------------------------------------------------------------------
+// DEPENDENCY INJECTION
+// -------------------------------------------------------------------------------
 builder.Services.AddSingleton<IMatchmakingService, SimpleMatchmakingService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
+// -------------------------------------------------------------------------------
+// BOT SERVICE SETUP
+// -------------------------------------------------------------------------------
+builder.Services.Configure<BotServiceOptions>(
+	builder.Configuration.GetSection("BotService"));
 
 builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
 {
 	var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
 	client.BaseAddress = new Uri(options.BaseUrl);
 	client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+// -------------------------------------------------------------------------------
+// LOGGING SETUP
+// -------------------------------------------------------------------------------
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+	configuration
+		.Enrich.FromLogContext()
+		.WriteTo.Console();
 });
 
 builder.Services.AddCors(options =>
@@ -40,12 +63,8 @@ builder.Services.AddCors(options =>
 	});
 });
 
-builder.Host.UseSerilog((context, services, configuration) =>
-{
-	configuration
-		.Enrich.FromLogContext()
-		.WriteTo.Console();
-});
+builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
