@@ -1,6 +1,6 @@
 ﻿using GammonX.Server.Models;
 
-namespace GammonX.Server.EntityFramework.Models
+namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Represents a single match consisting of 1:n game sessions played.

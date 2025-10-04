@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 using GammonX.Server;
 using GammonX.Server.Bot;
 using GammonX.Server.EntityFramework;
+using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,11 @@ builder.Services.AddDbContext<GammonXDbContext>((sp, dbContextBuilder)=>
 	var options = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
 	dbContextBuilder.UseNpgsql(options.ConnectionString);
 });
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPlayerRepository, PlayerRepositoryImpl>();
+builder.Services.AddScoped<IPlayerService, PlayerServiceImpl>();
+builder.Services.AddScoped<IMatchRepository, MatchRepositoryImpl>();
+builder.Services.AddScoped<IMatchService, MatchServiceImpl>();
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------

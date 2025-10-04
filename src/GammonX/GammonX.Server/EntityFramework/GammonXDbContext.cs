@@ -1,14 +1,26 @@
-﻿using GammonX.Server.EntityFramework.Models;
+﻿using GammonX.Server.EntityFramework.Entities;
 
 using Microsoft.EntityFrameworkCore;
 
 namespace GammonX.Server.EntityFramework
 {
+	// <inheritdoc />
 	public class GammonXDbContext : DbContext
 	{
+		/// <summary>
+		/// Gets the db set of the player entity.
+		/// </summary>
 		public DbSet<Player> Players => Set<Player>();
 
+		/// <summary>
+		/// Gets the db set of the match entity.
+		/// </summary>
 		public DbSet<Match> Matches => Set<Match>();
+
+		/// <summary>
+		/// Gets the db set of the game entity.
+		/// </summary>
+		public DbSet<Game> Games => Set<Game>();
 
 		public GammonXDbContext(DbContextOptions<GammonXDbContext> options) : base(options)
 		{

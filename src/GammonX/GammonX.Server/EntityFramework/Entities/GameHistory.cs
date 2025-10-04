@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace GammonX.Server.EntityFramework.Models
+namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Provides the information to replay or analyze a game session.

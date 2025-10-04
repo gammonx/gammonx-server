@@ -1,4 +1,4 @@
-﻿namespace GammonX.Server.EntityFramework.Models
+﻿namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Represents a player authenticated by an external service.
@@ -8,7 +8,15 @@
 		/// <summary>
 		/// Gets or sets the id of the player.
 		/// </summary>
+		/// <remarks>
+		/// The id is constructed by an external auth provider (e.g. aws cognito).
+		/// </remarks>
 		public Guid Id { get; set; }
+
+		/// <summary>
+		/// Gets or sets the user name of the given player.
+		/// </summary>
+		public string UserName { get; set; } = string.Empty;
 
 		/// <summary>
 		/// Gets all matches that the given player won.

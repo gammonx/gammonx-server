@@ -1,6 +1,6 @@
 ﻿using GammonX.Engine.Models;
 
-namespace GammonX.Server.EntityFramework.Models
+namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Represents a single game consisting played within a match.

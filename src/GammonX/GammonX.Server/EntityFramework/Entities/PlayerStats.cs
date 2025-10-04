@@ -1,6 +1,6 @@
 ﻿using GammonX.Server.Models;
 
-namespace GammonX.Server.EntityFramework.Models
+namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Provies all information about player stats for the given match variant, type and modus.

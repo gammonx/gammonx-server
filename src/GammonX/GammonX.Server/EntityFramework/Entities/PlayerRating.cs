@@ -1,6 +1,6 @@
 ﻿using GammonX.Server.Models;
 
-namespace GammonX.Server.EntityFramework.Models
+namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Provides all information for a player rating for the given match variant and type.
