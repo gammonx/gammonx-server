@@ -5,16 +5,16 @@
 - game history
 - undo/redo moves
 - error/debug server logging
+- CRUD player (PlayersController)
+- database (postgress in container)
 
 ## Active
 - palamedes schreiben
-- database
 - auth/user account
 - deployment :: env variables
 - ranked mode (incl. elo rating)
 
 ## TODO 
-- bot service issues
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
 - match equity/stats afer match

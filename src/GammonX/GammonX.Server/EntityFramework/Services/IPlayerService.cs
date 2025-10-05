@@ -1,4 +1,5 @@
-﻿using GammonX.Server.EntityFramework.Entities;
+﻿using GammonX.Server.Contracts;
+using GammonX.Server.EntityFramework.Entities;
 
 namespace GammonX.Server.EntityFramework.Services
 {
@@ -13,8 +14,10 @@ namespace GammonX.Server.EntityFramework.Services
 		/// <param name="id">If of the player to fetch.</param>
 		/// <param name="ct">Cancellation token.</param>
 		/// <returns>An instance of <see cref="Player"/> or <c>null</c> if not found.</returns>
-		Task<Player?> GetPlayerAsync(Guid id, CancellationToken ct = default);
+		Task<PlayerContract?> GetPlayerAsync(Guid id, CancellationToken ct = default);
 
-		Task<Guid> CreatePlayerAsync(Guid id, CancellationToken ct = default);
+		Task<Guid> CreatePlayerAsync(Guid id, string userName, CancellationToken ct = default);
+
+		Task<bool> RemovePlayerAsync(Guid id, CancellationToken ct = default);
 	}
 }

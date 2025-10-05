@@ -1,10 +1,8 @@
-﻿using GammonX.Server.Contracts;
-
-namespace GammonX.Server.Models
+﻿namespace GammonX.Server.Models
 {
-	public class PlayerModel
+	public class MatchPlayerModel
 	{
-		public PlayerModel(Guid id, string connectionId)
+		public MatchPlayerModel(Guid id, string connectionId)
 		{
 			Id = id;
 			ConnectionId = connectionId;
@@ -43,15 +41,6 @@ namespace GammonX.Server.Models
 		public void ActiveGameOver()
 		{
 			NextGameAccepted = false;
-		}
-
-		public PlayerContract ToContract()
-		{
-			return new PlayerContract()
-			{
-				Id = Id,
-				Score = Points
-			};
 		}
 	}
 }

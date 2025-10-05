@@ -26,10 +26,10 @@
 			ConnectionId = connectionId;
 		}
 
-		public PlayerModel ToPlayer()
+		public MatchPlayerModel ToPlayer()
 		{
 			ArgumentNullException.ThrowIfNull(ConnectionId, nameof(ConnectionId));
-			return new PlayerModel(PlayerId, ConnectionId);
+			return new MatchPlayerModel(PlayerId, ConnectionId);
 		}
 	}
 }

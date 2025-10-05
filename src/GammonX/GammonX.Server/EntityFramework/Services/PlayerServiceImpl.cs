@@ -1,4 +1,6 @@
-﻿using GammonX.Server.EntityFramework.Entities;
+﻿using GammonX.Server.Contracts;
+using GammonX.Server.Models;
+using GammonX.Server.EntityFramework.Entities;
 
 namespace GammonX.Server.EntityFramework.Services
 {
@@ -13,23 +15,108 @@ namespace GammonX.Server.EntityFramework.Services
 		}
 
 		// <inheritdoc />
-		public async Task<Player?> GetPlayerAsync(Guid id, CancellationToken ct = default)
+		public async Task<PlayerContract?> GetPlayerAsync(Guid id, CancellationToken ct = default)
 		{
-			return await _unitOfWork.Players.GetByIdAsync(id, ct);
+			var player = await _unitOfWork.Players.GetByIdAsync(id, ct);
+			return player?.ToContract();
 		}
 
 		// <inheritdoc />
-		public async Task<Guid> CreatePlayerAsync(Guid id, CancellationToken ct = default)
+		public async Task<Guid> CreatePlayerAsync(Guid id, string userName, CancellationToken ct = default)
 		{
 			var existing = await _unitOfWork.Players.GetByIdAsync(id, ct);
 			if (existing is not null)
 				throw new InvalidOperationException("A player with the given id already exists.");
 
+			var player = new Player
+			{
+				Id = id,
+				UserName = userName,
+				GamesLost = Array.Empty<Game>(),
+				GamesWon = Array.Empty<Game>(),
+				LostMatches = Array.Empty<Match>(),
+				WonMatches = Array.Empty<Match>()
+			};
+			player.Ratings = CreateInitalPlayerRatings(player).ToArray();
+			player.Stats = CreateInitialPlayerStats(player).ToArray();
 
-			var player = new Player { Id = id };
 			await _unitOfWork.Players.AddAsync(player, ct);
 			await _unitOfWork.SaveChangesAsync(ct);
 			return player.Id;
+		}
+
+		// <inheritdoc />
+		public async Task<bool> RemovePlayerAsync(Guid id, CancellationToken ct = default)
+		{
+			var player = await _unitOfWork.Players.GetByIdAsync(id, ct);
+			if (player != null)
+			{
+				_unitOfWork.Players.Remove(player);
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		private static List<PlayerRating> CreateInitalPlayerRatings(Player player)
+		{
+			var playerRatings = new List<PlayerRating>();
+			foreach (var variant in Enum.GetValues(typeof(WellKnownMatchVariant)))
+			{
+				var playerRating = new PlayerRating
+				{
+					Id = Guid.NewGuid(),
+					Rating = 1200,
+					LowestRating = 1200,
+					HighestRating = 1200,
+					MatchesPlayed = 0,
+					Variant = (WellKnownMatchVariant)variant,
+					// we only support sevent point games for rankeds atm
+					Type = WellKnownMatchType.SevenPointGame,
+					Player = player,
+					PlayerId = player.Id
+				};
+				playerRatings.Add(playerRating);
+			}
+			return playerRatings;
+		}
+
+		private static List<PlayerStats> CreateInitialPlayerStats(Player player)
+		{
+			var playerStats = new List<PlayerStats>();
+			foreach (var variant in Enum.GetValues(typeof(WellKnownMatchVariant)))
+			{
+				foreach (var modus in Enum.GetValues(typeof(WellKnownMatchModus)))
+				{
+					foreach (var type in Enum.GetValues(typeof (WellKnownMatchType)))
+					{
+						var playerStat = new PlayerStats
+						{
+							Id = Guid.NewGuid(),
+							Player = player,
+							PlayerId = player.Id,
+							Variant = (WellKnownMatchVariant)variant,
+							Modus = (WellKnownMatchModus)modus,
+							Type = (WellKnownMatchType)type,
+							AverageMatchLengthInMs = 0,
+							TotalPlayTimeInMs = 0,
+							LastMatch = DateTime.MinValue,
+							MatchesLast30Days = 0,
+							MatchesLast7Days = 0,
+							LongestWinStreak = 0,
+							WinStreak = 0,
+							MatchesLost = 0,
+							MatchesWon = 0,
+							MatchesPlayed = 0,
+							WinRate = 0.0
+						};
+						playerStats.Add(playerStat);
+					}
+				}
+			}
+			return playerStats;
 		}
 	}
 }

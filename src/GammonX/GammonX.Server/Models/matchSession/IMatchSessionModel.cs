@@ -37,12 +37,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the player 1.
 		/// </summary>
-		PlayerModel Player1 { get; }
+		MatchPlayerModel Player1 { get; }
 		
 		/// <summary>
 		/// Gets the player 2.
 		/// </summary>
-		PlayerModel Player2 { get; }
+		MatchPlayerModel Player2 { get; }
 
 		/// <summary>
 		/// Gets the match start time.

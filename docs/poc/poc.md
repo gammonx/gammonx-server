@@ -1,5 +1,39 @@
 # POC GammonX Game Server
 
+## Players Controller
+#### POST /api/players/create
+- Request
+```json
+{
+    "Id": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
+    "Username": "bubaz"
+}
+```
+#### GET /api/players/{id}
+- Response
+```json
+{
+   "type":"OK",
+   "payload":{
+      "player": {
+         "id": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
+         "userName": "bubaz"
+      }
+   }
+}
+```
+
+#### POST /api/players/{id}/delete
+- Response
+```json
+{
+   "type":"OK",
+   "payload":{
+      "deleted": true
+   }
+}
+```
+
 ## Join Matchmaking
 #### POST /api/matches/join
 - Request

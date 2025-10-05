@@ -420,7 +420,6 @@ namespace GammonX.Server.Tests
 					await _hub.AcceptDoubleAsync(matchIdStr);
 				}
 
-				// TODO: issue if bot wins the match with some dice rolls left
 				if (gameSession.ActivePlayer == playerId)
 				{
 					await _hub.RollAsync(matchIdStr);
