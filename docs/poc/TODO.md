@@ -22,7 +22,7 @@
 - tournament mode
 - export matches to sgf/.mat format
 - bot dificulty levels
-- ?
+- subscription service (clientside?)
 
 ## Open Points
 - enhance matchmaking?
@@ -41,3 +41,4 @@
 - analytics hook
 - blunder database > quizes (subscription)
 - hide pipcount (option and in ranked mode)
+- extract data access layer from game server
