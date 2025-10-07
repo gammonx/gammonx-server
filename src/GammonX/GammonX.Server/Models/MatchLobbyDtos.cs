@@ -10,12 +10,21 @@
 	public record JoinRequest(Guid PlayerId, WellKnownMatchVariant MatchVariant, WellKnownMatchModus MatchModus, WellKnownMatchType MatchType);
 
 	/// <summary>
+	/// REST Status match lobby request.
+	/// </summary>
+	/// <param name="PlayerId">Player who requests the match lobby status.</param>
+	/// <param name="MatchModus">Match modus which determines the queue type.</param>
+	public record StatusRequest(Guid PlayerId, WellKnownMatchModus MatchModus);
+
+	/// <summary>
 	/// Internal queue entry for a player in the matchmaking queue.
 	/// </summary>
-	/// <param name="Player">Player of the queue entry.</param>
+	/// <param name="Id">Id of the queue entry.</param>
+	/// <param name="PlayerId">Player of the queue entry.</param>
 	/// <param name="QueueKey">Constructed key of the queue entry.</param>
 	/// <param name="EnqueuedAt">Time of enqueuing.</param>
-	public record QueueEntry(LobbyEntry Player, QueueKey QueueKey, DateTime EnqueuedAt);
+	/// <param name="CurrentRating">Ranked rating for the given variant.</param>
+	public record QueueEntry(Guid Id, Guid PlayerId, QueueKey QueueKey, DateTime EnqueuedAt, double CurrentRating);
 
 	/// <summary>
 	/// Unique ID of a queue entry.

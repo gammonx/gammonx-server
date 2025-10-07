@@ -1,6 +1,4 @@
-﻿using GammonX.Server.Contracts;
-
-namespace GammonX.Server.EntityFramework.Entities
+﻿namespace GammonX.Server.EntityFramework.Entities
 {
 	/// <summary>
 	/// Represents a player authenticated by an external service.

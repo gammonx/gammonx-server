@@ -8,12 +8,21 @@ namespace GammonX.Server.Services
 	public interface IMatchmakingService
 	{
 		/// <summary>
+		/// Tries to find a queue entry by its id. Returns null if not found.
+		/// </summary>
+		/// <param name="queueId">Queue id to find.</param>
+		/// <param name="entry">Result</param>
+		/// <returns>Boolean indicating if a queue entry was found.</returns>
+		bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry);
+
+		/// <summary>
 		/// Tries to find a match lobby by its ID. Returns null if not found.
 		/// </summary>
-		/// <param name="matchId">Match id to search for.</param>
+		/// <param name="matchOrQueueId">Match id/Queue id to search for.</param>
 		/// <param name="matchLobby">Result.</param>
 		/// <returns>Boolean indicating if a match lobby was found.</returns>
-		bool TryFindMatchLobby(Guid matchId, out MatchLobby? matchLobby);
+		bool TryFindMatchLobby(Guid matchOrQueueId, out MatchLobby? matchLobby);
+
 
 		/// <summary>
 		/// Removes a match lobby with the given <paramref name="matchId"/>.
@@ -23,11 +32,17 @@ namespace GammonX.Server.Services
 		bool TryRemoveMatchLobby(Guid matchId);
 
 		/// <summary>
-		/// Join the given <paramref name="newPlayer"/> to the matchmaking queue.
+		/// Joins the given <paramref name="playerId"/> to the matchmaking queue.
 		/// </summary>
-		/// <param name="newPlayer">Player to join the queue.</param>
+		/// <param name="playerId">Player to join the queue.</param>
 		/// <param name="queueKey">Key of the joined queue.</param>
 		/// <returns>A guid of the created match lobby.</returns>
-		Guid JoinQueue(LobbyEntry newPlayer, QueueKey queueKey);
+		Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
+
+		/// <summary>
+		/// Checks if some of the players in the queue can be matched together into a match lobby.
+		/// </summary>
+		/// <returns>A task to be awaited.</returns>
+		Task MatchQueuedPlayersAsync();
 	}
 }

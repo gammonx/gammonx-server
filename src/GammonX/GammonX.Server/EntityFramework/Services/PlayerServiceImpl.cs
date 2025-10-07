@@ -1,5 +1,4 @@
-﻿using GammonX.Server.Contracts;
-using GammonX.Server.Models;
+﻿using GammonX.Server.Models;
 using GammonX.Server.EntityFramework.Entities;
 
 namespace GammonX.Server.EntityFramework.Services
@@ -15,14 +14,19 @@ namespace GammonX.Server.EntityFramework.Services
 		}
 
 		// <inheritdoc />
-		public async Task<PlayerContract?> GetPlayerAsync(Guid id, CancellationToken ct = default)
+		public async Task<Player?> GetAsync(Guid id, CancellationToken ct = default)
 		{
-			var player = await _unitOfWork.Players.GetByIdAsync(id, ct);
-			return player?.ToContract();
+			return await _unitOfWork.Players.GetByIdAsync(id, ct);
 		}
 
 		// <inheritdoc />
-		public async Task<Guid> CreatePlayerAsync(Guid id, string userName, CancellationToken ct = default)
+		public async Task<Player?> GetWithRatingAsync(Guid id, CancellationToken ct = default)
+		{
+			return await _unitOfWork.Players.GetWithRatingAsync(id, ct);
+		}
+
+		// <inheritdoc />
+		public async Task<Guid> CreateAsync(Guid id, string userName, CancellationToken ct = default)
 		{
 			var existing = await _unitOfWork.Players.GetByIdAsync(id, ct);
 			if (existing is not null)

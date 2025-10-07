@@ -21,12 +21,12 @@ namespace GammonX.Server
 		private readonly IBotService _botService;
 
 		public MatchLobbyHub(
-			IMatchmakingService service,
+			IMatchmakingService matchmakingService,
 			MatchSessionRepository repository,
 			IDiceServiceFactory diceServiceFactory,
 			IBotService botService)
 		{
-			_matchmakingService = service;
+			_matchmakingService = matchmakingService;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
 			_botService = botService;
@@ -74,6 +74,11 @@ namespace GammonX.Server
 
 				if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
 				{
+					if (matchLobby.Status != MatchLobbyStatus.OpponentFound)
+					{
+						throw new InvalidOperationException($"The match with given id '{matchId}' cannot be started. No opponent found yet.");
+					}
+
 					var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
 					var groupName = matchLobby.GroupName;
 					if (matchLobby.Player1.PlayerId == playerIdGuid)

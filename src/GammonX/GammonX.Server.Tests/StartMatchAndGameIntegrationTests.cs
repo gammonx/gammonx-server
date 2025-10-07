@@ -2,13 +2,18 @@ using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.EntityFramework.Entities;
+using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Stubs;
+using GammonX.Server.Tests.Utils;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
 
 using Newtonsoft.Json;
 
@@ -19,6 +24,8 @@ namespace GammonX.Server.Tests
 	public class StartMatchAndGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 	{
 		private readonly WebApplicationFactory<Program> _factory;
+		private readonly Guid _player1Id = Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45");
+		private readonly Guid _player2Id = Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6");
 
 		private static volatile bool _player1EndedHisTurn;
 
@@ -40,22 +47,34 @@ namespace GammonX.Server.Tests
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
+					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IPlayerService));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+					Mock<IPlayerService> service = new();
+					service.Setup(x => x.GetWithRatingAsync(_player1Id, default)).Returns(() => Task.FromResult(new Player { Id = _player1Id }));
+					service.Setup(x => x.GetWithRatingAsync(_player2Id, default)).Returns(() => Task.FromResult(new Player { Id = _player2Id }));
+					services.AddSingleton<IPlayerService>(service.Object);
 				});
 			});
 		}
 
-		[Fact]
-		public async Task StartMatchAndGameIntegrationTest()
+		[Theory]
+		[InlineData(WellKnownMatchModus.Normal)]
+		[InlineData(WellKnownMatchModus.Ranked)]
+		public async Task StartMatchAndGameIntegrationTest(WellKnownMatchModus modus)
 		{
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
+			var player1 = new JoinRequest(_player1Id, WellKnownMatchVariant.Tavli, modus, WellKnownMatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
-			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
+			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
+			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload1.Status);
 			var player1Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
 				{
@@ -63,12 +82,13 @@ namespace GammonX.Server.Tests
 				})
 				.Build();
 
-			var player2 = new JoinRequest(Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
+			var player2 = new JoinRequest(_player2Id, WellKnownMatchVariant.Tavli, modus, WellKnownMatchType.CashGame);
 			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
-			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson2);
+			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
+			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload2.Status);
 			var player2Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
 				{
@@ -76,7 +96,28 @@ namespace GammonX.Server.Tests
 				})
 				.Build();
 
-			Assert.Equal(joinPayload1.MatchId, joinPayload2.MatchId);
+			Assert.NotNull(joinPayload1.QueueId);
+			Assert.NotNull(joinPayload2.QueueId);
+			RequestQueueEntryPayload? result1 = null;
+			RequestQueueEntryPayload? result2 = null;
+			do
+			{
+				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
+			}
+			while (result1?.Status == MatchLobbyStatus.WaitingForOpponent);
+
+			do
+			{
+				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
+			}
+			while (result2?.Status == MatchLobbyStatus.WaitingForOpponent);
+
+			Assert.NotNull(result1);
+			Assert.NotNull(result2);
+			Assert.Equal(result1.MatchId, result2.MatchId);
+			var matchId = result1.MatchId;
+			joinPayload1 = result1;
+			joinPayload2 = result2;
 
 			// ##################################################
 			// ERROR
@@ -468,8 +509,8 @@ namespace GammonX.Server.Tests
 			await player2Connection.StartAsync();
 
 			// join the match
-			await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, joinPayload1.MatchId.ToString(), player1.PlayerId.ToString());
-			await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, joinPayload2?.MatchId.ToString(), player2.PlayerId.ToString());
+			await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString());
+			await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player2.PlayerId.ToString());
 
 			while(!player1Waiting || !player1MatchFound || !player1MatchStarted || !player2MatchFound || !player2MatchStarted)
 			{
@@ -483,8 +524,8 @@ namespace GammonX.Server.Tests
 			Assert.True(player2MatchStarted);
 
 			// start the game
-			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, joinPayload1.MatchId.ToString());
-			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, joinPayload2?.MatchId.ToString());
+			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
+			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
 
 			while(!player1GameWaiting || !player1GameStarted || !player2GameStarted)
 			{
@@ -497,7 +538,7 @@ namespace GammonX.Server.Tests
 			Assert.NotEqual(Guid.Empty, gameId);
 
 			// player 1 rolls the dice
-			await player1Connection.InvokeAsync(ServerCommands.RollCommand, joinPayload1.MatchId.ToString());
+			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId);
 
 			while (!player1RolledTheDice)
 			{
@@ -510,7 +551,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(player1FirstRollMove);
 
 			// player 1 moves first checker
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, joinPayload1.MatchId.ToString(), player1FirstRollMove.From, player1FirstRollMove.To);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, player1FirstRollMove.From, player1FirstRollMove.To);
 
 			while (!player1FirstMove)
 			{
@@ -521,7 +562,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(player1SecondRollMove);
 
 			// player 1 moves second checker
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, joinPayload1.MatchId.ToString(), player1SecondRollMove.From, player1SecondRollMove.To);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, player1SecondRollMove.From, player1SecondRollMove.To);
 
 			while (!player1SecondMove)
 			{
@@ -531,7 +572,7 @@ namespace GammonX.Server.Tests
 			Assert.True(player1SecondMove);
 
 			// player 1 ends his turn
-			await player1Connection.InvokeAsync(ServerCommands.EndTurnCommand, joinPayload1.MatchId.ToString());
+			await player1Connection.InvokeAsync(ServerCommands.EndTurnCommand, matchId);
 			// we set it here explicitly because the timing does not quite match up
 			_player1EndedHisTurn = true;
 
@@ -544,7 +585,7 @@ namespace GammonX.Server.Tests
 			Assert.True(player2StartedTurn);
 
 			// player 2 rolls the dice
-			await player2Connection.InvokeAsync(ServerCommands.RollCommand, joinPayload1.MatchId.ToString());
+			await player2Connection.InvokeAsync(ServerCommands.RollCommand, matchId);
 
 			while (!player2RolledTheDice)
 			{

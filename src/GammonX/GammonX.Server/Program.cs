@@ -4,7 +4,9 @@ using GammonX.Server;
 using GammonX.Server.Bot;
 using GammonX.Server.EntityFramework;
 using GammonX.Server.EntityFramework.Services;
+using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Server.Workers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -31,7 +33,12 @@ builder.Services.AddScoped<IMatchService, MatchServiceImpl>();
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
-builder.Services.AddSingleton<IMatchmakingService, SimpleMatchmakingService>();
+builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(WellKnownMatchModus.Normal);
+builder.Services.AddKeyedSingleton<IMatchmakingService, BotMatchmakingService>(WellKnownMatchModus.Bot);
+builder.Services.AddKeyedSingleton<IMatchmakingService, RankedMatchmakingService>(WellKnownMatchModus.Ranked);
+builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>();
+builder.Services.AddHostedService<RankedMatchmakingWorker>();
+builder.Services.AddHostedService<NormalMatchmakingWorker>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();

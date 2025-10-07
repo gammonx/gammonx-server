@@ -28,7 +28,7 @@ namespace GammonX.Server.Controllers
 		{
 			try
 			{
-				var playerId = await _playerService.CreatePlayerAsync(req.Id, req.UserName);
+				var playerId = await _playerService.CreateAsync(req.Id, req.UserName);
 				var payload = new RequestPlayerIdPayload(playerId);
 				var response = new RequestResponseContract<RequestPlayerIdPayload>("OK", payload);
 				return Ok(response);
@@ -64,10 +64,10 @@ namespace GammonX.Server.Controllers
 		{
 			try
 			{
-				var player = await _playerService.GetPlayerAsync(id);
+				var player = await _playerService.GetAsync(id);
 				if (player != null)
 				{
-					var payload = new RequestPlayerPayload(player);
+					var payload = new RequestPlayerPayload(player.ToContract());
 					var response = new RequestResponseContract<RequestPlayerPayload>("OK", payload);
 					return Ok(response);
 				}

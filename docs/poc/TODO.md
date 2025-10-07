@@ -10,13 +10,15 @@
 
 ## Active
 - palamedes schreiben
-- auth/user account
-- deployment :: env variables
 - ranked mode (incl. elo rating)
 
 ## TODO 
+- deployment :: env variables
+- auth/user account
+- match/game tracking :: stat calculation
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
+- disconnect/reconnect
 - match equity/stats afer match
 - win percentage to user
 - tournament mode
