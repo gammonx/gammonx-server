@@ -17,7 +17,7 @@ namespace GammonX.Server.Contracts
 		/// Gets or sets the match lobby status whether the match lobby is ready togo.
 		/// </summary>
 		[DataMember(Name = "status", IsRequired = true)]
-		public MatchLobbyStatus Status { get; set; }
+		public QueueEntryStatus Status { get; set; }
 
 		/// <summary>
 		/// Gets or sets the match id if an opponent was found and the lobby created.

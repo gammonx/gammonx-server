@@ -7,6 +7,7 @@
 - error/debug server logging
 - CRUD player (PlayersController)
 - database (postgress in container)
+- queue entry refactoring :: queue entry polling > poc.md
 
 ## Active
 - palamedes schreiben

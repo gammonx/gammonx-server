@@ -74,7 +74,7 @@ namespace GammonX.Server.Tests
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload1.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload1.Status);
 			var player1Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
 				{
@@ -88,7 +88,7 @@ namespace GammonX.Server.Tests
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload2.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload2.Status);
 			var player2Connection = new HubConnectionBuilder()
 				.WithUrl($"{serverUri}/matchhub", options =>
 				{
@@ -104,13 +104,13 @@ namespace GammonX.Server.Tests
 			{
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
 			}
-			while (result1?.Status == MatchLobbyStatus.WaitingForOpponent);
+			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			do
 			{
 				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
 			}
-			while (result2?.Status == MatchLobbyStatus.WaitingForOpponent);
+			while (result2?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			Assert.NotNull(result2);

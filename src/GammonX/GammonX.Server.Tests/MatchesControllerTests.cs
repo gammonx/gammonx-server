@@ -61,7 +61,7 @@ namespace GammonX.Server.Tests
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload1.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload1.Status);
 			Assert.Null(joinPayload1.MatchId);
 			Assert.NotNull(joinPayload1.QueueId);
 			// status for player 1
@@ -71,7 +71,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(statusJson1);
 			var statusContract1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(statusJson1);
 			Assert.NotNull(statusContract1);
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, statusContract1.Payload.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, statusContract1.Payload.Status);
 			Assert.Null(statusContract1.Payload.MatchId);
 			Assert.NotNull(statusContract1.Payload.QueueId);
 			// join player 2
@@ -80,7 +80,7 @@ namespace GammonX.Server.Tests
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, joinPayload2.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload2.Status);
 			Assert.Null(joinPayload2.MatchId);
 			Assert.NotNull(joinPayload2.QueueId);
 
@@ -92,13 +92,13 @@ namespace GammonX.Server.Tests
 			{
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
 			}
-			while (result1?.Status == MatchLobbyStatus.WaitingForOpponent);
+			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			do
 			{
 				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
 			}
-			while (result2?.Status == MatchLobbyStatus.WaitingForOpponent);
+			while (result2?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			Assert.NotNull(result2);

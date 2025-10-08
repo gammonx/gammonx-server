@@ -675,7 +675,7 @@ namespace GammonX.Server.Tests
 			var matchService = GetService(queueKey.MatchModus);
 			var queueEntry = await matchService.JoinQueueAsync(playerId, queueKey);
 			var payload = queueEntry.ToPayload();
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, payload.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, payload.Status);
 			matchService.TryFindQueueEntry(queueEntry.Id, out var entry);
 			Assert.Null(entry);
 			matchService.TryFindMatchLobby(queueEntry.Id, out var lobby);
@@ -688,10 +688,10 @@ namespace GammonX.Server.Tests
 			var matchService = GetService(queueKey.MatchModus);
 			var queueEntry1 = await matchService.JoinQueueAsync(player1Id, queueKey);
 			var queueContract1 = queueEntry1.ToPayload();
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, queueContract1.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract1.Status);
 			var queueEntry2 = await matchService.JoinQueueAsync(player2Id, queueKey);
 			var queueContract2 = queueEntry2.ToPayload();
-			Assert.Equal(MatchLobbyStatus.WaitingForOpponent, queueContract2.Status);
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract2.Status);
 
 			await matchService.MatchQueuedPlayersAsync();
 			matchService.TryFindMatchLobby(queueEntry1.Id, out var lobby1);

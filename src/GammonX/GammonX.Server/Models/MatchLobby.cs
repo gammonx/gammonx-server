@@ -10,11 +10,11 @@
 			if (queueKey.MatchModus == WellKnownMatchModus.Bot)
 			{
 				// a match lobby against a bot is instantly ready
-				Status = MatchLobbyStatus.OpponentFound;
+				Status = QueueEntryStatus.OpponentFound;
 			}
 			else
 			{
-				Status = MatchLobbyStatus.WaitingForOpponent;
+				Status = QueueEntryStatus.WaitingForOpponent;
 			}
 		}
 
@@ -31,7 +31,7 @@
 		/// <summary>
 		/// Gets the status of the given match lobby.
 		/// </summary>
-		public MatchLobbyStatus Status { get; private set; }
+		public QueueEntryStatus Status { get; private set; }
 
 		/// <summary>
 		/// Gets the web socket group name for this match lobby.
@@ -60,13 +60,7 @@
 			}
 
 			Player2 = player2;
-			Status = MatchLobbyStatus.OpponentFound;
+			Status = QueueEntryStatus.OpponentFound;
 		}
-	}
-
-	public enum MatchLobbyStatus
-	{
-		WaitingForOpponent = 0,
-		OpponentFound = 1
 	}
 }

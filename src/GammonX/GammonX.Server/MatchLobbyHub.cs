@@ -74,7 +74,7 @@ namespace GammonX.Server
 
 				if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
 				{
-					if (matchLobby.Status != MatchLobbyStatus.OpponentFound)
+					if (matchLobby.Status != QueueEntryStatus.OpponentFound)
 					{
 						throw new InvalidOperationException($"The match with given id '{matchId}' cannot be started. No opponent found yet.");
 					}

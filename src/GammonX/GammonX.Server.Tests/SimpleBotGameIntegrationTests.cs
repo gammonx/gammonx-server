@@ -75,7 +75,7 @@ namespace GammonX.Server.Tests
 			{
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, WellKnownMatchModus.Bot);
 			}
-			while (result1?.Status == MatchLobbyStatus.WaitingForOpponent);
+			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			var matchId = result1.MatchId;
