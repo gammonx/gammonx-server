@@ -47,10 +47,13 @@ builder.Host.UseSerilog((context, services, configuration) =>
 		.WriteTo.Console();
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
-
+// signalR hubs
 app.MapHub<MatchLobbyHub>("/matchhub");
-
+// health check
+app.MapHealthChecks("/health");
 // configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 app.UseAuthorization();
