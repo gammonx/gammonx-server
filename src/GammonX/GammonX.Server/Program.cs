@@ -1,13 +1,13 @@
 using GammonX.Engine.Services;
 
 using GammonX.Server;
+using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.EntityFramework;
 using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
-using GammonX.Server.Workers;
-
+using GammonX.Server.Services.matchmaking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -43,6 +43,12 @@ builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
+// -------------------------------------------------------------------------------
+// MATCH ANALYSIS
+// -------------------------------------------------------------------------------
+builder.Services.AddSingleton<IMatchAnalysisQueue, MatchAnalysisQueue>();
+builder.Services.AddSingleton<IMatchAnalysisService, MatchAnalysisService>();
+builder.Services.AddHostedService<MatchAnalysisWorker>();
 // -------------------------------------------------------------------------------
 // BOT SERVICE SETUP
 // -------------------------------------------------------------------------------

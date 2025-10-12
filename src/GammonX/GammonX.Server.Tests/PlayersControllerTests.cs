@@ -45,7 +45,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(getPayload.Player);
 			Assert.Equal(createPlayerId, getPayload.Player.Id);
 			Assert.Equal(TestPlayerName, getPayload.Player.UserName);
-			Assert.Null(getPayload.Player.Score);
+			Assert.Null(getPayload.Player.Points);
 
 			response = await client.PostAsync($"/api/players/{playerId}/delete", null);
 			json = await response.Content.ReadAsStringAsync();

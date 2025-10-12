@@ -26,10 +26,16 @@ namespace GammonX.Server.EntityFramework.Services
 		}
 
 		// <inheritdoc />
+		public async Task<Player?> GetFull(Guid id, CancellationToken ct = default)
+		{
+			return await _unitOfWork.Players.GetFullPlayerAsync(id, ct);
+		}
+
+		// <inheritdoc />
 		public async Task<Guid> CreateAsync(Guid id, string userName, CancellationToken ct = default)
 		{
 			var existing = await _unitOfWork.Players.GetByIdAsync(id, ct);
-			if (existing is not null)
+			if (existing != null)
 				throw new InvalidOperationException("A player with the given id already exists.");
 
 			var player = new Player
@@ -47,6 +53,17 @@ namespace GammonX.Server.EntityFramework.Services
 			await _unitOfWork.Players.AddAsync(player, ct);
 			await _unitOfWork.SaveChangesAsync(ct);
 			return player.Id;
+		}
+
+		// <inheritdoc />
+		public async Task UpdateAsync(Player player, CancellationToken ct = default)
+		{
+			var existing = await _unitOfWork.Players.GetByIdAsync(player.Id, ct);
+			if (existing == null)
+				throw new InvalidOperationException("No player with the given id exists.");
+
+			_unitOfWork.Players.Update(player);
+			await _unitOfWork.SaveChangesAsync(ct);
 		}
 
 		// <inheritdoc />

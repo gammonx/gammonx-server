@@ -365,7 +365,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
 		{
-			return new EventMatchStatePayload()
+			var payload = new EventMatchStatePayload()
 			{
 				Id = Id,
 				Player1 = Player1.ToContract(),
@@ -375,8 +375,22 @@ namespace GammonX.Server.Models
 				Variant = Variant,
 				Modus = Modus,
 				Type = Type,
-				AllowedCommands = allowedCommands
+				AllowedCommands = allowedCommands,
+				Winner = null,
+				WinnerPoints = null,
+				Loser = null,
+				LoserPoints = null
 			};
+
+			if (_isMatchOver.Invoke(this))
+			{
+				payload.Winner = Player1.Points > Player2.Points ? Player1.Id : Player2.Id;
+				payload.WinnerPoints = Player1.Points > Player2.Points ? Player1.Points : Player2.Points;
+				payload.Loser = Player1.Points < Player2.Points ? Player1.Id : Player2.Id;
+				payload.LoserPoints = Player1.Points < Player2.Points ? Player1.Points : Player2.Points;
+			}
+
+			return payload;
 		}
 
 		// <inheritdoc />

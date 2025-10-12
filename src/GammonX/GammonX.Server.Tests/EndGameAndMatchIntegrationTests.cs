@@ -196,13 +196,13 @@ namespace GammonX.Server.Tests
 					if (payload.GameRound == 1)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(2, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(2, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Single(payload.GameRounds);
 						Assert.Equal(GameModus.Portes, payload.GameRounds[0].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[0].Phase);
-						Assert.Equal(2, payload.GameRounds[0].Score);
+						Assert.Equal(2, payload.GameRounds[0].Points);
 						Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
@@ -210,13 +210,13 @@ namespace GammonX.Server.Tests
 					else if (payload.GameRound == 2)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(4, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(4, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Equal(2, payload.GameRounds.Length);
 						Assert.Equal(GameModus.Plakoto, payload.GameRounds[1].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[1].Phase);
-						Assert.Equal(2, payload.GameRounds[1].Score);
+						Assert.Equal(2, payload.GameRounds[1].Points);
 						Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
@@ -224,13 +224,13 @@ namespace GammonX.Server.Tests
 					else if (payload.GameRound == 3)
 					{
 						Assert.Empty(payload.AllowedCommands);
-						Assert.Equal(6, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(6, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Equal(3, payload.GameRounds.Length);
 						Assert.Equal(GameModus.Fevga, payload.GameRounds[2].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[2].Phase);
-						Assert.Equal(2, payload.GameRounds[2].Score);
+						Assert.Equal(2, payload.GameRounds[2].Points);
 						Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
@@ -251,13 +251,13 @@ namespace GammonX.Server.Tests
 					if (payload.GameRound == 1)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(2, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(2, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Single(payload.GameRounds);
 						Assert.Equal(GameModus.Portes, payload.GameRounds[0].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[0].Phase);
-						Assert.Equal(2, payload.GameRounds[0].Score);
+						Assert.Equal(2, payload.GameRounds[0].Points);
 						Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
@@ -265,13 +265,13 @@ namespace GammonX.Server.Tests
 					else if (payload.GameRound == 2)
 					{
 						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
-						Assert.Equal(4, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(4, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Equal(2, payload.GameRounds.Length);
 						Assert.Equal(GameModus.Plakoto, payload.GameRounds[1].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[1].Phase);
-						Assert.Equal(2, payload.GameRounds[1].Score);
+						Assert.Equal(2, payload.GameRounds[1].Points);
 						Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
@@ -279,13 +279,13 @@ namespace GammonX.Server.Tests
 					else if (payload.GameRound == 3)
 					{
 						Assert.Empty(payload.AllowedCommands);
-						Assert.Equal(6, payload.Player1?.Score);
-						Assert.Equal(0, payload.Player2?.Score);
+						Assert.Equal(6, payload.Player1?.Points);
+						Assert.Equal(0, payload.Player2?.Points);
 						Assert.NotNull(payload.GameRounds);
 						Assert.Equal(3, payload.GameRounds.Length);
 						Assert.Equal(GameModus.Fevga, payload.GameRounds[2].Modus);
 						Assert.Equal(GamePhase.GameOver, payload.GameRounds[2].Phase);
-						Assert.Equal(2, payload.GameRounds[2].Score);
+						Assert.Equal(2, payload.GameRounds[2].Points);
 						Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
@@ -305,25 +305,25 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Empty(payload.AllowedCommands);
-					Assert.Equal(6, payload.Player1?.Score);
-					Assert.Equal(0, payload.Player2?.Score);
+					Assert.Equal(6, payload.Player1?.Points);
+					Assert.Equal(0, payload.Player2?.Points);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Equal(3, payload.GameRounds.Length);
 					Assert.Equal(GameModus.Portes, payload.GameRounds[0].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[0].Phase);
-					Assert.Equal(2, payload.GameRounds[0].Score);
+					Assert.Equal(2, payload.GameRounds[0].Points);
 					Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
 					Assert.Equal(GameModus.Plakoto, payload.GameRounds[1].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[1].Phase);
-					Assert.Equal(2, payload.GameRounds[1].Score);
+					Assert.Equal(2, payload.GameRounds[1].Points);
 					Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
 					Assert.Equal(GameModus.Fevga, payload.GameRounds[2].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[2].Phase);
-					Assert.Equal(2, payload.GameRounds[2].Score);
+					Assert.Equal(2, payload.GameRounds[2].Points);
 					Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
@@ -343,25 +343,25 @@ namespace GammonX.Server.Tests
 				if (contract?.Payload is EventMatchStatePayload payload)
 				{
 					Assert.Empty(payload.AllowedCommands);
-					Assert.Equal(6, payload.Player1?.Score);
-					Assert.Equal(0, payload.Player2?.Score);
+					Assert.Equal(6, payload.Player1?.Points);
+					Assert.Equal(0, payload.Player2?.Points);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Equal(3, payload.GameRounds.Length);
 					Assert.Equal(GameModus.Portes, payload.GameRounds[0].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[0].Phase);
-					Assert.Equal(2, payload.GameRounds[0].Score);
+					Assert.Equal(2, payload.GameRounds[0].Points);
 					Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
 					Assert.Equal(GameModus.Plakoto, payload.GameRounds[1].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[1].Phase);
-					Assert.Equal(2, payload.GameRounds[1].Score);
+					Assert.Equal(2, payload.GameRounds[1].Points);
 					Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
 					Assert.Equal(GameModus.Fevga, payload.GameRounds[2].Modus);
 					Assert.Equal(GamePhase.GameOver, payload.GameRounds[2].Phase);
-					Assert.Equal(2, payload.GameRounds[2].Score);
+					Assert.Equal(2, payload.GameRounds[2].Points);
 					Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);

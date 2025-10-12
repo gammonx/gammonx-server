@@ -12,16 +12,18 @@
 ## Active
 - palamedes schreiben
 - ranked mode (incl. elo rating)
+- match/game tracking :: stat calculation
+- health check endpoint api/health
+- dynamo db provider > how to model relations
+- analyze/store stats > aws queue + lambda functions
 
 ## TODO 
 - deployment :: env variables
-- auth/user account
-- match/game tracking :: stat calculation
+- auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
 - disconnect/reconnect
-- match equity/stats afer match
-- win percentage to user
+- match equity/stats afer match :: win percentage to user
 - tournament mode
 - export matches to sgf/.mat format
 - bot dificulty levels

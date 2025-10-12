@@ -1,11 +1,13 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.SignalR;
+
 using Serilog;
 
 namespace GammonX.Server
@@ -19,17 +21,20 @@ namespace GammonX.Server
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
 		private readonly IBotService _botService;
+		private readonly IMatchAnalysisQueue _analysisQueue;
 
 		public MatchLobbyHub(
 			IMatchmakingService matchmakingService,
 			MatchSessionRepository repository,
 			IDiceServiceFactory diceServiceFactory,
-			IBotService botService)
+			IBotService botService,
+			IMatchAnalysisQueue analysisQueue)
 		{
 			_matchmakingService = matchmakingService;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
 			_botService = botService;
+			_analysisQueue = analysisQueue;
 		}
 
 		#region Overrides
@@ -805,6 +810,12 @@ namespace GammonX.Server
 
 		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
 		{
+			// TODO :: match ended sync :: stats for end screen
+			// - game rounds points
+			// - rating change (ranked) > calculate elo
+			// > send ServerEventTypes.MatchStatsEvent
+			// > new payload extension for ranked/paid subscriptions?
+
 			var matchStatePayload = matchSession.ToPayload(allowedCommands);
 			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
 			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, matchStateContract);
@@ -815,6 +826,11 @@ namespace GammonX.Server
 
 			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{
+				// TODO :: match ended async :: to database
+				var analysisJob = new MatchAnalysisJob(matchSession.Id);
+				await _analysisQueue.EnqueueAsync(analysisJob);
+
+				// clients can now safely disconnect from socket
 				var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
 				await SendToGroup(matchStatePayload.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
 				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, matchStatePayload.GroupName);

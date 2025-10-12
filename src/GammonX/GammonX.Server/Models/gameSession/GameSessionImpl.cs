@@ -289,7 +289,7 @@ namespace GammonX.Server.Models
 			if (Phase == GamePhase.GameOver)
 			{
 				contract.Winner = _winnerPlayerId;
-				contract.Score = _winnerPoints;
+				contract.Points = _winnerPoints;
 			}
 			return contract;
 		}

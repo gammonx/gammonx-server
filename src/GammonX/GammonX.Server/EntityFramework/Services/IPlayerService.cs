@@ -23,7 +23,11 @@ namespace GammonX.Server.EntityFramework.Services
 		/// <returns>An instance of <see cref="Player"/> or <c>null</c> if not found.</returns>
 		Task<Player?> GetWithRatingAsync(Guid id, CancellationToken ct = default);
 
+		Task<Player?> GetFull(Guid id, CancellationToken ct = default);
+
 		Task<Guid> CreateAsync(Guid id, string userName, CancellationToken ct = default);
+
+		Task UpdateAsync(Player player, CancellationToken ct = default);
 
 		Task<bool> RemovePlayerAsync(Guid id, CancellationToken ct = default);
 	}

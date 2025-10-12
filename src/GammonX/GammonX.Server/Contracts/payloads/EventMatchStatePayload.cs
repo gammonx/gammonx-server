@@ -10,6 +10,18 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "id")]
 		public Guid Id { get; set; }
 
+		[DataMember(Name = "winner", IsRequired = true, EmitDefaultValue = true)]
+		public Guid? Winner { get; set; }
+
+		[DataMember(Name = "winnerScore", IsRequired = true, EmitDefaultValue = true)]
+		public int? WinnerPoints { get; set; }
+
+		[DataMember(Name = "loser", IsRequired = true, EmitDefaultValue = true)]
+		public Guid? Loser { get; set; }
+
+		[DataMember(Name = "loserScore", IsRequired = true, EmitDefaultValue = true)]
+		public int? LoserPoints { get; set; }
+
 		[DataMember(Name = "groupName")]
 		public string GroupName => $"match_{Id}";
 

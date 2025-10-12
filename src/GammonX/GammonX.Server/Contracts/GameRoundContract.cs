@@ -22,6 +22,6 @@ namespace GammonX.Server.Contracts
 		public Guid? Winner { get; set; }
 
 		[DataMember(Name = "score", IsRequired = true, EmitDefaultValue = true)]
-		public int? Score { get; set; }
+		public int? Points { get; set; }
 	}
 }
