@@ -1,5 +1,5 @@
 ﻿using GammonX.Engine.Services;
-
+using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.EntityFramework.Entities;
@@ -53,13 +53,17 @@ namespace GammonX.Server.Tests
 				.Setup(x => x.CreateScope())
 				.Returns(mockScope.Object);
 
+			Mock<IMatchAnalysisQueue> analysisQueue = new();
+			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+
 			_rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
 			_botMatchService = new BotMatchmakingService();
 			var compositeService = new CompositeMatchmakingService();
 			compositeService.SetServices(_normalService, _rankedService, _botMatchService);
 			_matchRepo = new MatchSessionRepository(matchSessionFactory);
 			_botService = new WildbgBotService(_wildBgClient);
-			_hub = new MatchLobbyHub(compositeService, _matchRepo, _diceFactory, _botService);
+			_hub = new MatchLobbyHub(compositeService, _matchRepo, _diceFactory, _botService, analysisQueue.Object);
 		}
 
 		[Theory]
@@ -610,6 +614,10 @@ namespace GammonX.Server.Tests
 			Guid player1Id,
 			Guid player2Id)
 		{
+			Mock<IMatchAnalysisQueue> analysisQueue = new();
+			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+
 			var queueKey = new QueueKey(variant, modus, type);
 			var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);
 			var matchIdStr = matchId.ToString();
@@ -626,7 +634,7 @@ namespace GammonX.Server.Tests
 			// client 1
 			var player1ConnectionId = Guid.NewGuid().ToString();
 			var context1 = new HubCallerContextStub(player1ConnectionId);
-			var hub1 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService)
+			var hub1 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService, analysisQueue.Object)
 			{
 				Clients = mockClients.Object,
 				Groups = mockGroups.Object,
@@ -636,7 +644,7 @@ namespace GammonX.Server.Tests
 			// client 2
 			var player2ConnectionId = Guid.NewGuid().ToString();
 			var context2 = new HubCallerContextStub(player2ConnectionId);
-			var hub2 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService)
+			var hub2 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService, analysisQueue.Object)
 			{
 				Clients = mockClients.Object,
 				Groups = mockGroups.Object,

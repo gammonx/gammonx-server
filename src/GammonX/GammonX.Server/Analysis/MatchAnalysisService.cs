@@ -56,6 +56,10 @@ namespace GammonX.Server.Analysis
 			await AnalyzeAndStoreStatsAsync(match, player1, player2, cancellationToken);
 			await AnalyzeAndStoreStatsAsync(match, player2, player1, cancellationToken);
 
+		}
+
+		private async Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, Player player, Player opponent, CancellationToken cancellationToken)
+		{
 			// TODO
 			// won matches
 			// lost matches
@@ -63,11 +67,7 @@ namespace GammonX.Server.Analysis
 			// lost games
 			// stats for modus/type/variant
 			// rating for modus/type/variant
-		}
-
-		private async Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, Player player, Player opponent, CancellationToken cancellationToken)
-		{
-			await _playerService.UpdateAsync(player, cancellationToken);
+			//await _playerService.UpdateAsync(player, cancellationToken);
 		}
 	}
 }

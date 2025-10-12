@@ -47,7 +47,7 @@ builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
 // MATCH ANALYSIS
 // -------------------------------------------------------------------------------
 builder.Services.AddSingleton<IMatchAnalysisQueue, MatchAnalysisQueue>();
-builder.Services.AddSingleton<IMatchAnalysisService, MatchAnalysisService>();
+builder.Services.AddScoped<IMatchAnalysisService, MatchAnalysisService>();
 builder.Services.AddHostedService<MatchAnalysisWorker>();
 // -------------------------------------------------------------------------------
 // BOT SERVICE SETUP

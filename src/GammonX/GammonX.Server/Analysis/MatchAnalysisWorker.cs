@@ -6,12 +6,12 @@ namespace GammonX.Server.Analysis
 	public class MatchAnalysisWorker : BackgroundService
 	{
 		private readonly IMatchAnalysisQueue _queue;
-		private readonly IMatchAnalysisService _analysisService;
+		private readonly IServiceScopeFactory _scopeFactory;
 
-		public MatchAnalysisWorker(IMatchAnalysisQueue queue, IMatchAnalysisService analysisService)
+		public MatchAnalysisWorker(IMatchAnalysisQueue queue, IServiceScopeFactory scopeFactory)
 		{
 			_queue = queue;
-			_analysisService = analysisService;
+			_scopeFactory = scopeFactory;
 		}
 
 		// <inheritdoc />
@@ -27,7 +27,9 @@ namespace GammonX.Server.Analysis
 					if (job == null)
 						continue;
 
-					await _analysisService.AnalyzeAndStoreAsync(job.MatchId, stoppingToken);
+					using var scope = _scopeFactory.CreateScope();
+					var analysisService = scope.ServiceProvider.GetRequiredService<IMatchAnalysisService>();
+					await analysisService.AnalyzeAndStoreAsync(job.MatchId, stoppingToken);
 				}
 				catch (OperationCanceledException)
 				{

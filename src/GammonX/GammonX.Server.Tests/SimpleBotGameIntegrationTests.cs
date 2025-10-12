@@ -1,6 +1,6 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
-
+using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -11,7 +11,7 @@ using GammonX.Server.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-
+using Moq;
 using Newtonsoft.Json;
 
 using System.Net.Http.Json;
@@ -46,6 +46,15 @@ namespace GammonX.Server.Tests
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IBotService>(new SimpleBotService());
+					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMatchAnalysisQueue));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+					Mock<IMatchAnalysisQueue> analysisQueue = new();
+					analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+					analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+					services.AddSingleton(analysisQueue.Object);
 				});
 			});
 		}

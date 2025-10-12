@@ -1,7 +1,11 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Server.Analysis;
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
 
 using Newtonsoft.Json;
 
@@ -16,7 +20,20 @@ namespace GammonX.Server.Tests
 
 		public PlayersControllerTests(WebApplicationFactory<Program> factory)
 		{
-			_factory = factory;
+			_factory = factory.WithWebHostBuilder(builder => {
+				builder.ConfigureServices(services =>
+				{
+					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMatchAnalysisQueue));
+					if (descriptor != null)
+					{
+						services.Remove(descriptor);
+					}
+					Mock<IMatchAnalysisQueue> analysisQueue = new();
+					analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+					analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+					services.AddSingleton(analysisQueue.Object);
+				});
+			});
 		}
 
 		[Fact]
