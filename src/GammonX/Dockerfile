@@ -28,5 +28,5 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 ENV DOTNET_ENVIRONMENT=Production
 USER ${APP_UID}:${APP_GID}
-HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/matches || exit 1
+HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/health || exit 1
 ENTRYPOINT ["dotnet", "GammonX.Server.dll"]
