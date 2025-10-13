@@ -62,8 +62,8 @@ namespace GammonX.Server.Tests
 			Assert.Equal(1, payload.GameRound);
 			Assert.Equal(Guid.Empty, payload.Player1.Id);
 			Assert.Equal(Guid.Empty, payload.Player2.Id);
-			Assert.Equal(0, payload.Player1.Score);
-			Assert.Equal(0, payload.Player2.Score);
+			Assert.Equal(0, payload.Player1.Points);
+			Assert.Equal(0, payload.Player2.Points);
 
 		}
 

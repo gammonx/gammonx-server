@@ -23,15 +23,7 @@ namespace GammonX.Server.Tests
 			_factory = factory.WithWebHostBuilder(builder => {
 				builder.ConfigureServices(services =>
 				{
-					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMatchAnalysisQueue));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					Mock<IMatchAnalysisQueue> analysisQueue = new();
-					analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
-					analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
-					services.AddSingleton(analysisQueue.Object);
+					// pass
 				});
 			});
 		}
@@ -70,6 +62,8 @@ namespace GammonX.Server.Tests
 			var deletePayload = deleteResponse?.Payload;
 			Assert.NotNull(deletePayload);
 			Assert.True(deletePayload.Deleted);
+
+			client.Dispose();
 		}
 	}
 }

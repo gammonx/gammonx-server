@@ -54,15 +54,6 @@ namespace GammonX.Server.Tests
 					service.Setup(x => x.GetWithRatingAsync(_player1Id, default)).Returns(() => Task.FromResult(new Player { Id = _player1Id }));
 					service.Setup(x => x.GetWithRatingAsync(_player2Id, default)).Returns(() => Task.FromResult(new Player { Id = _player2Id }));
 					services.AddSingleton(service.Object);
-					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMatchAnalysisQueue));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					Mock<IMatchAnalysisQueue> analysisQueue = new();
-					analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
-					analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
-					services.AddSingleton(analysisQueue.Object);
 				});
 			});
 		}
@@ -488,6 +479,10 @@ namespace GammonX.Server.Tests
 
 			Assert.Equal(HubConnectionState.Disconnected, player1Connection.State);
 			Assert.Equal(HubConnectionState.Disconnected, player2Connection.State);
+
+			await player1Connection.DisposeAsync();
+			await player2Connection.DisposeAsync();
+			client.Dispose();
 		}
 	}
 }

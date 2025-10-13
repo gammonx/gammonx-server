@@ -7,6 +7,7 @@ namespace GammonX.Server.Analysis
 	{
 		private readonly IMatchAnalysisQueue _queue;
 		private readonly IServiceScopeFactory _scopeFactory;
+		private readonly TimeSpan _interval = TimeSpan.FromSeconds(0.5);
 
 		public MatchAnalysisWorker(IMatchAnalysisQueue queue, IServiceScopeFactory scopeFactory)
 		{
@@ -40,6 +41,7 @@ namespace GammonX.Server.Analysis
 					Log.Logger.Information("An error occurred while analyzing a match: {errorMessage}", ex.Message);
 					continue;
 				}
+				await Task.Delay(_interval, stoppingToken);
 			}
 
 			Log.Logger.Information("Matchmaking analysis worker stopped.");

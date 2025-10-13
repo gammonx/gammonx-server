@@ -6,7 +6,7 @@ namespace GammonX.Server.Contracts
 	public class RequestPlayerIdPayload : RequestPayload
 	{
 		[DataMember(Name = "playerId", IsRequired = true)]
-		public Guid PlayerId { get; }
+		public Guid PlayerId { get; set; }
 
 		public RequestPlayerIdPayload(Guid playerId)
 		{

@@ -46,15 +46,6 @@ namespace GammonX.Server.Tests
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IBotService>(new SimpleBotService());
-					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IMatchAnalysisQueue));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					Mock<IMatchAnalysisQueue> analysisQueue = new();
-					analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
-					analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
-					services.AddSingleton(analysisQueue.Object);
 				});
 			});
 		}
@@ -155,6 +146,9 @@ namespace GammonX.Server.Tests
 
 			// player 1 rolls for his second turn
 			await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
+
+			await player1Connection.DisposeAsync();
+			client.Dispose();
 		}
 	}
 }

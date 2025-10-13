@@ -20,7 +20,7 @@ namespace GammonX.Server.Contracts
 		/// <summary>
 		/// Gets or sets the match score for this player.
 		/// </summary>
-		[DataMember(Name = "score", IsRequired = false, EmitDefaultValue = false)]
+		[DataMember(Name = "points", IsRequired = false, EmitDefaultValue = false)]
 		public int? Points { get; set; }
 	}
 }
