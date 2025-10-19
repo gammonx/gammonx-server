@@ -1,8 +1,8 @@
 ﻿using GammonX.Server.Models;
-using GammonX.Server.Services;
+
 using Serilog;
 
-namespace GammonX.Server.Services.matchmaking
+namespace GammonX.Server.Services
 {
 	// <inheritdoc />
 	public sealed class RankedMatchmakingWorker : MatchmakingWorker

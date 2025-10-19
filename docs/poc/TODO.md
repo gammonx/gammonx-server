@@ -8,17 +8,19 @@
 - CRUD player (PlayersController)
 - database (postgress in container)
 - queue entry refactoring :: queue entry polling > poc.md
+- health check endpoint api/health
+- deployment :: env variables > .env.local Armin
 
 ## Active
 - palamedes schreiben
-- ranked mode (incl. elo rating)
-- match/game tracking :: stat calculation
-- health check endpoint api/health
-- dynamo db provider > how to model relations
-- analyze/store stats > aws queue + lambda functions
+- database
+    - dynamo db migration?
+    - ranked mode (incl. elo rating)
+    - match/game tracking :: stat calculation
+    - dynamo db provider > how to model relations
+    - analyze/store stats > aws queue + lambda functions
 
 ## TODO 
-- deployment :: env variables
 - auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer

@@ -4,18 +4,17 @@ services:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
       args:
-        BUILD_CONFIGURATION: debug
+        BUILD_CONFIGURATION: Debug
     container_name: server
     ports:
       - "8080:8080"   # controller port
       - "8081:8081"   # signalR port
-    environment:
-      - DOTNET_ENVIRONMENT=Development
-      # TODO: server should read this from env
-      - DATABASE_CONN_STR=Host=postgres-service;Port=5432;Database=gammonx;Username=postgres;Password=1234
     depends_on:
       - bot-service
       - postgres-service 
+    env_file:
+      - src\GammonX\GammonX.Server\.env.local
+      - src\GammonX\GammonX.Server\.env
 
   bot-service:
     build:

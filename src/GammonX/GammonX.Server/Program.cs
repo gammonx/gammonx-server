@@ -1,3 +1,5 @@
+using DotNetEnv;
+
 using GammonX.Engine.Services;
 
 using GammonX.Server;
@@ -7,18 +9,35 @@ using GammonX.Server.EntityFramework;
 using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
-using GammonX.Server.Services.matchmaking;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using Serilog;
 
+// -------------------------------------------------------------------------------
+// ENVIRONMENT SETUP
+// -------------------------------------------------------------------------------
+var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
+var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+
+if (File.Exists(envLocal))
+{
+	Env.Load(envLocal);
+}
+else if (File.Exists(env))
+{
+	Env.Load(env);
+}
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
+
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
 // -------------------------------------------------------------------------------
 builder.Services.Configure<DatabaseOptions>(
-	builder.Configuration.GetSection("Database"));
+	builder.Configuration.GetSection("DATABASE"));
 
 builder.Services.AddDbContext<GammonXDbContext>((sp, dbContextBuilder)=>
 {
@@ -53,7 +72,7 @@ builder.Services.AddHostedService<MatchAnalysisWorker>();
 // BOT SERVICE SETUP
 // -------------------------------------------------------------------------------
 builder.Services.Configure<BotServiceOptions>(
-	builder.Configuration.GetSection("BotService"));
+	builder.Configuration.GetSection("BOT_SERVICE"));
 
 builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
 {
