@@ -13,7 +13,7 @@ namespace GammonX.Server.Tests
 {
 	public class WildbgBotTests
 	{
-		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082") };
+		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]

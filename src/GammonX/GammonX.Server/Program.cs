@@ -49,6 +49,23 @@ builder.Host.UseSerilog((context, services, configuration) =>
 
 var app = builder.Build();
 
+// TODO :: integrate into .env handling for poc branch
+var basePath = Environment.GetEnvironmentVariable("SERVICE_BASEPATH");
+if (string.IsNullOrEmpty(basePath))
+{
+	basePath = "/game";
+}
+
+if (!string.IsNullOrEmpty(basePath))
+{
+	app.UsePathBase(basePath);
+	app.Use((context, next) =>
+	{
+		context.Request.PathBase = basePath;
+		return next();
+	});
+}
+
 app.MapHub<MatchLobbyHub>("/matchhub");
 
 // configure the HTTP request pipeline.
