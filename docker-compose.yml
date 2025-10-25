@@ -9,6 +9,9 @@ services:
     ports:
       - "8080:8080"   # controller port
       - "8081:8081"   # signalR port
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - SERVICE_BASEPATH=/game
     depends_on:
       - bot-service
       - postgres-service 
@@ -25,6 +28,8 @@ services:
     container_name: wildbg-bot
     ports:
       - "8082:8082"
+    environment:
+      - SERVICE_BASEPATH=/bot/wildbg
 
   postgres-service:
     image: postgres:15

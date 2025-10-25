@@ -10,6 +10,7 @@
 - queue entry refactoring :: queue entry polling > poc.md
 - health check endpoint api/health
 - deployment :: env variables > .env.local Armin
+- basepaths /game/api/ :: /bot/wildbg/
 
 ## Active
 - palamedes schreiben

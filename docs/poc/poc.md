@@ -1,7 +1,7 @@
 # POC GammonX Game Server
 
 ## Players Controller
-#### POST /api/players/create
+#### POST game/api/players/create
 ##### Request
 ```json
 {
@@ -9,7 +9,7 @@
     "Username": "bubaz"
 }
 ```
-#### GET /api/players/{playerId}
+#### GET game/api/players/{playerId}
 ##### Response
 ```json
 {
@@ -23,7 +23,7 @@
 }
 ```
 
-#### POST /api/players/{playerId}/delete
+#### POST game/api/players/{playerId}/delete
 ##### Response
 ```json
 {
@@ -36,7 +36,7 @@
 
 ## Matches Controller
 ### Join a MatchQueue
-#### POST /api/matches/join
+#### POST /game/api/matches/join
 The player with the given `playerId` joins the match queue depending on the given `matchModus`. The response will initially contain a `queueId` and a `null` for `matchId`. If a match lobby is found, the `matchId` property will be populated. [See Polling a queue status.](#poll-a-queueentry) 
 ##### Request
 ```json
@@ -63,7 +63,7 @@ The player with the given `playerId` joins the match queue depending on the give
 }
 ```
 ### Poll a QueueEntry
-#### GET /api/matches/queues/{queueId}
+#### GET game/api/matches/queues/{queueId}
 The backend server hosts a background worker which tries to create proper match lobbies every few seconds. If a match lobby is created, the polling will return the same response as the join request with the `queueId` set to `null` and the `matchId` with a valid GUID. This guid is used for connecting to the matchHub/socket in the next step.
 
 - QueueEntryStatus > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)

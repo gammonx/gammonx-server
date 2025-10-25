@@ -39,7 +39,7 @@ namespace GammonX.Server.Bot
 					Add(sb, $"p{point}", count);
 			}
 
-			var uri = new Uri($"/eval?{sb}", UriKind.Relative);
+			var uri = new Uri($"eval?{sb}", UriKind.Relative);
 
 			using var resp = await _httpClient.GetAsync(uri);
 			resp.EnsureSuccessStatusCode();
@@ -80,7 +80,7 @@ namespace GammonX.Server.Bot
 					Add(sb, $"p{point}", count);
 			}
 
-			var uri = new Uri($"/move?{sb}", UriKind.Relative);
+			var uri = new Uri($"move?{sb}", UriKind.Relative);
 			using var resp = await _httpClient.GetAsync(uri);
 
 			try
