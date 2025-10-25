@@ -32,7 +32,11 @@ else if (File.Exists(env))
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
-
+// -------------------------------------------------------------------------------
+// GAME SERVICE SETUP
+// -------------------------------------------------------------------------------
+builder.Services.Configure<GameServiceOptions>(
+	builder.Configuration.GetSection("GAME_SERVICE"));
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
 // -------------------------------------------------------------------------------
@@ -89,7 +93,9 @@ builder.Host.UseSerilog((context, services, configuration) =>
 		.Enrich.FromLogContext()
 		.WriteTo.Console();
 });
-
+// -------------------------------------------------------------------------------
+// CORS SETUP
+// -------------------------------------------------------------------------------
 builder.Services.AddCors(options =>
 {
 	options.AddDefaultPolicy(policy =>
@@ -103,30 +109,22 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
-
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
-
-// TODO :: integrate into .env handling for poc branch
-var basePath = Environment.GetEnvironmentVariable("SERVICE_BASEPATH");
-if (string.IsNullOrEmpty(basePath))
+// -------------------------------------------------------------------------------
+// ROUTING SETUP
+// -------------------------------------------------------------------------------
+var basePath = app.Services.GetRequiredService<IOptions<GameServiceOptions>>().Value.BasePath;
+app.UsePathBase(basePath);
+app.Use((context, next) =>
 {
-	basePath = "/game";
-}
-
-if (!string.IsNullOrEmpty(basePath))
-{
-	app.UsePathBase(basePath);
-	app.Use((context, next) =>
-	{
-		context.Request.PathBase = basePath;
-		return next();
-	});
-}
-
-// signalR hubs
-app.MapHub<MatchLobbyHub>("/matchhub");
+	context.Request.PathBase = basePath;
+	return next();
+});
+// -------------------------------------------------------------------------------
+// APP CONFIGURATION
+// -------------------------------------------------------------------------------
 // signalR hubs
 app.MapHub<MatchLobbyHub>("/matchhub");
 // health check

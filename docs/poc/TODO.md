@@ -20,6 +20,7 @@
     - match/game tracking :: stat calculation
     - dynamo db provider > how to model relations
     - analyze/store stats > aws queue + lambda functions
+    - remove postgress stuff
 
 ## TODO 
 - auth/user account > how to identify premium accounts?
