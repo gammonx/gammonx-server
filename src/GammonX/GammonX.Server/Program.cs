@@ -67,6 +67,9 @@ if (!string.IsNullOrEmpty(basePath))
 		return next();
 	});
 }
+
+// signalR hubs
+app.MapHub<MatchLobbyHub>("/matchhub");
 // signalR hubs
 app.MapHub<MatchLobbyHub>("/matchhub");
 // health check
