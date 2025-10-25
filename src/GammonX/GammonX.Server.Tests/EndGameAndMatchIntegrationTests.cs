@@ -50,7 +50,7 @@ namespace GammonX.Server.Tests
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
 			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
-			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
@@ -63,7 +63,7 @@ namespace GammonX.Server.Tests
 				.Build();
 
 			var player2 = new JoinRequest(Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
-			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
+			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;

@@ -15,7 +15,7 @@ namespace GammonX.Server.Tests
 {
 	public class MatchHubTests
 	{
-		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082") };
+		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
 		private readonly MatchSessionRepository _matchRepo;
 		private readonly IDiceServiceFactory _diceFactory;
 		private readonly IBotService _botService;

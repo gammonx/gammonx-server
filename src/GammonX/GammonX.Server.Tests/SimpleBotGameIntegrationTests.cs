@@ -56,7 +56,7 @@ namespace GammonX.Server.Tests
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
 			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame);
-			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;

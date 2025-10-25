@@ -35,7 +35,7 @@ namespace GammonX.Server.Tests
 			var player1 = CreatePlayer(player1Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
 			var player2 = CreatePlayer(player2Id, WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal);
 			
-			var response1 = await client.PostAsJsonAsync("/api/matches/join", player1);
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
@@ -48,7 +48,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(player1.PlayerId, matchLobby.Player1.PlayerId);
 			Assert.Null(matchLobby.Player2);
 
-			var response2 = await client.PostAsJsonAsync("/api/matches/join", player2);
+			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestMatchIdPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;

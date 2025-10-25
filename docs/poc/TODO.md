@@ -5,6 +5,7 @@
 - game history
 - undo/redo moves
 - error/debug server logging
+- basepaths /game/api/ :: /bot/wildbg/
 
 ## Active
 - palamedes schreiben
