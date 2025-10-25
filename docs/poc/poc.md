@@ -1,7 +1,7 @@
 # POC GammonX Game Server
 
 ## Join Matchmaking
-#### POST /api/matches/join
+#### POST /game/api/matches/join
 - Request
 ```json
 {

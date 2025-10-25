@@ -50,6 +50,26 @@ builder.Host.UseSerilog((context, services, configuration) =>
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+// TODO :: integrate into .env handling for poc branch
+var basePath = Environment.GetEnvironmentVariable("SERVICE_BASEPATH");
+if (string.IsNullOrEmpty(basePath))
+{
+	basePath = "/game";
+}
+
+if (!string.IsNullOrEmpty(basePath))
+{
+	app.UsePathBase(basePath);
+	app.Use((context, next) =>
+	{
+		context.Request.PathBase = basePath;
+		return next();
+	});
+}
+
+// signalR hubs
+app.MapHub<MatchLobbyHub>("/matchhub");
 // signalR hubs
 app.MapHub<MatchLobbyHub>("/matchhub");
 // health check
