@@ -32,6 +32,6 @@ ENV DOTNET_ENVIRONMENT=Production
 WORKDIR /app
 COPY --from=publish /app/publish .
 USER ${APP_UID}:${APP_GID}
-HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/game/health || exit 1
 RUN echo "Running in ${DOTNET_ENVIRONMENT} mode with build ${BUILD_CONFIGURATION} on ${BOT_SERVICE__BASEURL}"
 ENTRYPOINT ["dotnet", "GammonX.Server.dll"]
