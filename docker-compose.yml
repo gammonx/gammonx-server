@@ -11,8 +11,8 @@ services:
       - "8081:8081"   # signalR port
     environment:
       - DOTNET_ENVIRONMENT=Development
-      - GAME_SERVICE__BASEPATH=__undefined__
-      - BOT_SERVICE__BASEURL=__undefined__
+      - GAME_SERVICE__BASEPATH=/game
+      - BOT_SERVICE__BASEURL=http://localhost:8082/bot/wildbg/
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug

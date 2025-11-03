@@ -1,6 +1,4 @@
 ﻿using GammonX.Server.Contracts;
-using GammonX.Server.EntityFramework.Entities;
-using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
@@ -27,18 +25,7 @@ namespace GammonX.Server.Tests
 		{
 			_factory = factory.WithWebHostBuilder(builder =>
 			{
-				builder.ConfigureServices(services =>
-				{
-					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IPlayerService));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					Mock<IPlayerService> service = new();
-					service.Setup(x => x.GetWithRatingAsync(_player1Id, default)).Returns(() => Task.FromResult(new Player { Id = _player1Id }));
-					service.Setup(x => x.GetWithRatingAsync(_player2Id, default)).Returns(() => Task.FromResult(new Player { Id = _player2Id }));
-					services.AddSingleton<IPlayerService>(service.Object);
-				});
+				// pass
 			});
 			_serviceProvider = _factory.Services;
 			Assert.NotNull(_serviceProvider);

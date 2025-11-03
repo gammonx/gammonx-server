@@ -1,6 +1,4 @@
-﻿using GammonX.Server.EntityFramework.Entities;
-using GammonX.Server.EntityFramework.Services;
-using GammonX.Server.Models;
+﻿using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 namespace GammonX.Server.Analysis
@@ -23,12 +21,10 @@ namespace GammonX.Server.Analysis
 	// <inheritdoc />
 	public class MatchAnalysisService : IMatchAnalysisService
 	{
-		private readonly IPlayerService _playerService;
 		private readonly MatchSessionRepository _matchRepository;
 
-		public MatchAnalysisService(IPlayerService playerService, MatchSessionRepository matchRepository)
+		public MatchAnalysisService(MatchSessionRepository matchRepository)
 		{
-			_playerService = playerService;
 			_matchRepository = matchRepository;
 		}
 
@@ -45,20 +41,13 @@ namespace GammonX.Server.Analysis
 
 			var matchHistory = match.GetHistory();
 			var gameHistories = matchHistory.Games;
-
-			var player1 = await _playerService.GetFull(matchHistory.Player1, cancellationToken);
-			var player2 = await _playerService.GetFull(matchHistory.Player2, cancellationToken);
-			if (player1 == null || player2 == null)
-			{
-				throw new InvalidOperationException($"An error occurred while analyzing match with ID '{match.Id}'. One of the player profiles were not found");
-			}
-
-			await AnalyzeAndStoreStatsAsync(match, player1, player2, cancellationToken);
-			await AnalyzeAndStoreStatsAsync(match, player2, player1, cancellationToken);
+			// TODO: trigger AWS queue for stat calculation
+			await AnalyzeAndStoreStatsAsync(match, cancellationToken);
+			await AnalyzeAndStoreStatsAsync(match, cancellationToken);
 
 		}
 
-		private async Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, Player player, Player opponent, CancellationToken cancellationToken)
+		private Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, CancellationToken cancellationToken)
 		{
 			// TODO
 			// won matches
@@ -68,6 +57,7 @@ namespace GammonX.Server.Analysis
 			// stats for modus/type/variant
 			// rating for modus/type/variant
 			//await _playerService.UpdateAsync(player, cancellationToken);
+			return Task.CompletedTask;
 		}
 	}
 }

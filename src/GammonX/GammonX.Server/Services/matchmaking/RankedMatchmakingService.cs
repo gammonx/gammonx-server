@@ -1,5 +1,4 @@
-﻿using GammonX.Server.EntityFramework.Services;
-using GammonX.Server.Models;
+﻿using GammonX.Server.Models;
 
 using System.Collections.Concurrent;
 
@@ -16,7 +15,7 @@ namespace GammonX.Server.Services
 		}
 
 		// <inheritdoc />
-		public override async Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
+		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
 		{
 			if (queueKey.MatchModus != WellKnownMatchModus.Ranked)
 			{
@@ -28,20 +27,13 @@ namespace GammonX.Server.Services
 				throw new InvalidOperationException("Already part of the match lobby queue");
 			}
 
-			using var scope = _scopeFactory.CreateScope();
-			var playerService = scope.ServiceProvider.GetRequiredService<IPlayerService>();
-			var playerWithRating = await playerService.GetWithRatingAsync(playerId);
-			if (playerWithRating == null)
-			{
-				throw new InvalidOperationException("The user with the given id is not yet registered as a player");
-			}
-
-			var relevantRating = playerWithRating.Ratings.FirstOrDefault(r => r.Variant == queueKey.MatchVariant && r.Type == queueKey.MatchType);
-			var newEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating?.Rating ?? 0);
+			// TODO: get rating from AWS lambda function
+			var relevantRating = 1200;
+			var newEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating);
 			var queue = _modeQueues.GetOrAdd(queueKey, _ => new ConcurrentQueue<Guid>());
 			_queue[newEntry.Id] = newEntry;
 			queue.Enqueue(newEntry.Id);
-			return newEntry;
+			return Task.FromResult(newEntry);
 		}
 
 		// <inheritdoc />

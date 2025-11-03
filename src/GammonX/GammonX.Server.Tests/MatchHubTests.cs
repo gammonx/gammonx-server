@@ -1,9 +1,8 @@
 ﻿using GammonX.Engine.Services;
+
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
-using GammonX.Server.EntityFramework.Entities;
-using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
@@ -12,7 +11,6 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
-using NuGet.Frameworks;
 using System.Security.Claims;
 
 namespace GammonX.Server.Tests
@@ -32,30 +30,16 @@ namespace GammonX.Server.Tests
 
 		public MatchHubTests()
 		{
-			Mock<IPlayerService> service = new();
-			service.Setup(x => x.GetWithRatingAsync(_player1Id, default)).Returns(() => Task.FromResult(new Player { Id = _player1Id }));
-			service.Setup(x => x.GetWithRatingAsync(_player2Id, default)).Returns(() => Task.FromResult(new Player { Id = _player2Id }));
 			_diceFactory = new DiceServiceFactory();
 			var gameSessionFactory = new GameSessionFactory(_diceFactory);
 			var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
 			_normalService = new NormalMatchmakingService();
 
-			var mockServiceProvider = new Mock<IServiceProvider>();
-			mockServiceProvider
-				.Setup(x => x.GetService(typeof(IPlayerService)))
-				.Returns(service.Object);
-			var mockScope = new Mock<IServiceScope>();
-			mockScope
-				.Setup(x => x.ServiceProvider)
-				.Returns(mockServiceProvider.Object);
 			var mockScopeFactory = new Mock<IServiceScopeFactory>();
-			mockScopeFactory
-				.Setup(x => x.CreateScope())
-				.Returns(mockScope.Object);
 
 			Mock<IMatchAnalysisQueue> analysisQueue = new();
 			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
-			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob?>());
 
 			_rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
 			_botMatchService = new BotMatchmakingService();
@@ -616,7 +600,7 @@ namespace GammonX.Server.Tests
 		{
 			Mock<IMatchAnalysisQueue> analysisQueue = new();
 			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
-			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob>());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob?>());
 
 			var queueKey = new QueueKey(variant, modus, type);
 			var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);

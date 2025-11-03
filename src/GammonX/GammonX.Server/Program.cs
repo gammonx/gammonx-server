@@ -5,12 +5,9 @@ using GammonX.Engine.Services;
 using GammonX.Server;
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
-using GammonX.Server.EntityFramework;
-using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using Serilog;
@@ -49,19 +46,7 @@ builder.Services.Configure<GameServiceOptions>(
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
 // -------------------------------------------------------------------------------
-// TODO: remove this stuff
-builder.Services.Configure<DatabaseOptions>(
-	builder.Configuration.GetSection("DATABASE"));
-builder.Services.AddDbContext<GammonXDbContext>((sp, dbContextBuilder)=>
-{
-	var options = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-	dbContextBuilder.UseNpgsql(options.ConnectionString);
-});
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IPlayerRepository, PlayerRepositoryImpl>();
-builder.Services.AddScoped<IPlayerService, PlayerServiceImpl>();
-builder.Services.AddScoped<IMatchRepository, MatchRepositoryImpl>();
-builder.Services.AddScoped<IMatchService, MatchServiceImpl>();
+// TODO: Dynamo DB
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------

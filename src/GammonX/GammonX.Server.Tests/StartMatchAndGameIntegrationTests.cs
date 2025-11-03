@@ -1,9 +1,7 @@
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
-using GammonX.Server.Analysis;
+
 using GammonX.Server.Contracts;
-using GammonX.Server.EntityFramework.Entities;
-using GammonX.Server.EntityFramework.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Stubs;
@@ -12,8 +10,6 @@ using GammonX.Server.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-
-using Moq;
 
 using Newtonsoft.Json;
 
@@ -47,15 +43,6 @@ namespace GammonX.Server.Tests
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
-					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IPlayerService));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					Mock<IPlayerService> service = new();
-					service.Setup(x => x.GetWithRatingAsync(_player1Id, default)).Returns(() => Task.FromResult(new Player { Id = _player1Id }));
-					service.Setup(x => x.GetWithRatingAsync(_player2Id, default)).Returns(() => Task.FromResult(new Player { Id = _player2Id }));
-					services.AddSingleton(service.Object);
 				});
 			});
 		}
