@@ -79,6 +79,16 @@
 - Select match modus (cash game, 5point game, 7point game)
 - If submitted directly to board screen
 
+#### Loading Screen
+- showing ranked/username (a la league)
+
+#### Queue Screen
+- cancel button
+- sanduhr
+- if found popup to accept or decline
+- if accepted redirect to board screen
+- if declined return to homescreen
+
 #### Board Screen
 - backgammon board
 - userid/country flag me
@@ -93,13 +103,6 @@
 - elo rating
 - if first game finished > game result screen > accept next game if applicable
 - if match finished > match result screen > exit
-
-#### Queue Screen
-- cancel button
-- sanduhr
-- if found popup to accept or decline
-- if accepted redirect to board screen
-- if declined return to homescreen
 
 #### Game Result Screen
 - Accept/Start next game
@@ -126,15 +129,21 @@
         Tavli > greek style
         Tavla > turkish style
     - Font
+
 - Landingpage/Onepager Web
     - Feature Listing
     - Appstore(s) links
-    - Offering
-- Social Media
-    - Instagram Post Template
-    - Ad Template
+    - Offering/USP
+    - Social Links
+    - Roadmap
 
-### Future Contract
+- Social Media
+    - E.g. Instagram Post Template
+    - Ad Templates
+    - Content Creation
+    - Release Marketing Content
+
+### Futures Contract
 - fair payment upfront
 - future exclusive deals
     - e.g. revenue share for skins
@@ -142,4 +151,3 @@
     - ad management
     - other advertising
     - future website/app development (redesign)
-

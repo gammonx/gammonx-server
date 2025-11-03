@@ -33,6 +33,15 @@ else if (File.Exists(env))
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
 // -------------------------------------------------------------------------------
+// LOGGING SETUP
+// -------------------------------------------------------------------------------
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+	configuration
+		.Enrich.FromLogContext()
+		.WriteTo.Console();
+});
+// -------------------------------------------------------------------------------
 // GAME SERVICE SETUP
 // -------------------------------------------------------------------------------
 builder.Services.Configure<GameServiceOptions>(
@@ -40,9 +49,9 @@ builder.Services.Configure<GameServiceOptions>(
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
 // -------------------------------------------------------------------------------
+// TODO: remove this stuff
 builder.Services.Configure<DatabaseOptions>(
 	builder.Configuration.GetSection("DATABASE"));
-
 builder.Services.AddDbContext<GammonXDbContext>((sp, dbContextBuilder)=>
 {
 	var options = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
@@ -85,15 +94,6 @@ builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
 	client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 // -------------------------------------------------------------------------------
-// LOGGING SETUP
-// -------------------------------------------------------------------------------
-builder.Host.UseSerilog((context, services, configuration) =>
-{
-	configuration
-		.Enrich.FromLogContext()
-		.WriteTo.Console();
-});
-// -------------------------------------------------------------------------------
 // CORS SETUP
 // -------------------------------------------------------------------------------
 builder.Services.AddCors(options =>
@@ -101,7 +101,7 @@ builder.Services.AddCors(options =>
 	options.AddDefaultPolicy(policy =>
 	{
 		policy
-			.AllowAnyOrigin() // TODO
+			.AllowAnyOrigin()
 			.AllowAnyMethod()
 			.AllowAnyHeader();
 	});
@@ -133,6 +133,12 @@ app.MapHealthChecks("/health");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+Log.Information("SERILOG LOGLEVEL: {SerilogLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__DEFAULT"));
+Log.Information("ASPNETCORE LOGLEVEL: {AspNetCoreLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__MICROSOFTASPNETCORE"));
+Log.Information("BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__BASEURL"));
+Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUTSECONDS"));
+Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetEnvironmentVariable("GAME_SERVICE__BASEPATH"));
 
 app.Run();
 

@@ -11,13 +11,13 @@ services:
       - "8081:8081"   # signalR port
     environment:
       - DOTNET_ENVIRONMENT=Development
-      - SERVICE_BASEPATH=/game
+      - GAME_SERVICE__BASEPATH=__undefined__
+      - BOT_SERVICE__BASEURL=__undefined__
+      - BOT_SERVICE__TIMEOUTSECONDS=5
+      - LOG_LEVEL__DEFAULT=Debug
+      - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
     depends_on:
       - bot-service
-      - postgres-service 
-    env_file:
-      - src\GammonX\GammonX.Server\.env.local
-      - src\GammonX\GammonX.Server\.env
 
   bot-service:
     build:
@@ -30,14 +30,3 @@ services:
       - "8082:8082"
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
-
-  postgres-service:
-    image: postgres:15
-    container_name: database
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: gammonx
-    ports:
-      - "5432:5432"
