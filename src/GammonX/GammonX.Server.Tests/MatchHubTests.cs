@@ -1,14 +1,16 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
-
 using System.Security.Claims;
 
 namespace GammonX.Server.Tests
@@ -20,17 +22,32 @@ namespace GammonX.Server.Tests
 		private readonly IDiceServiceFactory _diceFactory;
 		private readonly IBotService _botService;
 		private readonly MatchLobbyHub _hub;
-		private readonly SimpleMatchmakingService _matchmakingService;
+		private readonly NormalMatchmakingService _normalService;
+		private readonly RankedMatchmakingService _rankedService;
+		private readonly BotMatchmakingService _botMatchService;
+		private readonly Guid _player1Id = Guid.NewGuid();
+		private readonly Guid _player2Id = Guid.NewGuid();
 
 		public MatchHubTests()
 		{
 			_diceFactory = new DiceServiceFactory();
 			var gameSessionFactory = new GameSessionFactory(_diceFactory);
 			var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
-			_matchmakingService = new SimpleMatchmakingService();
+			_normalService = new NormalMatchmakingService();
+
+			var mockScopeFactory = new Mock<IServiceScopeFactory>();
+
+			Mock<IMatchAnalysisQueue> analysisQueue = new();
+			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob?>());
+
+			_rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
+			_botMatchService = new BotMatchmakingService();
+			var compositeService = new CompositeMatchmakingService();
+			compositeService.SetServices(_normalService, _rankedService, _botMatchService);
 			_matchRepo = new MatchSessionRepository(matchSessionFactory);
 			_botService = new WildbgBotService(_wildBgClient);
-			_hub = new MatchLobbyHub(_matchmakingService, _matchRepo, _diceFactory, _botService);
+			_hub = new MatchLobbyHub(compositeService, _matchRepo, _diceFactory, _botService, analysisQueue.Object);
 		}
 
 		[Theory]
@@ -41,10 +58,8 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
 		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerCanOfferAndAcceptDoublingCube(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
-		{
-			var player1Id = Guid.NewGuid();
-			var player2Id = Guid.NewGuid();
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, player1Id, player2Id);
+		{		
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
 			var hub1 = result.Item2;
 			var hub2 = result.Item3;
@@ -59,20 +74,20 @@ namespace GammonX.Server.Tests
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
 
-			if (gameSession.ActivePlayer == player1Id)
+			if (gameSession.ActivePlayer == _player1Id)
 			{
 				Assert.False(cubeSession.IsDoubleOfferPending);
-				Assert.True(cubeSession.CanOfferDouble(player1Id));
+				Assert.True(cubeSession.CanOfferDouble(_player1Id));
 				await hub1.OfferDoubleAsync(matchIdStr);
 				mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
 				Assert.True(cubeSession.IsDoubleOfferPending);
 				await hub2.AcceptDoubleAsync(matchIdStr);
 				Assert.False(cubeSession.IsDoubleOfferPending);
 			}
-			else if (gameSession.ActivePlayer == player2Id)
+			else if (gameSession.ActivePlayer == _player2Id)
 			{
 				Assert.False(cubeSession.IsDoubleOfferPending);
-				Assert.True(cubeSession.CanOfferDouble(player2Id));
+				Assert.True(cubeSession.CanOfferDouble(_player2Id));
 				await hub2.OfferDoubleAsync(matchIdStr);
 				mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
 				Assert.True(cubeSession.IsDoubleOfferPending);
@@ -104,14 +119,12 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
-			var player1Id = Guid.NewGuid();
-			var player2Id = Guid.NewGuid();
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, player1Id, player2Id);
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
 			var hub1 = result.Item2;
 			var hub2 = result.Item3;
 			var mockClients = result.Item4;
-			var groupName = result.Item5;
+			var groupName = result.groupName;
 			var matchIdStr = matchSession.Id.ToString();
 			var player1ConnectionId = matchSession.Player1.ConnectionId;
 			var player2ConnectionId = matchSession.Player2.ConnectionId;
@@ -128,11 +141,11 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(gameSession);
 				}
 
-				if (gameSession.ActivePlayer == player1Id)
+				if (gameSession.ActivePlayer == _player1Id)
 				{
 					await hub1.ResignMatchAsync(matchIdStr);
 				}
-				else if (gameSession.ActivePlayer == player2Id)
+				else if (gameSession.ActivePlayer == _player2Id)
 				{
 					await hub2.ResignMatchAsync(matchIdStr);
 				}
@@ -188,14 +201,12 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
-			var player1Id = Guid.NewGuid();
-			var player2Id = Guid.NewGuid();
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, player1Id, player2Id);
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
 			var hub1 = result.Item2;
 			var hub2 = result.Item3;
 			var mockClients = result.Item4;
-			var groupName = result.Item5;
+			var groupName = result.groupName;
 			var matchIdStr = matchSession.Id.ToString();
 			var player1ConnectionId = matchSession.Player1.ConnectionId;
 			var player2ConnectionId = matchSession.Player2.ConnectionId;
@@ -212,11 +223,11 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(gameSession);
 				}
 
-				if (gameSession.ActivePlayer == player1Id)
+				if (gameSession.ActivePlayer == _player1Id)
 				{
 					await hub1.ResignGameAsync(matchIdStr);
 				}
-				else if (gameSession.ActivePlayer == player2Id)
+				else if (gameSession.ActivePlayer == _player2Id)
 				{
 					await hub2.ResignGameAsync(matchIdStr);
 				}
@@ -281,14 +292,12 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
-			var player1Id = Guid.NewGuid();
-			var player2Id = Guid.NewGuid();
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, player1Id, player2Id);
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
 			var hub1 = result.Item2;
 			var hub2 = result.Item3;
 			var mockClients = result.Item4;
-			var groupName = result.Item5;
+			var groupName = result.groupName;
 			var matchIdStr = matchSession.Id.ToString();
 			var player1ConnectionId = matchSession.Player1.ConnectionId;
 			var player2ConnectionId = matchSession.Player2.ConnectionId;
@@ -305,11 +314,11 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(gameSession);
 				}
 
-				if (gameSession.ActivePlayer == player1Id)
+				if (gameSession.ActivePlayer == _player1Id)
 				{
 					await ExecutePlayerTurnAsync(matchSession, gameSession, hub1, hub2);
 				}
-				else if (gameSession.ActivePlayer == player2Id)
+				else if (gameSession.ActivePlayer == _player2Id)
 				{
 					await ExecutePlayerTurnAsync(matchSession, gameSession, hub2, hub1);
 				}
@@ -361,10 +370,11 @@ namespace GammonX.Server.Tests
 		{
 			var queueKey = new QueueKey(variant, WellKnownMatchModus.Bot, type);
 			var playerId = Guid.NewGuid();
-			var matchId = CreatePlayerVsBotMatchLobby(queueKey, playerId);
+			var matchId = await CreatePlayerVsBotMatchLobbyAsync(queueKey, playerId);
 			var matchIdStr = matchId.ToString();
 
-			Assert.True(_matchmakingService.TryFindMatchLobby(matchId, out var lobby));
+			var matchService = GetService(WellKnownMatchModus.Bot);
+			Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
 			Assert.NotNull(lobby);
 			var groupName = lobby.GroupName;
 
@@ -420,7 +430,6 @@ namespace GammonX.Server.Tests
 					await _hub.AcceptDoubleAsync(matchIdStr);
 				}
 
-				// TODO: issue if bot wins the match with some dice rolls left
 				if (gameSession.ActivePlayer == playerId)
 				{
 					await _hub.RollAsync(matchIdStr);
@@ -470,9 +479,9 @@ namespace GammonX.Server.Tests
 			{
 				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
 			}
-			// bot will win every time
+			// bot will win every time :: wow the dumb human can win also
 			Assert.True(matchSession.Player2.Points > 0);
-			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints());
+			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
 			var gameEndedCount = playedSessions.Count - 1;
 			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
 			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
@@ -500,22 +509,16 @@ namespace GammonX.Server.Tests
 		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
 		public async Task MatchHubCanPlayPlayerVsPlayerCanUndoMoves(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
 		{
-			var player1Id = Guid.NewGuid();
-			var player2Id = Guid.NewGuid();
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, player1Id, player2Id);
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
 			var hub1 = result.Item2;
 			var hub2 = result.Item3;
-			var mockClients = result.Item4;
-			var groupName = result.Item5;
 			var matchIdStr = matchSession.Id.ToString();
-			var player1ConnectionId = matchSession.Player1.ConnectionId;
-			var player2ConnectionId = matchSession.Player2.ConnectionId;
 
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
 
-			if (gameSession.ActivePlayer == player1Id)
+			if (gameSession.ActivePlayer == _player1Id)
 			{
 				await hub1.RollAsync(matchIdStr);
 				var ms = gameSession.MoveSequences.FirstOrDefault();
@@ -532,7 +535,7 @@ namespace GammonX.Server.Tests
 					}
 				}
 			}
-			else if (gameSession.ActivePlayer == player2Id)
+			else if (gameSession.ActivePlayer == _player2Id)
 			{
 				await hub2.RollAsync(matchIdStr);
 				var ms = gameSession.MoveSequences.FirstOrDefault();
@@ -595,11 +598,16 @@ namespace GammonX.Server.Tests
 			Guid player1Id,
 			Guid player2Id)
 		{
-			var queueKey = new QueueKey(variant, modus, type);
-			var matchId = CreatePlayerVsPlayerMatchLobby(queueKey, player1Id, player2Id);
-			var matchIdStr = matchId.ToString();
+			Mock<IMatchAnalysisQueue> analysisQueue = new();
+			analysisQueue.Setup(x => x.EnqueueAsync(It.IsAny<MatchAnalysisJob>())).Returns(new ValueTask());
+			analysisQueue.Setup(x => x.DequeueAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<MatchAnalysisJob?>());
 
-			Assert.True(_matchmakingService.TryFindMatchLobby(matchId, out var lobby));
+			var queueKey = new QueueKey(variant, modus, type);
+			var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);
+			var matchIdStr = matchId.ToString();
+			var matchService = GetService(modus);
+
+			Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
 			Assert.NotNull(lobby);
 			var groupName = lobby.GroupName;
 
@@ -610,7 +618,7 @@ namespace GammonX.Server.Tests
 			// client 1
 			var player1ConnectionId = Guid.NewGuid().ToString();
 			var context1 = new HubCallerContextStub(player1ConnectionId);
-			var hub1 = new MatchLobbyHub(_matchmakingService, _matchRepo, _diceFactory, _botService)
+			var hub1 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService, analysisQueue.Object)
 			{
 				Clients = mockClients.Object,
 				Groups = mockGroups.Object,
@@ -620,7 +628,7 @@ namespace GammonX.Server.Tests
 			// client 2
 			var player2ConnectionId = Guid.NewGuid().ToString();
 			var context2 = new HubCallerContextStub(player2ConnectionId);
-			var hub2 = new MatchLobbyHub(_matchmakingService, _matchRepo, _diceFactory, _botService)
+			var hub2 = new MatchLobbyHub(matchService, _matchRepo, _diceFactory, _botService, analysisQueue.Object)
 			{
 				Clients = mockClients.Object,
 				Groups = mockGroups.Object,
@@ -654,21 +662,53 @@ namespace GammonX.Server.Tests
 			return (matchSession, hub1, hub2, mockClients, groupName);
 		}
 
-		private Guid CreatePlayerVsBotMatchLobby(QueueKey queueKey, Guid playerId)
+		private async Task<Guid> CreatePlayerVsBotMatchLobbyAsync(QueueKey queueKey, Guid playerId)
 		{
-			var lobbyEntry = new LobbyEntry(playerId);
-			var matchId = _matchmakingService.JoinQueue(lobbyEntry, queueKey);
-			return matchId;
+			var matchService = GetService(queueKey.MatchModus);
+			var queueEntry = await matchService.JoinQueueAsync(playerId, queueKey);
+			var payload = queueEntry.ToPayload();
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, payload.Status);
+			matchService.TryFindQueueEntry(queueEntry.Id, out var entry);
+			Assert.Null(entry);
+			matchService.TryFindMatchLobby(queueEntry.Id, out var lobby);
+			Assert.NotNull(lobby);
+			return lobby.MatchId;
 		}
 
-		private Guid CreatePlayerVsPlayerMatchLobby(QueueKey queueKey, Guid player1Id, Guid player2Id)
+		private async Task<Guid> CreatePlayerVsPlayerMatchLobbyAsync(QueueKey queueKey, Guid player1Id, Guid player2Id)
 		{
-			var lobbyEntry1 = new LobbyEntry(player1Id);
-			var matchId1 = _matchmakingService.JoinQueue(lobbyEntry1, queueKey);
-			var lobbyEntry2= new LobbyEntry(player2Id);
-			var matchId2 = _matchmakingService.JoinQueue(lobbyEntry2, queueKey);
-			Assert.Equal(matchId1, matchId2);
-			return matchId1;
+			var matchService = GetService(queueKey.MatchModus);
+			var queueEntry1 = await matchService.JoinQueueAsync(player1Id, queueKey);
+			var queueContract1 = queueEntry1.ToPayload();
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract1.Status);
+			var queueEntry2 = await matchService.JoinQueueAsync(player2Id, queueKey);
+			var queueContract2 = queueEntry2.ToPayload();
+			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract2.Status);
+
+			await matchService.MatchQueuedPlayersAsync();
+			matchService.TryFindMatchLobby(queueEntry1.Id, out var lobby1);
+			Assert.NotNull(lobby1);
+			matchService.TryFindMatchLobby(queueEntry2.Id, out var lobby2);
+			Assert.NotNull(lobby2);
+			Assert.Equal(lobby1.MatchId, lobby1.MatchId);
+			return lobby1.MatchId;
+		}
+
+		private IMatchmakingService GetService(WellKnownMatchModus modus)
+		{
+			if (modus == WellKnownMatchModus.Normal)
+			{
+				return _normalService;
+			}
+			else if (modus == WellKnownMatchModus.Ranked)
+			{
+				return _rankedService;
+			}
+			else if (modus == WellKnownMatchModus.Bot)
+			{
+				return _botMatchService;
+			}
+			throw new InvalidOperationException("not good");
 		}
 
 		public class HubCallerContextStub : HubCallerContext

@@ -1,5 +1,7 @@
 ﻿using GammonX.Server.Models;
 
+using System.Collections.Concurrent;
+
 namespace GammonX.Server.Services
 {
 	/// <summary>
@@ -7,7 +9,7 @@ namespace GammonX.Server.Services
 	/// </summary>
 	public class MatchSessionRepository
 	{
-		private readonly Dictionary<Guid, IMatchSessionModel> _sessions = new();
+		private readonly ConcurrentDictionary<Guid, IMatchSessionModel> _sessions = new();
 		private readonly IMatchSessionFactory _matchSessionFactory;
 
 		public MatchSessionRepository(IMatchSessionFactory matchSessionFactory)
@@ -18,8 +20,11 @@ namespace GammonX.Server.Services
 		public IMatchSessionModel Create(Guid matchId, QueueKey queueKey)
 		{
 			var matchSession = _matchSessionFactory.Create(matchId, queueKey);
-			_sessions.Add(matchId, matchSession);
-			return matchSession;
+			if (_sessions.TryAdd(matchId, matchSession))
+			{
+				return matchSession;
+			}
+			throw new KeyNotFoundException($"An erro occurred while creating a match session.");
 		}
 
 		public IMatchSessionModel? Get(Guid matchId)
@@ -46,7 +51,7 @@ namespace GammonX.Server.Services
 
 		public void Remove(Guid matchId)
 		{
-			if (!_sessions.Remove(matchId))
+			if (!_sessions.TryRemove(matchId, out var _))
 			{
 				throw new KeyNotFoundException($"No match session found for matchId: {matchId}");
 			}

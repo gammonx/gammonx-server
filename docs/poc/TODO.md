@@ -5,23 +5,37 @@
 - game history
 - undo/redo moves
 - error/debug server logging
+- queue entry refactoring :: queue entry polling > poc.md
+- health check endpoint api/health
+- deployment :: env variables > .env.local Armin
 - basepaths /game/api/ :: /bot/wildbg/
 
 ## Active
+- Ausbauen
+    - CRUD player (PlayersController)
+    - database (postgress in container)
+- Mergen > Steve get it to work
 - palamedes schreiben
-- database
-- auth/user account
-- ranked mode (incl. elo rating)
 
 ## TODO 
-- bot service issues
+- database
+    - dynamo db migration?
+    - ranked mode (incl. elo rating)
+    - match/game tracking :: stat calculation
+    - dynamo db provider > how to model relations
+    - analyze/store stats > aws queue + lambda functions
+    - remove postgress stuff
+    - dynamo db model
+    - what kind of requests we need?
+- auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
-- match equity/stats afer match
-- win percentage to user
+- time out // turn timer
+- disconnect/reconnect
+- match equity/stats afer match :: win percentage to user
 - tournament mode
 - export matches to sgf/.mat format
 - bot dificulty levels
-- ?
+- subscription service (clientside?)
 
 ## Open Points
 - enhance matchmaking?
@@ -40,3 +54,4 @@
 - analytics hook
 - blunder database > quizes (subscription)
 - hide pipcount (option and in ranked mode)
+- extract data access layer from game server

@@ -61,7 +61,7 @@
         {
             if (isWhite)
             {
-                // White moves from 0 to 23
+                // white moves from 0 to 23
                 int newPosition = currentPosition + moveDistance;
                 return newPosition;
             }
@@ -73,7 +73,7 @@
 					currentPosition = 11;
 				}
 
-                // Black moves forward (wraps from 23 -> 0)
+                // black moves forward (wraps from 23 -> 0)
                 int newPosition = (currentPosition + moveDistance) % 24;
                 return newPosition;
             }
@@ -107,7 +107,8 @@
 			{
 				int to = MoveOperator(isWhite, currentPosition, moveDistance);
 				// checkers with the perfect bear off roll can always be taken out
-				if (to == HomeRangeBlack.End.Value + 1)
+				// except if a black fevga checkers is played from the homebar
+				if (to == HomeRangeBlack.End.Value + 1 && currentPosition != WellKnownBoardPositions.HomeBarBlack)
 				{
 					return true;
 				}
@@ -141,10 +142,10 @@
 		public int HomeBarCountBlack { get; private set; } = 14;
 
 		// <inheritdoc />
-		public int StartIndexWhite => -1;
+		public int StartIndexWhite => WellKnownBoardPositions.HomeBarWhite;
 
 		// <inheritdoc />
-		public int StartIndexBlack => 24;
+		public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
 
 		// <inheritdoc />
 		public bool MustEnterFromHomebar => false;

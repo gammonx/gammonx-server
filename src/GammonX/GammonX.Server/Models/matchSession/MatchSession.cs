@@ -43,10 +43,10 @@ namespace GammonX.Server.Models
 		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;
 
 		// <inheritdoc />
-		public PlayerModel Player1 { get; private set; }
+		public MatchPlayerModel Player1 { get; private set; }
 
 		// <inheritdoc />
-		public PlayerModel Player2 { get; private set; }
+		public MatchPlayerModel Player2 { get; private set; }
 
 		public MatchSession(
 			Guid id, 
@@ -61,8 +61,8 @@ namespace GammonX.Server.Models
 			_rounds = GetGameModusList(queueKey.MatchType);
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
-			Player1 = new PlayerModel(Guid.Empty, string.Empty);
-			Player2 = new PlayerModel(Guid.Empty, string.Empty);
+			Player1 = new MatchPlayerModel(Guid.Empty, string.Empty);
+			Player2 = new MatchPlayerModel(Guid.Empty, string.Empty);
 			_isMatchOver = Type.GetMatchOverFunc();
 		}
 
@@ -72,7 +72,7 @@ namespace GammonX.Server.Models
 			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
 			if (Player1.Id == Guid.Empty)
 			{
-				Player1 = new PlayerModel(player.PlayerId, player.ConnectionId);
+				Player1 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
@@ -81,7 +81,7 @@ namespace GammonX.Server.Models
 					throw new InvalidOperationException("Player 1 cannot join as Player 2.");
 				}
 
-				Player2 = new PlayerModel(player.PlayerId, player.ConnectionId);
+				Player2 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
 			}
 			else
 			{
@@ -365,7 +365,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public EventMatchStatePayload ToPayload(params string[] allowedCommands)
 		{
-			return new EventMatchStatePayload()
+			var payload = new EventMatchStatePayload()
 			{
 				Id = Id,
 				Player1 = Player1.ToContract(),
@@ -375,8 +375,22 @@ namespace GammonX.Server.Models
 				Variant = Variant,
 				Modus = Modus,
 				Type = Type,
-				AllowedCommands = allowedCommands
+				AllowedCommands = allowedCommands,
+				Winner = null,
+				WinnerPoints = null,
+				Loser = null,
+				LoserPoints = null
 			};
+
+			if (_isMatchOver.Invoke(this))
+			{
+				payload.Winner = Player1.Points > Player2.Points ? Player1.Id : Player2.Id;
+				payload.WinnerPoints = Player1.Points > Player2.Points ? Player1.Points : Player2.Points;
+				payload.Loser = Player1.Points < Player2.Points ? Player1.Id : Player2.Id;
+				payload.LoserPoints = Player1.Points < Player2.Points ? Player1.Points : Player2.Points;
+			}
+
+			return payload;
 		}
 
 		// <inheritdoc />
@@ -460,7 +474,7 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
-		protected PlayerModel GetPlayer(Guid playerId)
+		protected MatchPlayerModel GetPlayer(Guid playerId)
 		{
 			if (Player1.Id.Equals(playerId))
 			{

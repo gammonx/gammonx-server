@@ -7,11 +7,31 @@
 			MatchId = matchId;
 			Player1 = player1;
 			QueueKey = queueKey;
+			if (queueKey.MatchModus == WellKnownMatchModus.Bot)
+			{
+				// a match lobby against a bot is instantly ready
+				Status = QueueEntryStatus.OpponentFound;
+			}
+			else
+			{
+				Status = QueueEntryStatus.WaitingForOpponent;
+			}
 		}
 
+		/// <summary>
+		/// Gets the uniquely identifier of a given match and its lobby.
+		/// </summary>
 		public Guid MatchId { get; private set; }
 		
+		/// <summary>
+		/// Gets the queue key determining the variant, type and modus of the given match.
+		/// </summary>
 		public QueueKey QueueKey { get; private set; }
+
+		/// <summary>
+		/// Gets the status of the given match lobby.
+		/// </summary>
+		public QueueEntryStatus Status { get; private set; }
 
 		/// <summary>
 		/// Gets the web socket group name for this match lobby.
@@ -40,6 +60,7 @@
 			}
 
 			Player2 = player2;
+			Status = QueueEntryStatus.OpponentFound;
 		}
 	}
 }

@@ -1,32 +1,84 @@
 # POC GammonX Game Server
 
-## Join Matchmaking
-#### POST /game/api/matches/join
-- Request
+## Players Controller
+#### POST game/api/players/create
+##### Request
 ```json
 {
-    "PlayerId": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
-    "MatchVariant": 2,
-    "MatchModus": 0,
-    "MatchType": 2
+    "Id": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
+    "Username": "bubaz"
 }
 ```
-> WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
-
-> WellknownMatchModus > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
-
-> WellknownMatchType > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
-
-- Response
+#### GET game/api/players/{playerId}
+##### Response
 ```json
 {
    "type":"OK",
    "payload":{
-      "matchId":"281ccec7-ea50-4ab1-be58-32669e11ee14"
+      "player": {
+         "id": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
+         "userName": "bubaz"
+      }
    }
 }
 ```
 
+#### POST game/api/players/{playerId}/delete
+##### Response
+```json
+{
+   "type":"OK",
+   "payload":{
+      "deleted": true
+   }
+}
+```
+
+## Matches Controller
+### Join a MatchQueue
+#### POST /game/api/matches/join
+The player with the given `playerId` joins the match queue depending on the given `matchModus`. The response will initially contain a `queueId` and a `null` for `matchId`. If a match lobby is found, the `matchId` property will be populated. [See Polling a queue status.](#poll-a-queueentry) 
+##### Request
+```json
+{
+    "playerId": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
+    "matchVariant": 2,
+    "matchModus": 0,
+    "matchType": 2
+}
+```
+- WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+- WellknownMatchModus > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+- WellknownMatchType > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+
+##### Response
+```json
+{
+   "type":"OK",
+   "payload":{
+      "queueId": "1014c354-df03-4462-8272-2b3537821f67" | null,
+      "status": 0 | 1,
+      "matchId?":"281ccec7-ea50-4ab1-be58-32669e11ee14" | null
+   }
+}
+```
+### Poll a QueueEntry
+#### GET game/api/matches/queues/{queueId}
+The backend server hosts a background worker which tries to create proper match lobbies every few seconds. If a match lobby is created, the polling will return the same response as the join request with the `queueId` set to `null` and the `matchId` with a valid GUID. This guid is used for connecting to the matchHub/socket in the next step.
+
+- QueueEntryStatus > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+
+##### Response
+```json
+{
+   "type":"OK",
+   "payload":{
+      "queueId": "1014c354-df03-4462-8272-2b3537821f67" | null,
+      "status": 0 | 1,
+      "matchId?":"281ccec7-ea50-4ab1-be58-32669e11ee14" | null
+   }
+}
+```
 ## WebSocket Hub
 `wss://example.com/matchhub?matchId={GUID}&playerId={playerId1}`
 
@@ -44,6 +96,8 @@
 - matchId: string
 - from: int
 - to: int
+#### `UndoMove`
+- matchId: string
 #### `EndTurn`
 - matchId: string
 #### `ResignMatch`

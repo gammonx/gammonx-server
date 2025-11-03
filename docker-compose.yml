@@ -4,14 +4,18 @@ services:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
       args:
-        BUILD_CONFIGURATION: debug
+        BUILD_CONFIGURATION: Debug
     container_name: server
     ports:
       - "8080:8080"   # controller port
       - "8081:8081"   # signalR port
     environment:
       - DOTNET_ENVIRONMENT=Development
-      - SERVICE_BASEPATH=/game
+      - GAME_SERVICE__BASEPATH=/game
+      - BOT_SERVICE__BASEURL=http://localhost:8082/bot/wildbg/
+      - BOT_SERVICE__TIMEOUTSECONDS=5
+      - LOG_LEVEL__DEFAULT=Debug
+      - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
     depends_on:
       - bot-service
 
