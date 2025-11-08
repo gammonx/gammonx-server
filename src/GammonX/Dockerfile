@@ -24,7 +24,7 @@ RUN dotnet build "./GammonX.Server.csproj" -c ${BUILD_CONFIGURATION} -o /app/bui
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./GammonX.Server.csproj" -c {$BUILD_CONFIGURATION} -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./GammonX.Server.csproj" -c ${BUILD_CONFIGURATION} -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 ARG BUILD_CONFIGURATION=Release
