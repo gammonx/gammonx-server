@@ -1,3 +1,6 @@
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.Runtime;
 using DotNetEnv;
 
 using GammonX.Engine.Services;
@@ -5,6 +8,8 @@ using GammonX.Engine.Services;
 using GammonX.Server;
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
+using GammonX.Server.Data.DynamoDb;
+using GammonX.Server.Data.Repository;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
@@ -46,7 +51,28 @@ builder.Services.Configure<GameServiceOptions>(
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
 // -------------------------------------------------------------------------------
-// TODO: Dynamo DB
+builder.Services.Configure<AwsServiceOptions>(
+	builder.Configuration.GetSection("AWS"));
+
+builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+{
+	var options = sp.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
+	var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
+	var config = new AmazonDynamoDBConfig
+	{
+		ServiceURL = options.DYNAMODB_SERVICEURL
+	};
+	return new AmazonDynamoDBClient(credentials, config);
+});
+builder.Services.AddSingleton<IDynamoDBContext>(sp =>
+{
+	var client = sp.GetRequiredService<IAmazonDynamoDB>();
+	var contextBuilder = new DynamoDBContextBuilder();
+	contextBuilder.WithDynamoDBClient(() => client);
+	return contextBuilder.Build();
+});
+
+builder.Services.AddScoped<IPlayerRepository, DynamoDbPlayerRepository>();
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
@@ -124,6 +150,13 @@ Log.Information("ASPNETCORE LOGLEVEL: {AspNetCoreLogLevel}", Environment.GetEnvi
 Log.Information("BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__BASEURL"));
 Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUTSECONDS"));
 Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetEnvironmentVariable("GAME_SERVICE__BASEPATH"));
+Log.Information("AWS DYNAMO DB SERVICE URL: {DynamoDbServiceUrl}", Environment.GetEnvironmentVariable("AWS__DYNAMODB_SERVICEURL"));
+
+using (var scope = app.Services.CreateScope())
+{
+	var dynamoClient = scope.ServiceProvider.GetRequiredService<IAmazonDynamoDB>();
+	await DynamoDbInitializer.EnsureTablesExistAsync(dynamoClient);
+}
 
 app.Run();
 

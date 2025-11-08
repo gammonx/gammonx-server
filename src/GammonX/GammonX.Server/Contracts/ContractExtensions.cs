@@ -1,11 +1,11 @@
-﻿using GammonX.Server.EntityFramework.Entities;
+﻿using GammonX.Server.Data.Entities;
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Contracts
 {
 	public static class ContractExtensions
 	{
-		public static PlayerContract ToContract(this Player player)
+		public static PlayerContract ToContract(this PlayerItem player)
 		{
 			return new PlayerContract
 			{

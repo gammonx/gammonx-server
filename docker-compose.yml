@@ -16,8 +16,13 @@ services:
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
+      - AWS__ACCESSKEYID=local
+      - AWS__SECRETACCESSKEY=local
+      - AWS__Region=__undefined__
+      - AWS__DYNAMODBSERVICEURL=http://localhost:8000
     depends_on:
       - bot-service
+      - dynamodb-local
 
   bot-service:
     build:
@@ -30,3 +35,22 @@ services:
       - "8082:8082"
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
+
+  dynamodb-local:
+      image: amazon/dynamodb-local
+      container_name: dynamodb-local
+      ports:
+        - "8000:8000"
+      command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+      volumes:
+        - ./dynamodb-data:/home/dynamodblocal/data
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: dynamodb-admin
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMO_ENDPOINT=http://localhost:8000
+    depends_on:
+      - dynamodb-local
