@@ -1,23 +1,8 @@
 ## DONE
-- pip count
-- cube decisions AI
-- fevga/plakoto bot support
-- game history
-- undo/redo moves
-- error/debug server logging
-- queue entry refactoring :: queue entry polling > poc.md
-- health check endpoint api/health
-- deployment :: env variables > .env.local Armin
-- basepaths /game/api/ :: /bot/wildbg/
+- ?
 
 ## Active
-- Ausbauen
-    - CRUD player (PlayersController)
-    - database (postgress in container)
-- Mergen > Steve get it to work
 - palamedes schreiben
-
-## TODO 
 - database
     - dynamo db migration?
     - ranked mode (incl. elo rating)
@@ -27,6 +12,8 @@
     - remove postgress stuff
     - dynamo db model
     - what kind of requests we need?
+
+## TODO 
 - auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
