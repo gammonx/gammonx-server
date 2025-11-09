@@ -79,6 +79,7 @@ builder.Services.AddScoped<IPlayerRepository, DynamoDbPlayerRepository>();
 builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(WellKnownMatchModus.Normal);
 builder.Services.AddKeyedSingleton<IMatchmakingService, BotMatchmakingService>(WellKnownMatchModus.Bot);
 builder.Services.AddKeyedSingleton<IMatchmakingService, RankedMatchmakingService>(WellKnownMatchModus.Ranked);
+builder.Services.AddKeyedSingleton<IMatchmakingService, UnknownMatchmakingService>(WellKnownMatchModus.Unknown);
 builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>();
 builder.Services.AddHostedService<RankedMatchmakingWorker>();
 builder.Services.AddHostedService<NormalMatchmakingWorker>();
