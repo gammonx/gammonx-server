@@ -11,8 +11,6 @@ namespace GammonX.Server.Data.DynamoDb
 	// <inheritdoc />
 	public class DynamoDbPlayerRepository : IPlayerRepository
 	{
-		// TODO: implement generic base DynamoDbRepositoryBase<T>
-
 		private readonly IAmazonDynamoDB _client;
 		private readonly IDynamoDBContext _context;
 		private readonly string _tableName = Constants.TableName;
@@ -22,6 +20,8 @@ namespace GammonX.Server.Data.DynamoDb
 			_client = client;
 			_context = context;
 		}
+
+		#region Player ItemType
 
 		// <inheritdoc />
 		public async Task<PlayerItem?> GetAsync(Guid playerId)
@@ -43,45 +43,14 @@ namespace GammonX.Server.Data.DynamoDb
 			if (!response.IsItemSet)
 				return null;
 
-			// TODO: serialization with DynamoDBContext instead of dictionary mapping?
 			return new PlayerItem
 			{
-				Id = playerId,
+				PK = response.Item["PK"].S,
+				SK = response.Item["SK"].S,
+				Id = Guid.Parse(response.Item["Id"].S),
 				UserName = response.Item["Username"].S,
-				CreatedAt = DateTime.Parse(response.Item["CreatedAt"].S),
-				PK = pk,
-				SK = sk
+				CreatedAt = DateTime.Parse(response.Item["CreatedAt"].S)
 			};
-		}
-
-		// <inheritdoc />
-		public async Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchModus modus)
-		{
-			var pk = string.Format(PlayerItem.PKFormat, playerId);
-			var sk = string.Format(PlayerRatingItem.SKFormat, variant.ToString().ToUpper(), modus.ToString().ToUpper());
-			var request = new QueryRequest
-			{
-				TableName = _tableName,
-				KeyConditionExpression = "PK = :pk and SK = :sk",
-				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-			{
-				{ ":pk", new AttributeValue(pk) },
-				{ ":sk", new AttributeValue(sk) }
-			}
-			};
-
-			var response = await _client.QueryAsync(request);
-
-			return response.Items.Select(item => new PlayerRatingItem
-			{
-				Id = playerId,
-				Variant = Enum.Parse<WellKnownMatchVariant>(item["Variant"].S),
-				Type = Enum.Parse<WellKnownMatchType>(item["Type"].S),
-				Modus = Enum.Parse<WellKnownMatchModus>(item["Modus"].S),
-				Rating = int.Parse(item["Rating"].N),
-				HighestRating = int.Parse(item["HighestRating"].N),
-				LowestRating = int.Parse(item["LowestRating"].N)
-			});
 		}
 
 		// <inheritdoc />
@@ -93,6 +62,7 @@ namespace GammonX.Server.Data.DynamoDb
 			{
 				{ "PK", new AttributeValue(pk) },
 				{ "SK", new AttributeValue(sk) },
+				{ "Id", new AttributeValue(player.Id.ToString("N")) },
 				{ "ItemType", new AttributeValue(ItemTypes.PlayerItemType) },
 				{ "Username", new AttributeValue(player.UserName) },
 				{ "CreatedAt", new AttributeValue { S = player.CreatedAt.ToString("o") } }
@@ -103,8 +73,113 @@ namespace GammonX.Server.Data.DynamoDb
 				TableName = _tableName,
 				Item = item
 			};
-
 			await _client.PutItemAsync(request);
 		}
+
+		// <inheritdoc />
+		public async Task DeleteAsync(Guid playerId)
+		{
+			var pk = string.Format(PlayerItem.PKFormat, playerId);
+			var sk = PlayerItem.SKValue;
+
+			// delete player rating items
+			var playerRatings = await GetRatingsAsync(playerId);
+			foreach (var rating in playerRatings)
+			{
+				var deleteRatingKey = new Dictionary<string, AttributeValue>
+				{
+					{ "PK", new AttributeValue(rating.PK) },
+					{ "SK", new AttributeValue(rating.SK) }
+				};
+				var deleteRatingRequest = new DeleteItemRequest
+				{
+					TableName = _tableName,
+					Key = deleteRatingKey
+				};
+				await _client.DeleteItemAsync(deleteRatingRequest);
+			}
+
+			// delete player item
+			var deletePlayerKey = new Dictionary<string, AttributeValue>
+			{
+				{ "PK", new AttributeValue(pk) },
+				{ "SK", new AttributeValue(sk) }
+			};
+
+			var deletePlayerReq = new DeleteItemRequest
+			{
+				TableName = _tableName,
+				Key = deletePlayerKey
+			};
+			await _client.DeleteItemAsync(deletePlayerReq);
+		}
+
+		#endregion Player ItemType
+
+		#region PlayerRating ItemType
+
+		// <inheritdoc />
+		public async Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId)
+		{
+			var pk = string.Format(PlayerRatingItem.PKFormat, playerId);
+			var sk = PlayerRatingItem.SKPrefix;
+			var request = new QueryRequest
+			{
+				TableName = _tableName,
+				KeyConditionExpression = "PK = :pk and begins_with(SK, :ratingPrefix)",
+				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+				{
+					{ ":pk", new AttributeValue(pk) },
+					{ ":ratingPrefix", new AttributeValue(sk) }
+				}
+			};
+
+			var response = await _client.QueryAsync(request);
+
+			return response.Items.Select(item => new PlayerRatingItem
+			{
+				PK = item["PK"].S,
+				SK = item["SK"].S,
+				PlayerId = Guid.Parse(item["Id"].S),
+				Variant = Enum.Parse<WellKnownMatchVariant>(item["Variant"].S, true),
+				Type = Enum.Parse<WellKnownMatchType>(item["Type"].S, true),
+				Modus = Enum.Parse<WellKnownMatchModus>(item["Modus"].S, true),
+				Rating = int.Parse(item["Rating"].N),
+				HighestRating = int.Parse(item["HighestRating"].N),
+				LowestRating = int.Parse(item["LowestRating"].N)
+			});
+		}
+
+		// <inheritdoc />
+		public async Task SaveAsync(PlayerRatingItem playerRating)
+		{
+			var variantStr = playerRating.Variant.ToString().ToUpper();
+			var modusStr = playerRating.Modus.ToString().ToUpper();
+			var typeStr = playerRating.Type.ToString().ToUpper();
+			var pk = string.Format(PlayerRatingItem.PKFormat, playerRating.PlayerId);
+			var sk = string.Format(PlayerRatingItem.SKFormat, variantStr, modusStr);
+			var item = new Dictionary<string, AttributeValue>
+			{
+				{ "PK", new AttributeValue(pk) },
+				{ "SK", new AttributeValue(sk) },
+				{ "Id", new AttributeValue(playerRating.PlayerId.ToString("N")) },
+				{ "ItemType", new AttributeValue(ItemTypes.PlayerRatingItemType) },
+				{ "Variant", new AttributeValue(variantStr) },
+				{ "Modus", new AttributeValue(modusStr) },
+				{ "Type", new AttributeValue(typeStr) },
+				{ "Rating", new AttributeValue() { N = playerRating.Rating.ToString() } },
+				{ "HighestRating", new AttributeValue() { N = playerRating.HighestRating.ToString() } },
+				{ "LowestRating", new AttributeValue() { N = playerRating.LowestRating.ToString() } }
+			};
+
+			var request = new PutItemRequest
+			{
+				TableName = _tableName,
+				Item = item
+			};
+			await _client.PutItemAsync(request);
+		}
+
+		#endregion PlayerRating ItemType
 	}
 }

@@ -26,7 +26,10 @@ namespace GammonX.Server.Data.Entities
 		[DynamoDBRangeKey("SK")]
 		public string SK { get; set; } = string.Empty;
 
-		public Guid Id { get; set; } = Guid.Empty;
+		/// <summary>
+		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to."/>
+		/// </summary>
+		public Guid PlayerId { get; set; } = Guid.Empty;
 
 		public string ItemType { get; } = ItemTypes.PlayerRatingItemType;
 

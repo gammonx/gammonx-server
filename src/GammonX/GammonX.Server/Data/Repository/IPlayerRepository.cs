@@ -16,22 +16,34 @@ namespace GammonX.Server.Data.Repository
 		Task<PlayerItem?> GetAsync(Guid playerId);
 
 		/// <summary>
-		/// Gets the player rating by its unique identifier.
-		/// </summary>
-		/// <remarks>
-		/// Type is currently not important as only one type is supported in ranked.
-		/// </remarks>
-		/// <param name="playerId">Unique player identifier.</param>
-		/// <param name="variant">Match variant.</param>
-		/// <param name="modus">Match modus. Normally just ranked.</param>
-		/// <returns>Player rating for a given variant and modus.</returns>
-		Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchModus modus);
-
-		/// <summary>
 		/// Saves the given player item type.
 		/// </summary>
 		/// <param name="player">Player item to save.</param>
 		/// <returns>A task to be awaited.</returns>
 		Task SaveAsync(PlayerItem player);
+
+		/// <summary>
+		/// Deletes the player with the given unique identifier.
+		/// </summary>
+		/// <param name="playerId">Unique player identifier.</param>
+		/// <returns>Task to be awaited.</returns>
+		Task DeleteAsync(Guid playerId);
+
+		/// <summary>
+		/// Gets the player ratings by its unique identifier.
+		/// </summary>
+		/// <remarks>
+		/// Type is currently not important as only one type is supported in ranked.
+		/// </remarks>
+		/// <param name="playerId">Unique player identifier.</param>
+		/// <returns>Player rating for a given variant and modus.</returns>
+		Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId);
+
+		/// <summary>
+		/// Saves the given player rating item type.
+		/// </summary>
+		/// <param name="player">Player rating item to save.</param>
+		/// <returns>A task to be awaited.</returns>
+		Task SaveAsync(PlayerRatingItem player);
 	}
 }
