@@ -16,13 +16,13 @@ services:
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
-      - AWS__ACCESSKEYID=local
-      - AWS__SECRETACCESSKEY=local
-      - AWS__Region=__undefined__
-      - AWS__DYNAMODBSERVICEURL=http://localhost:8000
+      - AWS__ACCESSKEYID=
+      - AWS__SECRETACCESSKEY=
+      - AWS__REGION=eu-central-1
+      - AWS__DYNAMODB_SERVICEURL=http://localhost:8000
+      - AWS__DYNAMODB_TABLENAME=GammonX
     depends_on:
       - bot-service
-      - dynamodb-local
 
   bot-service:
     build:

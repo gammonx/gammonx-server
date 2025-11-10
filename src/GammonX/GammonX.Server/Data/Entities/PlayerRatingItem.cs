@@ -5,7 +5,6 @@ using GammonX.Server.Models;
 
 namespace GammonX.Server.Data.Entities
 {
-	[DynamoDBTable(Constants.TableName)]
 	public class PlayerRatingItem
 	{
 		public const string PKFormat = "PLAYER#{0}";

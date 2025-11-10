@@ -3,17 +3,17 @@
 
 ## Active
 - palamedes schreiben
+- todo erledigen
 - database
-    - dynamo db migration?
-    - ranked mode (incl. elo rating)
-    - match/game tracking :: stat calculation
-    - dynamo db provider > how to model relations
-    - analyze/store stats > aws queue + lambda functions
-    - remove postgress stuff
-    - dynamo db model
-    - what kind of requests we need?
+    - gsis testen
+    - controller für test deployment
+    - auth über IAM > access keys nur lokal
 
 ## TODO 
+- lambda functions + queue
+    - write dynamodb items after match
+    - calculate elo after match end event
+    - calculate stats after match end event
 - auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer

@@ -5,6 +5,7 @@ using Amazon.DynamoDBv2.Model;
 using GammonX.Server.Data.Entities;
 using GammonX.Server.Data.Repository;
 using GammonX.Server.Models;
+using Microsoft.Extensions.Options;
 
 namespace GammonX.Server.Data.DynamoDb
 {
@@ -13,12 +14,13 @@ namespace GammonX.Server.Data.DynamoDb
 	{
 		private readonly IAmazonDynamoDB _client;
 		private readonly IDynamoDBContext _context;
-		private readonly string _tableName = Constants.TableName;
+		private readonly string _tableName = string.Empty;
 
-		public DynamoDbPlayerRepository(IAmazonDynamoDB client, IDynamoDBContext context)
+		public DynamoDbPlayerRepository(IAmazonDynamoDB client, IDynamoDBContext context, IOptions<AwsServiceOptions> options)
 		{
 			_client = client;
 			_context = context;
+			_tableName = options.Value.DYNAMODB_TABLENAME;
 		}
 
 		#region Player ItemType
@@ -133,7 +135,7 @@ namespace GammonX.Server.Data.DynamoDb
 					{ ":ratingPrefix", new AttributeValue(sk) }
 				}
 			};
-
+			
 			var response = await _client.QueryAsync(request);
 
 			return response.Items.Select(item => new PlayerRatingItem

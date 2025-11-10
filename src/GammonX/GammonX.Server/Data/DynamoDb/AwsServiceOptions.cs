@@ -7,5 +7,9 @@
 		public string AWS_SECRET_ACCESS_KEY { get; set; } = string.Empty;
 
 		public string DYNAMODB_SERVICEURL { get; set; } = string.Empty;
+
+		public string DYNAMODB_TABLENAME { get; set; } = string.Empty;
+
+		public string REGION { get; set; } = string.Empty;
 	}
 }

@@ -7,9 +7,9 @@ namespace GammonX.Server.Data.DynamoDb
 {
 	public static class DynamoDbInitializer
 	{
-		public static async Task EnsureTablesExistAsync(IAmazonDynamoDB client)
+		public static async Task EnsureTablesExistAsync(IAmazonDynamoDB client, AwsServiceOptions options)
 		{
-			const string tableName = Constants.TableName;
+			var tableName = options.DYNAMODB_TABLENAME;
 
 			var existingTables = await client.ListTablesAsync();
 			if (existingTables.TableNames.Contains(tableName))

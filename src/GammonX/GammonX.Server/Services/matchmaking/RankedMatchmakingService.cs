@@ -28,6 +28,7 @@ namespace GammonX.Server.Services
 			}
 
 			// TODO: get rating from AWS lambda function
+			// TODO: or from server access layer
 			var relevantRating = 1200;
 			var newEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating);
 			var queue = _modeQueues.GetOrAdd(queueKey, _ => new ConcurrentQueue<Guid>());

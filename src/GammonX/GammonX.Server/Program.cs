@@ -1,3 +1,4 @@
+using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.Runtime;
@@ -57,12 +58,31 @@ builder.Services.Configure<AwsServiceOptions>(
 builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
 {
 	var options = sp.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
-	var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
-	var config = new AmazonDynamoDBConfig
+	var isLocal = string.IsNullOrEmpty(options.REGION);
+	if (isLocal)
 	{
-		ServiceURL = options.DYNAMODB_SERVICEURL
-	};
-	return new AmazonDynamoDBClient(credentials, config);
+		// local docker instance
+		var accessKeyId = options.AWS_ACCESS_KEY_ID;
+		var secretAccessKey = options.AWS_SECRET_ACCESS_KEY;
+		var config = new AmazonDynamoDBConfig
+		{
+			ServiceURL = options.DYNAMODB_SERVICEURL
+		};
+		var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
+		return new AmazonDynamoDBClient(credentials, config);
+	}
+	else
+	{
+		// AWS hosted
+		var region = RegionEndpoint.GetBySystemName(options.REGION);
+		var config = new AmazonDynamoDBConfig
+		{
+			// We do not need a specific service url, the region endpoint is sufficient
+			RegionEndpoint = region
+		};
+		// We use role based auth
+		return new AmazonDynamoDBClient(config);
+	}
 });
 builder.Services.AddSingleton<IDynamoDBContext>(sp =>
 {
@@ -155,8 +175,9 @@ Log.Information("AWS DYNAMO DB SERVICE URL: {DynamoDbServiceUrl}", Environment.G
 
 using (var scope = app.Services.CreateScope())
 {
+	var options = app.Services.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
 	var dynamoClient = scope.ServiceProvider.GetRequiredService<IAmazonDynamoDB>();
-	await DynamoDbInitializer.EnsureTablesExistAsync(dynamoClient);
+	await DynamoDbInitializer.EnsureTablesExistAsync(dynamoClient, options);
 }
 
 app.Run();

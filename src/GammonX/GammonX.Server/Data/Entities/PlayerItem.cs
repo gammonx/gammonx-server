@@ -3,7 +3,6 @@ using GammonX.Server.Data.DynamoDb;
 
 namespace GammonX.Server.Data.Entities
 {
-	[DynamoDBTable(Constants.TableName)]
 	public class PlayerItem
 	{
 		public const string PKFormat = "PLAYER#{0}";
