@@ -181,13 +181,81 @@ namespace GammonX.Engine.Services
 			return invertedFields;
 		}
 
-        /// <summary>
-        /// Creates a deep clone of the given <paramref name="model"/>.
-        /// </summary>
-        /// <param name="model">Board model to clone.</param>
-        /// <returns>A deep cloned model.</returns>
-        /// <exception cref="InvalidOperationException">If <paramref name="model"/> does not implement <see cref="ICloneable"/>.</exception>
-        public static IBoardModel DeepClone(this IBoardModel model)
+		public static (int, int) InvertFromToMove(GameModus modus, int from, int to)
+		{
+			var invertDiagonalHorinzotally = modus == GameModus.Fevga;
+			if (invertDiagonalHorinzotally)
+			{
+				return InvertBoardMoveDiagonalHorizontally(from, to);
+			}
+			else
+			{
+				return InvertBoardMoveHorizontally(from, to);
+			}
+		}
+
+		/// <summary>
+		/// Inverts the given from/to move horizontally (left > right/right > left).
+		/// </summary>
+		/// <remarks>
+		/// E.g. black move from 23 to 21 becomes white move from 0 to 2.
+		/// </remarks>
+		/// <param name="from">From field index.</param>
+		/// <param name="to">To field index.</param>
+		/// <returns>Converted value tuple with from/to as values.</returns>
+		public static (int, int) InvertBoardMoveHorizontally(int from, int to)
+		{
+			static int InvertIndexHorizontal(int index)
+			{
+				return index switch
+				{
+					WellKnownBoardPositions.HomeBarWhite => WellKnownBoardPositions.HomeBarBlack,
+					WellKnownBoardPositions.HomeBarBlack => WellKnownBoardPositions.HomeBarWhite,
+					WellKnownBoardPositions.BearOffWhite => WellKnownBoardPositions.BearOffBlack,
+					WellKnownBoardPositions.BearOffBlack => WellKnownBoardPositions.BearOffWhite,
+					_ => (23 - index)
+				};
+			}
+
+			return (InvertIndexHorizontal(from), InvertIndexHorizontal(to));
+		}
+
+		/// <summary>
+		/// Inverts the given from/to move horizontally (left > right/right > left).
+		/// </summary>
+		/// <remarks>
+		/// black move 13 > 15 inverts to white move 0 > 2 
+        /// black move 22 > 2 inverts to white move 11 > 15
+		/// </remarks>
+		/// <param name="from">From field index.</param>
+		/// <param name="to">To field index.</param>
+		/// <returns>Converted value tuple with from/to as values.</returns>
+		public static (int, int) InvertBoardMoveDiagonalHorizontally(int from, int to)
+		{
+			int InvertHorinzotalDiagonalIndex(int index)
+			{
+				return index switch
+				{
+					WellKnownBoardPositions.HomeBarWhite => WellKnownBoardPositions.HomeBarBlack,
+					WellKnownBoardPositions.HomeBarBlack => WellKnownBoardPositions.HomeBarWhite,
+					WellKnownBoardPositions.BearOffWhite => WellKnownBoardPositions.BearOffBlack,
+					WellKnownBoardPositions.BearOffBlack => WellKnownBoardPositions.BearOffWhite,
+					< 0 => index,       // in case of unexpected negatives
+					< 12 => index + 12, // top half > bottom half
+					_ => index - 12     // bottom half > top half
+				};
+			}
+
+			return (InvertHorinzotalDiagonalIndex(from), InvertHorinzotalDiagonalIndex(to));
+		}
+
+		/// <summary>
+		/// Creates a deep clone of the given <paramref name="model"/>.
+		/// </summary>
+		/// <param name="model">Board model to clone.</param>
+		/// <returns>A deep cloned model.</returns>
+		/// <exception cref="InvalidOperationException">If <paramref name="model"/> does not implement <see cref="ICloneable"/>.</exception>
+		public static IBoardModel DeepClone(this IBoardModel model)
         {
             if (model is ICloneable cloneable)
             {

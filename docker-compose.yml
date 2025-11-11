@@ -1,5 +1,6 @@
 services:
   game-service:
+    image: gammonx/game-service
     build:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
@@ -25,6 +26,7 @@ services:
       - bot-service
 
   bot-service:
+    image: gammonx/bot-service
     build:
       context: ../gammonx-wildbg
       dockerfile: ./dockerfile

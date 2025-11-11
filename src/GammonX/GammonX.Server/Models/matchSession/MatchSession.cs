@@ -506,10 +506,12 @@ namespace GammonX.Server.Models
 
 		private bool IsWhite(Guid playerId)
 		{
+			// player 1 plays always with white checkers
 			if (Player1.Id.Equals(playerId))
 			{
 				return true;
 			}
+			// player 2 plays always with black checkers
 			else if (Player2.Id.Equals(playerId))
 			{
 				return false;
