@@ -55,7 +55,7 @@ namespace GammonX.Server.Contracts
 				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
 				DiceRolls = model.DiceRolls.ToArray(),
-				MoveSequences = model.MoveSequences.ToArray(),
+				MoveSequences = model.MoveSequences.ToContract(inverted, model.Modus),
 				BoardState = model.BoardModel.ToContract(inverted)
 			};
 		}

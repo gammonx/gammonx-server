@@ -156,7 +156,7 @@
 		// <inheritdoc />
 		public override IBoardModel InvertBoard()
 		{
-			var invertedFields = InvertFevgaBoardHorizontally(Fields);
+			var invertedFields = InvertFevgaBoardDiagonalHorizontally(Fields);
 			return new FevgaBoardModelImpl()
 			{
 				// assign white values to black
@@ -225,7 +225,7 @@
 			}
 		}
 
-		private static int[] InvertFevgaBoardHorizontally(int[] originalFields)
+		private static int[] InvertFevgaBoardDiagonalHorizontally(int[] originalFields)
 		{
 			int[] invertedFields = new int[24];
 			for (int i = 0; i < 24; i++)
