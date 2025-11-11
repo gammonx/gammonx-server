@@ -440,7 +440,16 @@ namespace GammonX.Server.Tests
 						var moves = ms.Moves.ToList();
 						foreach (var move in moves)
 						{
-							await _hub.MoveAsync(matchIdStr, move.From, move.To);
+							var isWhite = matchSession.Player1.Id == playerId;
+							if (isWhite)
+							{
+								await _hub.MoveAsync(matchIdStr, move.From, move.To);
+							}
+							else
+							{
+								var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+								await _hub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+							}							
 						}
 					}
 
@@ -480,7 +489,7 @@ namespace GammonX.Server.Tests
 				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
 			}
 			// bot will win every time :: wow the dumb human can win also
-			Assert.True(matchSession.Player2.Points > 0);
+			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
 			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
 			var gameEndedCount = playedSessions.Count - 1;
 			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
@@ -527,7 +536,16 @@ namespace GammonX.Server.Tests
 					var moves = ms.Moves.ToList();
 					foreach (var move in moves)
 					{
-						await hub1.MoveAsync(matchIdStr, move.From, move.To);
+						var isWhite = matchSession.Player1.Id == _player1Id;
+						if (isWhite)
+						{
+							await hub1.MoveAsync(matchIdStr, move.From, move.To);
+						}
+						else
+						{
+							var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+							await hub1.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+						}
 					}
 					foreach (var _ in moves)
 					{
@@ -544,7 +562,16 @@ namespace GammonX.Server.Tests
 					var moves = ms.Moves.ToList();
 					foreach (var move in moves)
 					{
-						await hub2.MoveAsync(matchIdStr, move.From, move.To);
+						var isWhite = matchSession.Player1.Id == _player2Id;
+						if (isWhite)
+						{
+							await hub2.MoveAsync(matchIdStr, move.From, move.To);
+						}
+						else
+						{
+							var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+							await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+						}
 					}
 					foreach (var _ in moves)
 					{
@@ -571,7 +598,16 @@ namespace GammonX.Server.Tests
 				var moves = ms.Moves.ToList();
 				foreach (var move in moves)
 				{
-					await activeHub.MoveAsync(matchIdStr, move.From, move.To);
+					var isWhite = matchSession.Player1.Id == gameSession.ActivePlayer;
+					if (isWhite)
+					{
+						await activeHub.MoveAsync(matchIdStr, move.From, move.To);
+					}
+					else
+					{
+						var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+						await activeHub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+					}
 				}
 			}
 

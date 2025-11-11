@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using GammonX.Engine.Services;
+using System.Diagnostics;
 using System.Runtime.Serialization;
 
 namespace GammonX.Engine.Models
@@ -40,6 +41,15 @@ namespace GammonX.Engine.Models
 		public bool Equals(MoveSequenceModel? other)
 		{
 			return other != null && SequenceKey() == other.SequenceKey();
+		}
+
+		public MoveSequenceModel Invert(GameModus modus)
+		{
+			var invertedMoves = Moves.Select(m => m.Invert(modus)).ToList();
+			var seqModel = new MoveSequenceModel();
+			seqModel.Moves.AddRange(invertedMoves);
+			seqModel.UsedDices.AddRange(UsedDices);
+			return seqModel;
 		}
 	}
 
@@ -90,6 +100,20 @@ namespace GammonX.Engine.Models
 		public bool Equals(MoveModel? other)
 		{
 			return other != null && other.From == From && other.To == To;
+		}
+
+		public MoveModel Invert(GameModus modus)
+		{
+			if (modus == GameModus.Fevga)
+			{
+				var inverted = BoardBroker.InvertBoardMoveDiagonalHorizontally(From, To);
+				return new MoveModel(inverted.Item1, inverted.Item2);
+			}
+			else
+			{
+				var inverted = BoardBroker.InvertBoardMoveHorizontally(From, To);
+				return new MoveModel(inverted.Item1, inverted.Item2);
+			}
 		}
 	}
 }

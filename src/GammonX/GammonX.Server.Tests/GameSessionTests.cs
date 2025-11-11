@@ -6,6 +6,7 @@ using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
 
 using Moq;
+using System.ComponentModel;
 
 namespace GammonX.Server.Tests
 {
@@ -310,6 +311,99 @@ namespace GammonX.Server.Tests
 			Assert.Equal(firstToCheckAmount, gameSession.BoardModel.Fields[firstMove.To]);
 			Assert.Equal(lastFromCheckAmount, gameSession.BoardModel.Fields[lastMove.From]);
 			Assert.Equal(lastToCheckAmount, gameSession.BoardModel.Fields[lastMove.To]);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon, true)]
+		[InlineData(GameModus.Tavla, true)]
+		[InlineData(GameModus.Portes, true)]
+		[InlineData(GameModus.Plakoto, true)]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Backgammon, false)]
+		[InlineData(GameModus.Tavla, false)]
+		[InlineData(GameModus.Portes, false)]
+		[InlineData(GameModus.Plakoto, false)]
+		[InlineData(GameModus.Fevga, false)]
+		public void GameSessionLegalMovesAreInverted(GameModus modus, bool isWhite)
+		{
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			var player1Id = Guid.NewGuid();
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
+			gameSession.RollDices(player1Id, isWhite);
+			// moves are inverted for black player
+			var gameState = gameSession.ToPayload(player1Id, !isWhite);
+			Assert.NotNull(gameState);
+			foreach (var moveSeq in gameState.MoveSequences)
+			{
+				foreach (var move in moveSeq.Moves)
+				{
+					// inversion only applies for black player and checkers
+					if (!isWhite)
+					{
+						if (modus == GameModus.Fevga)
+						{
+							// we invert the inverted move again to find the original move in the game session
+							var invertedFrom = BoardBroker.InvertBoardMoveDiagonalHorizontally(move.From, move.To);
+							Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
+						}
+						else
+						{
+							// we invert the inverted move again to find the original move in the game session
+							var invertedFrom = BoardBroker.InvertBoardMoveHorizontally(move.From, move.To);
+							Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
+						}
+					}
+					else
+					{
+						Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == move.From && m.To == move.To);
+					}
+				}
+			}
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Plakoto)]
+		[InlineData(GameModus.Fevga)]
+		public void GameSessionBlackInvertsToWhiteStart(GameModus modus)
+		{
+			var player1Id = Guid.NewGuid();
+			var player2Id = Guid.NewGuid();
+			// prepare black game session
+			var blackGameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			var blackMock = new Mock<IDiceService>();
+			blackMock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			blackGameSession.InjectDiceServiceMock(blackMock.Object);
+			blackGameSession.StartGame(player1Id, player2Id);
+			blackGameSession.RollDices(player1Id, false);
+			// moves are inverted for black player
+			var blackGameState = blackGameSession.ToPayload(player1Id, true);
+			Assert.NotNull(blackGameState);
+			// prepare white game session
+			var whiteGameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			var whiteMock = new Mock<IDiceService>();
+			whiteMock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			whiteGameSession.InjectDiceServiceMock(whiteMock.Object);
+			whiteGameSession.StartGame(player1Id, player2Id);
+			whiteGameSession.RollDices(player1Id, true);
+			// moves are inverted for black player
+			var whiteGameState = whiteGameSession.ToPayload(player1Id, false);
+			Assert.NotNull(whiteGameState);
+
+			// both game states should contain the exact same moves now
+			foreach (var blackMoveSeq in blackGameState.MoveSequences)
+			{
+				foreach (var blackMove in blackMoveSeq.Moves)
+				{
+					Assert.Contains(whiteGameState.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == blackMove.From && m.To == blackMove.To);
+				}
+			}
 		}
 	}
 }
