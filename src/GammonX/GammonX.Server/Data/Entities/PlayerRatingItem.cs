@@ -1,6 +1,5 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
-using GammonX.Server.Data.DynamoDb;
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Data.Entities
@@ -9,7 +8,7 @@ namespace GammonX.Server.Data.Entities
 	{
 		public const string PKFormat = "PLAYER#{0}";
 
-		public const string SKFormat = "RATING#{0}#{1}";
+		public const string SKFormat = "RATING#{0}";
 
 		public const string SKPrefix = "RATING#";
 
@@ -17,13 +16,13 @@ namespace GammonX.Server.Data.Entities
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
 		[DynamoDBHashKey("PK")]
-		public string PK { get; set; } = string.Empty;
+		public string PK => ConstructPK();
 
 		/// <summary>
-		/// Gets a sort key like 'RATING#{Variant}#{Modus}'
+		/// Gets a sort key like 'RATING#{Variant}'. Ratings only exists for ranked (modus) and a single type.
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
-		public string SK { get; set; } = string.Empty;
+		public string SK => ConstructSK();
 
 		/// <summary>
 		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to."/>
@@ -43,5 +42,15 @@ namespace GammonX.Server.Data.Entities
 		public int HighestRating { get; set; } = 1200;
 
 		public int LowestRating { get; set; } = 1200;
+
+		private string ConstructPK()
+		{
+			return string.Format(PKFormat, PlayerId);
+		}
+
+		private string ConstructSK()
+		{
+			return string.Format(SKFormat, Variant);
+		}
 	}
 }

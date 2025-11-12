@@ -1,5 +1,4 @@
 ﻿using GammonX.Server.Data.Entities;
-using GammonX.Server.Models;
 
 namespace GammonX.Server.Data.Repository
 {
@@ -45,5 +44,32 @@ namespace GammonX.Server.Data.Repository
 		/// <param name="player">Player rating item to save.</param>
 		/// <returns>A task to be awaited.</returns>
 		Task SaveAsync(PlayerRatingItem player);
+
+		/// <summary>
+		/// Gets the match by the given <paramref name="matchId"/>.
+		/// </summary>
+		/// <remarks>
+		/// Will always return 2 match items. One for the winner and one for the loser.
+		/// </remarks>
+		/// <param name="matchId">Id of the match.</param>
+		/// <returns>A list of match items.</returns>
+		Task<IEnumerable<MatchItem>> GetMatchesAsync(Guid matchId);
+
+		/// <summary>
+		/// Gets all matches played by the given <paramref name="playerId"/>.
+		/// </summary>
+		/// <remarks>
+		/// The list will includes matches of all variants, types and modus.
+		/// </remarks>
+		/// <param name="playerId">Id of the player.</param>
+		/// <returns>A list of match items.</returns>
+		Task<IEnumerable<MatchItem>> GetMatchesOfPlayerAsync(Guid playerId);
+
+		/// <summary>
+		/// Saves the given <paramref name="match"/>.
+		/// </summary>
+		/// <param name="match">Match to save.</param>
+		/// <returns>A task to be awaited.</returns>
+		Task SaveAsync(MatchItem match);
 	}
 }

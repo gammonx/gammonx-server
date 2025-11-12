@@ -24,12 +24,35 @@ namespace GammonX.Server.Data.DynamoDb
 				AttributeDefinitions = new List<AttributeDefinition>
 				{
 					new("PK", ScalarAttributeType.S),
-					new("SK", ScalarAttributeType.S)
+					new("SK", ScalarAttributeType.S),
+					new("GSI1PK", ScalarAttributeType.S),
+					new("GSI1SK", ScalarAttributeType.S),
 				},
 				KeySchema = new List<KeySchemaElement>
 				{
 					new("PK", KeyType.HASH),
 					new("SK", KeyType.RANGE)
+				},
+				GlobalSecondaryIndexes = new List<GlobalSecondaryIndex>
+				{
+					new GlobalSecondaryIndex
+					{
+						IndexName = "GSI1",
+						KeySchema = new List<KeySchemaElement>
+						{
+							new("GSI1PK", KeyType.HASH),
+							new("GSI1SK", KeyType.RANGE)
+						},
+						Projection = new Projection
+						{
+							ProjectionType = ProjectionType.ALL
+						},
+						ProvisionedThroughput = new ProvisionedThroughput
+						{
+							ReadCapacityUnits = 5,
+							WriteCapacityUnits = 5
+						}
+					}
 				},
 				BillingMode = BillingMode.PAY_PER_REQUEST,
 			};

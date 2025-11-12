@@ -5,5 +5,7 @@
 		public const string PlayerItemType = "Player";
 
 		public const string PlayerRatingItemType = "PlayerRating";
+
+		public const string MatchItemType = "Match";
 	}
 }

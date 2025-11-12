@@ -1,5 +1,4 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
-using GammonX.Server.Data.DynamoDb;
 
 namespace GammonX.Server.Data.Entities
 {
@@ -13,13 +12,13 @@ namespace GammonX.Server.Data.Entities
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
 		[DynamoDBHashKey("PK")]
-		public string PK { get; set; } = string.Empty;
+		public string PK => ConstructPK();
 
 		/// <summary>
 		/// Gets a sort key like 'PROFILE'
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
-		public string SK { get; set; } = string.Empty;
+		public string SK => ConstructSK();
 
 		public Guid Id { get; set; } = Guid.Empty;
 
@@ -28,5 +27,15 @@ namespace GammonX.Server.Data.Entities
 		public string UserName { get; set; } = string.Empty;
 
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+		private string ConstructPK()
+		{
+			return string.Format(PKFormat, Id);
+		}
+
+		private string ConstructSK()
+		{
+			return SKValue;
+		}
 	}
 }

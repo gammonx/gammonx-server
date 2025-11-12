@@ -21,11 +21,12 @@
 ```
 
 ## Player Rating
-No modus required in `SK`, implicitly `ranked`.
+No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
 ```json
 {
   "PK": "PLAYER#123",
-  "SK": "RATING#Backgammon#7PointGame",
+  "SK": "RATING#Backgammon",
+  "PlayerId": "123",
   "ItemType": "PlayerRating",
   "Variant": "Backgammon",
   "Type": "7PointGame",
@@ -41,6 +42,7 @@ No modus required in `SK`, implicitly `ranked`.
 {
   "PK": "PLAYER#123",
   "SK": "STATS#Backgammon#7PointGame#Ranked",
+  "PlayerId": "123",
   "ItemType": "PlayerStats",
   "Variant": "Backgammon",
   "Type": "7PointGame",
@@ -60,36 +62,43 @@ No modus required in `SK`, implicitly `ranked`.
 ```
 
 ## Match
+We create two entries, one for the winner and one for the loser
 ```json
 {
   "PK": "MATCH#888",
-  "SK": "DETAILS",
+  "SK": "DETAILS#{WON|LOST}",
+  "Id": "888",
   "ItemType": "Match",
-  "WinnerId": "PLAYER#123",
-  "LoserId": "PLAYER#456",
-  "WinnerPoints": 7,
-  "LoserPoints": 5,
+  "PlayerId": "123",
+  "Points": 7,
   "Variant": "Backgammon",
   "Type": "7PointGame",
   "Modus": "Ranked",
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
   "Length": 3,
+  "Won": true,
+  "GSI1PK": "PLAYER#123",
+  "GSI1SK": "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST}"
 }
 ```
 
 ## Game
+We create two entries, one for the winner and one for the loser
 ```json
 {
   "PK": "MATCH#888",
-  "SK": "GAME#1",
+  "SK": "GAME#456#{WON|LOST}",
+  "Id": "456",
   "ItemType": "Game",
-  "WinnerId": "PLAYER#123",
-  "LoserId": "PLAYER#456",
+  "PlayerId": "PLAYER#123",
+  "Points": 7,
+  "Won": true,
   "Modus": "Portes",
-  "WinnerPoints": 3,
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
+  "GSI1PK": "PLAYER#123",
+  "GSI1SK": "GAME#456#Portes#{WON|LOST}"
 }
 ```
 
@@ -117,22 +126,7 @@ No modus required in `SK`, implicitly `ranked`.
 
 ## Global Search Indexes
 
-### All matches player participated in 
-| GSI1PK        | GSI1SK            |
-| ------------- | ----------------- |
-| `PLAYER#<id>` | `MATCH#<matchId>` |
-
-### All games player participated in
-| GSI2PK        | GSI2SK            |
-| ------------- | ----------------- |
-| `PLAYER#<id>` | `GAME#<gameid>`   |
-
-### Query matches by variant
-| GSI3PK                                 | GSI3SK            |
-| -------------------------------------- | ----------------- |
-| `VARIANT#Backgammon#7PointGame#Ranked` | `MATCH#<matchId>` |
-
-## Use Cases/Requests
+## Example Requests
 
 ### Get Player
 - Query `PK = PLAYER#123`
@@ -147,20 +141,39 @@ No modus required in `SK`, implicitly `ranked`.
 - Query `PK = MATCH#888` and `SK == History`
 - Query `PK = GAME#888` and `SK == History`
 
-### Get all Games/Matches of a Player
-- Query `GSI1PK = PLAYER#123`
-- Query `PK` in `<matchIds>` 
-- Query `GSI2PK = PLAYER#123`
-- Query `PK` in `<gameIds>` 
+### Get all Matches of Player
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#`
 
-### Get all Matches of a Player in Backgammon Normal CashGame
-- Query `GSI3PK = VARIANT#Backgammon#7PointGame#Ranked`
-- Query `PK` in `<matchIds>` 
+### Get all Games of Player
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#`
 
-### Get all won Games/Matches of a Player
-- Query `PK` starts with `MATCH#` and `WinnerId = PLAYER#123`
-- Query `PK` starts with `GAME#` and `WinnerId = PLAYER#123`
+### Get all Matches of Player for Variant/Modus/Type
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#888#Backgammon#7PointGame#Ranked`
+
+### Get all Games of Player for Variant/Modus/Type
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#456#Portes`
+
+### Get all lost/won Matches of Player for Variant/Modus/Type
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#888#Backgammon#7PointGame#Ranked#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#888#Backgammon#7PointGame#Ranked#LOST`
+
+### Get all lost/won Games of Player for Variant/Modus/Type
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#888#Backgammon#7PointGame#Ranked#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#888#Backgammon#7PointGame#Ranked#LOST`
 
 ### Calculate Player Stats after Match/Game
 - Send Match/Game History in `MAT` format to SQS, trigger lambda and fill dynamo db table
 - Include Player Rating calculation if `ranked`?
+
+## Use Cases
+- Get Player Rating for Variant in Ranked Mode
+  - Server calls API Gateway
+  - API Gateway calls Read lambda function
+- Match Ended Event
+  - Server puts Match/Game Result in SQS
+  - SQS calls lambda function
+  - lambda function computes
+    - player stats
+    - player rating if ranked
+    - creates match entity
+    - create game entities
