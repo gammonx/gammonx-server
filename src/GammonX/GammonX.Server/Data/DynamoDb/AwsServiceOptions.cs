@@ -11,5 +11,7 @@
 		public string DYNAMODB_TABLENAME { get; set; } = string.Empty;
 
 		public string REGION { get; set; } = string.Empty;
+
+		public bool Required => !string.IsNullOrEmpty(DYNAMODB_TABLENAME);
 	}
 }

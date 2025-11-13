@@ -267,7 +267,8 @@ namespace GammonX.Server
 				{
 					await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
-
+				// TODO: move from bar was not possible but others can be moved
+				// TODO: if no move is possible END_TURN AllowedCommand is not returned
 				var matchSession = _repository.Get(matchGuid);
 				if (matchSession != null)
 				{
@@ -590,6 +591,8 @@ namespace GammonX.Server
 
 		private async Task PerformOfferDoubleAsync(IMatchSessionModel matchSession, Guid offeringPlayerId)
 		{
+			// TODO: double can only be offered before roll
+			// TODO: server side validation for allowed commands
 			if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
 			{
 				doubleCubeSession.OfferDouble(offeringPlayerId);

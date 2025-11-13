@@ -21,7 +21,7 @@ namespace GammonX.Server.Tests
 			_serviceProvider = _factory.Services;
 		}
 
-		[Fact]
+		[Fact(Skip = "requires dynamo db instance")]
 		public async Task AddMatchAndSearchByGlobalSearchIndex()
 		{
 			var scopedSp = _serviceProvider.CreateScope();
@@ -141,7 +141,7 @@ namespace GammonX.Server.Tests
 
 		}
 
-		[Fact]
+		[Fact(Skip = "requires dynamo db instance")]
 		public async Task AddPlayerProfileTest()
 		{
 			var scopedSp = _serviceProvider.CreateScope();

@@ -57,6 +57,7 @@ namespace GammonX.Server.Services
 						matched.Add(entryA.Id);
 						matched.Add(entryB.Id);
 						// remove players from queue
+						// TODO: player not removed after game is player
 						_queue.TryRemove(entryA.PlayerId, out _);
 						_queue.TryRemove(entryB.PlayerId, out _);
 						// create new lobby
