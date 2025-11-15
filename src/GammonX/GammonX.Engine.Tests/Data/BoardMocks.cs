@@ -225,5 +225,65 @@
              -2, // 22 – White Home
              1  // 23 - White Home
         };
+
+        /// <summary>
+        /// Backgammon board where on white checkers was hit an sits on the homebar.
+        /// White has to play the homebar checker first before moving anything else.
+        /// </summary>
+        public static int[] BackgammonHomebarWhite = new int[24]
+        {
+            -1,
+            1,
+            1,
+            0,
+            0,
+            3,
+            1,
+            3,
+            0,
+            0,
+            1,
+            -5,
+            3,
+            0,
+            0,
+            0,
+            -2,
+            0,
+            -5,
+            0,
+            0,
+            -1,
+            0,
+            2
+        };
+
+        public static int[] FevgaInvalidPrimeCreationBlack = new int[24]
+        {
+            1,
+            0,
+            1,
+            1,
+            1,
+            2,
+            2,
+            1,
+            -5,
+            1,
+            -8,
+            1,
+            0,
+            -1,
+            0,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            -1
+        };
 	}
 }

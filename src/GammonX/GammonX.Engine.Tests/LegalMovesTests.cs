@@ -404,6 +404,29 @@ namespace GammonX.Engine.Tests
 			service.MoveChecker(board, -1, 19, true);
 		}
 
+		[Fact]
+		public void InvalidPrimeCreationFevga()
+		{
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.FevgaInvalidPrimeCreationBlack);
+			if (board is IHomeBarModel homeBarModel)
+			{
+				homeBarModel.RemoveFromHomeBar(true, 14);
+				homeBarModel.RemoveFromHomeBar(false, 14);
+			}
+
+			var legalMoveSequences = service.GetLegalMoveSequences(board, false, 3, 3, 3, 3);
+			foreach (var movSeq in legalMoveSequences)
+			{
+				var clone = board.DeepClone();
+				foreach (var move in movSeq.Moves)
+				{
+					service.MoveCheckerTo(clone, move.From, move.To, false);
+				}
+			}
+		}
+
 		#endregion Fevga
 
 		#region Plakoto
@@ -533,6 +556,53 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(2, legalMoves.Count());
 			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 23), legalMoves);
 			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 22), legalMoves);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void WhiteHasToPlayWhiteCheckerFromHomebar(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.BackgammonHomebarWhite);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.AddToHomeBar(true, 1);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, true, 2, 4);
+			Assert.Equal(8, moveSequences.Length);
+			// all seuqences has to play in the homebar first
+			Assert.True(moveSequences.All(ms => ms.Moves[0].From == -1));
+			Assert.True(moveSequences.All(ms => ms.Moves.Count == 2));
+			// we now try to move something other than the homebar checker
+			var ilegalMove = moveSequences.First().Moves.Last();
+			Assert.Throws<InvalidOperationException>(() => service.MoveCheckerTo(board, ilegalMove.From, ilegalMove.To, true));
+			var legalMove = moveSequences.First().Moves.First();
+			service.MoveCheckerTo(board, legalMove.From, legalMove.To, true);
+			service.MoveCheckerTo(board, ilegalMove.From, ilegalMove.To, true);
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		public void WhiteHasToPlayTwoWhiteCheckerFromHomebarFirstOnPasch(GameModus modus)
+		{
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+			board.SetFields(BoardMocks.BackgammonHomebarWhite);
+			if (board is IHomeBarModel homeBar)
+			{
+				homeBar.AddToHomeBar(true, 2);
+			}
+
+			var moveSequences = service.GetLegalMoveSequences(board, true, 1, 1, 1, 1);
+			// all seuqences has to play in the two checkers from the homebar first
+			Assert.True(moveSequences.All(ms => ms.Moves[0].From == -1));
+			Assert.True(moveSequences.All(ms => ms.Moves[1].From == -1));
 		}
 
 		#endregion Homebar Tests

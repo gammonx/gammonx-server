@@ -78,36 +78,45 @@ namespace GammonX.Engine.Models
 		/// </summary>
 		int PipCountBlack { get; }
 
-        /// <summary>
-        /// Operator function for moving a checker for the given player.
-        /// First parameter true for white player, false for black player.
-        /// Second int represents the current position of the checker,
-        /// Third int represents the dice roll or move distance.
-        /// Returns the new position of the checker after the move.
-        /// </summary>
-        Func<bool, int, int, int> MoveOperator { get; }
+		/// <summary>
+		/// Operator function for moving a checker for the given player.
+		/// First parameter <c>true</c> for white player, <c>false</c> for black player.
+		/// Second int represents the current position of the checker,
+		/// Third int represents the dice roll or move distance.
+		/// Returns the new position of the checker after the move.
+		/// </summary>
+		Func<bool, int, int, int> MoveOperator { get; }
 
-        /// <summary>
-        /// Operator function to check if a checker can be borne off for the given player.
-        /// First parameter true for white player, false for black player.
-        /// Second int represents the current position of the checker,
-        /// Third int represents the dice roll or move distance.
-        /// Returns true if the checker can be borne off, otherwise false.
-        /// </summary>
-        Func<bool, int, int, bool> CanBearOffOperator { get; }
+		/// <summary>
+		/// Operator function for lookup the roll for a given from/to move.
+		/// First parameter <c>true</c> for white player, <c>false</c> for black player.
+		/// Second int represents the from position index,
+		/// Third int represents the to position index.
+		/// Returns the roll value which was used for the given move.
+		/// </summary>
+		Func<bool, int, int, int> RecoverRollOperator { get; }
 
-        /// <summary>
-        /// Operator function to check if a given checker is within the home range.
-        /// First parameter true for white player, false for black player.
-        /// Second int represents the current position of the checker.
-        /// Returns true if the checker is within the home range, otherwise false.
-        /// </summary>
-        Func<bool, int, bool> IsInHomeOperator { get; }
+		/// <summary>
+		/// Operator function to check if a checker can be borne off for the given player.
+		/// First parameter <c>true</c> for white player, <c>false</c> for black player.
+		/// Second int represents the current position of the checker,
+		/// Third int represents the dice roll or move distance.
+		/// Returns <c>true</c> if the checker can be borne off, otherwise <c>false</c>.
+		/// </summary>
+		Func<bool, int, int, bool> CanBearOffOperator { get; }
+
+		/// <summary>
+		/// Operator function to check if a given checker is within the home range.
+		/// First parameter <c>true</c> for white player, <c>false</c> for black player.
+		/// Second int represents the current position of the checker.
+		/// Returns <c>true</c> if the checker is within the home range, otherwise <c>false</c>.
+		/// </summary>
+		Func<bool, int, bool> IsInHomeOperator { get; }
 
 		/// <summary>
 		/// Bears off a checker for the specified player.
 		/// </summary>
-		/// <param name="isWhite">Indicates the player, true for white and false for black.</param>
+		/// <param name="isWhite">Indicates the player, <c>true</c> for white and <c>false</c> for black.</param>
 		/// <param name="amount">Amount of checkers borne off. Normally just one.</param>
 		void BearOffChecker(bool isWhite, int amount);
 

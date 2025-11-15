@@ -195,7 +195,7 @@ namespace GammonX.Server.Models
 			if (_activeUndoStack.TryPop(out var lastMove))
 			{
 				// we reverse the move direction in order to undo the last move
-				_boardService.MoveCheckerTo(BoardModel, lastMove.To, lastMove.From, isWhite);
+				_boardService.UndoMove(BoardModel, lastMove, isWhite);
 				if (BoardModel.History.TryPeekLast(out var lastEvent))
 				{
 					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move && BoardModel.History.TryRemoveLast())

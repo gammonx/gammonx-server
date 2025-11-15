@@ -52,6 +52,18 @@ namespace GammonX.Engine.Services
         internal bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
 		/// <summary>
+		/// Undoes the given <paramref name="moveToUndo"/>.
+		/// </summary>
+		/// <remarks>
+		/// Undoing a move on the board has no internal validation. The validation if an undo move is right
+		/// is handelled by the caller (e.g. game server).
+		/// </remarks>
+		/// <param name="model">Model to operate on.</param>
+		/// <param name="moveToUndo">Move to undo.</param>
+		/// <param name="isWhite">Indicates if white or black pieces move.</param>
+		void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite);
+
+		/// <summary>
 		/// Adds the given <paramref name="eventValues"/> to the board history for player <paramref name="isWhite"/>.
 		/// </summary>
 		/// <param name="model">Provides the history to add on.</param>
@@ -97,6 +109,10 @@ namespace GammonX.Engine.Services
 		/// Calculates all legal moves for the given player based on the current board state
 		/// and the given dice rolls.
 		/// </summary>
+        /// <remarks>
+        /// The moves within a move sequences must not be reordered. They have to be played in the exact same
+        /// order as they were placed in the list.
+        /// </remarks>
 		/// <param name="model">Board model to operate on.</param>
 		/// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
 		/// <param name="rolls">1:n Dice roll values</param>

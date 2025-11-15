@@ -65,6 +65,33 @@ namespace GammonX.Engine.Models
 		});
 
 		// <inheritdoc />
+		public virtual Func<bool, int, int, int> RecoverRollOperator => new Func<bool, int, int, int>((isWhite, from, to) =>
+		{
+			if (isWhite)
+			{
+				// white moves from 0 to 23
+				if (to == WellKnownBoardPositions.BearOffWhite)
+				{
+					to = HomeRangeWhite.End.Value + 1;
+				}
+				int roll = to - from;
+				return roll;
+			}
+			else
+			{
+				// black moves forward (wraps from 23 -> 0)
+				if (to == WellKnownBoardPositions.BearOffBlack)
+				{
+					to = HomeRangeBlack.End.Value;
+					int bearOffRoll = from - to + 1;
+					return bearOffRoll;
+				}
+				int roll = from - to;
+				return roll;
+			}
+		});
+
+		// <inheritdoc />
 		public virtual Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)

@@ -7,7 +7,7 @@ namespace GammonX.Engine.Models
 	/// <seealso cref="https://www.bkgm.com/variants/Portes.html"/>
 	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
 	/// </summary>
-	internal sealed class PortesBoardModelImpl : BoardBaseImpl, IHomeBarModel
+	internal sealed class PortesBoardModelImpl : BoardBaseImpl, IHomeBarModel, IHitModel
     {
         public PortesBoardModelImpl()
         {

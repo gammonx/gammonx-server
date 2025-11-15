@@ -1,12 +1,11 @@
 ## DONE
-- ?
+- validation of from/to moves
 
 ## Active
+- todos/bugs
 - palamedes schreiben
 - database
-    - dynamo db konzept testen
-        - controller für test deployment
-        - auth über IAM > access keys nur lokal
+    - dynamo db konzept testen > mit access keys local to aws
 
 ## TODO 
 - lambda functions + sqs

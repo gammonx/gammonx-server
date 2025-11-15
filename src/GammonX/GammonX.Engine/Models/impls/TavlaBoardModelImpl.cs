@@ -6,7 +6,7 @@ namespace GammonX.Engine.Models
 	/// Tavla implementation.
 	/// <seealso cref="https://www.bkgm.com/variants/Tavla.html"/>
 	/// </summary>
-	internal sealed class TavlaBoardModelImpl : BoardBaseImpl, IHomeBarModel
+	internal sealed class TavlaBoardModelImpl : BoardBaseImpl, IHomeBarModel, IHitModel
     {
         public TavlaBoardModelImpl()
         {
