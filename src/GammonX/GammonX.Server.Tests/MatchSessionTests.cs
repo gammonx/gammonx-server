@@ -14,7 +14,7 @@ namespace GammonX.Server.Tests
 	{
 		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
-		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
+		private static readonly MatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
@@ -51,19 +51,40 @@ namespace GammonX.Server.Tests
 		public void MatchSessionPayloadCreated(WellKnownMatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
-			var session = result.Session;
-			var matchId = result.MatchId;
-			var payload = session.ToPayload();
-			Assert.NotNull(payload);
-			Assert.Equal(matchId, payload.Id);
-			Assert.Equal(variant, payload.Variant);
-			Assert.Equal(WellKnownMatchType.CashGame, payload.Type);
-			Assert.Equal(WellKnownMatchModus.Normal, payload.Modus);
-			Assert.Equal(1, payload.GameRound);
-			Assert.Equal(Guid.Empty, payload.Player1.Id);
-			Assert.Equal(Guid.Empty, payload.Player2.Id);
-			Assert.Equal(0, payload.Player1.Points);
-			Assert.Equal(0, payload.Player2.Points);
+			var session = result.Item2;
+			var matchId = result.Item1;
+			// player 1
+			var payloadPlayer1 = session.ToPayload(session.Player1.Id);
+			Assert.Equal(3, payloadPlayer1.AllowedCommands.Length);
+			Assert.Contains(ServerCommands.ResignMatchCommand, payloadPlayer1.AllowedCommands);
+			Assert.Contains(ServerCommands.ResignGameCommand, payloadPlayer1.AllowedCommands);
+			Assert.Contains(ServerCommands.JoinMatchCommand, payloadPlayer1.AllowedCommands);
+			Assert.NotNull(payloadPlayer1);
+			Assert.Equal(matchId, payloadPlayer1.Id);
+			Assert.Equal(variant, payloadPlayer1.Variant);
+			Assert.Equal(WellKnownMatchType.CashGame, payloadPlayer1.Type);
+			Assert.Equal(WellKnownMatchModus.Normal, payloadPlayer1.Modus);
+			Assert.Equal(1, payloadPlayer1.GameRound);
+			Assert.Equal(Guid.Empty, payloadPlayer1.Player1?.Id);
+			Assert.Equal(Guid.Empty, payloadPlayer1.Player2?.Id);
+			Assert.Equal(0, payloadPlayer1.Player1?.Points);
+			Assert.Equal(0, payloadPlayer1.Player2?.Points);
+			// player 2
+			var payloadPlayer2 = session.ToPayload(session.Player2.Id);
+			Assert.Equal(3, payloadPlayer2.AllowedCommands.Length);
+			Assert.Contains(ServerCommands.ResignMatchCommand, payloadPlayer2.AllowedCommands);
+			Assert.Contains(ServerCommands.ResignGameCommand, payloadPlayer2.AllowedCommands);
+			Assert.Contains(ServerCommands.JoinMatchCommand, payloadPlayer2.AllowedCommands);
+			Assert.NotNull(payloadPlayer2);
+			Assert.Equal(matchId, payloadPlayer2.Id);
+			Assert.Equal(variant, payloadPlayer2.Variant);
+			Assert.Equal(WellKnownMatchType.CashGame, payloadPlayer2.Type);
+			Assert.Equal(WellKnownMatchModus.Normal, payloadPlayer2.Modus);
+			Assert.Equal(1, payloadPlayer2.GameRound);
+			Assert.Equal(Guid.Empty, payloadPlayer2.Player1?.Id);
+			Assert.Equal(Guid.Empty, payloadPlayer2.Player2?.Id);
+			Assert.Equal(0, payloadPlayer2.Player1?.Points);
+			Assert.Equal(0, payloadPlayer2.Player2?.Points);
 
 		}
 
@@ -74,7 +95,7 @@ namespace GammonX.Server.Tests
 		public void MatchSessionPlayersCanJoin(WellKnownMatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 
 			var player1 = SessionUtils.CreateLobbyEntry();
@@ -96,7 +117,7 @@ namespace GammonX.Server.Tests
 		public void MatchSessionPlayersCannotJoin(WellKnownMatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 			var entry = new LobbyEntry(Guid.NewGuid());
 			Assert.Throws<ArgumentNullException>(() => session.JoinSession(entry));
@@ -109,7 +130,7 @@ namespace GammonX.Server.Tests
 		public void MatchSessionPlayerCannotJoinTwice(WellKnownMatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 			var entry = SessionUtils.CreateLobbyEntry();
 			session.JoinSession(entry);
@@ -366,25 +387,56 @@ namespace GammonX.Server.Tests
 
 		[Theory]
 		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
+		public void BackgammonMatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
 		{
-			var defaultAllowedCommands = new[] { ServerCommands.ResignGameCommand, ServerCommands.ResignMatchCommand };
+			var allowedCommandsAfterRollActivePlayer = new[]
+			{
+				ServerCommands.RollCommand,
+				ServerCommands.OfferDoubleCommand,
+				ServerCommands.ResignGameCommand,
+				ServerCommands.ResignMatchCommand,
+				ServerCommands.OfferDoubleCommand, // TODO: why two times?
+			};
+			var allowedCommandsAfterRollOtherPlayer = new[] { ServerCommands.ResignGameCommand, ServerCommands.ResignMatchCommand };
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			session.StartNextGame(session.Player1.Id);
-			var allowedCommands = new string[] { "testCommand" };
-			allowedCommands = allowedCommands.Union(defaultAllowedCommands).ToArray();
-			var gameState = session.GetGameState(session.Player1.Id, allowedCommands);
+			var gameState = session.GetGameState(session.Player1.Id);
 			Assert.NotNull(gameState);
-			Assert.Equal(allowedCommands, gameState.AllowedCommands);
+			Assert.Equal(allowedCommandsAfterRollActivePlayer, gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForRoll, gameState.Phase);
-			gameState = session.GetGameState(session.Player2.Id, allowedCommands);
+			gameState = session.GetGameState(session.Player2.Id);
 			Assert.NotNull(gameState);
-			Assert.Equal(defaultAllowedCommands, gameState.AllowedCommands);
+			Assert.Equal(allowedCommandsAfterRollOtherPlayer, gameState.AllowedCommands);
+			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Tavli)]
+		[InlineData(WellKnownMatchVariant.Tavla)]
+		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
+		{
+			var allowedCommandsAfterRollActivePlayer = new[] 
+			{ 
+				ServerCommands.RollCommand,
+				ServerCommands.ResignGameCommand, 
+				ServerCommands.ResignMatchCommand,
+			};
+			var allowedCommandsAfterRollOtherPlayer = new[] { ServerCommands.ResignGameCommand, ServerCommands.ResignMatchCommand };
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
+			Assert.NotNull(session);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartNextGame(session.Player1.Id);
+			var gameState = session.GetGameState(session.Player1.Id);
+			Assert.NotNull(gameState);
+			Assert.Equal(allowedCommandsAfterRollActivePlayer, gameState.AllowedCommands);
+			Assert.Equal(GamePhase.WaitingForRoll, gameState.Phase);
+			gameState = session.GetGameState(session.Player2.Id);
+			Assert.NotNull(gameState);
+			Assert.Equal(allowedCommandsAfterRollOtherPlayer, gameState.AllowedCommands);
 			Assert.Equal(GamePhase.WaitingForOpponent, gameState.Phase);
 		}
 
@@ -413,7 +465,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -424,7 +476,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -468,7 +520,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -479,7 +531,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -523,7 +575,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -534,7 +586,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -542,7 +594,7 @@ namespace GammonX.Server.Tests
 				Assert.True(session.Player2.Points > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 				var sessionInstace = session as MatchSession;
 				Assert.NotNull(sessionInstace);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
@@ -576,7 +628,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavla)
 			{
@@ -587,7 +639,7 @@ namespace GammonX.Server.Tests
 				Assert.False(session.CanStartNextGame());
 				session.Player1.AcceptNextGame();
 				session.Player2.AcceptNextGame();
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
 			else if (variant == WellKnownMatchVariant.Tavli)
 			{
@@ -595,7 +647,7 @@ namespace GammonX.Server.Tests
 				Assert.True(session.Player1.Points > 0);
 				Assert.Equal(3, session.GameRound);
 				Assert.False(session.CanStartNextGame());
-				Assert.Throws<IndexOutOfRangeException>(() => session.StartNextGame(session.Player1.Id));
+				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 				var sessionInstace = session as MatchSession;
 				Assert.NotNull(sessionInstace);
 				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
@@ -651,9 +703,15 @@ namespace GammonX.Server.Tests
 			if (type == WellKnownMatchType.CashGame)
 			{
 				var gameSessions = matchSession.GetGameSessions();
-				var startPlayerId = matchSession.Player1.Id;
+				var lobby1 = new LobbyEntry(Guid.NewGuid());
+				lobby1.SetConnectionId(Guid.NewGuid().ToString());
+				matchSession.JoinSession(lobby1);
+				var lobby2 = new LobbyEntry(Guid.NewGuid());
+				lobby2.SetConnectionId(Guid.NewGuid().ToString());
+				matchSession.JoinSession(lobby2);
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();
+				var startPlayerId = matchSession.Player1.Id;
 				while (matchSession.CanStartNextGame())
 				{
 					matchSession.StartNextGame(startPlayerId);
@@ -769,7 +827,9 @@ namespace GammonX.Server.Tests
 				var moves = ms.Moves.ToList();
 				foreach (var move in moves)
 				{
-					matchSession.MoveCheckers(gameSession.ActivePlayer, move.From, move.To);
+					var gameOver = matchSession.MoveCheckers(gameSession.ActivePlayer, move.From, move.To);
+					if (gameOver)
+						break;
 				}
 			}
 

@@ -116,7 +116,7 @@ namespace GammonX.Server
 						var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchSession.Player1.Id, matchSession.Player2.Id);
 						var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyPayload);
 						await SendToGroup(groupName, ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
-						await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession, ServerCommands.StartGameCommand);
+						await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession);
 					}
 					else
 					{
@@ -184,14 +184,15 @@ namespace GammonX.Server
 						}
 						else
 						{
-							await SendGameState(ServerEventTypes.GameStartedEvent, matchSession, ServerCommands.RollCommand);
+							await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
 						}
 						// we clean up the match lobby as soon as the game has started
 						_matchmakingService.TryRemoveMatchLobby(matchSession.Id);
 					}
 					else
 					{
-						var matchPayload = matchSession.ToPayload();
+						var callingPlayerId = GetCallingPlayerId(matchSession);
+						var matchPayload = matchSession.ToPayload(callingPlayerId);
 						var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
 						await SendToCaller(ServerEventTypes.GameWaitingEvent, matchContract);
 					}
@@ -323,19 +324,8 @@ namespace GammonX.Server
 						await SendErrorEventAsync("UNDO_MOVE_ERROR", "You cannot undo a move at this moment.", Context.ConnectionId);
 						return;
 					}
-
 					matchSession.UndoLastMove(callingPlayerId);
-
-					if (matchSession.CanUndoLastMove(callingPlayerId))
-					{
-						// has still moves to undo
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand, ServerCommands.UndoMoveCommand);
-					}
-					else
-					{
-						// no moves to undo left
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
-					}
+					await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 				}
 				else
 				{
@@ -386,7 +376,7 @@ namespace GammonX.Server
 					}
 					else
 					{
-						await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+						await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 					}
 				}
 				else
@@ -462,7 +452,7 @@ namespace GammonX.Server
 					}
 					else
 					{
-						await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+						await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession);
 					}
 				}
 				else
@@ -483,7 +473,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>Task to be awaited.</returns>
-		[HubMethodName(ServerCommands.OfferDoubleCommands)]
+		[HubMethodName(ServerCommands.OfferDoubleCommand)]
 		public async Task OfferDoubleAsync(string matchId)
 		{
 			try
@@ -531,7 +521,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName(ServerCommands.AcceptDoubleCommands)]
+		[HubMethodName(ServerCommands.AcceptDoubleCommand)]
 		public async Task AcceptDoubleAsync(string matchId)
 		{
 			try
@@ -563,7 +553,7 @@ namespace GammonX.Server
 		/// </summary>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
-		[HubMethodName(ServerCommands.DeclineDoubleCommands)]
+		[HubMethodName(ServerCommands.DeclineDoubleCommand)]
 		public async Task DeclineDoubleAsync(string matchId)
 		{
 			try
@@ -603,7 +593,7 @@ namespace GammonX.Server
 				var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
 				await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
 				// the player who got the double offered has to accept or decline it
-				var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId, [ServerCommands.AcceptDoubleCommands, ServerCommands.DeclineDoubleCommands]);
+				var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId);
 				var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
 				var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
 				await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
@@ -631,7 +621,7 @@ namespace GammonX.Server
 				{
 					// doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
 					// Therefore, the next command must be the roll command
-					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+					await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 				}
 			}
 			else
@@ -655,7 +645,7 @@ namespace GammonX.Server
 				else
 				{
 					// game ended, a potential bot turn is handled in the start game command
-					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession);
 				}
 			}
 			else
@@ -684,15 +674,7 @@ namespace GammonX.Server
 		private async Task PerfromRollAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
 		{
 			matchSession.RollDices(callingPlayerId);
-			if (matchSession.CanEndTurn(callingPlayerId))
-			{
-				// the calling player has no legal moves with the given dice roll
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
-			}
-			else
-			{
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
-			}
+			await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 		}
 
 		private async Task<bool> PerformMoveAsync(IMatchSessionModel matchSession, Guid callingPlayerId, int from, int to)
@@ -709,7 +691,7 @@ namespace GammonX.Server
 				}
 				else
 				{
-					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession, ServerCommands.StartGameCommand);
+					await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession);
 					return false;
 				}
 			}
@@ -717,13 +699,13 @@ namespace GammonX.Server
 			else if (matchSession.CanEndTurn(callingPlayerId))
 			{
 				// calling player finished his turn, other player can now roll
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand, ServerCommands.UndoMoveCommand);
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 				return false;
 			}
 			else
 			{
 				// calling player can still move
-				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand, ServerCommands.UndoMoveCommand);
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 				return true;
 			}
 		}
@@ -766,7 +748,7 @@ namespace GammonX.Server
 				if (matchSession.CanEndTurn(botPlayerId))
 				{
 					matchSession.EndTurn(botPlayerId);
-					await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.RollCommand);
+					await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
 				}
 			}
 			catch (Exception ex)
@@ -817,11 +799,11 @@ namespace GammonX.Server
 			}
 		}
 
-		private async Task SendGameState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
+		private async Task SendGameState(string serverEventName, IMatchSessionModel matchSession)
 		{
-			var gameSessionPlayer1 = matchSession.GetGameState(matchSession.Player1.Id, allowedCommands);
+			var gameSessionPlayer1 = matchSession.GetGameState(matchSession.Player1.Id);
 			var player1Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer1);
-			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id, allowedCommands);
+			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
 			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
 			if (matchSession.Modus != WellKnownMatchModus.Bot)
@@ -830,7 +812,7 @@ namespace GammonX.Server
 			}
 		}
 
-		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession, params string[] allowedCommands)
+		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession)
 		{
 			// TODO :: match ended sync :: stats for end screen
 			// - game rounds points
@@ -838,12 +820,14 @@ namespace GammonX.Server
 			// > send ServerEventTypes.MatchStatsEvent
 			// > new payload extension for ranked/paid subscriptions?
 
-			var matchStatePayload = matchSession.ToPayload(allowedCommands);
-			var matchStateContract = new EventResponseContract<EventMatchStatePayload>(serverEventName, matchStatePayload);
-			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, matchStateContract);
+			var payloadPlayer1 = matchSession.ToPayload(matchSession.Player1.Id);
+			var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
+			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, contractPlayer1);
 			if (matchSession.Modus != WellKnownMatchModus.Bot)
 			{
-				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, matchStateContract);
+				var payloadPlayer2 = matchSession.ToPayload(matchSession.Player2.Id);
+				var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
+				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, contractPlayer2);
 			}
 
 			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
@@ -854,9 +838,9 @@ namespace GammonX.Server
 
 				// clients can now safely disconnect from socket
 				var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
-				await SendToGroup(matchStatePayload.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
-				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, matchStatePayload.GroupName);
-				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, matchStatePayload.GroupName);
+				await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
+				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, payloadPlayer1.GroupName);
+				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, payloadPlayer1.GroupName);
 			}
 		}
 

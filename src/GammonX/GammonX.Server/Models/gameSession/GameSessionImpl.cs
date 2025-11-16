@@ -31,10 +31,10 @@ namespace GammonX.Server.Models
 		public GamePhase Phase { get; set; }
 
 		// <inheritdoc />
-		public Guid ActivePlayer { get; private set; }
+		public Guid ActivePlayer { get; protected set; }
 
 		// <inheritdoc />
-		public Guid OtherPlayer { get; private set; }
+		public Guid OtherPlayer { get; protected set; }
 
 		// <inheritdoc />
 		public int TurnNumber { get; private set; } = 1;
@@ -271,7 +271,7 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands)
+		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted)
 		{
 			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
 

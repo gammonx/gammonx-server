@@ -43,7 +43,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
 
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player1.Id);
 			Assert.Empty(matchState.AllowedCommands);
 			Assert.Equal(1, matchState.GameRound);
 			Assert.NotNull(matchState.Player1);
@@ -93,7 +93,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player1.Id);
 			Assert.NotNull(matchState.Player1);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player1.Points);
@@ -134,7 +134,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player1.Id);
 			Assert.NotNull(matchState.Player1);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Points);
@@ -169,7 +169,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player1.Id);
 			Assert.NotNull(matchState.Player1);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player1.Points);
@@ -196,6 +196,15 @@ namespace GammonX.Server.Tests
 			board.BearOffChecker(false, 14);
 			board.BearOffChecker(true, 1);
 
+			// execute a full turn
+			session.RollDices(session.Player1.Id);
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var move in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			}
+
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
@@ -205,7 +214,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player2.Id);
 			Assert.NotNull(matchState.Player2);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 1, matchState.Player2.Points);
@@ -222,16 +231,28 @@ namespace GammonX.Server.Tests
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartNextGame(session.Player1.Id);
 
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
 			Assert.NotNull(doubleCubeBoard);
 			var singleGameWinBoard = new int[24];
 			singleGameWinBoard[0] = 1;
-			singleGameWinBoard[23] = -14;
+			singleGameWinBoard[18] = -14;
 			board.SetFields(singleGameWinBoard);
 			board.BearOffChecker(false, 14);
 			// no borne off for white
 
+			// execute a turn for white checkers
+			session.RollDices(session.Player1.Id);
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var move in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			}
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
@@ -241,7 +262,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player2.Id);
 			Assert.NotNull(matchState.Player2);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 2, matchState.Player2.Points);
@@ -258,6 +279,10 @@ namespace GammonX.Server.Tests
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartNextGame(session.Player1.Id);
 
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
 			Assert.NotNull(doubleCubeBoard);
@@ -271,6 +296,14 @@ namespace GammonX.Server.Tests
 			// no borne off for white but has one on homebar
 			homeBarBoard.AddToHomeBar(true, 1);
 
+			// execute a turn for white checkers
+			session.RollDices(session.Player1.Id);
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var move in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			}
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
@@ -280,7 +313,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player2.Id);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2?.Points);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.GameRounds[0].Points);
@@ -296,6 +329,10 @@ namespace GammonX.Server.Tests
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartNextGame(session.Player1.Id);
 
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
 			Assert.NotNull(doubleCubeBoard);
@@ -307,6 +344,14 @@ namespace GammonX.Server.Tests
 			board.BearOffChecker(false, 14);
 			// no borne off for white but has one in winners home range
 
+			// execute a turn for white checkers
+			session.RollDices(session.Player1.Id);
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var move in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, move.From, move.To);
+			}
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
@@ -316,7 +361,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
-			var matchState = session.ToPayload();
+			var matchState = session.ToPayload(session.Player2.Id);
 			Assert.NotNull(matchState.Player2);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(doubleCubeBoard.DoublingCubeValue * 3, matchState.Player2.Points);
@@ -333,24 +378,32 @@ namespace GammonX.Server.Tests
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartNextGame(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
-			var player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.Contains(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
-			var player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
+			var player1GameState = session.GetGameState(session.Player1.Id);
+			Assert.Contains(ServerCommands.OfferDoubleCommand, player1GameState.AllowedCommands);
+			var player2GameState = session.GetGameState(session.Player2.Id);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommand, player2GameState.AllowedCommands);
 
 			session.RollDices(session.Player1.Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
-			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
-			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
+			player1GameState = session.GetGameState(session.Player1.Id);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommand, player1GameState.AllowedCommands);
+			player2GameState = session.GetGameState(session.Player2.Id);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommand, player2GameState.AllowedCommands);
+
+			// execute a full turn
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var anyMove in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
+			}
 
 			session.EndTurn(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
-			player1GameState = session.GetGameState(session.Player1.Id, ServerCommands.RollCommand);
-			Assert.DoesNotContain(ServerCommands.OfferDoubleCommands, player1GameState.AllowedCommands);
-			player2GameState = session.GetGameState(session.Player2.Id, ServerCommands.RollCommand);
-			Assert.Contains(ServerCommands.OfferDoubleCommands, player2GameState.AllowedCommands);
+			player1GameState = session.GetGameState(session.Player1.Id);
+			Assert.DoesNotContain(ServerCommands.OfferDoubleCommand, player1GameState.AllowedCommands);
+			player2GameState = session.GetGameState(session.Player2.Id);
+			Assert.Contains(ServerCommands.OfferDoubleCommand, player2GameState.AllowedCommands);
 		}
 
 		[Fact]
@@ -455,6 +508,14 @@ namespace GammonX.Server.Tests
 			doublingCubeSession.AcceptDouble(session.Player1.Id);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
+			// execute a full turn
+			session.RollDices(session.Player2.Id);
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var anyMove in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
+			}
 			session.EndTurn(session.Player2.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.True(doublingCubeSession.CanOfferDouble(session.Player1.Id));

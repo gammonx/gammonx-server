@@ -192,6 +192,7 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(payload.Player2);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
+					// TODO: check for specific allowed commands
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
 					player1MatchStarted = true;
 				}
@@ -228,7 +229,9 @@ namespace GammonX.Server.Tests
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
 					Assert.Equal(player1.PlayerId, payload.Player1?.Id);
-					Assert.Empty(payload.AllowedCommands);
+					Assert.Equal(2, payload.AllowedCommands.Length);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
 					player1GameWaiting = true;

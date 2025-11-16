@@ -336,7 +336,7 @@ namespace GammonX.Server.Tests
 			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, isWhite);
 			// moves are inverted for black player
-			var gameState = gameSession.ToPayload(player1Id, !isWhite);
+			var gameState = gameSession.ToPayload(player1Id, Array.Empty<string>(), !isWhite);
 			Assert.NotNull(gameState);
 			foreach (var moveSeq in gameState.MoveSequences)
 			{
@@ -384,7 +384,7 @@ namespace GammonX.Server.Tests
 			blackGameSession.StartGame(player1Id, player2Id);
 			blackGameSession.RollDices(player1Id, false);
 			// moves are inverted for black player
-			var blackGameState = blackGameSession.ToPayload(player1Id, true);
+			var blackGameState = blackGameSession.ToPayload(player1Id, Array.Empty<string>(), true);
 			Assert.NotNull(blackGameState);
 			// prepare white game session
 			var whiteGameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
@@ -394,7 +394,7 @@ namespace GammonX.Server.Tests
 			whiteGameSession.StartGame(player1Id, player2Id);
 			whiteGameSession.RollDices(player1Id, true);
 			// moves are inverted for black player
-			var whiteGameState = whiteGameSession.ToPayload(player1Id, false);
+			var whiteGameState = whiteGameSession.ToPayload(player1Id, Array.Empty<string>(), false);
 			Assert.NotNull(whiteGameState);
 
 			// both game states should contain the exact same moves now

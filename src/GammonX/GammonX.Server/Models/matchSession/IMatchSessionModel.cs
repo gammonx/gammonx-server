@@ -172,16 +172,15 @@ namespace GammonX.Server.Models
 		/// Creates a game state payload which can be sent to a client.
 		/// </summary>
 		/// <param name="playerId">Player who receives the game state.</param>
-		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
 		/// <returns>Returns the game state payload.</returns>
-		EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands);
+		EventGameStatePayload GetGameState(Guid playerId);
 
 		/// <summary>
 		/// Constructs and returns the match state payload for both players.
 		/// </summary>
-		/// <param name="allowedCommands">A list of allowed socket commands that can follow up for the given player.</param>
+		/// <param name="callingPlayerId">Player who receives the game state.</param>
 		/// <returns>Match state payload.</returns>
-		EventMatchStatePayload ToPayload(params string[] allowedCommands);
+		EventMatchStatePayload ToPayload(Guid callingPlayerId);
 
 		/// <summary>
 		/// Gets the history of all contained gamesession, board and the match itself.
