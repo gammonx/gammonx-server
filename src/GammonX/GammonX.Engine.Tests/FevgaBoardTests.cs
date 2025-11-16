@@ -263,5 +263,30 @@ namespace GammonX.Engine.Tests
             Assert.False(service.CanMoveChecker(board, homebarModel.StartIndexWhite, 2, true));
             Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, homebarModel.StartIndexWhite, 2, true));
         }
+
+        [Fact]
+        public void FevgaRecoverRollBasedOnFromToMove()
+        {
+			var service = BoardServiceFactory.Create(GameModus.Fevga);
+			var board = service.CreateBoard();
+            // white checkers
+            var roll = board.RecoverRollOperator(true, 0, 5);
+            Assert.Equal(5, roll);
+            roll = board.RecoverRollOperator(true, 17, 23);
+            Assert.Equal(6, roll);
+            roll = board.RecoverRollOperator(true, WellKnownBoardPositions.HomeBarWhite, 5);
+            Assert.Equal(6, roll);
+            roll = board.RecoverRollOperator(true, 18, WellKnownBoardPositions.BearOffWhite);
+            Assert.Equal(6, roll);
+            // black checkers
+            roll = board.RecoverRollOperator(false, 18, 0);
+            Assert.Equal(6, roll);
+            roll = board.RecoverRollOperator(false, 5, 11);
+            Assert.Equal(6, roll);
+            roll = board.RecoverRollOperator(false, WellKnownBoardPositions.HomeBarBlack, 17);
+            Assert.Equal(6, roll);
+            roll = board.RecoverRollOperator(false, 6, WellKnownBoardPositions.BearOffBlack);
+            Assert.Equal(6, roll);
+		}
     }
 }

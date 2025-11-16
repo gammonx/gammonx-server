@@ -67,7 +67,6 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite)
 		{
-			// TODO: tests
 			// we simply invert to move
 			PerformMoveCheckerTo(model, moveToUndo.To, moveToUndo.From, isWhite);
 		}
