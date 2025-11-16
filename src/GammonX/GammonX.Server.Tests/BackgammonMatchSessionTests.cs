@@ -4,6 +4,7 @@ using GammonX.Engine.Services;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
+
 using Moq;
 
 namespace GammonX.Server.Tests
@@ -412,7 +413,9 @@ namespace GammonX.Server.Tests
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
 			gameSession.InjectDiceServiceMock(mock.Object);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			session.RollDices(session.Player1.Id);
+			Assert.False(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
@@ -424,6 +427,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(move);
 			session.MoveCheckers(session.Player1.Id, move.From, move.To);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
+			Assert.False(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
@@ -434,6 +438,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(move);
 			session.MoveCheckers(session.Player1.Id, move.From, move.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+			Assert.False(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player1.Id));
@@ -442,6 +447,7 @@ namespace GammonX.Server.Tests
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
 			session.EndTurn(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player2.Id));
 			// player 2 offers first double
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player1.Id));
 			doublingCubeSession.OfferDouble(session.Player2.Id);
@@ -451,6 +457,7 @@ namespace GammonX.Server.Tests
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
 			session.EndTurn(session.Player2.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			// player 1 offers another double
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			doublingCubeSession.OfferDouble(session.Player1.Id);
