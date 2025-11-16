@@ -209,10 +209,12 @@ namespace GammonX.Server
 
 		/// <summary>
 		/// The active turn player rolls the dices for the current game round. The game phase advances to <see cref="GamePhase.Rolling"/>.
-		/// Both players receive the <see cref="ServerEventTypes.GameStateEvent"/> with the game state. Player 2 an inverted board state.
+		/// Both players receive the <see cref="ServerEventTypes.GameStateEvent"/> with the game state. Player 2 (black checkers) 
+		/// an inverted board state and inverted move sequences.
 		/// </summary>
 		/// <remarks>
-		/// The player which is not active receives the <see cref="GamePhase.WaitingForOpponent"/> and an inverted board state.
+		/// The player which is not active receives the <see cref="GamePhase.WaitingForOpponent"/>.
+		/// If legal moves are found, the calling player can execute a move command. Otherwise, he has to end his turn.
 		/// </remarks>
 		/// <param name="matchId">Id of the match.</param>
 		/// <returns>A task to be awaited.</returns>
@@ -267,7 +269,7 @@ namespace GammonX.Server
 				{
 					await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 				}
-				// TODO: if no move is possible END_TURN AllowedCommand is not returned
+				
 				var matchSession = _repository.Get(matchGuid);
 				if (matchSession != null)
 				{
@@ -683,7 +685,15 @@ namespace GammonX.Server
 		private async Task PerfromRollAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
 		{
 			matchSession.RollDices(callingPlayerId);
-			await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+			if (matchSession.CanEndTurn(callingPlayerId))
+			{
+				// the calling player has no legal moves with the given dice roll
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.EndTurnCommand);
+			}
+			else
+			{
+				await SendGameState(ServerEventTypes.GameStateEvent, matchSession, ServerCommands.MoveCommand);
+			}
 		}
 
 		private async Task<bool> PerformMoveAsync(IMatchSessionModel matchSession, Guid callingPlayerId, int from, int to)

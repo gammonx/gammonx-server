@@ -130,7 +130,16 @@ namespace GammonX.Server.Models
 
 			rolls = DiceRolls.Select(dr => dr.Roll).ToArray();
 			CalculateLegalMoveSequences(isWhite, rolls);
-			Phase = GamePhase.Rolling;
+			
+			if (MoveSequences.CanMove)
+			{
+				Phase = GamePhase.Rolling;
+			}
+			else
+			{
+				Phase = GamePhase.WaitingForEndTurn;
+			}
+
 			_boardService.AddEventToHistory(BoardModel, isWhite, rolls);
 		}
 

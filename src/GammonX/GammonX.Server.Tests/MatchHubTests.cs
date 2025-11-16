@@ -5,12 +5,15 @@ using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Server.Tests.Testdata;
+using GammonX.Server.Tests.Utils;
 
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
+
 using System.Security.Claims;
 
 namespace GammonX.Server.Tests
@@ -48,6 +51,54 @@ namespace GammonX.Server.Tests
 			_matchRepo = new MatchSessionRepository(matchSessionFactory);
 			_botService = new WildbgBotService(_wildBgClient);
 			_hub = new MatchLobbyHub(compositeService, _matchRepo, _diceFactory, _botService, analysisQueue.Object);
+		}
+
+		[Theory]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
+		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
+		public async Task MatchHubReturnsEndTurnCommandIfNoLegalMovesReturned(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		{
+			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+			var matchSession = result.Item1;
+			var hub1 = result.Item2;
+			var hub2 = result.Item3;
+			var matchIdStr = matchSession.Id.ToString();
+
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+
+			if (gameSession.ActivePlayer == _player1Id)
+			{
+				// player 1 plays with white checkers
+				gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
+				await hub1.RollAsync(matchIdStr);
+				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+				// TODO check if end turn is allowed
+			}
+			else if (gameSession.ActivePlayer == _player2Id)
+			{
+				// player 2 plays with black checkers
+				gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
+				await hub2.RollAsync(matchIdStr);
+				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+				// TODO check if end turn is allowed
+			}			
 		}
 
 		[Theory]

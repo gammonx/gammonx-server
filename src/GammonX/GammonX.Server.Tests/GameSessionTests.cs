@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Server.Tests.Testdata;
 using GammonX.Server.Tests.Utils;
 
 using Moq;
@@ -404,6 +405,32 @@ namespace GammonX.Server.Tests
 					Assert.Contains(whiteGameState.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == blackMove.From && m.To == blackMove.To);
 				}
 			}
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Plakoto)]
+		public void GameSessionHasEndTurnPhaseIfRollReturnsNoLegalMoves(GameModus modus)
+		{
+			// white checkers
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
+			var player1Id = Guid.NewGuid();
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
+			gameSession.RollDices(player1Id, true);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+			// black checkers
+			gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
+			player1Id = Guid.NewGuid();
+			player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
+			gameSession.RollDices(player1Id, false);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+
 		}
 	}
 }

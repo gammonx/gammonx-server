@@ -80,7 +80,7 @@
         });
 
 		// <inheritdoc />
-		public override Func<bool, int, int, int> RecoverRollOperator => new Func<bool, int, int, int>((isWhite, from, to) =>
+		public override Func<bool, int, int, int> RecoverRollOperator => new((isWhite, from, to) =>
 		{
 			if (isWhite)
 			{

@@ -1,0 +1,61 @@
+﻿namespace GammonX.Server.Tests.Testdata
+{
+	public static class BoardMocks
+	{
+		public static int[] WhiteCannotMoveWithRoll = new int[24]
+		{
+			-1,
+			2,
+			2,
+			2,
+			2,
+			2,
+			2,
+			2,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0
+		};
+
+		public static int[] BlackCannotMoveWithRoll = new int[24]
+		{
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			-2,
+			-2,
+			-2,
+			-2,
+			-2,
+			-2,
+			-2,
+			-2,
+			1
+		};
+	}
+}
