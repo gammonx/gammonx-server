@@ -582,7 +582,6 @@ namespace GammonX.Server
 
 		private async Task PerformOfferDoubleAsync(IMatchSessionModel matchSession, Guid offeringPlayerId)
 		{
-			// TODO: server side validation for allowed commands
 			if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
 			{
 				doubleCubeSession.OfferDouble(offeringPlayerId);

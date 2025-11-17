@@ -146,13 +146,13 @@ namespace GammonX.Server.Tests
 			var otherPlayerId = botPlayer2Id;
 			var doubleAccepted = false;
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
-
 			Assert.Equal(modus, matchSession.GetGameModus());
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
 			matchSession.StartNextGame(activePlayerId);
+
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
 			do
 			{
 				if (cubeSession.CanOfferDouble(activePlayerId))

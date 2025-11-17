@@ -68,7 +68,12 @@ namespace GammonX.Server.Models
 		public void JoinSession(LobbyEntry player)
 		{
 			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
-			ValidateServerCommandCall(player.PlayerId, ServerCommands.JoinMatchCommand);
+
+			var valid = IsCommandCallValid(player.PlayerId, ServerCommands.JoinMatchCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.JoinMatchCommand}' is not in the list of allowed commands.");
+			}
 
 			if (Player1.Id == Guid.Empty)
 			{
@@ -111,7 +116,12 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.StartGameCommand)]
 		public IGameSessionModel StartNextGame(Guid callingPlayerId)
 		{
-			ValidateServerCommandCall(callingPlayerId, ServerCommands.StartGameCommand);
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.StartGameCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.StartGameCommand}' is not in the list of allowed commands.");
+			}
+
 			var gameSession = GetOrCreateGameSession(GameRound);
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 
@@ -143,7 +153,11 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.RollCommand)]
 		public void RollDices(Guid callingPlayerId)
 		{
-			ValidateServerCommandCall(callingPlayerId, ServerCommands.RollCommand);
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.RollCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.RollCommand}' is not in the list of allowed commands.");
+			}
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
@@ -165,7 +179,11 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.MoveCommand)]
 		public bool MoveCheckers(Guid callingPlayerId, int from, int to)
 		{
-			ValidateServerCommandCall(callingPlayerId, ServerCommands.MoveCommand);
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.MoveCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.MoveCommand}' is not in the list of allowed commands.");
+			}
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
@@ -198,7 +216,11 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.UndoMoveCommand)]
 		public void UndoLastMove(Guid callingPlayerId)
 		{
-			ValidateServerCommandCall(callingPlayerId, ServerCommands.UndoMoveCommand);
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.UndoMoveCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.UndoMoveCommand}' is not in the list of allowed commands.");
+			}
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
@@ -264,7 +286,11 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.EndTurnCommand)]
 		public void EndTurn(Guid callingPlayerId)
 		{
-			ValidateServerCommandCall(callingPlayerId, ServerCommands.EndTurnCommand);
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.EndTurnCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.EndTurnCommand}' is not in the list of allowed commands.");
+			}
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
@@ -286,6 +312,12 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.ResignGameCommand)]
 		public void ResignGame(Guid callingPlayerId)
 		{
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.ResignGameCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.ResignGameCommand}' is not in the list of allowed commands.");
+			}
+
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
@@ -305,6 +337,12 @@ namespace GammonX.Server.Models
 		[ServerCommand(ServerCommands.ResignMatchCommand)]
 		public void ResignMatch(Guid callingPlayerId)
 		{
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.ResignMatchCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.ResignMatchCommand}' is not in the list of allowed commands.");
+			}
+
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
 
@@ -453,13 +491,14 @@ namespace GammonX.Server.Models
 
 		#region Protected Methods
 
-		protected void ValidateServerCommandCall(Guid callingPlayerId, string calledCommand)
+		protected virtual bool IsCommandCallValid(Guid callingPlayerId, string calledCommand)
 		{
 			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
-			if (!availableCommands.Contains(calledCommand))
+			if (availableCommands.Contains(calledCommand))
 			{
-				throw new InvalidOperationException($"The given command '{calledCommand}' is not in the list of allowed commands.");
+				return true;
 			}
+			return false;
 		}
 
 		protected bool GameOver(Guid playerId, out int points)

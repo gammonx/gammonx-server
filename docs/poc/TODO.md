@@ -1,8 +1,6 @@
 ## DONE
-- validation of from/to moves
 
 ## Active
-- todos/bugs
 - palamedes schreiben
 - database
     - dynamo db konzept testen > mit access keys local to aws

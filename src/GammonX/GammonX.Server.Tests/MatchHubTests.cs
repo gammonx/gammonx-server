@@ -89,7 +89,8 @@ namespace GammonX.Server.Tests
 				gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
 				await hub1.RollAsync(matchIdStr);
 				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
-				// TODO check if end turn is allowed
+				var gameState = matchSession.GetGameState(_player1Id);
+				Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
 			}
 			else if (gameSession.ActivePlayer == _player2Id)
 			{
@@ -97,7 +98,8 @@ namespace GammonX.Server.Tests
 				gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
 				await hub2.RollAsync(matchIdStr);
 				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
-				// TODO check if end turn is allowed
+				var gameState = matchSession.GetGameState(_player2Id);
+				Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
 			}			
 		}
 

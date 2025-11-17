@@ -392,10 +392,9 @@ namespace GammonX.Server.Tests
 			var allowedCommandsAfterRollActivePlayer = new[]
 			{
 				ServerCommands.RollCommand,
-				ServerCommands.OfferDoubleCommand,
 				ServerCommands.ResignGameCommand,
 				ServerCommands.ResignMatchCommand,
-				ServerCommands.OfferDoubleCommand, // TODO: why two times?
+				ServerCommands.OfferDoubleCommand
 			};
 			var allowedCommandsAfterRollOtherPlayer = new[] { ServerCommands.ResignGameCommand, ServerCommands.ResignMatchCommand };
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);

@@ -83,6 +83,7 @@ namespace GammonX.Engine.Models
 		{
 			if (DoublingCubeOwner)
             {
+                // TODO :: issue here
                 throw new InvalidOperationException("Doubling offer can only be accepted by a non owner of the doubling cube");
             }
             else

@@ -138,6 +138,19 @@ namespace GammonX.Server.Tests
 					{
 						Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
 					}
+					if (payload.ActiveTurn == _player1Id)
+					{
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+					}
+					else
+					{
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+					}
 				}
 				else
 				{
@@ -162,6 +175,19 @@ namespace GammonX.Server.Tests
 					if (payload.Modus == GameModus.Fevga)
 					{
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
+					}
+					if (payload.ActiveTurn == _player2Id)
+					{
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+					}
+					else
+					{
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 				}
 				else
@@ -193,6 +219,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (payload.GameRound == 2)
 					{
@@ -207,6 +237,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (payload.GameRound == 3)
 					{
@@ -221,6 +255,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
+						// no game left
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 				}
 				else
@@ -248,6 +286,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(0, payload.GameRounds[0].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[0].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[0].Winner);
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (payload.GameRound == 2)
 					{
@@ -262,6 +304,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(1, payload.GameRounds[1].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[1].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[1].Winner);
+						Assert.Equal(3, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (payload.GameRound == 3)
 					{
@@ -276,6 +322,10 @@ namespace GammonX.Server.Tests
 						Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 						Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 						Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
+						// player 2 always loses and never starts a game
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 				}
 				else
@@ -314,6 +364,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
+					Assert.Empty(payload.AllowedCommands);
 					matchEndedForPlayer1 = true;
 				}
 				else
@@ -352,6 +403,7 @@ namespace GammonX.Server.Tests
 					Assert.Equal(2, payload.GameRounds[2].GameRoundIndex);
 					Assert.Equal(player1.PlayerId, payload.GameRounds[2].Winner);
 					Assert.Equal(payload.Player1?.Id, payload.GameRounds[2].Winner);
+					Assert.Empty(payload.AllowedCommands);
 					matchEndedForPlayer2 = true;
 				}
 				else

@@ -139,16 +139,7 @@ namespace GammonX.Server
 					case JoinMatchCommand:
 						return new string[] { StartGameCommand, ResignGameCommand, ResignMatchCommand };
 					case StartGameCommand:
-						{
-							if (match is IDoubleCubeMatchSession)
-							{
-								return new string[] { RollCommand, OfferDoubleCommand, ResignGameCommand, ResignMatchCommand };
-							}
-							else
-							{
-								return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
-							}
-						}
+						return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
 					case RollCommand:
 						{
 							if (match.CanEndTurn(callingPlayerId))
@@ -188,16 +179,7 @@ namespace GammonX.Server
 							return new string[] { MoveCommand, ResignGameCommand, ResignMatchCommand };
 						}
 					case EndTurnCommand:
-						{
-							if (match is IDoubleCubeMatchSession)
-							{
-								return new string[] { RollCommand, OfferDoubleCommand, ResignGameCommand, ResignMatchCommand };
-							}
-							else
-							{
-								return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
-							}
-						}
+						return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
 					case ResignMatchCommand:
 						return Array.Empty<string>();
 					case ResignGameCommand:
