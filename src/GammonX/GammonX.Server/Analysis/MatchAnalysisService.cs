@@ -47,7 +47,7 @@ namespace GammonX.Server.Analysis
 
 		}
 
-		private Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, CancellationToken cancellationToken)
+		private static Task AnalyzeAndStoreStatsAsync(IMatchSessionModel match, CancellationToken cancellationToken)
 		{
 			// TODO
 			// won matches

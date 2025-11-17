@@ -50,7 +50,6 @@ namespace GammonX.Server.Tests
 			matchSession.EndTurn(botPlayer2Id);
 
 			// white checker bot moves second
-			matchSession.StartNextGame(botPlayer1Id);
 			matchSession.RollDices(botPlayer1Id);
 			nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
 			canMove = true;
@@ -76,23 +75,20 @@ namespace GammonX.Server.Tests
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 			Assert.True(matchSession.Player1.IsBot);
 			Assert.True(matchSession.Player2.IsBot);
-
 			var botService = new WildbgBotService(_wildBgClient);
-
-			matchSession.Player1.AcceptNextGame();
-			matchSession.Player2.AcceptNextGame();
-
 			var botPlayer1Id = matchSession.Player1.Id;
 			var botPlayer2Id = matchSession.Player2.Id;
 			var activePlayerId = botPlayer1Id;
-
 			Assert.Equal(modus, matchSession.GetGameModus());
+			matchSession.Player1.AcceptNextGame();
+			matchSession.Player2.AcceptNextGame();
 			do
 			{
-				matchSession.Player1.AcceptNextGame();
-				matchSession.Player2.AcceptNextGame();
+				if (matchSession.CanStartNextGame())
+				{
+					matchSession.StartNextGame(activePlayerId);
+				}
 
-				matchSession.StartNextGame(activePlayerId);
 				matchSession.RollDices(activePlayerId);
 				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
 				var hasWon = false;
@@ -107,6 +103,11 @@ namespace GammonX.Server.Tests
 				{
 					matchSession.EndTurn(activePlayerId);
 					activePlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
+				}
+				else
+				{
+					matchSession.Player1.AcceptNextGame();
+					matchSession.Player2.AcceptNextGame();
 				}
 			}
 			while (!matchSession.IsMatchOver());
@@ -146,28 +147,35 @@ namespace GammonX.Server.Tests
 			var doubleAccepted = false;
 
 			Assert.Equal(modus, matchSession.GetGameModus());
+			matchSession.Player1.AcceptNextGame();
+			matchSession.Player2.AcceptNextGame();
+			matchSession.StartNextGame(activePlayerId);
+
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
 			do
 			{
-				matchSession.Player1.AcceptNextGame();
-				matchSession.Player2.AcceptNextGame();
-
-				matchSession.StartNextGame(activePlayerId);
-
 				if (cubeSession.CanOfferDouble(activePlayerId))
 				{
 					var shouldOffer = await botService.ShouldOfferDouble(matchSession, activePlayerId);
 					if (shouldOffer)
 					{
+						gameSession = matchSession.GetGameSession(matchSession.GameRound);
+						Assert.NotNull(gameSession);
+						Assert.Equal(activePlayerId, gameSession.ActivePlayer);
 						cubeSession.OfferDouble(activePlayerId);
+						Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
 						var shouldAccept = await botService.ShouldAcceptDouble(matchSession, otherPlayerId);
 						if (shouldAccept)
 						{
 							cubeSession.AcceptDouble(otherPlayerId);
+							Assert.Equal(activePlayerId, gameSession.ActivePlayer);
 							doubleAccepted = true;
 						}
 						else
 						{
 							cubeSession.DeclineDouble(otherPlayerId);
+							Assert.Equal(activePlayerId, gameSession.ActivePlayer);
 							break;
 						}
 					}
@@ -194,7 +202,7 @@ namespace GammonX.Server.Tests
 
 			Assert.True(matchSession.IsMatchOver());
 			Assert.False(matchSession.CanStartNextGame());
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
@@ -341,7 +349,6 @@ namespace GammonX.Server.Tests
 			matchSession.EndTurn(botPlayer2Id);
 
 			// white checker bot moves second
-			matchSession.StartNextGame(botPlayer1Id);
 			matchSession.RollDices(botPlayer1Id);
 			nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
 			canMove = true;

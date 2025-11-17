@@ -2,6 +2,7 @@
 using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
+using GammonX.Server.Models.gameSession;
 using GammonX.Server.Services;
 
 using GammonX.Server.Tests.Utils;
@@ -60,6 +61,15 @@ namespace GammonX.Server.Tests.Stubs
 			if (modus == GameModus.Plakoto)
 			{
 				return new PlakotoGameSession(
+					matchId,
+					modus,
+					_boardServiceMock.Object,
+					_diceFactory.Create()
+				);
+			}
+			else if (modus == GameModus.Backgammon)
+			{
+				return new BackgammonGameSession(
 					matchId,
 					modus,
 					_boardServiceMock.Object,

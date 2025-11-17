@@ -6,7 +6,7 @@ namespace GammonX.Engine.Models
     /// Classic BackGammon implementation.
     /// <seealso cref="https://www.bkgm.com/rules.html"/>
     /// </summary>
-    internal sealed class BackgammonBoardModelImpl : BoardBaseImpl, IHomeBarModel, IDoublingCubeModel
+    internal sealed class BackgammonBoardModelImpl : BoardBaseImpl, IHomeBarModel, IDoublingCubeModel, IHitModel
     {
         public BackgammonBoardModelImpl()
         {
@@ -79,9 +79,10 @@ namespace GammonX.Engine.Models
         public bool DoublingCubeOwner { get; set; } = false;
 
 		// <inheritdoc />
-		public void AcceptDoublingCubeOffer()
+		public void AcceptDoublingCubeOffer(bool isWhite)
 		{
-			if (DoublingCubeOwner)
+            var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
+			if (owner && DoublingCubeValue > 1)
             {
                 throw new InvalidOperationException("Doubling offer can only be accepted by a non owner of the doubling cube");
             }
@@ -100,9 +101,10 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public bool CanOfferDoublingCube()
+		public bool CanOfferDoublingCube(bool isWhite)
         {
-			return DoublingCubeValue < 64 && DoublingCubeOwner;
+			var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
+			return (DoublingCubeValue < 64 && owner) || DoublingCubeValue == 1;
         }
 
 		// <inheritdoc />

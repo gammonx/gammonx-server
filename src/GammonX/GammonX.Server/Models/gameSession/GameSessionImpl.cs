@@ -31,10 +31,10 @@ namespace GammonX.Server.Models
 		public GamePhase Phase { get; set; }
 
 		// <inheritdoc />
-		public Guid ActivePlayer { get; private set; }
+		public Guid ActivePlayer { get; protected set; }
 
 		// <inheritdoc />
-		public Guid OtherPlayer { get; private set; }
+		public Guid OtherPlayer { get; protected set; }
 
 		// <inheritdoc />
 		public int TurnNumber { get; private set; } = 1;
@@ -130,7 +130,16 @@ namespace GammonX.Server.Models
 
 			rolls = DiceRolls.Select(dr => dr.Roll).ToArray();
 			CalculateLegalMoveSequences(isWhite, rolls);
-			Phase = GamePhase.Rolling;
+			
+			if (MoveSequences.CanMove)
+			{
+				Phase = GamePhase.Rolling;
+			}
+			else
+			{
+				Phase = GamePhase.WaitingForEndTurn;
+			}
+
 			_boardService.AddEventToHistory(BoardModel, isWhite, rolls);
 		}
 
@@ -195,7 +204,7 @@ namespace GammonX.Server.Models
 			if (_activeUndoStack.TryPop(out var lastMove))
 			{
 				// we reverse the move direction in order to undo the last move
-				_boardService.MoveCheckerTo(BoardModel, lastMove.To, lastMove.From, isWhite);
+				_boardService.UndoMove(BoardModel, lastMove, isWhite);
 				if (BoardModel.History.TryPeekLast(out var lastEvent))
 				{
 					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move && BoardModel.History.TryRemoveLast())
@@ -262,7 +271,7 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload ToPayload(Guid playerId, bool inverted, params string[] allowedCommands)
+		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted)
 		{
 			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
 

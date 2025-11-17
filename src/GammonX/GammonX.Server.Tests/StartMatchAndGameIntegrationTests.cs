@@ -192,7 +192,10 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(payload.Player2);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
+					Assert.Equal(3, payload.AllowedCommands.Length);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					player1MatchStarted = true;
 				}
 			});
@@ -211,7 +214,10 @@ namespace GammonX.Server.Tests
 					Assert.NotNull(payload.Player2);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
+					Assert.Equal(3, payload.AllowedCommands.Length);
 					Assert.Contains(ServerCommands.StartGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					player2MatchStarted = true;
 				}
 			});
@@ -228,7 +234,9 @@ namespace GammonX.Server.Tests
 				{
 					Assert.Equal(joinPayload1.MatchId, payload.Id);
 					Assert.Equal(player1.PlayerId, payload.Player1?.Id);
-					Assert.Empty(payload.AllowedCommands);
+					Assert.Equal(2, payload.AllowedCommands.Length);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					Assert.NotNull(payload.GameRounds);
 					Assert.Empty(payload.GameRounds);
 					player1GameWaiting = true;
@@ -261,7 +269,10 @@ namespace GammonX.Server.Tests
 					Assert.Empty(payload.DiceRolls);
 					Assert.Empty(payload.MoveSequences);
 					Assert.NotNull(payload.BoardState);
+					Assert.Equal(3, payload.AllowedCommands.Length);
 					Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+					Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 					Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					player1GameStarted = true;
@@ -275,6 +286,7 @@ namespace GammonX.Server.Tests
 			var player2GameStarted = false;
 			player2Connection.On<object>(ServerEventTypes.GameStartedEvent, response =>
 			{
+				// player 1 starts the game with rolling
 				Assert.NotNull(response);
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
 				if (contract?.Payload is EventGameStatePayload payload)
@@ -287,7 +299,7 @@ namespace GammonX.Server.Tests
 					Assert.Empty(payload.DiceRolls);
 					Assert.Empty(payload.MoveSequences);
 					Assert.NotNull(payload.BoardState);
-					Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
+					Assert.Equal(2, payload.AllowedCommands.Length);
 					Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 					Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					player2GameStarted = true;
@@ -338,8 +350,11 @@ namespace GammonX.Server.Tests
 						player1FirstRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1FirstDiceRoll.Roll);
 						player1RolledTheDice = true;
 						Assert.NotNull(payload.BoardState);
-						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Equal(3, payload.AllowedCommands.Length);
 						Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					}
 					else if (!player1FirstMove)
@@ -355,8 +370,11 @@ namespace GammonX.Server.Tests
 						player1SecondRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1SecondDiceRoll.Roll);
 						player1FirstMove = true;
 						Assert.NotNull(payload.BoardState);
-						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Equal(3, payload.AllowedCommands.Length);
 						Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					}
 					else if (!player1SecondMove)
@@ -372,7 +390,11 @@ namespace GammonX.Server.Tests
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
+						Assert.Equal(4, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.UndoMoveCommand, payload.AllowedCommands);
 						Assert.Contains(ServerCommands.EndTurnCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (!_player1EndedHisTurn)
 					{
@@ -383,6 +405,9 @@ namespace GammonX.Server.Tests
 						Assert.Empty(payload.DiceRolls);
 						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
@@ -394,6 +419,9 @@ namespace GammonX.Server.Tests
 						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn);
 						Assert.Equal(2, payload.TurnNumber);
 						Assert.Equal(GamePhase.WaitingForOpponent, payload.Phase);
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
@@ -421,7 +449,10 @@ namespace GammonX.Server.Tests
 						Assert.Empty(payload.DiceRolls);
 						Assert.Empty(payload.MoveSequences);
 						Assert.NotNull(payload.BoardState);
+						Assert.Equal(3, payload.AllowedCommands.Length);
 						Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					}
@@ -441,8 +472,11 @@ namespace GammonX.Server.Tests
 						player2FirstRollMove = new MoveModel(moveSeq[0].From, moveSeq[1].To);
 						player2RolledTheDice = true;
 						Assert.NotNull(payload.BoardState);
-						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
+						Assert.Equal(3, payload.AllowedCommands.Length);
 						Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
 					}
 					else if (_player1EndedHisTurn && !player2FirstMove)
@@ -459,7 +493,11 @@ namespace GammonX.Server.Tests
 						Assert.NotNull(payload.BoardState);
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
+						Assert.Equal(4, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.UndoMoveCommand, payload.AllowedCommands);
 						Assert.Contains(ServerCommands.EndTurnCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (_player1EndedHisTurn && !player2EndedHisTurn)
 					{
@@ -474,6 +512,9 @@ namespace GammonX.Server.Tests
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 					else if (!_player1EndedHisTurn && !player2StartedTurn)
 					{
@@ -484,6 +525,9 @@ namespace GammonX.Server.Tests
 						Assert.DoesNotContain(ServerCommands.RollCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.MoveCommand, payload.AllowedCommands);
 						Assert.DoesNotContain(ServerCommands.EndTurnCommand, payload.AllowedCommands);
+						Assert.Equal(2, payload.AllowedCommands.Length);
+						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
 				}
 				else

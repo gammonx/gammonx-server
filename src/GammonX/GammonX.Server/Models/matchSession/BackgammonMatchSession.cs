@@ -1,6 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Models.gameSession;
 using GammonX.Server.Services;
 
 namespace GammonX.Server.Models
@@ -93,50 +94,13 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public override EventGameStatePayload GetGameState(Guid playerId, params string[] allowedCommands)
+		public override EventGameStatePayload GetGameState(Guid callingPlayerId)
 		{
-			var gameState = base.GetGameState(playerId, allowedCommands);
-
-			var activeSession = GetGameSession(GameRound);
-
-			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
+			var gameState = base.GetGameState(callingPlayerId);
+			if (CanExecuteOfferDoubleCommand(callingPlayerId))
 			{
-				throw new InvalidOperationException("The match does not support doubling cubes.");
+				gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommand);
 			}
-
-			if (Player1.Id.Equals(playerId)
-				&& activeSession.ActivePlayer == Player1.Id
-				&& gameState.AllowedCommands.Contains(ServerCommands.RollCommand)
-				&& gameState.Phase == GamePhase.WaitingForRoll)
-			{
-				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
-				if (doublingCubeModel.DoublingCubeValue == 1)
-				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
-				}
-				// Afterwards only the cube owner can offer one
-				else if (doublingCubeModel.CanOfferDoublingCube())
-				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
-				}
-			}
-			else if (Player2.Id.Equals(playerId)
-					&& activeSession.ActivePlayer == Player2.Id
-					&& gameState.AllowedCommands.Contains(ServerCommands.RollCommand)
-					&& gameState.Phase == GamePhase.WaitingForRoll)
-			{
-				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
-				if (doublingCubeModel.DoublingCubeValue == 1)
-				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
-				}
-				// Afterwards only the cube owner can offer one
-				else if (doublingCubeModel.CanOfferDoublingCube())
-				{
-					gameState.AppendAllowedCommands(ServerCommands.OfferDoubleCommands);
-				}
-			}
-
 			return gameState;
 		}
 
@@ -171,6 +135,20 @@ namespace GammonX.Server.Models
 			}
 		}
 
+		protected override bool IsCommandCallValid(Guid callingPlayerId, string calledCommand)
+		{
+			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand).ToList();
+			if (CanExecuteOfferDoubleCommand(callingPlayerId))
+			{
+				availableCommands.Add(ServerCommands.OfferDoubleCommand);
+			}
+			if (availableCommands.Contains(calledCommand))
+			{
+				return true;
+			}
+			return false;
+		}
+
 		private Guid? _doubleCubeOfferPlayerId = null;
 
 		// <inheritdoc />
@@ -190,8 +168,15 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
+		[ServerCommand(ServerCommands.OfferDoubleCommand)]
 		public void OfferDouble(Guid callingPlayerId)
 		{
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.OfferDoubleCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.OfferDoubleCommand}' is not in the list of allowed commands.");
+			}
+
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 			{
@@ -203,6 +188,11 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("The match does not support doubling cubes.");
 			}
 
+			if (activeSession is not IDoublingCubeGameSession doublingCubeGameSession)
+			{
+				throw new InvalidOperationException("The game does not support doubling cubes.");
+			}
+
 			if (activeSession.ActivePlayer != callingPlayerId || activeSession.Phase != GamePhase.WaitingForRoll)
 			{
 				throw new InvalidOperationException("Doubles can only be offered at the start of the active players turn");
@@ -210,21 +200,18 @@ namespace GammonX.Server.Models
 
 			if (doublingCubeModel.DoublingCubeValue > 1)
 			{
-				if (Player1.Id.Equals(callingPlayerId) && !doublingCubeModel.DoublingCubeOwner)
+				var isWhite = IsWhite(callingPlayerId);
+				if (!doublingCubeModel.CanOfferDoublingCube(isWhite))
 				{
-					// plays white checkers (non inverted board)
-					throw new InvalidOperationException("The calling player is not owner of the doubling cube");
-				}
-				else if (Player2.Id.Equals(callingPlayerId) && doublingCubeModel.DoublingCubeOwner)
-				{
-					// plays black checkers (inverted board)
-					throw new InvalidOperationException("The calling player is not owner of the doubling cube");
+					throw new InvalidOperationException("A double can only be offered by the owner of the cube");
 				}
 			}
 
 			if (_doubleCubeOfferPlayerId == null)
 			{
 				_doubleCubeOfferPlayerId = callingPlayerId;
+				doublingCubeGameSession.DoubleOffered(callingPlayerId);
+				_lastExecutedCommand = ServerCommands.OfferDoubleCommand;
 			}
 			else
 			{
@@ -233,13 +220,25 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
+		[ServerCommand(ServerCommands.AcceptDoubleCommand)]
 		public void AcceptDouble(Guid callingPlayerId)
 		{
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.AcceptDoubleCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.AcceptDoubleCommand}' is not in the list of allowed commands.");
+			}
+
 			var activeSession = GetGameSession(GameRound);
 
 			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
 			{
 				throw new InvalidOperationException("The match does not support doubling cubes.");
+			}
+
+			if (activeSession is not IDoublingCubeGameSession doublingCubeGameSession)
+			{
+				throw new InvalidOperationException("The game does not support doubling cubes.");
 			}
 
 			if (_doubleCubeOfferPlayerId == null)
@@ -252,7 +251,8 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("The calling player must not accept the double offer");
 			}
 
-			doublingCubeModel.AcceptDoublingCubeOffer();
+			var isWhite = IsWhite(callingPlayerId);
+			doublingCubeModel.AcceptDoublingCubeOffer(isWhite);
 
 			// we only track the board from the player1 white checker point of view
 			// for player2 the board gets inverted. Therefore, we only need to set the
@@ -275,11 +275,20 @@ namespace GammonX.Server.Models
 
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
+			_lastExecutedCommand = ServerCommands.AcceptDoubleCommand;
+			doublingCubeGameSession.DoubleAccepted(callingPlayerId);
 		}
 
 		// <inheritdoc />
+		[ServerCommand(ServerCommands.DeclineDoubleCommand)]
 		public void DeclineDouble(Guid callingPlayerId)
 		{
+			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.DeclineDoubleCommand);
+			if (!valid)
+			{
+				throw new InvalidOperationException($"The given command '{ServerCommands.DeclineDoubleCommand}' is not in the list of allowed commands.");
+			}
+
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 			{
@@ -289,6 +298,11 @@ namespace GammonX.Server.Models
 			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
 			{
 				throw new InvalidOperationException("The match does not support doubling cubes.");
+			}
+
+			if (activeSession is not IDoublingCubeGameSession doublingCubeGameSession)
+			{
+				throw new InvalidOperationException("The game does not support doubling cubes.");
 			}
 
 			if (_doubleCubeOfferPlayerId == null)
@@ -312,6 +326,8 @@ namespace GammonX.Server.Models
 
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
+			_lastExecutedCommand = ServerCommands.DeclineDoubleCommand;
+			doublingCubeGameSession.DoubleDeclined(callingPlayerId);
 		}
 
 		// <inheritdoc />
@@ -335,14 +351,9 @@ namespace GammonX.Server.Models
 
 			if (doublingCubeModel.DoublingCubeValue > 1)
 			{
-				if (Player1.Id.Equals(callingPlayerId) && !doublingCubeModel.DoublingCubeOwner)
+				var isWhite = IsWhite(callingPlayerId);
+				if (!doublingCubeModel.CanOfferDoublingCube(isWhite))
 				{
-					// plays white checkers (non inverted board)
-					return false;
-				}
-				else if (Player2.Id.Equals(callingPlayerId) && doublingCubeModel.DoublingCubeOwner)
-				{
-					// plays black checkers (inverted board)
 					return false;
 				}
 			}
@@ -383,6 +394,53 @@ namespace GammonX.Server.Models
 					return whiteHasCheckersThere;
 				}
 			}
+		}
+
+		private bool CanExecuteOfferDoubleCommand(Guid callingPlayerId)
+		{
+			var activeSession = GetGameSession(GameRound);
+
+			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
+			{
+				return false;
+			}
+
+			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
+
+			if (Player1.Id.Equals(callingPlayerId)
+				&& activeSession.ActivePlayer == Player1.Id
+				&& allowedCommands.Contains(ServerCommands.RollCommand)
+				&& activeSession.Phase == GamePhase.WaitingForRoll)
+			{
+				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
+				if (doublingCubeModel.DoublingCubeValue == 1)
+				{
+					return true;
+				}
+				// Afterwards only the cube owner can offer one
+				else if (doublingCubeModel.DoublingCubeOwner)
+				{
+					return true;
+				}
+			}
+			else if (Player2.Id.Equals(callingPlayerId)
+					&& activeSession.ActivePlayer == Player2.Id
+					&& allowedCommands.Contains(ServerCommands.RollCommand)
+					&& activeSession.Phase == GamePhase.WaitingForRoll)
+			{
+				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
+				if (doublingCubeModel.DoublingCubeValue == 1)
+				{
+					return true;
+				}
+				// Afterwards only the cube owner can offer one
+				// We need to invert the model for player 2 (black)
+				else if (!doublingCubeModel.DoublingCubeOwner)
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 }

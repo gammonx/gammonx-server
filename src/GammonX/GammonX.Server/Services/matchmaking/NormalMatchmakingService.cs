@@ -19,7 +19,7 @@ namespace GammonX.Server.Services
 
 			if (_queue.Any(ml => ml.Value.PlayerId == playerId || ml.Value.PlayerId == playerId))
 			{
-				throw new InvalidOperationException("Already part of the match lobby queue");
+				throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
 			}
 
 			// add player to queue
@@ -57,8 +57,8 @@ namespace GammonX.Server.Services
 						matched.Add(entryA.Id);
 						matched.Add(entryB.Id);
 						// remove players from queue
-						_queue.TryRemove(entryA.PlayerId, out _);
-						_queue.TryRemove(entryB.PlayerId, out _);
+						_queue.TryRemove(entryA.Id, out _);
+						_queue.TryRemove(entryB.Id, out _);
 						// create new lobby
 						var lobbyEntryA = new LobbyEntry(entryA.PlayerId);
 						var lobbyEntryB = new LobbyEntry(entryB.PlayerId);

@@ -48,7 +48,7 @@ namespace GammonX.Engine.Models
 		public int PipCountBlack => GetPipCount(true);
 
 		// <inheritdoc />
-		public virtual Func<bool, int, int, int> MoveOperator => new Func<bool, int, int, int>((isWhite, currentPosition, moveDistance) =>
+		public virtual Func<bool, int, int, int> MoveOperator => new((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)
 			{
@@ -65,7 +65,34 @@ namespace GammonX.Engine.Models
 		});
 
 		// <inheritdoc />
-		public virtual Func<bool, int, int, bool> CanBearOffOperator => new Func<bool, int, int, bool>((isWhite, currentPosition, moveDistance) =>
+		public virtual Func<bool, int, int, int> RecoverRollOperator => new((isWhite, from, to) =>
+		{
+			if (isWhite)
+			{
+				// white moves from 0 to 23
+				if (to == WellKnownBoardPositions.BearOffWhite)
+				{
+					to = HomeRangeWhite.End.Value + 1;
+				}
+				int roll = to - from;
+				return roll;
+			}
+			else
+			{
+				// black moves forward (wraps from 23 -> 0)
+				if (to == WellKnownBoardPositions.BearOffBlack)
+				{
+					to = HomeRangeBlack.End.Value;
+					int bearOffRoll = from - to + 1;
+					return bearOffRoll;
+				}
+				int roll = from - to;
+				return roll;
+			}
+		});
+
+		// <inheritdoc />
+		public virtual Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)
 			{
@@ -111,7 +138,7 @@ namespace GammonX.Engine.Models
 		});
 
 		// <inheritdoc />
-		public virtual Func<bool, int, bool> IsInHomeOperator => new Func<bool, int, bool>((isWhite, position) =>
+		public virtual Func<bool, int, bool> IsInHomeOperator => new((isWhite, position) =>
 		{
 			if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
 			if (!isWhite && (position > HomeRangeBlack.Start.Value || position < HomeRangeBlack.End.Value)) return false;

@@ -18,6 +18,10 @@
 		/// Includes 3 sub games (portes, plakoto, fevga).
 		/// </summary>
 		Tavli = 2,
+		/// <summary>
+		/// Default value if the match variant is unknown.
+		/// </summary>
+		Unknown = 99
 	}
 
 	/// <summary>
@@ -37,6 +41,10 @@
 		/// Join the bot queue resulting in matches against a bot/ai.
 		/// </summary>
 		Bot = 2,
+		/// <summary>
+		/// Default value if the match modus is unknown.
+		/// </summary>
+		Unknown = 99
 	}
 
 	/// <summary>
@@ -55,7 +63,11 @@
 		/// <summary>
 		/// The given match variants game rounds are played each a single time.
 		/// </summary>
-		CashGame = 2
+		CashGame = 2,
+		/// <summary>
+		/// Default value if the match type is unknown.
+		/// </summary>
+		Unknown = 99
 	}
 
 	/// <summary>

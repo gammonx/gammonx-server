@@ -28,6 +28,11 @@
 		public bool IsBot => ConnectionId.Equals(Guid.Empty.ToString());
 
 		/// <summary>
+		/// Gets a boolean indicating if the given player is claimed by a client.
+		/// </summary>
+		public bool Claimed => Id != Guid.Empty;
+
+		/// <summary>
 		/// Accepts the next game for this player.
 		/// </summary>
 		public void AcceptNextGame()

@@ -32,7 +32,8 @@ namespace GammonX.Engine.Services
 					// their last home field is index 11
 					// their start field index is 12 (24)
 					// black checkers must not move past the start field
-					if (!isWhite)
+					// except they can bear off
+					if (!isWhite && !CanBearOffChecker(model, from, roll, isWhite))
 					{
 						var homeEndField = model.HomeRangeBlack.End.Value;
 						// checkers must not pass their original start field
@@ -169,13 +170,12 @@ namespace GammonX.Engine.Services
 			{
 				if (IsIndexInRange(to, model.StartRangeBlack, model.Fields.Length))
 				{
-					var (offset, length) = model.StartRangeBlack.GetOffsetAndLength(model.Fields.Length);
+					var clone = CreateShadowMove(model, from, to, isWhite);
+					var (offset, length) = clone.StartRangeBlack.GetOffsetAndLength(model.Fields.Length);
 					var primeCounter = 0;
 					for (int i = offset; i <= offset + length; i++)
 					{
-						if (model.Fields[i] < 0)
-							primeCounter++;
-						else if (i == to)
+						if (clone.Fields[i] < 0)
 							primeCounter++;
 						else
 							break;
@@ -188,13 +188,12 @@ namespace GammonX.Engine.Services
 			{
 				if (IsIndexInRange(to, model.StartRangeWhite, model.Fields.Length))
 				{
-					var (offset, length) = model.StartRangeWhite.GetOffsetAndLength(model.Fields.Length);
+					var clone = CreateShadowMove(model, from, to, isWhite);
+					var (offset, length) = clone.StartRangeWhite.GetOffsetAndLength(model.Fields.Length);
 					var primeCounter = 0;
 					for (int i = offset; i <= offset + length; i++)
 					{
-						if (model.Fields[i] > 0)
-							primeCounter++;
-						else if (i == to)
+						if (clone.Fields[i] > 0)
 							primeCounter++;
 						else
 							break;
@@ -204,6 +203,34 @@ namespace GammonX.Engine.Services
 				}
 			}
 			return false;
+		}
+
+		private static IBoardModel CreateShadowMove(IBoardModel board, int from, int to, bool isWhite)
+		{
+			var clone = board.DeepClone();
+			if (isWhite)
+			{
+				if (from != WellKnownBoardPositions.HomeBarWhite)
+				{
+					clone.Fields[from] = clone.Fields[from] + 1;
+				}
+				if (to != WellKnownBoardPositions.BearOffWhite)
+				{
+					clone.Fields[to] = clone.Fields[to] - 1;
+				}
+			}
+			else
+			{
+				if (from != WellKnownBoardPositions.HomeBarBlack)
+				{
+					clone.Fields[from] = clone.Fields[from] - 1;
+				}
+				if (to != WellKnownBoardPositions.BearOffBlack)
+				{
+					clone.Fields[to] = clone.Fields[to] + 1;
+				}
+			}
+			return clone;
 		}
 
 		private static bool IsIndexInRange(int index, Range range, int arrayLength)

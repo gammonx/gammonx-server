@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Server.Tests.Testdata;
 using GammonX.Server.Tests.Utils;
 
 using Moq;
@@ -335,7 +336,7 @@ namespace GammonX.Server.Tests
 			gameSession.StartGame(player1Id, player2Id);
 			gameSession.RollDices(player1Id, isWhite);
 			// moves are inverted for black player
-			var gameState = gameSession.ToPayload(player1Id, !isWhite);
+			var gameState = gameSession.ToPayload(player1Id, Array.Empty<string>(), !isWhite);
 			Assert.NotNull(gameState);
 			foreach (var moveSeq in gameState.MoveSequences)
 			{
@@ -383,7 +384,7 @@ namespace GammonX.Server.Tests
 			blackGameSession.StartGame(player1Id, player2Id);
 			blackGameSession.RollDices(player1Id, false);
 			// moves are inverted for black player
-			var blackGameState = blackGameSession.ToPayload(player1Id, true);
+			var blackGameState = blackGameSession.ToPayload(player1Id, Array.Empty<string>(), true);
 			Assert.NotNull(blackGameState);
 			// prepare white game session
 			var whiteGameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
@@ -393,7 +394,7 @@ namespace GammonX.Server.Tests
 			whiteGameSession.StartGame(player1Id, player2Id);
 			whiteGameSession.RollDices(player1Id, true);
 			// moves are inverted for black player
-			var whiteGameState = whiteGameSession.ToPayload(player1Id, false);
+			var whiteGameState = whiteGameSession.ToPayload(player1Id, Array.Empty<string>(), false);
 			Assert.NotNull(whiteGameState);
 
 			// both game states should contain the exact same moves now
@@ -404,6 +405,32 @@ namespace GammonX.Server.Tests
 					Assert.Contains(whiteGameState.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == blackMove.From && m.To == blackMove.To);
 				}
 			}
+		}
+
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Plakoto)]
+		public void GameSessionHasEndTurnPhaseIfRollReturnsNoLegalMoves(GameModus modus)
+		{
+			// white checkers
+			var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
+			var player1Id = Guid.NewGuid();
+			var player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
+			gameSession.RollDices(player1Id, true);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+			// black checkers
+			gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+			gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
+			player1Id = Guid.NewGuid();
+			player2Id = Guid.NewGuid();
+			gameSession.StartGame(player1Id, player2Id);
+			gameSession.RollDices(player1Id, false);
+			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+
 		}
 	}
 }

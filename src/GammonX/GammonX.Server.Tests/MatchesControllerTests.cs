@@ -118,6 +118,25 @@ namespace GammonX.Server.Tests
 			await Assert.ThrowsAsync<InvalidOperationException>(() => matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey));
 		}
 
+		[Theory]
+		[InlineData(WellKnownMatchModus.Normal)]
+		[InlineData(WellKnownMatchModus.Ranked)]
+		public async Task PlayerCanJoinAgainAfterLeavingTheQueue(WellKnownMatchModus modus)
+		{
+			var player1 = CreatePlayer(_player1Id, WellKnownMatchVariant.Backgammon, modus);
+			var player2 = CreatePlayer(_player2Id, WellKnownMatchVariant.Backgammon, modus);
+			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, modus, WellKnownMatchType.CashGame);
+			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
+			// join queue
+			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
+			await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
+			// get a match
+			await matchmakingService.MatchQueuedPlayersAsync();
+			// join again
+			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
+			await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
+		}
+
 		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchModus queueType)
 		{
 			return new JoinRequest(playerId, variant, queueType, WellKnownMatchType.CashGame);

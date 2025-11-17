@@ -1,9 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
 using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
-
-using Range = System.Range;
 
 namespace GammonX.Engine.Tests
 {
@@ -805,5 +804,45 @@ namespace GammonX.Engine.Tests
 		}
 
 		#endregion BearOff
+
+		#region Undo Move
+
+		[Theory]
+		[InlineData(GameModus.Backgammon, true)]
+		[InlineData(GameModus.Portes, true)]
+		[InlineData(GameModus.Tavla, true)]
+		[InlineData(GameModus.Plakoto, true)]
+		[InlineData(GameModus.Fevga, true)]
+		[InlineData(GameModus.Backgammon, false)]
+		[InlineData(GameModus.Portes, false)]
+		[InlineData(GameModus.Tavla, false)]
+		[InlineData(GameModus.Plakoto, false)]
+		[InlineData(GameModus.Fevga, false)]
+		public void CanUndoMove(GameModus modus, bool isWhite)
+        {
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard();
+            var startBoard = board.DeepClone();
+
+            var legalMoveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+            var legalMoveSeq = legalMoveSequences.First();
+            Assert.NotNull(legalMoveSeq);
+            // make some moves
+            foreach (var move in legalMoveSeq.Moves)
+            {
+                service.MoveCheckerTo(board, move.From, move.To, isWhite);
+            }
+            // undo all moves
+            var undoStack = legalMoveSeq.Moves.ToList();
+            undoStack.Reverse();
+            foreach (var undo in undoStack)
+            {
+                service.UndoMove(board, undo, isWhite);
+            }
+            // initial game board should be recreated
+            Assert.Equal(startBoard.Fields, board.Fields);
+		}
+
+		#endregion Undo Move
 	}
 }

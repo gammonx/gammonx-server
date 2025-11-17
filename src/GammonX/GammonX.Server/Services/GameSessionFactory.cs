@@ -2,6 +2,7 @@
 using GammonX.Engine.Services;
 
 using GammonX.Server.Models;
+using GammonX.Server.Models.gameSession;
 
 namespace GammonX.Server.Services
 {
@@ -44,7 +45,7 @@ namespace GammonX.Server.Services
 				case GameModus.Fevga:
 					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				case GameModus.Backgammon:
-					return new GameSessionImpl(matchId, modus, boardService, diceService);
+					return new BackgammonGameSession(matchId, modus, boardService, diceService);
 				case GameModus.Tavla:
 					return new GameSessionImpl(matchId, modus, boardService, diceService);
 				default:

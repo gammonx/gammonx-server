@@ -80,6 +80,36 @@
         });
 
 		// <inheritdoc />
+		public override Func<bool, int, int, int> RecoverRollOperator => new((isWhite, from, to) =>
+		{
+			if (isWhite)
+			{
+				// white moves from 0 to 23
+				if (to == WellKnownBoardPositions.BearOffWhite)
+				{
+					to = HomeRangeWhite.End.Value + 1;
+				}
+				int roll = to - from;
+				return roll;
+			}
+			else
+			{
+				if (to == WellKnownBoardPositions.BearOffBlack)
+				{
+					to = HomeRangeBlack.End.Value + 1;
+				}
+				// we redirect checkers movements from the homebar (index 24) to the actual start position
+				if (from == StartIndexBlack)
+				{
+					from = 11;
+				}
+				// black moves forward (wraps from 23 -> 0)
+				int roll = (to - from + Fields.Length) % Fields.Length;
+				return roll;
+			}
+		});
+
+		// <inheritdoc />
 		public override Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
 		{
 			if (isWhite)

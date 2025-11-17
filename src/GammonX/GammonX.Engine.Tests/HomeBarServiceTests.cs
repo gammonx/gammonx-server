@@ -97,6 +97,7 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
+			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
 			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
 			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
@@ -142,6 +143,7 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
+            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
 			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
 			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
@@ -191,6 +193,7 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
+			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
 			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
 			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
@@ -246,6 +249,7 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
+			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
 			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
 			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);

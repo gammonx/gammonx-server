@@ -18,7 +18,7 @@ namespace GammonX.Server.Tests.Utils
 		public static IMatchSessionModel CreateMatchSessionWithPlayers(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var result = CreateHeadToHeadMatchSession(variant, factory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 			var player1 = CreateLobbyEntry();
 			var player2 = CreateLobbyEntry();
@@ -30,7 +30,7 @@ namespace GammonX.Server.Tests.Utils
 		public static IMatchSessionModel CreateMatchSessionWithBot(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var result = CreateHeadToBotMatchSession(variant, factory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 			var player1 = CreateLobbyEntry();
 			var botPlayer = new LobbyEntry(Guid.NewGuid());
@@ -43,7 +43,7 @@ namespace GammonX.Server.Tests.Utils
 		public static IMatchSessionModel CreateMatchSessionWithTwoBots(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var result = CreateHeadToBotMatchSession(variant, factory);
-			var session = result.Session as IMatchSessionModel;
+			var session = result.Item2;
 			Assert.NotNull(session);
 			var botPlayer2 = new LobbyEntry(Guid.NewGuid());
 			var botPlayer1 = new LobbyEntry(Guid.NewGuid());
@@ -54,20 +54,20 @@ namespace GammonX.Server.Tests.Utils
 			return session;
 		}
 
-		public static dynamic CreateHeadToHeadMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
+		public static (Guid, IMatchSessionModel) CreateHeadToHeadMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
 			var queueKey = new QueueKey(variant, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
 			var session = factory.Create(matchId, queueKey);
-			return new { MatchId = matchId, Session = session };
+			return ( matchId, session );
 		}
 
-		public static dynamic CreateHeadToBotMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
+		public static (Guid, IMatchSessionModel) CreateHeadToBotMatchSession(WellKnownMatchVariant variant, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
 			var queueKey = new QueueKey(variant, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame);
 			var session = factory.Create(matchId, queueKey);
-			return new { MatchId = matchId, Session = session };
+			return (matchId, session);
 		}
 
 		public static LobbyEntry CreateLobbyEntry()

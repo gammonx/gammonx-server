@@ -1,3 +1,4 @@
+using Amazon.DynamoDBv2;
 using DotNetEnv;
 
 using GammonX.Engine.Services;
@@ -5,9 +6,11 @@ using GammonX.Engine.Services;
 using GammonX.Server;
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
+using GammonX.Server.Data.DynamoDb;
+using GammonX.Server.Data.Repository;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
-
+using GammonX.Server.Services.extensions;
 using Microsoft.Extensions.Options;
 
 using Serilog;
@@ -45,14 +48,15 @@ builder.Services.Configure<GameServiceOptions>(
 	builder.Configuration.GetSection("GAME_SERVICE"));
 // -------------------------------------------------------------------------------
 // DATABASE SETUP
-// -------------------------------------------------------------------------------
-// TODO: Dynamo DB
+var awsConfig = builder.Configuration.GetSection("AWS");
+builder.Services.AddConditionalDynamoDb(awsConfig);
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
 builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(WellKnownMatchModus.Normal);
 builder.Services.AddKeyedSingleton<IMatchmakingService, BotMatchmakingService>(WellKnownMatchModus.Bot);
 builder.Services.AddKeyedSingleton<IMatchmakingService, RankedMatchmakingService>(WellKnownMatchModus.Ranked);
+builder.Services.AddKeyedSingleton<IMatchmakingService, UnknownMatchmakingService>(WellKnownMatchModus.Unknown);
 builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>();
 builder.Services.AddHostedService<RankedMatchmakingWorker>();
 builder.Services.AddHostedService<NormalMatchmakingWorker>();
@@ -124,6 +128,17 @@ Log.Information("ASPNETCORE LOGLEVEL: {AspNetCoreLogLevel}", Environment.GetEnvi
 Log.Information("BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__BASEURL"));
 Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUTSECONDS"));
 Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetEnvironmentVariable("GAME_SERVICE__BASEPATH"));
+Log.Information("AWS DYNAMO DB SERVICE URL: {DynamoDbServiceUrl}", Environment.GetEnvironmentVariable("AWS__DYNAMODB_SERVICEURL"));
+
+using (var scope = app.Services.CreateScope())
+{
+	var options = app.Services.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
+	if (options.Required)
+	{
+		var dynamoClient = scope.ServiceProvider.GetRequiredService<IAmazonDynamoDB>();
+		await DynamoDbInitializer.EnsureTablesExistAsync(dynamoClient, options);
+	}
+}
 
 app.Run();
 

@@ -55,75 +55,27 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public virtual void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
 		{
-			// we check first if the given from to move bears the checker off
-			if (CheckerBearedOff(model, from, to, isWhite))
+			var roll = model.RecoverRollOperator(isWhite, from, to);
+			if (!CanMoveChecker(model, from, roll, isWhite))
 			{
-				return;
+				throw new InvalidOperationException($"The given move from '{from}' to '{to}' is illegal for the current board state");
 			}
 
-			// we check it here because most of the variants actually use hitting
-			if (model is IHomeBarModel)
-			{
-				// we check if we would hit an opponents checker with this move
-				EvaluateHittedCheckers(model, from, to, isWhite);
-			}
-
-			if (isWhite)
-			{
-				if (model.EntersFromHomeBar(from, isWhite))
-				{
-					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
-					// add a negative checker to the new position
-					model.Fields.SetValue(model.Fields[to] -= 1, to);
-				}
-				else
-				{
-					// remove a negative checker from the old position
-					model.Fields.SetValue(model.Fields[from] += 1, from);
-					// check if its an undo move back to the homebar
-					if (to == WellKnownBoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
-					{
-						homeBarModel.AddToHomeBar(isWhite, 1);
-					}
-					else
-					{
-						// add a negative checker to the new position
-						model.Fields.SetValue(model.Fields[to] -= 1, to);
-					}
-				}
-			}
-			else
-			{
-				if (model.EntersFromHomeBar(from, isWhite))
-				{
-					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
-					// add a positive checker to the new position
-					model.Fields.SetValue(model.Fields[to] += 1, to);
-				}
-				else
-				{
-					// remove a positive checker from the old position
-					model.Fields.SetValue(model.Fields[from] -= 1, from);
-					// check if its an undo move back to the homebar
-					if (to == WellKnownBoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
-					{
-						homeBarModel.AddToHomeBar(isWhite, 1);
-					}
-					else
-					{
-						// add a positive checker to the new position
-						model.Fields.SetValue(model.Fields[to] += 1, to);
-					}
-				}
-			}
+			PerformMoveCheckerTo(model, from, to, isWhite);
 		}
 
-		
+		// <inheritdoc />
+		public void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite)
+		{
+			// we simply invert to move
+			PerformMoveCheckerTo(model, moveToUndo.To, moveToUndo.From, isWhite);
+		}
+
+		// <inheritdoc />
 		bool IBoardService.MoveChecker(IBoardModel model, int from, int roll, bool isWhite)
 		{
-			// we probably can remove this later on
 			if (!CanMoveChecker(model, from, roll, isWhite))
-				throw new InvalidOperationException("Cannot move checker to the specified position.");
+				throw new InvalidOperationException($"The given move '{from}' with a roll of '{roll}' is illegal for the current board state");
 
 			try
 			{
@@ -307,6 +259,71 @@ namespace GammonX.Engine.Services
 				.ToArray();
 		}
 
+		private void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+		{
+			// we check first if the given from to move bears the checker off
+			if (CheckerBearedOff(model, from, to, isWhite))
+			{
+				return;
+			}
+
+			// we check it here because most of the variants actually use hitting
+			if (model is IHomeBarModel)
+			{
+				// we check if we would hit an opponents checker with this move
+				EvaluateHittedCheckers(model, from, to, isWhite);
+			}
+
+			if (isWhite)
+			{
+				if (model.EntersFromHomeBar(from, isWhite))
+				{
+					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+					// add a negative checker to the new position
+					model.Fields.SetValue(model.Fields[to] -= 1, to);
+				}
+				else
+				{
+					// remove a negative checker from the old position
+					model.Fields.SetValue(model.Fields[from] += 1, from);
+					// check if its an undo move back to the homebar
+					if (to == WellKnownBoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
+					{
+						homeBarModel.AddToHomeBar(isWhite, 1);
+					}
+					else
+					{
+						// add a negative checker to the new position
+						model.Fields.SetValue(model.Fields[to] -= 1, to);
+					}
+				}
+			}
+			else
+			{
+				if (model.EntersFromHomeBar(from, isWhite))
+				{
+					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+					// add a positive checker to the new position
+					model.Fields.SetValue(model.Fields[to] += 1, to);
+				}
+				else
+				{
+					// remove a positive checker from the old position
+					model.Fields.SetValue(model.Fields[from] -= 1, from);
+					// check if its an undo move back to the homebar
+					if (to == WellKnownBoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
+					{
+						homeBarModel.AddToHomeBar(isWhite, 1);
+					}
+					else
+					{
+						// add a positive checker to the new position
+						model.Fields.SetValue(model.Fields[to] += 1, to);
+					}
+				}
+			}
+		}
+
 		private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)
 		{
 			if (isWhite)
@@ -402,7 +419,6 @@ namespace GammonX.Engine.Services
 			if (!anyMovePossible && currentMoves.Any())
 			{
 				var seq = new MoveSequenceModel();
-				currentMoves = ReorderByChains(currentMoves.ToList());
 				seq.Moves.AddRange(currentMoves);
 				seq.UsedDices.AddRange(usedDices);
 				results.Add(seq);
@@ -534,40 +550,6 @@ namespace GammonX.Engine.Services
 			}
 
 			return set;
-		}
-
-		private static List<MoveModel> ReorderByChains(List<MoveModel> moves)
-		{
-			var result = new List<MoveModel>();
-			var remaining = new List<MoveModel>(moves);
-
-			while (remaining.Count > 0)
-			{
-				// we start with the first move
-				var chain = new List<MoveModel> { remaining[0] };
-				remaining.RemoveAt(0);
-
-				bool extended;
-				do
-				{
-					extended = false;
-
-					// we search for a move that can be chained at the beginning
-					var next = remaining.FirstOrDefault(m => m.From == chain.Last().To);
-					if (next != default)
-					{
-						chain.Add(next);
-						remaining.Remove(next);
-						extended = true;
-					}
-				}
-				while (extended);
-
-				// Füge die Chain an den Result-Anfang
-				result.AddRange(chain);
-			}
-
-			return result;
 		}
 	}
 }
