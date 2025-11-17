@@ -556,6 +556,21 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
+		protected bool IsWhite(Guid playerId)
+		{
+			// player 1 plays always with white checkers
+			if (Player1.Id.Equals(playerId))
+			{
+				return true;
+			}
+			// player 2 plays always with black checkers
+			else if (Player2.Id.Equals(playerId))
+			{
+				return false;
+			}
+			throw new InvalidOperationException("Player is not part of this match session.");
+		}
+
 		#endregion
 
 		#region Private Methods
@@ -571,21 +586,6 @@ namespace GammonX.Server.Models
 				return newSession;
 			}
 			return existingSession;
-		}
-
-		private bool IsWhite(Guid playerId)
-		{
-			// player 1 plays always with white checkers
-			if (Player1.Id.Equals(playerId))
-			{
-				return true;
-			}
-			// player 2 plays always with black checkers
-			else if (Player2.Id.Equals(playerId))
-			{
-				return false;
-			}
-			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
 		private GameRoundContract[] GetGameRoundContracts()

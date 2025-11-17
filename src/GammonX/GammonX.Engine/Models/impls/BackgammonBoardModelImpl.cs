@@ -79,11 +79,11 @@ namespace GammonX.Engine.Models
         public bool DoublingCubeOwner { get; set; } = false;
 
 		// <inheritdoc />
-		public void AcceptDoublingCubeOffer()
+		public void AcceptDoublingCubeOffer(bool isWhite)
 		{
-			if (DoublingCubeOwner)
+            var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
+			if (owner && DoublingCubeValue > 1)
             {
-                // TODO :: issue here
                 throw new InvalidOperationException("Doubling offer can only be accepted by a non owner of the doubling cube");
             }
             else
@@ -101,9 +101,10 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public bool CanOfferDoublingCube()
+		public bool CanOfferDoublingCube(bool isWhite)
         {
-			return DoublingCubeValue < 64 && DoublingCubeOwner;
+			var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
+			return DoublingCubeValue < 64 && owner;
         }
 
 		// <inheritdoc />

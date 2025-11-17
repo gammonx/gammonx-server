@@ -42,61 +42,61 @@ namespace GammonX.Engine.Tests
             // default values
             Assert.Equal(1, doublingCubeModel.DoublingCubeValue);
             Assert.False(doublingCubeModel.DoublingCubeOwner);
-            Assert.False(doublingCubeModel.CanOfferDoublingCube());
+            Assert.False(doublingCubeModel.CanOfferDoublingCube(true));
 			// opponent can offer
 			var inverted = boardModel.InvertBoard() as IDoublingCubeModel;
             Assert.NotNull(inverted);
 			Assert.Equal(1, inverted.DoublingCubeValue);
 			Assert.True(inverted.DoublingCubeOwner);
-			Assert.True(inverted.CanOfferDoublingCube());
-            Assert.Throws<InvalidOperationException>(() => inverted.AcceptDoublingCubeOffer());
+			Assert.True(inverted.CanOfferDoublingCube(true));
+            Assert.Throws<InvalidOperationException>(() => inverted.AcceptDoublingCubeOffer(true));
 			// current player can accept
-			doublingCubeModel.AcceptDoublingCubeOffer();
+			doublingCubeModel.AcceptDoublingCubeOffer(true);
 			Assert.Equal(2, doublingCubeModel.DoublingCubeValue);
 			Assert.True(doublingCubeModel.DoublingCubeOwner);
-			Assert.True(doublingCubeModel.CanOfferDoublingCube());
-			Assert.Throws<InvalidOperationException>(() => doublingCubeModel.AcceptDoublingCubeOffer());
+			Assert.True(doublingCubeModel.CanOfferDoublingCube(true));
+			Assert.Throws<InvalidOperationException>(() => doublingCubeModel.AcceptDoublingCubeOffer(true));
 
             // double up to 64
             inverted = ((IBoardModel)doublingCubeModel).InvertBoard() as IDoublingCubeModel;
 			Assert.NotNull(inverted);
-            inverted.AcceptDoublingCubeOffer();
+            inverted.AcceptDoublingCubeOffer(true);
 			Assert.Equal(4, inverted.DoublingCubeValue);
 			Assert.True(inverted.DoublingCubeOwner);
-			Assert.True(inverted.CanOfferDoublingCube());
+			Assert.True(inverted.CanOfferDoublingCube(true));
 
 			doublingCubeModel = ((IBoardModel)inverted).InvertBoard() as IDoublingCubeModel;
             Assert.NotNull(doublingCubeModel);
-			doublingCubeModel.AcceptDoublingCubeOffer();
+			doublingCubeModel.AcceptDoublingCubeOffer(true);
 			Assert.Equal(8, doublingCubeModel.DoublingCubeValue);
 			Assert.True(doublingCubeModel.DoublingCubeOwner);
-			Assert.True(doublingCubeModel.CanOfferDoublingCube());
+			Assert.True(doublingCubeModel.CanOfferDoublingCube(true));
 
 			inverted = ((IBoardModel)doublingCubeModel).InvertBoard() as IDoublingCubeModel;
 			Assert.NotNull(inverted);
-			inverted.AcceptDoublingCubeOffer();
+			inverted.AcceptDoublingCubeOffer(true);
 			Assert.Equal(16, inverted.DoublingCubeValue);
 			Assert.True(inverted.DoublingCubeOwner);
-			Assert.True(inverted.CanOfferDoublingCube());
+			Assert.True(inverted.CanOfferDoublingCube(true));
 
 			doublingCubeModel = ((IBoardModel)inverted).InvertBoard() as IDoublingCubeModel;
 			Assert.NotNull(doublingCubeModel);
-			doublingCubeModel.AcceptDoublingCubeOffer();
+			doublingCubeModel.AcceptDoublingCubeOffer(true);
 			Assert.Equal(32, doublingCubeModel.DoublingCubeValue);
 			Assert.True(doublingCubeModel.DoublingCubeOwner);
-			Assert.True(doublingCubeModel.CanOfferDoublingCube());
+			Assert.True(doublingCubeModel.CanOfferDoublingCube(true));
 
 			inverted = ((IBoardModel)doublingCubeModel).InvertBoard() as IDoublingCubeModel;
 			Assert.NotNull(inverted);
-			inverted.AcceptDoublingCubeOffer();
+			inverted.AcceptDoublingCubeOffer(true);
 			Assert.Equal(64, inverted.DoublingCubeValue);
 			Assert.True(inverted.DoublingCubeOwner);
-			Assert.False(inverted.CanOfferDoublingCube());
+			Assert.False(inverted.CanOfferDoublingCube(true));
 
 			// max is reached
 			doublingCubeModel = ((IBoardModel)inverted).InvertBoard() as IDoublingCubeModel;
 			Assert.NotNull(doublingCubeModel);
-			Assert.Throws<InvalidOperationException>(() => doublingCubeModel.AcceptDoublingCubeOffer());
+			Assert.Throws<InvalidOperationException>(() => doublingCubeModel.AcceptDoublingCubeOffer(true));
 		}
 
 		#endregion Simple Interface Tests

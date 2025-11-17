@@ -532,5 +532,70 @@ namespace GammonX.Server.Tests
 			Assert.Equal(2, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
 		}
+
+		[Fact]
+		public void BackgammonPlayerCanDoubleMultipleTimes()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			Assert.NotNull(session);
+			var doublingCubeSession = session as IDoubleCubeMatchSession;
+			Assert.NotNull(doublingCubeSession);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			Assert.True(session.CanStartNextGame());
+			var gameSession = session.StartNextGame(session.Player1.Id);
+			// avoid rolling pasch
+			var mock = new Mock<IDiceService>();
+			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			// player 1 turn
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player1.Id));
+			// player 1 offers double
+			doublingCubeSession.OfferDouble(session.Player1.Id);
+			// player 2 accepts double
+			doublingCubeSession.AcceptDouble(session.Player2.Id);
+			// roll
+			session.RollDices(session.Player1.Id);
+			Assert.False(doublingCubeSession.CanOfferDouble(session.Player1.Id));
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			// move
+			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var anyMove in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
+			}
+			// end turn
+			session.EndTurn(session.Player1.Id);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			// player 2 turn
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player2.Id));
+			// player 1 offers double
+			doublingCubeSession.OfferDouble(session.Player2.Id);
+			// player 2 accepts double
+			doublingCubeSession.AcceptDouble(session.Player1.Id);
+			// roll
+			session.RollDices(session.Player2.Id);
+			// move
+			anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			Assert.NotNull(anyMoveSeq);
+			foreach (var anyMove in anyMoveSeq.Moves)
+			{
+				session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
+			}
+			// end turn
+			session.EndTurn(session.Player2.Id);
+			// player 1 turn
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.True(doublingCubeSession.CanOfferDouble(session.Player1.Id));
+			// player 1 offers double
+			doublingCubeSession.OfferDouble(session.Player1.Id);
+			// player 2 accepts double
+			doublingCubeSession.AcceptDouble(session.Player2.Id);
+
+			Assert.Equal(8, doublingCubeSession.GetDoublingCubeValue());
+		}
 	}
 }

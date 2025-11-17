@@ -200,15 +200,10 @@ namespace GammonX.Server.Models
 
 			if (doublingCubeModel.DoublingCubeValue > 1)
 			{
-				if (Player1.Id.Equals(callingPlayerId) && !doublingCubeModel.DoublingCubeOwner)
+				var isWhite = IsWhite(callingPlayerId);
+				if (!doublingCubeModel.CanOfferDoublingCube(isWhite))
 				{
-					// plays white checkers (non inverted board)
-					throw new InvalidOperationException("The calling player is not owner of the doubling cube");
-				}
-				else if (Player2.Id.Equals(callingPlayerId) && doublingCubeModel.DoublingCubeOwner)
-				{
-					// plays black checkers (inverted board)
-					throw new InvalidOperationException("The calling player is not owner of the doubling cube");
+					throw new InvalidOperationException("A double can only be offered by the owner of the cube");
 				}
 			}
 
@@ -256,7 +251,8 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("The calling player must not accept the double offer");
 			}
 
-			doublingCubeModel.AcceptDoublingCubeOffer();
+			var isWhite = IsWhite(callingPlayerId);
+			doublingCubeModel.AcceptDoublingCubeOffer(isWhite);
 
 			// we only track the board from the player1 white checker point of view
 			// for player2 the board gets inverted. Therefore, we only need to set the
@@ -355,14 +351,9 @@ namespace GammonX.Server.Models
 
 			if (doublingCubeModel.DoublingCubeValue > 1)
 			{
-				if (Player1.Id.Equals(callingPlayerId) && !doublingCubeModel.DoublingCubeOwner)
+				var isWhite = IsWhite(callingPlayerId);
+				if (!doublingCubeModel.CanOfferDoublingCube(isWhite))
 				{
-					// plays white checkers (non inverted board)
-					return false;
-				}
-				else if (Player2.Id.Equals(callingPlayerId) && doublingCubeModel.DoublingCubeOwner)
-				{
-					// plays black checkers (inverted board)
 					return false;
 				}
 			}
@@ -427,7 +418,7 @@ namespace GammonX.Server.Models
 					return true;
 				}
 				// Afterwards only the cube owner can offer one
-				else if (doublingCubeModel.CanOfferDoublingCube())
+				else if (doublingCubeModel.DoublingCubeOwner)
 				{
 					return true;
 				}
@@ -443,7 +434,8 @@ namespace GammonX.Server.Models
 					return true;
 				}
 				// Afterwards only the cube owner can offer one
-				else if (doublingCubeModel.CanOfferDoublingCube())
+				// We need to invert the model for player 2 (black)
+				else if (!doublingCubeModel.DoublingCubeOwner)
 				{
 					return true;
 				}
