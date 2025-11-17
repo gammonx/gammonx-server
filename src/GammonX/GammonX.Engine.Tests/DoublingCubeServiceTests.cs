@@ -39,19 +39,23 @@ namespace GammonX.Engine.Tests
 			var doublingCubeModel = boardModel as IDoublingCubeModel;
 			Assert.NotNull(doublingCubeModel);
 
-            // default values
+            // at the start both players can offer
             Assert.Equal(1, doublingCubeModel.DoublingCubeValue);
             Assert.False(doublingCubeModel.DoublingCubeOwner);
-            Assert.False(doublingCubeModel.CanOfferDoublingCube(true));
+            Assert.True(doublingCubeModel.CanOfferDoublingCube(true));
 			// opponent can offer
 			var inverted = boardModel.InvertBoard() as IDoublingCubeModel;
             Assert.NotNull(inverted);
 			Assert.Equal(1, inverted.DoublingCubeValue);
 			Assert.True(inverted.DoublingCubeOwner);
 			Assert.True(inverted.CanOfferDoublingCube(true));
-            Assert.Throws<InvalidOperationException>(() => inverted.AcceptDoublingCubeOffer(true));
+			inverted.AcceptDoublingCubeOffer(true);
+			Assert.False(inverted.CanOfferDoublingCube(true));
+			Assert.True(inverted.CanOfferDoublingCube(false));
 			// current player can accept
-			doublingCubeModel.AcceptDoublingCubeOffer(true);
+			doublingCubeModel = ((IBoardModel)inverted).InvertBoard() as IDoublingCubeModel;
+			Assert.NotNull(doublingCubeModel);
+			Assert.Throws<InvalidOperationException>(() => doublingCubeModel.AcceptDoublingCubeOffer(true));
 			Assert.Equal(2, doublingCubeModel.DoublingCubeValue);
 			Assert.True(doublingCubeModel.DoublingCubeOwner);
 			Assert.True(doublingCubeModel.CanOfferDoublingCube(true));

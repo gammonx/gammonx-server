@@ -104,7 +104,7 @@ namespace GammonX.Engine.Models
 		public bool CanOfferDoublingCube(bool isWhite)
         {
 			var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
-			return DoublingCubeValue < 64 && owner;
+			return (DoublingCubeValue < 64 && owner) || DoublingCubeValue == 1;
         }
 
 		// <inheritdoc />
