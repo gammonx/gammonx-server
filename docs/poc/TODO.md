@@ -1,13 +1,12 @@
 ## DONE
-
-## Active
-- palamedes schreiben
 - database
     - dynamo db konzept testen > mit access keys local to aws
 
-## TODO 
+## Active
+- palamedes schreiben
 - lambda functions + sqs
-- auth/user account > how to identify premium accounts?
+
+## TODO 
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
 - disconnect/reconnect
@@ -17,6 +16,9 @@
 - fevga/plakoto bot implementation
 - subscription service (clientside?)
 - tournament mode
+- auth/user account > how to identify premium accounts?
+    - authentication with api gateway
+    - authorization required
 
 ## Open Points
 - enhance matchmaking?

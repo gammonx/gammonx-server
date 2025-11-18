@@ -18,10 +18,10 @@ services:
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
     depends_on:
-      - bot-service
+      - wildbg-service
 
-  bot-service:
-    image: gammonx/bot-service
+  wildbg-service:
+    image: gammonx/wildbg-service
     build:
       context: ../gammonx-wildbg
       dockerfile: ./dockerfile
@@ -32,6 +32,22 @@ services:
       - "8082:8082"
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
+
+  lambda-service:
+    image: gammonx/lambda-service
+    build:
+      context: ./src/GammonX/GammonX.Lambda/
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda
+    ports:
+      - "9000:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+    command: [
+      "GammonX.Lambda::GammonX.Lambda.Handlers.MatchCompletedHandler::HandleAsync"
+    ]
 
   dynamodb-local:
       image: amazon/dynamodb-local
