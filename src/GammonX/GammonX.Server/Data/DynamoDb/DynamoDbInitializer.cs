@@ -47,11 +47,12 @@ namespace GammonX.Server.Data.DynamoDb
 						{
 							ProjectionType = ProjectionType.ALL
 						},
-						ProvisionedThroughput = new ProvisionedThroughput
-						{
-							ReadCapacityUnits = 5,
-							WriteCapacityUnits = 5
-						}
+						// only for provisioned billing mode
+						//ProvisionedThroughput = new ProvisionedThroughput
+						//{
+						//	ReadCapacityUnits = 5,
+						//	WriteCapacityUnits = 5
+						//}
 					}
 				},
 				BillingMode = BillingMode.PAY_PER_REQUEST,

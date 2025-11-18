@@ -21,30 +21,41 @@ namespace GammonX.Server.Tests
 			_serviceProvider = _factory.Services;
 		}
 
+		//[Fact]
 		[Fact(Skip = "requires dynamo db instance")]
 		public async Task AddMatchAndSearchByGlobalSearchIndex()
 		{
 			var scopedSp = _serviceProvider.CreateScope();
 			var playerRepo = scopedSp.ServiceProvider.GetRequiredService<IPlayerRepository>();
-			var playerId = Guid.NewGuid();
-			var userName = $"TestPlayer_{playerId}";
-			var createdAt = DateTime.UtcNow;
-
-			var playerItem = new PlayerItem
+			// create player 1
+			var player1Id = Guid.NewGuid();
+			var userName1 = $"TestPlayer_{player1Id}";
+			var createdAt1 = DateTime.UtcNow;
+			var playerItem1 = new PlayerItem
 			{
-				Id = playerId,
-				UserName = userName,
-				CreatedAt = createdAt,
+				Id = player1Id,
+				UserName = userName1,
+				CreatedAt = createdAt1,
 			};
-
-			await playerRepo.SaveAsync(playerItem);
+			await playerRepo.SaveAsync(playerItem1);
+			// create player 2
+			var player2Id = Guid.NewGuid();
+			var userName2 = $"TestPlayer_{player1Id}";
+			var createdAt2 = DateTime.UtcNow;
+			var playerItem2 = new PlayerItem
+			{
+				Id = player2Id,
+				UserName = userName2,
+				CreatedAt = createdAt2,
+			};
+			await playerRepo.SaveAsync(playerItem2);
 
 			// save match of player
-			var myMatchId = Guid.NewGuid();
+			var matchId = Guid.NewGuid();
 			var myMatchItem = new MatchItem()
 			{
-				Id = myMatchId,
-				PlayerId = playerId,
+				Id = matchId,
+				PlayerId = player1Id,
 				Length = 1,
 				Points = 3,
 				Variant = WellKnownMatchVariant.Backgammon,
@@ -56,12 +67,10 @@ namespace GammonX.Server.Tests
 			};
 			await playerRepo.SaveAsync(myMatchItem);
 			// save match of another player
-			var otherMatchId = Guid.NewGuid();
-			var otherPlayerId = Guid.NewGuid();
 			var otherMatchItem = new MatchItem()
 			{
-				Id = otherMatchId,
-				PlayerId = otherPlayerId,
+				Id = matchId,
+				PlayerId = player2Id,
 				Length = 3,
 				Points = 15,
 				Variant = WellKnownMatchVariant.Tavli,
@@ -74,73 +83,74 @@ namespace GammonX.Server.Tests
 			await playerRepo.SaveAsync(otherMatchItem);
 			
 			// search by pk and sk
-			var myMatches = await playerRepo.GetMatchesAsync(myMatchId);
+			var myMatches = await playerRepo.GetMatchesAsync(matchId);
 			Assert.NotNull(myMatches);
 			Assert.NotEmpty(myMatches);
-			Assert.Single(myMatches);
-			var myMatch = myMatches.First();
-			Assert.NotNull(myMatch);
-			Assert.Equal(myMatchId, myMatch.Id);
-			Assert.Equal(playerId, myMatch.PlayerId);
-			Assert.Equal(1, myMatch.Length);
-			Assert.Equal(3, myMatch.Points);
-			Assert.Equal(WellKnownMatchVariant.Backgammon, myMatch.Variant);
-			Assert.Equal(WellKnownMatchType.CashGame, myMatch.Type);
-			Assert.Equal(WellKnownMatchModus.Normal, myMatch.Modus);
-			Assert.True(myMatch.Won);
-			Assert.Equal($"MATCH#{myMatchId}", myMatch.PK);
-			Assert.Equal("DETAILS#WON", myMatch.SK);
-			Assert.Equal($"PLAYER#{playerId}", myMatch.GSI1PK);
-			Assert.Equal($"MATCH#{myMatchId}#Backgammon#CashGame#Normal#WON", myMatch.GSI1SK);
+			// one for won and lost
+			Assert.Equal(2, myMatches.Count());
+			var wonMatch = myMatches.FirstOrDefault(m => m.PlayerId.Equals(player1Id));
+			Assert.NotNull(wonMatch);
+			Assert.True(wonMatch.Won);
+			Assert.Equal(matchId, wonMatch.Id);
+			Assert.Equal(player1Id, wonMatch.PlayerId);
+			Assert.Equal(1, wonMatch.Length);
+			Assert.Equal(3, wonMatch.Points);
+			Assert.Equal(WellKnownMatchVariant.Backgammon, wonMatch.Variant);
+			Assert.Equal(WellKnownMatchType.CashGame, wonMatch.Type);
+			Assert.Equal(WellKnownMatchModus.Normal, wonMatch.Modus);
+			Assert.Equal($"MATCH#{matchId}", wonMatch.PK);
+			Assert.Equal("DETAILS#WON", wonMatch.SK);
+			Assert.Equal($"PLAYER#{player1Id}", wonMatch.GSI1PK);
+			Assert.Equal($"MATCH#{matchId}#Backgammon#CashGame#Normal#WON", wonMatch.GSI1SK);
 
-			var otherMatches = await playerRepo.GetMatchesAsync(otherMatchId);
+			var otherMatches = await playerRepo.GetMatchesAsync(matchId);
 			Assert.NotNull(otherMatches);
 			Assert.NotEmpty(otherMatches);
-			Assert.Single(otherMatches);
-			var otherMatch = otherMatches.First();
-			Assert.NotNull(otherMatch);
-			Assert.Equal(otherMatchId, otherMatch.Id);
-			Assert.Equal(otherPlayerId, otherMatch.PlayerId);
-			Assert.Equal(3, otherMatch.Length);
-			Assert.Equal(15, otherMatch.Points);
-			Assert.Equal(WellKnownMatchVariant.Tavli, otherMatch.Variant);
-			Assert.Equal(WellKnownMatchType.FivePointGame, otherMatch.Type);
-			Assert.Equal(WellKnownMatchModus.Ranked, otherMatch.Modus);
-			Assert.False(otherMatch.Won);
-			Assert.Equal($"MATCH#{otherMatchId}", otherMatch.PK);
-			Assert.Equal("DETAILS#LOST", otherMatch.SK);
-			Assert.Equal($"PLAYER#{otherPlayerId}", otherMatch.GSI1PK);
-			Assert.Equal($"MATCH#{otherMatchId}#Tavli#FivePointGame#Ranked#LOST", otherMatch.GSI1SK);
+			Assert.Equal(2, otherMatches.Count());
+			var lostMatch = otherMatches.FirstOrDefault(m => m.PlayerId.Equals(player2Id));
+			Assert.NotNull(lostMatch);
+			Assert.False(lostMatch.Won);
+			Assert.Equal(matchId, lostMatch.Id);
+			Assert.Equal(player2Id, lostMatch.PlayerId);
+			Assert.Equal(3, lostMatch.Length);
+			Assert.Equal(15, lostMatch.Points);
+			Assert.Equal(WellKnownMatchVariant.Tavli, lostMatch.Variant);
+			Assert.Equal(WellKnownMatchType.FivePointGame, lostMatch.Type);
+			Assert.Equal(WellKnownMatchModus.Ranked, lostMatch.Modus);
+			Assert.Equal($"MATCH#{matchId}", lostMatch.PK);
+			Assert.Equal("DETAILS#LOST", lostMatch.SK);
+			Assert.Equal($"PLAYER#{player2Id}", lostMatch.GSI1PK);
+			Assert.Equal($"MATCH#{matchId}#Tavli#FivePointGame#Ranked#LOST", lostMatch.GSI1SK);
 
 			// search by gsi1pk and gsi1sk
-			var playerMatches = await playerRepo.GetMatchesOfPlayerAsync(playerId);
+			var playerMatches = await playerRepo.GetMatchesOfPlayerAsync(player1Id);
 			Assert.NotNull(playerMatches);
 			Assert.NotEmpty(playerMatches);
 			Assert.Single(playerMatches);
 			var playerMatch = playerMatches.First();
 			Assert.NotNull(playerMatch);
-			Assert.Equal(myMatchId, playerMatch.Id);
-			Assert.Equal(myMatch.Id, playerMatch.Id);
+			Assert.Equal(matchId, playerMatch.Id);
+			Assert.Equal(wonMatch.Id, playerMatch.Id);
 
-			var otherPlayersMatches = await playerRepo.GetMatchesOfPlayerAsync(otherPlayerId);
+			var otherPlayersMatches = await playerRepo.GetMatchesOfPlayerAsync(player2Id);
 			Assert.NotNull(otherPlayersMatches);
 			Assert.NotEmpty(otherPlayersMatches);
 			Assert.Single(otherPlayersMatches);
 			var otherPlayersMatch = otherPlayersMatches.First();
 			Assert.NotNull(otherPlayersMatch);
-			Assert.Equal(otherMatchId, otherPlayersMatch.Id);
-			Assert.Equal(otherMatch.Id, otherPlayersMatch.Id);
+			Assert.Equal(matchId, otherPlayersMatch.Id);
+			Assert.Equal(lostMatch.Id, otherPlayersMatch.Id);
 
 			// cleanup
-			await playerRepo.DeleteAsync(playerId);
-			await playerRepo.DeleteAsync(otherPlayerId);			
-			var matches = await playerRepo.GetMatchesAsync(playerId);
+			await playerRepo.DeleteAsync(player1Id);
+			await playerRepo.DeleteAsync(player2Id);			
+			var matches = await playerRepo.GetMatchesAsync(player1Id);
 			Assert.Empty(matches);
-			matches = await playerRepo.GetMatchesAsync(otherPlayerId);
+			matches = await playerRepo.GetMatchesAsync(player2Id);
 			Assert.Empty(matches);
-
 		}
 
+		//[Fact]
 		[Fact(Skip = "requires dynamo db instance")]
 		public async Task AddPlayerProfileTest()
 		{

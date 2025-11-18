@@ -26,6 +26,7 @@ namespace GammonX.Server.Services.extensions
 			{
 				var options = sp.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
 				var isLocal = string.IsNullOrEmpty(options.REGION);
+				var keyAuth = !string.IsNullOrEmpty(options.AWS_ACCESS_KEY_ID) && !string.IsNullOrEmpty(options.AWS_SECRET_ACCESS_KEY);
 				if (isLocal)
 				{
 					// local docker instance
@@ -35,6 +36,19 @@ namespace GammonX.Server.Services.extensions
 					{
 						ServiceURL = options.DYNAMODB_SERVICEURL
 					};
+					var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
+					return new AmazonDynamoDBClient(credentials, config);
+				}
+				else if (keyAuth)
+				{
+					// AWS hosted accessed locally
+					var region = RegionEndpoint.GetBySystemName(options.REGION);
+					var config = new AmazonDynamoDBConfig
+					{
+						// We do not need a specific service url, the region endpoint is sufficient
+						RegionEndpoint = region
+					};
+					// We use access key based auth
 					var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
 					return new AmazonDynamoDBClient(credentials, config);
 				}
