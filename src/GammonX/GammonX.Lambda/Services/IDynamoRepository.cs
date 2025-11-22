@@ -1,11 +1,11 @@
 ﻿namespace GammonX.Lambda.Services
 {
-	internal interface IDynamoRepository
+	public interface IDynamoRepository
 	{
 		// TODO
 	}
 
-	internal class DynamoRepository : IDynamoRepository
+	public class DynamoRepository : IDynamoRepository
 	{
 		// TODO
 	}

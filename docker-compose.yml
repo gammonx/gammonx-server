@@ -45,9 +45,10 @@ services:
       - "9000:8080"
     environment:
       - DOTNET_ENVIRONMENT=Development
-    command: [
-      "GammonX.Lambda::GammonX.Lambda.Handlers.MatchCompletedHandler::HandleAsync"
-    ]
+      - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
+      # - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
+      # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_RATING_UPDATED
+      # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_STATS_UPDATED
 
   dynamodb-local:
       image: amazon/dynamodb-local

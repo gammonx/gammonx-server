@@ -1,31 +1,27 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 
+using GammonX.Lambda.Services;
+
 namespace GammonX.Lambda.Handlers
 {
 	/// <summary>
-	/// Handles MATCH_COMPLETED event.
+	/// Handles <see cref="LambdaFunctions.MatchCompletedFunc"/> event.
 	/// Writes match details for winner and loser and the game history.
 	/// </summary>
-	public class MatchCompletedHandler
+	public class MatchCompletedHandler : LambdaHandlerBaseImpl, ISqsLambdaHandler
 	{
 		/// <summary>
 		/// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
 		/// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
 		/// region the Lambda function is executed in.
 		/// </summary>
-		public MatchCompletedHandler()
+		public MatchCompletedHandler(IDynamoRepository repo) : base(repo)
 		{
 			// pass
 		}
 
-		/// <summary>
-		/// This method is called for every Lambda invocation. This method takes in an SQS event object and can be used 
-		/// to respond to SQS messages.
-		/// </summary>
-		/// <param name="evnt">The event for the Lambda function handler to process.</param>
-		/// <param name="context">The ILambdaContext that provides methods for logging and describing the Lambda environment.</param>
-		/// <returns></returns>
+		// <inheritdoc />
 		public async Task HandleAsync(SQSEvent evnt, ILambdaContext context)
 		{
 			foreach (var message in evnt.Records)

@@ -1,19 +1,30 @@
-﻿using GammonX.Lambda.Services;
+﻿using GammonX.Lambda.Handlers;
+using GammonX.Lambda.Services;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GammonX.Lambda
 {
 	public static class Startup
 	{
+		private static IServiceProvider? _provider;
+
 		public static IServiceProvider Configure()
 		{
+			if (_provider != null)
+				return _provider;
+
 			var services = new ServiceCollection();
 
-			// Register services
 			services.AddSingleton<IDynamoRepository, DynamoRepository>();
+			services.AddKeyedTransient<ISqsLambdaHandler, MatchCompletedHandler>(LambdaFunctions.MatchCompletedFunc);
+			services.AddKeyedTransient<ISqsLambdaHandler, GameCompletedHandler>(LambdaFunctions.GameCompletedFunc);
+			services.AddKeyedTransient<ISqsLambdaHandler, PlayerRatingUpdatedHandler>(LambdaFunctions.PlayerRatingUpdatedFunc);
+			services.AddKeyedTransient<ISqsLambdaHandler, PlayerStatsUpdatedHandler>(LambdaFunctions.PlayerStatsUpdatedFunc);
 
-			return services.BuildServiceProvider();
+			_provider = services.BuildServiceProvider();
+			return _provider;
 		}
 	}
 }
