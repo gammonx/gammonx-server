@@ -1,8 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
+using GammonX.Models.Enums;
 
-using GammonX.Server.Models;
-
-namespace GammonX.Server.Data.Entities
+namespace GammonX.DynamoDb.Items
 {
 	public class PlayerRatingItem
 	{
@@ -31,11 +30,11 @@ namespace GammonX.Server.Data.Entities
 
 		public string ItemType { get; } = ItemTypes.PlayerRatingItemType;
 
-		public WellKnownMatchVariant Variant { get; set; } = WellKnownMatchVariant.Unknown;
+		public MatchVariant Variant { get; set; } = MatchVariant.Unknown;
 
-		public WellKnownMatchModus Modus { get; set; } = WellKnownMatchModus.Unknown;
+		public MatchModus Modus { get; set; } = MatchModus.Unknown;
 
-		public WellKnownMatchType Type { get; set; } = WellKnownMatchType.Unknown;
+		public Models.Enums.MatchType Type { get; set; } = Models.Enums.MatchType.Unknown;
 
 		public int Rating { get; set; } = 1200;
 

@@ -1,7 +1,7 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 
-using GammonX.Lambda.Services;
+using GammonX.DynamoDb.Repository;
 
 namespace GammonX.Lambda.Handlers
 {

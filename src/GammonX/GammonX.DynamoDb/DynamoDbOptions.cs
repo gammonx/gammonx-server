@@ -1,6 +1,6 @@
-﻿namespace GammonX.Server.Data.DynamoDb
+﻿namespace GammonX.DynamoDb
 {
-	public class AwsServiceOptions
+	public class DynamoDbOptions
 	{
 		public string AWS_ACCESS_KEY_ID { get; set; } = string.Empty;
 

@@ -49,6 +49,8 @@ services:
       # - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
       # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_RATING_UPDATED
       # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_STATS_UPDATED
+      - AWS__DYNAMODB_TABLENAME=GammonX=
+      - AWS__REGION=
 
   dynamodb-local:
       image: amazon/dynamodb-local

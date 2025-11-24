@@ -1,8 +1,10 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
-using GammonX.Server.Models;
+using GammonX.Models.Enums;
 
-namespace GammonX.Server.Data.Entities
+using MatchType = GammonX.Models.Enums.MatchType;
+
+namespace GammonX.DynamoDb.Items
 {
 	public class MatchItem
 	{
@@ -53,11 +55,11 @@ namespace GammonX.Server.Data.Entities
 
 		public string ItemType { get; } = ItemTypes.MatchItemType;
 
-		public WellKnownMatchVariant Variant { get; set; } = WellKnownMatchVariant.Unknown;
+		public MatchVariant Variant { get; set; } = MatchVariant.Unknown;
 
-		public WellKnownMatchModus Modus { get; set; } = WellKnownMatchModus.Unknown;
+		public MatchModus Modus { get; set; } = MatchModus.Unknown;
 
-		public WellKnownMatchType Type { get; set; } = WellKnownMatchType.Unknown;
+		public MatchType Type { get; set; } = MatchType.Unknown;
 
 		public DateTime StartedAt { get; set; } = DateTime.UtcNow;
 

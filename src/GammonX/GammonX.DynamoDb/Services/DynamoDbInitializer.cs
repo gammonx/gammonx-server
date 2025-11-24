@@ -1,20 +1,17 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
-using Serilog;
-
-namespace GammonX.Server.Data.DynamoDb
+namespace GammonX.DynamoDb.Services
 {
 	public static class DynamoDbInitializer
 	{
-		public static async Task EnsureTablesExistAsync(IAmazonDynamoDB client, AwsServiceOptions options)
+		public static async Task EnsureTablesExistAsync(IAmazonDynamoDB client, DynamoDbOptions options)
 		{
 			var tableName = options.DYNAMODB_TABLENAME;
 
 			var existingTables = await client.ListTablesAsync();
 			if (existingTables.TableNames.Contains(tableName))
 			{
-				Log.Information("DYNAMO DB: {TableName} found", tableName);
 				return;
 			}
 
@@ -59,7 +56,6 @@ namespace GammonX.Server.Data.DynamoDb
 			};
 
 			await client.CreateTableAsync(request);
-			Log.Information("DYNAMO DB: {TableName} created", tableName);
 		}
 	}
 }

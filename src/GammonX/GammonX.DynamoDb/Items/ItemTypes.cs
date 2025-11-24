@@ -1,4 +1,4 @@
-﻿namespace GammonX.Server.Data.Entities
+﻿namespace GammonX.DynamoDb.Items
 {
 	internal static class ItemTypes
 	{

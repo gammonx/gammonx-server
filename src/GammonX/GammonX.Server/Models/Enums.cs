@@ -1,5 +1,7 @@
 ﻿namespace GammonX.Server.Models
 {
+	// TODO: make use of GammonX.Models
+
 	/// <summary>
 	/// Each match variant has a n amount of sub games based on the rules of the game.
 	/// </summary>

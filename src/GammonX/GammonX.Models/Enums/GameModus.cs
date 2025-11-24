@@ -1,12 +1,10 @@
-﻿namespace GammonX.Engine.Models
+﻿namespace GammonX.Models.Enums
 {
     /// <summary>
     /// Represents the different game modes available in the GammonX engine.
     /// </summary>
     public enum GameModus
     {
-        // TODO: use gammonx.models
-
         /// <summary>
         /// Classic Backgammon game mode.
         /// </summary>

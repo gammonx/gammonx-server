@@ -1,11 +1,11 @@
-﻿using GammonX.Server.Data.Entities;
+﻿using GammonX.DynamoDb.Items;
 
-namespace GammonX.Server.Data.Repository
+namespace GammonX.DynamoDb.Repository
 {
 	/// <summary>
 	/// Provides capabilities to interact with the player item type.
 	/// </summary>
-	public interface IPlayerRepository
+	public interface IDynamoRepository
 	{
 		/// <summary>
 		/// Gets the player by its unique identifier.

@@ -3,18 +3,19 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.Runtime;
 
-using GammonX.Server.Data.DynamoDb;
-using GammonX.Server.Data.Repository;
+using GammonX.DynamoDb.Repository;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace GammonX.Server.Services.extensions
+namespace GammonX.DynamoDb.Extensions
 {
 	public static class DynamoDbServiceExtensions
 	{
-		public static void AddConditionalDynamoDb(this IServiceCollection services, IConfigurationSection config)
+		public static void AddConditionalDynamoDb(this IServiceCollection services, IConfiguration dynamoDbOptions)
 		{
-			services.Configure<AwsServiceOptions>(config);
+			services.Configure<DynamoDbOptions>(dynamoDbOptions);
 			// we check manually if a dynamo config is required
 			var tableName = Environment.GetEnvironmentVariable("AWS__DYNAMODB_TABLENAME");
 			if (string.IsNullOrEmpty(tableName))
@@ -24,7 +25,7 @@ namespace GammonX.Server.Services.extensions
 
 			services.AddSingleton<IAmazonDynamoDB>(sp =>
 			{
-				var options = sp.GetRequiredService<IOptions<AwsServiceOptions>>().Value;
+				var options = sp.GetRequiredService<IOptions<DynamoDbOptions>>().Value;
 				var isLocal = string.IsNullOrEmpty(options.REGION);
 				var keyAuth = !string.IsNullOrEmpty(options.AWS_ACCESS_KEY_ID) && !string.IsNullOrEmpty(options.AWS_SECRET_ACCESS_KEY);
 				if (isLocal)
@@ -73,7 +74,7 @@ namespace GammonX.Server.Services.extensions
 				return contextBuilder.Build();
 			});
 
-			services.AddScoped<IPlayerRepository, DynamoDbPlayerRepository>();
+			services.AddScoped<IDynamoRepository, DynamoDbRepository>();
 		}
 	}
 }

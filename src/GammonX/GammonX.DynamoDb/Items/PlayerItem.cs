@@ -1,6 +1,6 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
-namespace GammonX.Server.Data.Entities
+namespace GammonX.DynamoDb.Items
 {
 	public class PlayerItem
 	{

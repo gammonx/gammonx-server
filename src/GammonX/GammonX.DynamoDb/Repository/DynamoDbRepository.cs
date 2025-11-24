@@ -2,22 +2,21 @@
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.Model;
 
-using GammonX.Server.Data.Entities;
-using GammonX.Server.Data.Repository;
-using GammonX.Server.Models;
+using GammonX.DynamoDb.Items;
+using GammonX.Models.Enums;
 
 using Microsoft.Extensions.Options;
 
-namespace GammonX.Server.Data.DynamoDb
+namespace GammonX.DynamoDb.Repository
 {
 	// <inheritdoc />
-	public class DynamoDbPlayerRepository : IPlayerRepository
+	public class DynamoDbRepository : IDynamoRepository
 	{
 		private readonly IAmazonDynamoDB _client;
 		private readonly IDynamoDBContext _context;
 		private readonly string _tableName = string.Empty;
 
-		public DynamoDbPlayerRepository(IAmazonDynamoDB client, IDynamoDBContext context, IOptions<AwsServiceOptions> options)
+		public DynamoDbRepository(IAmazonDynamoDB client, IDynamoDBContext context, IOptions<DynamoDbOptions> options)
 		{
 			_client = client;
 			_context = context;
@@ -155,9 +154,9 @@ namespace GammonX.Server.Data.DynamoDb
 			return response.Items.Select(item => new PlayerRatingItem
 			{
 				PlayerId = Guid.Parse(item["Id"].S),
-				Variant = Enum.Parse<WellKnownMatchVariant>(item["Variant"].S, true),
-				Type = Enum.Parse<WellKnownMatchType>(item["Type"].S, true),
-				Modus = Enum.Parse<WellKnownMatchModus>(item["Modus"].S, true),
+				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
+				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
+				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
 				Rating = int.Parse(item["Rating"].N),
 				HighestRating = int.Parse(item["HighestRating"].N),
 				LowestRating = int.Parse(item["LowestRating"].N)
@@ -280,9 +279,9 @@ namespace GammonX.Server.Data.DynamoDb
 				PlayerId = Guid.Parse(item["PlayerId"].S),
 				Points = int.Parse(item["Points"].N),
 				Length = int.Parse(item["Length"].N),
-				Variant = Enum.Parse<WellKnownMatchVariant>(item["Variant"].S, true),
-				Type = Enum.Parse<WellKnownMatchType>(item["Type"].S, true),
-				Modus = Enum.Parse<WellKnownMatchModus>(item["Modus"].S, true),
+				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
+				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
+				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
 				StartedAt = DateTime.Parse(item["StartedAt"].S),
 				EndedAt = DateTime.Parse(item["EndedAt"].S),
 				Won = item["Won"].BOOL ?? false

@@ -9,37 +9,37 @@ namespace GammonX.Lambda.Tests;
 
 public class SqsEventLambdaFuncHandlerTests
 {
-    [Theory]
-    [InlineData(LambdaFunctions.MatchCompletedFunc)]
+	[Theory]
+	[InlineData(LambdaFunctions.MatchCompletedFunc)]
 	[InlineData(LambdaFunctions.GameCompletedFunc)]
 	[InlineData(LambdaFunctions.PlayerRatingUpdatedFunc)]
 	[InlineData(LambdaFunctions.PlayerStatsUpdatedFunc)]
 	public async Task TestSQSEventLambdaFunction(string funcName)
-    {
-        var sqsEvent = new SQSEvent
-        {
-            Records = new List<SQSEvent.SQSMessage>
-            {
-                new SQSEvent.SQSMessage
-                {
-                    Body = "foobar",
-                    MessageId = Guid.NewGuid().ToString(),
-                    
-                }
-            }
-        };
+	{
+		var sqsEvent = new SQSEvent
+		{
+			Records = new List<SQSEvent.SQSMessage>
+			{
+				new SQSEvent.SQSMessage
+				{
+					Body = "foobar",
+					MessageId = Guid.NewGuid().ToString(),
 
-        var logger = new TestLambdaLogger();
-        var context = new TestLambdaContext
-        {
-            Logger = logger
-        };
+				}
+			}
+		};
 
-        var services = Startup.Configure();
-        var handler = LambdaFunctionFactory.Create(services, funcName);
+		var logger = new TestLambdaLogger();
+		var context = new TestLambdaContext
+		{
+			Logger = logger
+		};
 
-        await handler.HandleAsync(sqsEvent, context);
+		var services = Startup.Configure();
+		var handler = LambdaFunctionFactory.Create(services, funcName);
 
-        Assert.Contains("Processed message foobar", logger.Buffer.ToString());
-    }
+		await handler.HandleAsync(sqsEvent, context);
+
+		Assert.Contains("Processed message foobar", logger.Buffer.ToString());
+	}
 }
