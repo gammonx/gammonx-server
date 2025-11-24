@@ -3,9 +3,9 @@
 namespace GammonX.DynamoDb.Repository
 {
 	/// <summary>
-	/// Provides capabilities to interact with the player item type.
+	/// Provides capabilities to interact with the GammonX dynamo db table.
 	/// </summary>
-	public interface IDynamoRepository
+	public interface IDynamoDbRepository
 	{
 		/// <summary>
 		/// Gets the player by its unique identifier.

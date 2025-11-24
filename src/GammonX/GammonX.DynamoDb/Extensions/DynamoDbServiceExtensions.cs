@@ -74,7 +74,7 @@ namespace GammonX.DynamoDb.Extensions
 				return contextBuilder.Build();
 			});
 
-			services.AddScoped<IDynamoRepository, DynamoDbRepository>();
+			services.AddScoped<IDynamoDbRepository, DynamoDbRepository>();
 		}
 	}
 }

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace GammonX.DynamoDb.Repository
 {
 	// <inheritdoc />
-	public class DynamoDbRepository : IDynamoRepository
+	public class DynamoDbRepository : IDynamoDbRepository
 	{
 		private readonly IAmazonDynamoDB _client;
 		private readonly IDynamoDBContext _context;

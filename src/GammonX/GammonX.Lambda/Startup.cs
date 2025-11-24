@@ -1,5 +1,5 @@
 ﻿using DotNetEnv;
-using DotNetEnv.Configuration;
+
 using GammonX.DynamoDb;
 using GammonX.DynamoDb.Extensions;
 using GammonX.DynamoDb.Repository;
@@ -43,7 +43,7 @@ namespace GammonX.Lambda
 			// -------------------------------------------------------------------------------
 			// SERVICES SETUP
 			// -------------------------------------------------------------------------------
-			services.AddSingleton<IDynamoRepository, DynamoDbRepository>();
+			services.AddSingleton<IDynamoDbRepository, DynamoDbRepository>();
 			services.AddKeyedTransient<ISqsLambdaHandler, MatchCompletedHandler>(LambdaFunctions.MatchCompletedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, GameCompletedHandler>(LambdaFunctions.GameCompletedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerRatingUpdatedHandler>(LambdaFunctions.PlayerRatingUpdatedFunc);

@@ -16,7 +16,7 @@ namespace GammonX.Lambda.Handlers
 		/// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
 		/// region the Lambda function is executed in.
 		/// </summary>
-		public MatchCompletedHandler(IDynamoRepository repo) : base(repo)
+		public MatchCompletedHandler(IDynamoDbRepository repo) : base(repo)
 		{
 			// pass
 		}

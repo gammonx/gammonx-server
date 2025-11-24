@@ -23,7 +23,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\GammonX.DynamoDb\GammonX.DynamoDb.csproj" />
-		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

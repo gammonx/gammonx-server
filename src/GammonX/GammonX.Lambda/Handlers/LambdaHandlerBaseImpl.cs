@@ -6,9 +6,9 @@ namespace GammonX.Lambda.Handlers
 	{
 		protected static readonly IServiceProvider Services = Startup.Configure();
 
-		protected private readonly IDynamoRepository _repo;
+		protected private readonly IDynamoDbRepository _repo;
 
-		public LambdaHandlerBaseImpl(IDynamoRepository repo)
+		public LambdaHandlerBaseImpl(IDynamoDbRepository repo)
 		{
 			_repo = repo;
 		}
