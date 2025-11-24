@@ -3,9 +3,7 @@ using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
-using GammonX.Lambda.Handlers;
-
-using Microsoft.Extensions.DependencyInjection;
+using GammonX.Lambda.Services;
 
 namespace GammonX.Lambda
 {
@@ -15,30 +13,10 @@ namespace GammonX.Lambda
 		{
 			var services = Startup.Configure();
 
-			var matchCompletedHandler = services.GetRequiredKeyedService<ISqsLambdaHandler>(LambdaFunctions.MatchCompletedFunc);
-			var gameCompletedHandler = services.GetRequiredKeyedService<ISqsLambdaHandler>(LambdaFunctions.GameCompletedFunc);
-			var playerRatingUpdatedHandler = services.GetRequiredKeyedService<ISqsLambdaHandler>(LambdaFunctions.PlayerRatingUpdatedFunc);
-			var playerStatsUpdatedHandler = services.GetRequiredKeyedService<ISqsLambdaHandler>(LambdaFunctions.PlayerStatsUpdatedFunc);
-
 			async Task Router(SQSEvent input, ILambdaContext context)
 			{
-				switch (context.FunctionName)
-				{
-					case LambdaFunctions.MatchCompletedFunc:
-						await matchCompletedHandler.HandleAsync(input, context);
-						break;
-					case LambdaFunctions.GameCompletedFunc:
-						await gameCompletedHandler.HandleAsync(input, context);
-						break;
-					case LambdaFunctions.PlayerRatingUpdatedFunc:
-						await playerRatingUpdatedHandler.HandleAsync(input, context);
-						break;
-					case LambdaFunctions.PlayerStatsUpdatedFunc:
-						await playerStatsUpdatedHandler.HandleAsync(input, context);
-						break;
-					default:
-						throw new Exception($"Unknown function: {context.FunctionName}");
-				}
+				var lambdaFuncHandler = LambdaFunctionFactory.Create(services, context.FunctionName);
+				await lambdaFuncHandler.HandleAsync(input, context);
 			}
 
 			var bootstrap = LambdaBootstrapBuilder.Create<SQSEvent>(Router, new DefaultLambdaJsonSerializer()).Build();

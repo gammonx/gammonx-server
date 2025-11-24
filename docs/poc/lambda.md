@@ -1,12 +1,12 @@
-## SQS Events + Lambda Call Chains
+## SQS Events
 
-### MATCH_COMPELTED EVENT
-- Write Game Histories into DynamoDB
-- Write Match History into DynamoDB
-- Write Game Details into DynamoDB
-- Write Match Details into DynamoDB
-- Calculate and write Player Rating for A + B
-- Calculate and write Player Stats for A + B
+### Game finished
+- player who lost sends `GAME_COMPLETED`
+- player who won sends `GAME_COMPLETED`
+- player 1 + 2 sends `PLAYER_STATS_UPDATED`
+
+### Match Finished
+- player 1 + 2 sends `PLAYER_RATING_UPDATED`
 
 ## Lambda Queries
 - Get Player Rating for a given Variant, Type and Modus

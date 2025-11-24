@@ -26,6 +26,7 @@ namespace GammonX.Lambda.Handlers
 		{
 			foreach (var message in evnt.Records)
 			{
+				
 				await ProcessMessageAsync(message, context);
 			}
 		}
