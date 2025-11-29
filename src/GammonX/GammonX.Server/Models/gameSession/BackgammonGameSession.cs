@@ -1,5 +1,6 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
 
 namespace GammonX.Server.Models.gameSession
 {

@@ -1,10 +1,12 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using GammonX.Server.Tests.Utils;
+
 using Moq;
 
 namespace GammonX.Server.Tests
@@ -18,7 +20,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavlaSingleGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -47,7 +49,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(1, matchState.Player1?.Points);
 			Assert.Equal(0, matchState.Player2?.Points);
 			Assert.Equal(session.Id, matchState.Id);
-			Assert.Equal(WellKnownMatchVariant.Tavla, matchState.Variant);
+			Assert.Equal(MatchVariant.Tavla, matchState.Variant);
 			Assert.Equal(session.Player1.Id, matchState.Player1?.Id);
 			Assert.Equal(session.Player2.Id, matchState.Player2?.Id);
 			Assert.NotNull(matchState.GameRounds);
@@ -66,7 +68,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavlaSingleGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -115,7 +117,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavlaGammonGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -146,7 +148,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavlaGammonGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();

@@ -1,6 +1,8 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Services;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
@@ -80,19 +82,19 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override GameModus[] GetGameModusList(WellKnownMatchType matchType)
+		protected override GameModus[] GetGameModusList(MatchType matchType)
 		{
-			if (matchType == WellKnownMatchType.CashGame)
+			if (matchType == MatchType.CashGame)
 			{
 				// we play max 1 round in a cash game
 				return [GameModus.Tavla];
 			}
-			else if (matchType == WellKnownMatchType.FivePointGame)
+			else if (matchType == MatchType.FivePointGame)
 			{
 				// we play max 9 rounds in a five point game
 				return Enumerable.Repeat(GameModus.Tavla, 9).ToArray();
 			}
-			else if (matchType == WellKnownMatchType.SevenPointGame)
+			else if (matchType == MatchType.SevenPointGame)
 			{
 				// we play max 13 rounds in a seven point game
 				return Enumerable.Repeat(GameModus.Tavla, 13).ToArray();

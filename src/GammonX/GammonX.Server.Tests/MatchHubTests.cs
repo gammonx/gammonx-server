@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
@@ -15,6 +17,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
 using System.Security.Claims;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
@@ -54,25 +58,25 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubReturnsEndTurnCommandIfNoLegalMovesReturned(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubReturnsEndTurnCommandIfNoLegalMovesReturned(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -104,13 +108,13 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerCanOfferAndAcceptDoublingCube(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsPlayerCanOfferAndAcceptDoublingCube(MatchVariant variant, MatchModus modus, MatchType type)
 		{		
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -152,25 +156,25 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -208,9 +212,9 @@ namespace GammonX.Server.Tests
 			Assert.True(matchSession.IsMatchOver());
 			Assert.False(matchSession.CanStartNextGame());
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			if (type == WellKnownMatchType.CashGame)
+			if (type == MatchType.CashGame)
 			{
-				if (variant == WellKnownMatchVariant.Tavli)
+				if (variant == MatchVariant.Tavli)
 				{
 					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
 				}
@@ -234,25 +238,25 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -297,9 +301,9 @@ namespace GammonX.Server.Tests
 			Assert.False(matchSession.CanStartNextGame());
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
 			var multiplier = 1;
-			if (type == WellKnownMatchType.CashGame)
+			if (type == MatchType.CashGame)
 			{
-				if (variant == WellKnownMatchVariant.Tavli)
+				if (variant == MatchVariant.Tavli)
 				{
 					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
 				}
@@ -325,25 +329,25 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerMatch(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsPlayerMatch(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -382,9 +386,9 @@ namespace GammonX.Server.Tests
 			Assert.False(matchSession.CanStartNextGame());
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
 			var multiplier = 1;
-			if (type == WellKnownMatchType.CashGame)
+			if (type == MatchType.CashGame)
 			{
-				if (variant == WellKnownMatchVariant.Tavli)
+				if (variant == MatchVariant.Tavli)
 				{
 					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
 				}
@@ -410,23 +414,23 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsBotMatch(WellKnownMatchVariant variant, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsBotMatch(MatchVariant variant, MatchType type)
 		{
-			var queueKey = new QueueKey(variant, WellKnownMatchModus.Bot, type);
+			var queueKey = new QueueKey(variant, MatchModus.Bot, type);
 			var playerId = Guid.NewGuid();
 			var matchId = await CreatePlayerVsBotMatchLobbyAsync(queueKey, playerId);
 			var matchIdStr = matchId.ToString();
 
-			var matchService = GetService(WellKnownMatchModus.Bot);
+			var matchService = GetService(MatchModus.Bot);
 			Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
 			Assert.NotNull(lobby);
 			var groupName = lobby.GroupName;
@@ -526,9 +530,9 @@ namespace GammonX.Server.Tests
 			Assert.True(matchSession.IsMatchOver());
 			Assert.False(matchSession.CanStartNextGame());
 			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			if (type == WellKnownMatchType.CashGame)
+			if (type == MatchType.CashGame)
 			{
-				if (variant == WellKnownMatchVariant.Tavli)
+				if (variant == MatchVariant.Tavli)
 				{
 					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
 				}
@@ -551,25 +555,25 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerCanUndoMoves(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public async Task MatchHubCanPlayPlayerVsPlayerCanUndoMoves(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
 			var matchSession = result.Item1;
@@ -681,9 +685,9 @@ namespace GammonX.Server.Tests
 		}
 
 		private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(
-			WellKnownMatchVariant variant,
-			WellKnownMatchModus modus,
-			WellKnownMatchType type,
+			MatchVariant variant,
+			MatchModus modus,
+			MatchType type,
 			Guid player1Id,
 			Guid player2Id)
 		{
@@ -783,17 +787,17 @@ namespace GammonX.Server.Tests
 			return lobby1.MatchId;
 		}
 
-		private IMatchmakingService GetService(WellKnownMatchModus modus)
+		private IMatchmakingService GetService(MatchModus modus)
 		{
-			if (modus == WellKnownMatchModus.Normal)
+			if (modus == MatchModus.Normal)
 			{
 				return _normalService;
 			}
-			else if (modus == WellKnownMatchModus.Ranked)
+			else if (modus == MatchModus.Ranked)
 			{
 				return _rankedService;
 			}
-			else if (modus == WellKnownMatchModus.Bot)
+			else if (modus == MatchModus.Bot)
 			{
 				return _botMatchService;
 			}

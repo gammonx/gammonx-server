@@ -1,7 +1,9 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Services;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
@@ -22,13 +24,13 @@ namespace GammonX.Server.Models
 		public int GameRound { get; private set; }
 
 		// <inheritdoc />
-		public WellKnownMatchVariant Variant { get; }
+		public MatchVariant Variant { get; }
 
 		// <inheritdoc />
-		public WellKnownMatchModus Modus { get; }
+		public MatchModus Modus { get; }
 
 		// <inheritdoc />
-		public WellKnownMatchType Type { get; }
+		public GammonX.Models.Enums.MatchType Type { get; }
 
 		// <inheritdoc />
 		public DateTime StartedAt { get; private set; }
@@ -485,7 +487,7 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <param name="matchType">Match type which determines the game modus played.</param>
 		/// <returns>A ordered list of game modus played in this match.</returns>
-		protected abstract GameModus[] GetGameModusList(WellKnownMatchType matchType);
+		protected abstract GameModus[] GetGameModusList(MatchType matchType);
 
 		#endregion Abstract Methods
 

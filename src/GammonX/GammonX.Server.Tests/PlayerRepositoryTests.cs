@@ -58,9 +58,9 @@ namespace GammonX.Server.Tests
 		//		PlayerId = player1Id,
 		//		Length = 1,
 		//		Points = 3,
-		//		Variant = WellKnownMatchVariant.Backgammon,
-		//		Type = WellKnownMatchType.CashGame,
-		//		Modus = WellKnownMatchModus.Normal,
+		//		Variant = MatchVariant.Backgammon,
+		//		Type = MatchType.CashGame,
+		//		Modus = MatchModus.Normal,
 		//		StartedAt = DateTime.UtcNow,
 		//		EndedAt = DateTime.UtcNow,
 		//		Won = true
@@ -73,9 +73,9 @@ namespace GammonX.Server.Tests
 		//		PlayerId = player2Id,
 		//		Length = 3,
 		//		Points = 15,
-		//		Variant = WellKnownMatchVariant.Tavli,
-		//		Type = WellKnownMatchType.FivePointGame,
-		//		Modus = WellKnownMatchModus.Ranked,
+		//		Variant = MatchVariant.Tavli,
+		//		Type = MatchType.FivePointGame,
+		//		Modus = MatchModus.Ranked,
 		//		StartedAt = DateTime.UtcNow,
 		//		EndedAt = DateTime.UtcNow,
 		//		Won = false
@@ -95,9 +95,9 @@ namespace GammonX.Server.Tests
 		//	Assert.Equal(player1Id, wonMatch.PlayerId);
 		//	Assert.Equal(1, wonMatch.Length);
 		//	Assert.Equal(3, wonMatch.Points);
-		//	Assert.Equal(WellKnownMatchVariant.Backgammon, wonMatch.Variant);
-		//	Assert.Equal(WellKnownMatchType.CashGame, wonMatch.Type);
-		//	Assert.Equal(WellKnownMatchModus.Normal, wonMatch.Modus);
+		//	Assert.Equal(MatchVariant.Backgammon, wonMatch.Variant);
+		//	Assert.Equal(MatchType.CashGame, wonMatch.Type);
+		//	Assert.Equal(MatchModus.Normal, wonMatch.Modus);
 		//	Assert.Equal($"MATCH#{matchId}", wonMatch.PK);
 		//	Assert.Equal("DETAILS#WON", wonMatch.SK);
 		//	Assert.Equal($"PLAYER#{player1Id}", wonMatch.GSI1PK);
@@ -114,9 +114,9 @@ namespace GammonX.Server.Tests
 		//	Assert.Equal(player2Id, lostMatch.PlayerId);
 		//	Assert.Equal(3, lostMatch.Length);
 		//	Assert.Equal(15, lostMatch.Points);
-		//	Assert.Equal(WellKnownMatchVariant.Tavli, lostMatch.Variant);
-		//	Assert.Equal(WellKnownMatchType.FivePointGame, lostMatch.Type);
-		//	Assert.Equal(WellKnownMatchModus.Ranked, lostMatch.Modus);
+		//	Assert.Equal(MatchVariant.Tavli, lostMatch.Variant);
+		//	Assert.Equal(MatchType.FivePointGame, lostMatch.Type);
+		//	Assert.Equal(MatchModus.Ranked, lostMatch.Modus);
 		//	Assert.Equal($"MATCH#{matchId}", lostMatch.PK);
 		//	Assert.Equal("DETAILS#LOST", lostMatch.SK);
 		//	Assert.Equal($"PLAYER#{player2Id}", lostMatch.GSI1PK);
@@ -183,9 +183,9 @@ namespace GammonX.Server.Tests
 		//	var playerRatingBg = new PlayerRatingItem
 		//	{
 		//		PlayerId = playerId,
-		//		Variant = WellKnownMatchVariant.Backgammon,
-		//		Modus = WellKnownMatchModus.Ranked,
-		//		Type = WellKnownMatchType.CashGame,
+		//		Variant = MatchVariant.Backgammon,
+		//		Modus = MatchModus.Ranked,
+		//		Type = MatchType.CashGame,
 		//		Rating = 1350,
 		//		HighestRating = 1800,
 		//		LowestRating = 1100
@@ -196,9 +196,9 @@ namespace GammonX.Server.Tests
 		//	var playerRatingTavli = new PlayerRatingItem
 		//	{
 		//		PlayerId = playerId,
-		//		Variant = WellKnownMatchVariant.Tavli,
-		//		Modus = WellKnownMatchModus.Normal,
-		//		Type = WellKnownMatchType.SevenPointGame,
+		//		Variant = MatchVariant.Tavli,
+		//		Modus = MatchModus.Normal,
+		//		Type = MatchType.SevenPointGame,
 		//		Rating = 1350,
 		//		HighestRating = 1800,
 		//		LowestRating = 1100
@@ -215,11 +215,11 @@ namespace GammonX.Server.Tests
 		//	Assert.NotNull(bgRating.SK);
 		//	Assert.Equal(ItemTypes.PlayerRatingItemType, bgRating.ItemType);
 		//	Assert.Equal(string.Format(PlayerRatingItem.PKFormat, playerId), bgRating.PK);
-		//	Assert.Equal(string.Format(PlayerRatingItem.SKFormat, WellKnownMatchVariant.Backgammon), bgRating.SK, true);
+		//	Assert.Equal(string.Format(PlayerRatingItem.SKFormat, MatchVariant.Backgammon), bgRating.SK, true);
 		//	Assert.Equal(playerId, bgRating.PlayerId);
-		//	Assert.Equal(WellKnownMatchVariant.Backgammon, bgRating.Variant);
-		//	Assert.Equal(WellKnownMatchModus.Ranked, bgRating.Modus);
-		//	Assert.Equal(WellKnownMatchType.CashGame, bgRating.Type);
+		//	Assert.Equal(MatchVariant.Backgammon, bgRating.Variant);
+		//	Assert.Equal(MatchModus.Ranked, bgRating.Modus);
+		//	Assert.Equal(MatchType.CashGame, bgRating.Type);
 		//	Assert.Equal(1350, bgRating.Rating);
 		//	Assert.Equal(1800, bgRating.HighestRating);
 		//	Assert.Equal(1100, bgRating.LowestRating);
@@ -231,11 +231,11 @@ namespace GammonX.Server.Tests
 		//	Assert.NotNull(tavliRating.SK);
 		//	Assert.Equal(ItemTypes.PlayerRatingItemType, tavliRating.ItemType);
 		//	Assert.Equal(string.Format(PlayerRatingItem.PKFormat, playerId), tavliRating.PK);
-		//	Assert.Equal(string.Format(PlayerRatingItem.SKFormat, WellKnownMatchVariant.Tavli), tavliRating.SK, true);
+		//	Assert.Equal(string.Format(PlayerRatingItem.SKFormat, MatchVariant.Tavli), tavliRating.SK, true);
 		//	Assert.Equal(playerId, tavliRating.PlayerId);
-		//	Assert.Equal(WellKnownMatchVariant.Tavli, tavliRating.Variant);
-		//	Assert.Equal(WellKnownMatchModus.Normal, tavliRating.Modus);
-		//	Assert.Equal(WellKnownMatchType.SevenPointGame, tavliRating.Type);
+		//	Assert.Equal(MatchVariant.Tavli, tavliRating.Variant);
+		//	Assert.Equal(MatchModus.Normal, tavliRating.Modus);
+		//	Assert.Equal(MatchType.SevenPointGame, tavliRating.Type);
 		//	Assert.Equal(1350, tavliRating.Rating);
 		//	Assert.Equal(1800, tavliRating.HighestRating);
 		//	Assert.Equal(1100, tavliRating.LowestRating);

@@ -1,4 +1,7 @@
 ﻿using GammonX.Engine.Models;
+
+using GammonX.Models.Enums;
+
 using GammonX.Server.Contracts;
 
 namespace GammonX.Server.Models

@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 

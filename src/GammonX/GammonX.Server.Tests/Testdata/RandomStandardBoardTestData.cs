@@ -1,6 +1,4 @@
-﻿using GammonX.Engine.Models;
-
-using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
 
 namespace GammonX.Server.Tests.Testdata
 {
@@ -9,9 +7,9 @@ namespace GammonX.Server.Tests.Testdata
 		public static IEnumerable<object[]> GetRandomBoards()
 		{
 			var variantModeTuple = new[] { 
-				new Tuple<WellKnownMatchVariant, GameModus>(WellKnownMatchVariant.Backgammon, GameModus.Backgammon),
-				new Tuple<WellKnownMatchVariant, GameModus>(WellKnownMatchVariant.Backgammon, GameModus.Backgammon),
-				new Tuple<WellKnownMatchVariant, GameModus>(WellKnownMatchVariant.Tavla, GameModus.Tavla) };
+				new Tuple<MatchVariant, GameModus>(MatchVariant.Backgammon, GameModus.Backgammon),
+				new Tuple<MatchVariant, GameModus>(MatchVariant.Backgammon, GameModus.Backgammon),
+				new Tuple<MatchVariant, GameModus>(MatchVariant.Tavla, GameModus.Tavla) };
 
 			foreach (var mode in variantModeTuple)
 			{

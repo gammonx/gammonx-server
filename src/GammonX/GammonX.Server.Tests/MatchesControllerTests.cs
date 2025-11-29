@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
@@ -6,11 +8,11 @@ using GammonX.Server.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
-using Moq;
-
 using Newtonsoft.Json;
 
 using System.Net.Http.Json;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
@@ -33,15 +35,15 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchModus.Normal)]
-		[InlineData(WellKnownMatchModus.Ranked)]
-		public async Task TwoPlayersCanJoinAndCreateLobbyAsync(WellKnownMatchModus modus)
+		[InlineData(MatchModus.Normal)]
+		[InlineData(MatchModus.Ranked)]
+		public async Task TwoPlayersCanJoinAndCreateLobbyAsync(MatchModus modus)
 		{
 			var client = _factory.CreateClient();
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 				
-			var player1 = CreatePlayer(_player1Id, WellKnownMatchVariant.Backgammon, modus);
-			var player2 = CreatePlayer(_player2Id, WellKnownMatchVariant.Backgammon, modus);
+			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
+			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
 			// join player 1
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
@@ -103,13 +105,13 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchModus.Normal)]
-		[InlineData(WellKnownMatchModus.Ranked)]
-		public async Task SamePlayerCannotJoinTwice(WellKnownMatchModus modus)
+		[InlineData(MatchModus.Normal)]
+		[InlineData(MatchModus.Ranked)]
+		public async Task SamePlayerCannotJoinTwice(MatchModus modus)
 		{
-			var player1 = CreatePlayer(_player1Id, WellKnownMatchVariant.Backgammon, modus);
-			var player2 = CreatePlayer(_player2Id, WellKnownMatchVariant.Backgammon, modus);
-			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, modus, WellKnownMatchType.CashGame);
+			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
+			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
+			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame);
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 
 			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
@@ -119,13 +121,13 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchModus.Normal)]
-		[InlineData(WellKnownMatchModus.Ranked)]
-		public async Task PlayerCanJoinAgainAfterLeavingTheQueue(WellKnownMatchModus modus)
+		[InlineData(MatchModus.Normal)]
+		[InlineData(MatchModus.Ranked)]
+		public async Task PlayerCanJoinAgainAfterLeavingTheQueue(MatchModus modus)
 		{
-			var player1 = CreatePlayer(_player1Id, WellKnownMatchVariant.Backgammon, modus);
-			var player2 = CreatePlayer(_player2Id, WellKnownMatchVariant.Backgammon, modus);
-			var queueKey = new QueueKey(WellKnownMatchVariant.Backgammon, modus, WellKnownMatchType.CashGame);
+			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
+			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
+			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame);
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 			// join queue
 			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
@@ -137,9 +139,9 @@ namespace GammonX.Server.Tests
 			await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
 		}
 
-		private static JoinRequest CreatePlayer(Guid playerId, WellKnownMatchVariant variant, WellKnownMatchModus queueType)
+		private static JoinRequest CreatePlayer(Guid playerId, MatchVariant variant, MatchModus queueType)
 		{
-			return new JoinRequest(playerId, variant, queueType, WellKnownMatchType.CashGame);
+			return new JoinRequest(playerId, variant, queueType, MatchType.CashGame);
 		}
 	}
 }

@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 
@@ -22,17 +22,17 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the match variant determining the type and amount of games played in this match session.
 		/// </summary>
-		WellKnownMatchVariant Variant { get; }
+		MatchVariant Variant { get; }
 
 		/// <summary>
 		/// Gets the modus of the match.
 		/// </summary>
-		WellKnownMatchModus Modus { get; }
+		MatchModus Modus { get; }
 
 		/// <summary>
 		/// Gets the type of the match determining the winning condition.
 		/// </summary>
-		WellKnownMatchType Type { get; }
+		GammonX.Models.Enums.MatchType Type { get; }
 
 		/// <summary>
 		/// Gets the player 1.

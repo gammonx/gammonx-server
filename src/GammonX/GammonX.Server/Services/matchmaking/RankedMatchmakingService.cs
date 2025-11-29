@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Models;
 
 using System.Collections.Concurrent;
 
@@ -17,7 +19,7 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
 		{
-			if (queueKey.MatchModus != WellKnownMatchModus.Ranked)
+			if (queueKey.MatchModus != MatchModus.Ranked)
 			{
 				throw new InvalidOperationException("Match modus must be of type normal in order to join this queue");
 			}

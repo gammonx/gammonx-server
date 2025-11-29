@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
-using GammonX.Server.Analysis;
+
+using GammonX.Models.Enums;
+
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -11,10 +13,12 @@ using GammonX.Server.Tests.Utils;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
+
 using Newtonsoft.Json;
 
 using System.Net.Http.Json;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
@@ -56,7 +60,7 @@ namespace GammonX.Server.Tests
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame);
+			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
@@ -73,7 +77,7 @@ namespace GammonX.Server.Tests
 			RequestQueueEntryPayload? result1 = null;
 			do
 			{
-				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, WellKnownMatchModus.Bot);
+				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, MatchModus.Bot);
 			}
 			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
 

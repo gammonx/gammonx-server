@@ -2,6 +2,8 @@
 
 using GammonX.Server.Models;
 
+using GammonX.Models.Enums;
+
 using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts

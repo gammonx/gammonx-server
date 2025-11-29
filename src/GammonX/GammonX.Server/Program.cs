@@ -2,10 +2,11 @@ using DotNetEnv;
 
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server;
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
-using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using Microsoft.Extensions.Options;
@@ -45,10 +46,10 @@ builder.Services.Configure<GameServiceOptions>(
 // -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
-builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(WellKnownMatchModus.Normal);
-builder.Services.AddKeyedSingleton<IMatchmakingService, BotMatchmakingService>(WellKnownMatchModus.Bot);
-builder.Services.AddKeyedSingleton<IMatchmakingService, RankedMatchmakingService>(WellKnownMatchModus.Ranked);
-builder.Services.AddKeyedSingleton<IMatchmakingService, UnknownMatchmakingService>(WellKnownMatchModus.Unknown);
+builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(MatchModus.Normal);
+builder.Services.AddKeyedSingleton<IMatchmakingService, BotMatchmakingService>(MatchModus.Bot);
+builder.Services.AddKeyedSingleton<IMatchmakingService, RankedMatchmakingService>(MatchModus.Ranked);
+builder.Services.AddKeyedSingleton<IMatchmakingService, UnknownMatchmakingService>(MatchModus.Unknown);
 builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>();
 builder.Services.AddHostedService<RankedMatchmakingWorker>();
 builder.Services.AddHostedService<NormalMatchmakingWorker>();

@@ -1,5 +1,6 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -7,6 +8,8 @@ using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
 
 using Moq;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
@@ -17,13 +20,13 @@ namespace GammonX.Server.Tests
 		private static readonly MatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionCreated(WellKnownMatchVariant variant, GameModus gameModusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionCreated(MatchVariant variant, GameModus gameModusToExpect)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame);
+			var queueKey = new QueueKey(variant, MatchModus.Normal, MatchType.CashGame);
 			var session = _matchSessionFactory.Create(matchId, queueKey);
 			Assert.NotNull(session);
 			Assert.Equal(matchId, session.Id);
@@ -36,8 +39,8 @@ namespace GammonX.Server.Tests
 			Assert.Equal(0, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
 			Assert.Equal(gameModusToExpect, session.GetGameModus());
-			Assert.Equal(WellKnownMatchModus.Normal, session.Modus);
-			Assert.Equal(WellKnownMatchType.CashGame, session.Type);
+			Assert.Equal(MatchModus.Normal, session.Modus);
+			Assert.Equal(MatchType.CashGame, session.Type);
 			Assert.False(session.CanStartNextGame());
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
@@ -45,10 +48,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionPayloadCreated(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionPayloadCreated(MatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Item2;
@@ -62,8 +65,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(payloadPlayer1);
 			Assert.Equal(matchId, payloadPlayer1.Id);
 			Assert.Equal(variant, payloadPlayer1.Variant);
-			Assert.Equal(WellKnownMatchType.CashGame, payloadPlayer1.Type);
-			Assert.Equal(WellKnownMatchModus.Normal, payloadPlayer1.Modus);
+			Assert.Equal(MatchType.CashGame, payloadPlayer1.Type);
+			Assert.Equal(MatchModus.Normal, payloadPlayer1.Modus);
 			Assert.Equal(1, payloadPlayer1.GameRound);
 			Assert.Equal(Guid.Empty, payloadPlayer1.Player1?.Id);
 			Assert.Equal(Guid.Empty, payloadPlayer1.Player2?.Id);
@@ -78,8 +81,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(payloadPlayer2);
 			Assert.Equal(matchId, payloadPlayer2.Id);
 			Assert.Equal(variant, payloadPlayer2.Variant);
-			Assert.Equal(WellKnownMatchType.CashGame, payloadPlayer2.Type);
-			Assert.Equal(WellKnownMatchModus.Normal, payloadPlayer2.Modus);
+			Assert.Equal(MatchType.CashGame, payloadPlayer2.Type);
+			Assert.Equal(MatchModus.Normal, payloadPlayer2.Modus);
 			Assert.Equal(1, payloadPlayer2.GameRound);
 			Assert.Equal(Guid.Empty, payloadPlayer2.Player1?.Id);
 			Assert.Equal(Guid.Empty, payloadPlayer2.Player2?.Id);
@@ -89,10 +92,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionPlayersCanJoin(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionPlayersCanJoin(MatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Item2;
@@ -111,10 +114,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionPlayersCannotJoin(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionPlayersCannotJoin(MatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Item2;
@@ -124,10 +127,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionPlayerCannotJoinTwice(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionPlayerCannotJoinTwice(MatchVariant variant)
 		{
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, _matchSessionFactory);
 			var session = result.Item2;
@@ -138,10 +141,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionCanStartMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionCanStartMatch(MatchVariant variant, GameModus modusToExpect)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -159,10 +162,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionActivePlayerCanRollDices(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionActivePlayerCanRollDices(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -179,10 +182,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionNotActivePlayerCannotRollDices(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionNotActivePlayerCannotRollDices(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -195,10 +198,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotRollDicesIfNotStarted(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCannotRollDicesIfNotStarted(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -209,10 +212,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotMoveIfNotStarted(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCannotMoveIfNotStarted(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -223,10 +226,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotMoveIfNotActivePlayer(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCannotMoveIfNotActivePlayer(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -237,10 +240,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCanMoveCheckers(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCanMoveCheckers(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -268,10 +271,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCanUndoLastMoves(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCanUndoLastMoves(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -308,10 +311,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCanEndTurn(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCanEndTurn(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -356,10 +359,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotEndTurnNotStartedMatch(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCannotEndTurnNotStartedMatch(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -371,10 +374,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionCannotReturnProperGameState(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCannotReturnProperGameState(MatchVariant variant)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -386,8 +389,8 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon)]
-		public void BackgammonMatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Backgammon)]
+		public void BackgammonMatchSessionReturnsProperGameState(MatchVariant variant)
 		{
 			var allowedCommandsAfterRollActivePlayer = new[]
 			{
@@ -413,9 +416,9 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Tavli)]
-		[InlineData(WellKnownMatchVariant.Tavla)]
-		public void MatchSessionReturnsProperGameState(WellKnownMatchVariant variant)
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionReturnsProperGameState(MatchVariant variant)
 		{
 			var allowedCommandsAfterRollActivePlayer = new[] 
 			{ 
@@ -440,10 +443,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionPlayer1CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignGame(MatchVariant variant, GameModus modusToExpect)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -455,7 +458,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.Player1.NextGameAccepted);
 			Assert.False(session.Player2.NextGameAccepted);
 
-			if (variant == WellKnownMatchVariant.Backgammon)
+			if (variant == MatchVariant.Backgammon)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -466,7 +469,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavla)
+			else if (variant == MatchVariant.Tavla)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -477,7 +480,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavli)
+			else if (variant == MatchVariant.Tavli)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -495,10 +498,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionPlayer2CanResignGame(WellKnownMatchVariant variant, GameModus modusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignGame(MatchVariant variant, GameModus modusToExpect)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -510,7 +513,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.Player1.NextGameAccepted);
 			Assert.False(session.Player2.NextGameAccepted);
 
-			if (variant == WellKnownMatchVariant.Backgammon)
+			if (variant == MatchVariant.Backgammon)
 			{
 				Assert.True(session.Player1.Points > 0);
 				Assert.True(session.Player2.Points == 0);
@@ -521,7 +524,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavla)
+			else if (variant == MatchVariant.Tavla)
 			{
 				Assert.True(session.Player1.Points > 0);
 				Assert.True(session.Player2.Points == 0);
@@ -532,7 +535,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavli)
+			else if (variant == MatchVariant.Tavli)
 			{
 				Assert.True(session.Player1.Points > 0);
 				Assert.True(session.Player2.Points == 0);
@@ -550,10 +553,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionPlayer1CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer1CanResignMatch(MatchVariant variant, GameModus modusToExpect)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -565,7 +568,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.Player1.NextGameAccepted);
 			Assert.False(session.Player2.NextGameAccepted);
 
-			if (variant == WellKnownMatchVariant.Backgammon)
+			if (variant == MatchVariant.Backgammon)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -576,7 +579,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavla)
+			else if (variant == MatchVariant.Tavla)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -587,7 +590,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavli)
+			else if (variant == MatchVariant.Tavli)
 			{
 				Assert.True(session.Player1.Points == 0);
 				Assert.True(session.Player2.Points > 0);
@@ -603,10 +606,10 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(WellKnownMatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(WellKnownMatchVariant.Tavla, GameModus.Tavla)]
-		public void MatchSessionPlayer2CanResignMatch(WellKnownMatchVariant variant, GameModus modusToExpect)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
+		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+		public void MatchSessionPlayer2CanResignMatch(MatchVariant variant, GameModus modusToExpect)
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, _matchSessionFactory);
 			Assert.NotNull(session);
@@ -618,7 +621,7 @@ namespace GammonX.Server.Tests
 			Assert.False(session.Player1.NextGameAccepted);
 			Assert.False(session.Player2.NextGameAccepted);
 
-			if (variant == WellKnownMatchVariant.Backgammon)
+			if (variant == MatchVariant.Backgammon)
 			{
 				Assert.True(session.Player2.Points == 0);
 				Assert.True(session.Player1.Points > 0);
@@ -629,7 +632,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavla)
+			else if (variant == MatchVariant.Tavla)
 			{
 				Assert.True(session.Player2.Points == 0);
 				Assert.True(session.Player1.Points > 0);
@@ -640,7 +643,7 @@ namespace GammonX.Server.Tests
 				session.Player2.AcceptNextGame();
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
 			}
-			else if (variant == WellKnownMatchVariant.Tavli)
+			else if (variant == MatchVariant.Tavli)
 			{
 				Assert.True(session.Player2.Points == 0);
 				Assert.True(session.Player1.Points > 0);
@@ -656,34 +659,34 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public void MatchSessionHandleDifferentConfigurations(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public void MatchSessionHandleDifferentConfigurations(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
 			Assert.NotNull(matchSession);
@@ -699,7 +702,7 @@ namespace GammonX.Server.Tests
 
 			var gameOverFunc = type.GetMatchOverFunc();
 
-			if (type == WellKnownMatchType.CashGame)
+			if (type == MatchType.CashGame)
 			{
 				var gameSessions = matchSession.GetGameSessions();
 				var lobby1 = new LobbyEntry(Guid.NewGuid());
@@ -721,14 +724,14 @@ namespace GammonX.Server.Tests
 				}
 				Assert.True(gameOverFunc.Invoke(matchSession));
 			}
-			else if (type == WellKnownMatchType.FivePointGame)
+			else if (type == MatchType.FivePointGame)
 			{
 				matchSession.Player1.Points = 4;
 				Assert.False(gameOverFunc.Invoke(matchSession));
 				matchSession.Player2.Points = 5;
 				Assert.True(gameOverFunc.Invoke(matchSession));
 			}
-			else if (type == WellKnownMatchType.SevenPointGame)
+			else if (type == MatchType.SevenPointGame)
 			{
 				matchSession.Player2.Points = 4;
 				Assert.False(gameOverFunc.Invoke(matchSession));
@@ -738,34 +741,34 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Backgammon, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavla, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Normal, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Bot, WellKnownMatchType.SevenPointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.CashGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.FivePointGame)]
-		[InlineData(WellKnownMatchVariant.Tavli, WellKnownMatchModus.Ranked, WellKnownMatchType.SevenPointGame)]
-		public void MatchSessionReturnsProperHistory(WellKnownMatchVariant variant, WellKnownMatchModus modus, WellKnownMatchType type)
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Bot, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+		public void MatchSessionReturnsProperHistory(MatchVariant variant, MatchModus modus, MatchType type)
 		{
 			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
 			Assert.NotNull(matchSession);

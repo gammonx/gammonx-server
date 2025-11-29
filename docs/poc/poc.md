@@ -127,11 +127,12 @@ The backend server hosts a background worker which tries to create proper match 
 #### `double-declined`
 
 ## Wellknown Enums/Strings
-#### `GameModus` [Link](../../src/GammonX/GammonX.Engine/Models/GameModus.cs)
+#### `GameModus` [Link](../../src/GammonX/GammonX.Models/Enums/GameModus.cs.cs)
+#### `GameResult` [Link](../../src/GammonX/GammonX.Models/Enums/GameResult.cs)
 #### `WellKnownBoardPositions` [Link](../../src/GammonX/GammonX.Engine/Models/WellKnownBoardPositions.cs)
-#### `WellKnownMatchVariant` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
-#### `WellKnownMatchModus` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
-#### `WellKnownMatchType` [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)
+#### `MatchVariant` [Link](../../src/GammonX/GammonX.Models/Enums/MatchVariant.cs)
+#### `MatchModus` [Link](../../src/GammonX/GammonX.Models/Enums/MatchModus.cs)
+#### `MatchType` [Link](../../src/GammonX/GammonX.Models/Enums/MatchType.cs)
 #### `GamePhase` [Link](../../src/GammonX/GammonX.Server/Models/gameSession/GamePhase.cs)
 
 ## MoveSequences

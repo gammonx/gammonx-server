@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.History;
 using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.Services
 {
 	/// <summary>

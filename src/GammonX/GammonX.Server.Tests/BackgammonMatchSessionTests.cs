@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
@@ -18,7 +20,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonSingleGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -51,7 +53,7 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(matchState.Player2);
 			Assert.Equal(0, matchState.Player2.Points);
 			Assert.Equal(session.Id, matchState.Id);
-			Assert.Equal(WellKnownMatchVariant.Backgammon, matchState.Variant);
+			Assert.Equal(MatchVariant.Backgammon, matchState.Variant);
 			Assert.Equal(session.Player1.Id, matchState.Player1.Id);
 			Assert.Equal(session.Player2.Id, matchState.Player2.Id);
 			Assert.NotNull(matchState.GameRounds);
@@ -70,7 +72,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonGammonGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -107,7 +109,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackGammonGameScoreLoserHasOnHomebarWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -144,7 +146,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackGammonGameScoreLoserIsInWinnerHomeRangeWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -179,7 +181,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonSingleGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -224,7 +226,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonGammonGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -272,7 +274,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackGammonGameScoreLoserHasOnHomebarBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -322,7 +324,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackGammonGameScoreLoserIsInWinnerHomeRangeBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -371,7 +373,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonPlayersCanOfferDoubleBeforeRolling()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -409,7 +411,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonPlayerCanOfferAndAcceptDoubles()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			var doublingCubeSession = session as IDoubleCubeMatchSession;
 			Assert.NotNull(doublingCubeSession);
@@ -431,7 +433,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonPlayerCanOfferAndDeclineDoubles()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			var doublingCubeSession = session as IDoubleCubeMatchSession;
 			Assert.NotNull(doublingCubeSession);
@@ -453,7 +455,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonPlayerCannotDoubles()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			var doublingCubeSession = session as IDoubleCubeMatchSession;
 			Assert.NotNull(doublingCubeSession);
@@ -536,7 +538,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void BackgammonPlayerCanDoubleMultipleTimes()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Backgammon, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, _matchSessionFactory);
 			Assert.NotNull(session);
 			var doublingCubeSession = session as IDoubleCubeMatchSession;
 			Assert.NotNull(doublingCubeSession);

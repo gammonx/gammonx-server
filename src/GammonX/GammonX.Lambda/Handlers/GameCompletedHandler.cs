@@ -7,7 +7,6 @@ using GammonX.Lambda.Extensions;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
-using GammonX.Models.History.MAT;
 
 using Newtonsoft.Json;
 

@@ -1,6 +1,10 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Bot
 {
@@ -45,7 +49,7 @@ namespace GammonX.Server.Bot
 				// wildbg bot only supports cash and single point games
 				// we also use cash games for all match variants
 				// a five/seven point game equals in this context to multiple cash games
-				if (matchSession.Type == WellKnownMatchType.CashGame)
+				if (matchSession.Type == MatchType.CashGame)
 				{
 					requestParameters.XPointsAway = 0;
 					requestParameters.OPointsAway = 0;

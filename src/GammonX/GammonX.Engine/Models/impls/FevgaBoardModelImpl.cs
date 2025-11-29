@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Models.Enums;
+
+namespace GammonX.Engine.Models
 {
 	/// <summary>
 	/// Fevga implementation.

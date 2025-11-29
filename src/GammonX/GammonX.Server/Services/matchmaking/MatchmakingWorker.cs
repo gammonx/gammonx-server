@@ -1,4 +1,4 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
 
 using Serilog;
 
@@ -8,7 +8,7 @@ namespace GammonX.Server.Services
 	public sealed class RankedMatchmakingWorker : MatchmakingWorker
 	{
 		public RankedMatchmakingWorker(IServiceProvider serviceProvider)
-			: base(serviceProvider, WellKnownMatchModus.Ranked)
+			: base(serviceProvider, MatchModus.Ranked)
 		{
 		}
 	}
@@ -17,7 +17,7 @@ namespace GammonX.Server.Services
 	public sealed class NormalMatchmakingWorker : MatchmakingWorker
 	{
 		public NormalMatchmakingWorker(IServiceProvider serviceProvider) 
-			: base(serviceProvider, WellKnownMatchModus.Normal)
+			: base(serviceProvider, MatchModus.Normal)
 		{
 		}
 	}
@@ -27,9 +27,9 @@ namespace GammonX.Server.Services
 	{
 		private readonly IMatchmakingService _matchmakingService;
 		private readonly TimeSpan _interval = TimeSpan.FromSeconds(2);
-		private readonly WellKnownMatchModus _modus;
+		private readonly MatchModus _modus;
 
-		public MatchmakingWorker(IServiceProvider serviceProvider, WellKnownMatchModus matchModus)
+		public MatchmakingWorker(IServiceProvider serviceProvider, MatchModus matchModus)
 		{
 			_modus = matchModus;
 			_matchmakingService = serviceProvider.GetRequiredKeyedService<IMatchmakingService>(matchModus);

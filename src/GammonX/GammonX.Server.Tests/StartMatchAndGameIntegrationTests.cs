@@ -1,6 +1,8 @@
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -14,6 +16,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
 using System.Net.Http.Json;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
@@ -48,14 +52,14 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(WellKnownMatchModus.Normal)]
-		[InlineData(WellKnownMatchModus.Ranked)]
-		public async Task StartMatchAndGameIntegrationTest(WellKnownMatchModus modus)
+		[InlineData(MatchModus.Normal)]
+		[InlineData(MatchModus.Ranked)]
+		public async Task StartMatchAndGameIntegrationTest(MatchModus modus)
 		{
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new JoinRequest(_player1Id, WellKnownMatchVariant.Tavli, modus, WellKnownMatchType.CashGame);
+			var player1 = new JoinRequest(_player1Id, MatchVariant.Tavli, modus, MatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
 			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
@@ -69,7 +73,7 @@ namespace GammonX.Server.Tests
 				})
 				.Build();
 
-			var player2 = new JoinRequest(_player2Id, WellKnownMatchVariant.Tavli, modus, WellKnownMatchType.CashGame);
+			var player2 = new JoinRequest(_player2Id, MatchVariant.Tavli, modus, MatchType.CashGame);
 			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
 			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);

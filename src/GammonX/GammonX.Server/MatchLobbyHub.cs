@@ -1,5 +1,6 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
 
 using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
@@ -94,7 +95,7 @@ namespace GammonX.Server
 						matchSession.JoinSession(matchLobby.Player1);
 						await Groups.AddToGroupAsync(matchLobby.Player1.ConnectionId, groupName);
 
-						if (matchLobby.QueueKey.MatchModus == WellKnownMatchModus.Bot)
+						if (matchLobby.QueueKey.MatchModus == MatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
 							var botPlayer = new LobbyEntry(Guid.NewGuid());
@@ -162,7 +163,7 @@ namespace GammonX.Server
 					{
 						matchSession.Player1.AcceptNextGame();
 
-						if (matchSession.Modus == WellKnownMatchModus.Bot)
+						if (matchSession.Modus == MatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
 							matchSession.Player2.AcceptNextGame();
@@ -805,7 +806,7 @@ namespace GammonX.Server
 			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
 			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
-			if (matchSession.Modus != WellKnownMatchModus.Bot)
+			if (matchSession.Modus != MatchModus.Bot)
 			{
 				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
 			}
@@ -822,7 +823,7 @@ namespace GammonX.Server
 			var payloadPlayer1 = matchSession.ToPayload(matchSession.Player1.Id);
 			var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
 			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, contractPlayer1);
-			if (matchSession.Modus != WellKnownMatchModus.Bot)
+			if (matchSession.Modus != MatchModus.Bot)
 			{
 				var payloadPlayer2 = matchSession.ToPayload(matchSession.Player2.Id);
 				var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
@@ -916,7 +917,7 @@ namespace GammonX.Server
 
 		private static bool IsBotTurn(IMatchSessionModel matchSession, Guid playerId)
 		{
-			if (matchSession.Modus == WellKnownMatchModus.Bot)
+			if (matchSession.Modus == MatchModus.Bot)
 			{
 				if (matchSession.Player1.Id == playerId)
 				{

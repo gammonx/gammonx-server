@@ -1,5 +1,6 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -18,7 +19,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavliSingleGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavli, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavli, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -52,7 +53,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(1, matchState.Player1.Points);
 			Assert.Equal(0, matchState.Player2.Points);
 			Assert.Equal(session.Id, matchState.Id);
-			Assert.Equal(WellKnownMatchVariant.Tavli, matchState.Variant);
+			Assert.Equal(MatchVariant.Tavli, matchState.Variant);
 			Assert.Equal(session.Player1.Id, matchState.Player1.Id);
 			Assert.Equal(session.Player2.Id, matchState.Player2.Id);
 			Assert.NotNull(matchState.GameRounds);
@@ -72,7 +73,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavliSingleGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavli, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavli, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -123,7 +124,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavliGammonGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavli, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavli, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -154,7 +155,7 @@ namespace GammonX.Server.Tests
 		[Fact]
 		public void TavliGammonGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(WellKnownMatchVariant.Tavli, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavli, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();

@@ -41,7 +41,7 @@ namespace GammonX.DynamoDb.Items
 			return string.Format(factory.PKFormat, Id);
 		}
 
-		private string ConstructSK()
+		private static string ConstructSK()
 		{
 			var factory = new GameHistoryItemFactory();
 			return factory.SKFormat;
