@@ -15,5 +15,14 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GammonX.Lambda\GammonX.Lambda.csproj" />
+    <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Data\PortesGameHistory.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\TavliMatchHistory.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

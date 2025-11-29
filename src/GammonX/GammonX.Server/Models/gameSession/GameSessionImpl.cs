@@ -304,9 +304,9 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public IGameHistory GetHistory()
+		public IGameHistory GetHistory(Guid player1, Guid player2)
 		{
-			return GameHistoryImpl.Create(this, _winnerPlayerId, _winnerPoints);
+			return GameHistoryImpl.Create(this, player1, player2, _winnerPlayerId, _winnerPoints);
 		}
 
 		/// <summary>

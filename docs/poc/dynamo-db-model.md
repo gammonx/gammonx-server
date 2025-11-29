@@ -93,10 +93,16 @@ We create two entries, one for the winner and one for the loser
   "ItemType": "Game",
   "PlayerId": "PLAYER#123",
   "Points": 7,
+  "Length": 55,
   "Won": true,
   "Modus": "Portes",
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
+  "Duration": "{TimeSpan}",
+  "PipesLeft": "{int}",
+  "DiceDoubles": "{int}",
+  "GameResult": "{GameResult}",
+  "DoublingCubeValue": "{int?}",
   "GSI1PK": "PLAYER#123",
   "GSI1SK": "GAME#456#Portes#{WON|LOST}"
 }
@@ -118,6 +124,7 @@ We create two entries, one for the winner and one for the loser
 {
   "PK": "GAME#888",
   "SK": "HISTORY",
+  "Id": "{Guid}",
   "ItemType": "GameHistory",
   "Data": "{MatchHistoryInFormatX}",
   "Format": "MAT"

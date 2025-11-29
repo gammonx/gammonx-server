@@ -23,7 +23,67 @@ namespace GammonX.DynamoDb.Repository
 			_tableName = options.Value.DYNAMODB_TABLENAME;
 		}
 
+		#region Generic ItemType
+
+		// <inheritdoc />
+		public async Task<IEnumerable<T>> GetItems<T>(Guid pkId)
+		{
+			var factory = ItemFactoryCreator.Create<T>();			
+			var pk = string.Format(factory.PKFormat, pkId);
+			var sk = factory.SKPrefix;
+			var request = new QueryRequest
+			{
+				TableName = _tableName,
+				KeyConditionExpression = "PK = :pk and begins_with(SK, :skPrefix)",
+				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+				{
+					{ ":pk", new AttributeValue(pk) },
+					{ ":skPrefix", new AttributeValue(sk) }
+				}
+			};
+			var response = await _client.QueryAsync(request);
+			return response.Items.Select(factory.CreateItem);
+		}
+
+		// <inheritdoc />
+		public async Task<IEnumerable<T>> GetItemsByGSI<T>(Guid gsi1PkId)
+		{
+			var factory = ItemFactoryCreator.Create<T>();
+			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
+			var gsi1sk = factory.GSI1SKPrefix;
+			var request = new QueryRequest
+			{
+				TableName = _tableName,
+				IndexName = "GSI1",
+				KeyConditionExpression = "GSI1PK = :gsi1pk and begins_with(GSI1SK, :gsi1skPrefix)",
+				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+				{
+					{ ":gsi1pk", new AttributeValue(gsi1pk) },
+					{ ":gsi1skPrefix", new AttributeValue(gsi1sk) }
+				}
+			};
+			var response = await _client.QueryAsync(request);
+			return response.Items.Select(factory.CreateItem);
+		}
+
+		// <inheritdoc />
+		public async Task SaveAsync<T>(T item)
+		{
+			var factory = ItemFactoryCreator.Create<T>();
+			var itemDict = factory.CreateItem(item);
+			var request = new PutItemRequest
+			{
+				TableName = _tableName,
+				Item = itemDict
+			};
+			await _client.PutItemAsync(request);
+		}
+
+		#endregion Generic ItemType
+
 		#region Player ItemType
+
+		// TODO: move match to generic
 
 		// <inheritdoc />
 		public async Task<PlayerItem?> GetAsync(Guid playerId)
@@ -133,6 +193,8 @@ namespace GammonX.DynamoDb.Repository
 
 		#region PlayerRating ItemType
 
+		// TODO: move match to generic
+
 		// <inheritdoc />
 		public async Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId)
 		{
@@ -196,6 +258,8 @@ namespace GammonX.DynamoDb.Repository
 		#endregion PlayerRating ItemType
 
 		#region Match ItemType
+
+		// TODO: move match to generic
 
 		// <inheritdoc />
 		public async Task<IEnumerable<MatchItem>> GetMatchesAsync(Guid matchId)
@@ -291,5 +355,11 @@ namespace GammonX.DynamoDb.Repository
 		}
 
 		#endregion
+
+		#region Game ItemType
+
+		// game item type specific operations
+
+		#endregion Game ItemType
 	}
 }

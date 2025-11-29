@@ -163,7 +163,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the game history including all move and roll events.
 		/// </summary>
+		/// <param name="player1">Gets the id of the player with the white checkers.</param>
+		/// <param name="player2">Gets the id of the player with the black checkers.</param>
 		/// <returns>Returns an instance of <see cref="IGameHistory"/>.</returns>
-		IGameHistory GetHistory();
+		IGameHistory GetHistory(Guid player1, Guid player2);
 	}
 }

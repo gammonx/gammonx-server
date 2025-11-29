@@ -1,0 +1,92 @@
+﻿using Amazon.Lambda.SQSEvents;
+using Amazon.Lambda.TestUtilities;
+
+using GammonX.Lambda.Services;
+
+using GammonX.Models.Contracts;
+
+using Newtonsoft.Json;
+
+using Xunit;
+
+namespace GammonX.Lambda.Tests
+{
+	public class GameCompletedLambdaHandlerTests
+	{
+		[Fact]
+		public async Task OnGameCompletedEventTest()
+		{
+			var gameId = Guid.NewGuid();
+			// player ids must match with the game history
+			var player1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+			var player2Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
+
+			var path = Path.Combine("Data", "PortesGameHistory.txt");
+			var gameHistory = File.ReadAllText(path);
+
+			var wonGameRecord = new GameRecordContract()
+			{
+				Id = gameId,
+				PlayerId = player1Id,
+				StartedAt = DateTime.UtcNow,
+				EndedAt = DateTime.UtcNow.AddHours(1),
+				Length = 55,
+				Modus = Models.Enums.GameModus.Portes,
+				Points = 7,
+				Result = Models.Enums.GameResult.Single,
+				DoublingCubeValue = null,
+				PipesLeft = 0,
+				Format = Models.Enums.HistoryFormat.MAT,
+				GameHistory = gameHistory
+			};
+			var lostGameRecord = new GameRecordContract()
+			{
+				Id = gameId,
+				PlayerId = player2Id,
+				StartedAt = DateTime.UtcNow,
+				EndedAt = DateTime.UtcNow.AddHours(1),
+				Length = 55,
+				Modus = Models.Enums.GameModus.Portes,
+				Points = 5,
+				Result = Models.Enums.GameResult.Lost,
+				DoublingCubeValue = null,
+				PipesLeft = 55,
+				Format = Models.Enums.HistoryFormat.MAT,
+				GameHistory = gameHistory
+			};
+
+			var messageId1 = Guid.NewGuid().ToString();
+			var messageId2 = Guid.NewGuid().ToString();
+
+			var sqsEvent = new SQSEvent
+			{
+				Records = new List<SQSEvent.SQSMessage>
+				{
+					new SQSEvent.SQSMessage
+					{
+						Body = JsonConvert.SerializeObject(wonGameRecord),
+						MessageId = messageId1,
+					},
+					new SQSEvent.SQSMessage
+					{
+						Body = JsonConvert.SerializeObject(lostGameRecord),
+						MessageId = messageId2,
+					}
+				}
+			};
+
+			var logger = new TestLambdaLogger();
+			var context = new TestLambdaContext
+			{
+				Logger = logger
+			};
+
+			var services = Startup.Configure();
+			var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.GameCompletedFunc);
+
+			await handler.HandleAsync(sqsEvent, context);
+			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
+			Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
+		}
+	}
+}

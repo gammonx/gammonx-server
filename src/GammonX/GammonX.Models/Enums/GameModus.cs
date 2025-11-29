@@ -25,5 +25,9 @@
         /// Represents the third game type of a Tavlia match.
         /// </summary>
         Fevga = 4,
+        /// <summary>
+        /// Unknown placeholder game mode.
+        /// </summary>
+        Unknown = 99,
     }
 }

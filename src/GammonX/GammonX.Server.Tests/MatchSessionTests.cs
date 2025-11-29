@@ -810,6 +810,11 @@ namespace GammonX.Server.Tests
 			Assert.True(matchSession.IsMatchOver());
 			var matchHistory = matchSession.GetHistory();
 			Assert.NotNull(matchHistory);
+			foreach (var gameHistory in matchHistory.Games)
+			{
+				var gameHistoryStr = gameHistory.ToString();
+				Assert.NotNull(gameHistory);
+			}
 			var historyStr = matchHistory.ToString();
 			Assert.NotNull(historyStr);
 		}

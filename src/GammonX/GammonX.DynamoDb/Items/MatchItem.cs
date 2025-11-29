@@ -42,15 +42,21 @@ namespace GammonX.DynamoDb.Items
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
 
+		/// <summary>
+		/// Gets or sets the match id.
+		/// </summary>
 		public Guid Id { get; set; } = Guid.Empty;
 
 		/// <summary>
-		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to."/>
+		/// Gets or sets the id of the <see cref="MatchItem"/> this rating belongs to."/>
 		/// </summary>
 		public Guid PlayerId { get; set; } = Guid.Empty;
 
 		public int Points { get; set; } = 0;
 
+		/// <summary>
+		/// Gets or sets the amount of games played in the related match.
+		/// </summary>
 		public int Length { get; set; } = 0;
 
 		public string ItemType { get; } = ItemTypes.MatchItemType;

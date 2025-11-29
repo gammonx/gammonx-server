@@ -7,6 +7,34 @@ namespace GammonX.DynamoDb.Repository
 	/// </summary>
 	public interface IDynamoDbRepository
 	{
+		#region Generic ItemType
+
+		/// <summary>
+		/// Gets items of <typeparamref name="T"/> by its PK and SKPrefix.
+		/// </summary>
+		/// <typeparam name="T">Item Type.</typeparam>
+		/// <param name="pkId">Primary key guid.</param>
+		/// <returns>A list of items matching the given <paramref name="pkId"/> and sk prefix.</returns>
+		Task<IEnumerable<T>> GetItems<T>(Guid pkId);
+
+		/// <summary>
+		/// Gets items of <typeparamref name="T"/> by its GSI1PK and GSI1SKPrefix.
+		/// </summary>
+		/// <typeparam name="T">Item Type.</typeparam>
+		/// <param name="gsi1PkId">Primary key guid.</param>
+		/// <returns>A list of items matching the given <paramref name="gsi1PkId"/> and sk prefix.</returns>
+		Task<IEnumerable<T>> GetItemsByGSI<T>(Guid gsi1PkId);
+
+		/// <summary>
+		/// Saves the item of given <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">Item type.</typeparam>
+		/// <param name="item">Item to persist.</param>
+		/// <returns>A task to be awaited.</returns>
+		Task SaveAsync<T>(T item);
+
+		#endregion Generic ItemType
+
 		/// <summary>
 		/// Gets the player by its unique identifier.
 		/// </summary>

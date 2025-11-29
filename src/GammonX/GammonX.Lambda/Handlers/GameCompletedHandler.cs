@@ -3,6 +3,14 @@ using Amazon.Lambda.SQSEvents;
 
 using GammonX.DynamoDb.Repository;
 
+using GammonX.Lambda.Extensions;
+
+using GammonX.Models.Contracts;
+using GammonX.Models.History;
+using GammonX.Models.History.MAT;
+
+using Newtonsoft.Json;
+
 namespace GammonX.Lambda.Handlers
 {
 	/// <summary>
@@ -25,16 +33,39 @@ namespace GammonX.Lambda.Handlers
 		public async Task HandleAsync(SQSEvent evnt, ILambdaContext context)
 		{
 			foreach (var message in evnt.Records)
-			{
-				
+			{				
 				await ProcessMessageAsync(message, context);
 			}
 		}
 
-		private static async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
+		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-			context.Logger.LogInformation($"Processed message {message.Body}");
-			await Task.CompletedTask;
+			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
+
+			var json = message.Body;
+			var gameRecord = JsonConvert.DeserializeObject<GameRecordContract>(json);
+
+			if (gameRecord == null)
+			{
+				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
+				return;
+			}
+
+			context.Logger.LogInformation($"Processing completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+
+			// create game history item
+			var gameHistory = gameRecord.ToGameHistory();
+			// parse game history and calculate some stats
+			var parserFactory = HistoryParserFactory.Create(gameHistory.Format);
+			var parsedGameHistory = parserFactory.Parse(gameHistory.Data);
+			// create game item
+			var gameItem = gameRecord.ToGame(parsedGameHistory);
+
+			await _repo.SaveAsync(gameItem);
+			// TODO: avoid writing history twice
+			await _repo.SaveAsync(gameHistory);
+
+			context.Logger.LogInformation($"Processed completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
 		}
 	}
 }
