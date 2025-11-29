@@ -8,7 +8,7 @@ using Xunit;
 
 namespace GammonX.Lambda.Tests
 {
-	public class MatchCompletedLambdaHandlerTests
+	public class PlayerStatsUpdatedLambdaHandlerTests
 	{
 		[Fact]
 		public async Task OnMatchCompletedEventTest()
@@ -152,7 +152,7 @@ namespace GammonX.Lambda.Tests
 			};
 
 			var services = Startup.Configure();
-			var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.MatchCompletedFunc);
+			var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.PlayerStatsUpdatedFunc);
 
 			await handler.HandleAsync(sqsEvent, context);
 			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());

@@ -16,13 +16,18 @@ namespace GammonX.DynamoDb.Items
 		// <inheritdoc />
 		public string SKPrefix => "DETAILS#";
 
-		/// <summary>
-		/// Format for GSI1SK like 'MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST|NOTFINISHED}'
-		/// </summary>
+		// <inheritdoc />
 		public string GSI1PKFormat => "PLAYER#{0}";
 
-		// <inheritdoc />
-		public string GSI1SKFormat => "MATCH#{0}#{1}#{2}#{3}#{4}";
+		/// <summary>
+		/// Format for GSI1SK like 'MATCH#{variant}#{type}#{modus}#{WON|LOST|NOTFINISHED}'
+		/// </summary>
+		public string GSI1SKFormat => "MATCH#{0}#{1}#{2}#{3}";
+
+		/// <summary>
+		/// Format for GSI1SK like 'MATCH#{variant}#{type}#{modus}'
+		/// </summary>
+		public string GSI1SKAllFormat => "MATCH#{0}#{1}#{2}";
 
 		// <inheritdoc />
 		public string GSI1SKPrefix => "MATCH#";
@@ -47,7 +52,7 @@ namespace GammonX.DynamoDb.Items
 				AvgDoubleDices = int.Parse(item["AvgDoubleDices"].N),
 				AvgPipesLeft = int.Parse(item["AvgPipesLeft"].N),
 				AvgTurns = int.Parse(item["AvgTurns"].N),
-				BackGammons = int.Parse(item["BackGammons"].N),
+				Backgammons = int.Parse(item["BackGammons"].N),
 				Gammons = int.Parse(item["Gammons"].N),
 				AvgDoubles = double.Parse(item["AvgDoubles"].N)
 			};
@@ -80,7 +85,7 @@ namespace GammonX.DynamoDb.Items
 				{ "AvgPipesLeft", new AttributeValue { N = item.AvgPipesLeft.ToString() } },
 				{ "AvgDoubleDices", new AttributeValue { N = item.AvgDoubleDices.ToString() } },
 				{ "Gammons", new AttributeValue { N = item.Gammons.ToString() } },
-				{ "BackGammons", new AttributeValue { N = item.BackGammons.ToString() } },
+				{ "BackGammons", new AttributeValue { N = item.Backgammons.ToString() } },
 				{ "AvgTurns", new AttributeValue { N = item.AvgTurns.ToString() } },
 				{ "AvgDoubles", new AttributeValue { N = item.AvgDoubles.ToString() } },
 				{ "Duration", new AttributeValue { S = item.Duration.ToString() } },

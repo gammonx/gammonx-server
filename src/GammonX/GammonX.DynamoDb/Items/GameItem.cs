@@ -25,7 +25,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "GAME#{gameId}#Portes#{WON|LOST|NOTFINISHED}")
+		/// Gets the global search index sort key. (e.g. "GAME#Portes#{WON|LOST|NOTFINISHED}")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
@@ -101,7 +101,7 @@ namespace GammonX.DynamoDb.Items
 			var factory = new GameItemFactory();
 			var modusStr = Modus.ToString();
 			var wonOrLost = WonOrLost(Result);
-			return string.Format(factory.GSI1SKFormat, Id, modusStr, wonOrLost);
+			return string.Format(factory.GSI1SKFormat, modusStr, wonOrLost);
 		}
 
 		private static string WonOrLost(GameResult result)

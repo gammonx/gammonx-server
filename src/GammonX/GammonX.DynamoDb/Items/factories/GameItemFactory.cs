@@ -20,9 +20,9 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PKFormat => "PLAYER#{0}";
 
 		/// <summary>
-		/// Format for GSI1SK like 'GAME#{gameId}#{gameModus}#{WINNER|LOSER}'
+		/// Format for GSI1SK like 'GAME#{gameModus}#{WINNER|LOSER}'
 		/// </summary>
-		public string GSI1SKFormat => "GAME#{0}#{1}#{2}";
+		public string GSI1SKFormat => "GAME#{0}#{1}";
 
 		// <inheritdoc />
 		public string GSI1SKPrefix => "GAME#";

@@ -50,12 +50,12 @@ namespace GammonX.Lambda.Handlers
 
 			context.Logger.LogInformation($"Processing completed match with id '{matchRecord.Id}' for player '{matchRecord.PlayerId}'");
 
-			// create game history item
+			// create match history item
 			var matchHistory = matchRecord.ToMatchHistory();
-			// parse game history and calculate some stats
+			// parse match history and calculate some stats
 			var parserFactory = HistoryParserFactory.Create<IMatchHistoryParser>(matchHistory.Format);
 			var parsedHistory = parserFactory.ParseMatch(matchHistory.Data);
-			// create game item
+			// create match item
 			var matchItem = matchRecord.ToMatch(parsedHistory);
 
 			await _repo.SaveAsync(matchItem);

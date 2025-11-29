@@ -68,6 +68,9 @@ namespace GammonX.DynamoDb.Items
 		/// </summary>
 		public double AvgPipesLeft { get; set; } = 0;
 
+		/// <summary>
+		/// Gets or sets the average amount of double dices rolled per game
+		/// </summary>
 		public double AvgDoubleDices { get; set; } = 0;
 
 		/// <summary>
@@ -78,7 +81,7 @@ namespace GammonX.DynamoDb.Items
 		/// <summary>
 		/// Gets or sets the amount of <see cref="GameResult.Backgammon"/> wins.
 		/// </summary>
-		public int BackGammons { get; set; } = 0;
+		public int Backgammons { get; set; } = 0;
 
 		/// <summary>
 		/// Gets or sets the average turns per game.
@@ -126,7 +129,7 @@ namespace GammonX.DynamoDb.Items
 			var modusStr = Modus.ToString();
 			var typeStr = Type.ToString();
 			var wonOrLost = WonOrLost(Result);
-			return string.Format(factory.GSI1SKFormat, Id, variantStr, typeStr, modusStr, wonOrLost);
+			return string.Format(factory.GSI1SKFormat, variantStr, typeStr, modusStr, wonOrLost);
 		}
 
 		private static string WonOrLost(MatchResult result)

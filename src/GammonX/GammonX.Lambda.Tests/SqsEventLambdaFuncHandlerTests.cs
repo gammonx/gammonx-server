@@ -11,7 +11,7 @@ public class SqsEventLambdaFuncHandlerTests
 {
 	[Theory]
 	[InlineData(LambdaFunctions.PlayerRatingUpdatedFunc)]
-	[InlineData(LambdaFunctions.PlayerStatsUpdatedFunc)]
+	[InlineData(LambdaFunctions.PlayerCreatedFunc)]
 	public async Task TestSQSEventLambdaFunction(string funcName)
 	{
 		var sqsEvent = new SQSEvent

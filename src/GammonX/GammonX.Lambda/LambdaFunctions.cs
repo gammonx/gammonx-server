@@ -9,5 +9,7 @@
 		public const string PlayerRatingUpdatedFunc = "PLAYER_RATING_UPDATED";
 
 		public const string PlayerStatsUpdatedFunc = "PLAYER_STATS_UPDATED";
+
+		public const string PlayerCreatedFunc = "PLAYER_CREATED";
 	}
 }

@@ -53,11 +53,17 @@ No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
   "WinRate": 0.57,
   "WinStreak": 2,
   "LongestWinStreak": 5,
-  "TotalPlayTimeInMs": 99999,
-  "AverageMatchLengthInMs": 40000,
+  "TotalPlayTime": "{timeSpan}",
+  "AvgDuration": "{timeSpan}",
   "LastMatch": "{DateTime}",
   "MatchesLast7": 10,
-  "MatchesLast30Days": 15,
+  "MatchesLast30": 15,
+  "AvgGammons": "{int}",
+  "AvgBackgammons": "{int}",
+  "WAvgPipesLeft": "{int}",
+  "WAvgDoubleDices": "{int}",
+  "WAvgTurns": "{int}",
+  "WAvgDoubles": "{int}"
 }
 ```
 
@@ -79,7 +85,7 @@ We create two entries, one for the winner and one for the loser
   "Length": 3,
   "Result": "{MatchResult}",
   "GSI1PK": "PLAYER#123",
-  "GSI1SK": "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST}"
+  "GSI1SK": "MATCH#Backgammon#7PointGame#Ranked#{WON|LOST}"
 }
 ```
 
@@ -102,8 +108,15 @@ We create two entries, one for the winner and one for the loser
   "DiceDoubles": "{int}",
   "Result": "{GameResult}",
   "DoublingCubeValue": "{int?}",
+  "AvgPipesLeft": "{int}",
+  "AvgDoubleDices": "{double}",
+  "Gammons": "{int}",
+  "BackGammons": "{int}",
+  "AvgTurns": "{int}",
+  "AvgDuration": "{timeSpan}",
+  "AvgDoubles": "{double}",
   "GSI1PK": "PLAYER#123",
-  "GSI1SK": "GAME#456#Portes#{WON|LOST}"
+  "GSI1SK": "GAME#Portes#{WON|LOST}"
 }
 ```
 
@@ -154,18 +167,18 @@ We create two entries, one for the winner and one for the loser
 - Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#`
 
 ### Get all Matches of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#888#Backgammon#7PointGame#Ranked`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#Backgammon#7PointGame#Ranked`
 
 ### Get all Games of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#456#Portes`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#Portes`
 
 ### Get all lost/won Matches of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#888#Backgammon#7PointGame#Ranked#WON`
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#888#Backgammon#7PointGame#Ranked#LOST`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#7PointGame#Ranked#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#7PointGame#Ranked#LOST`
 
 ### Get all lost/won Games of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#888#Backgammon#7PointGame#Ranked#WON`
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#888#Backgammon#7PointGame#Ranked#LOST`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Backgammon#7PointGame#Ranked#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Backgammon#7PointGame#Ranked#LOST`
 
 ### Calculate Player Stats after Match/Game
 - Send Match/Game History in `MAT` format to SQS, trigger lambda and fill dynamo db table

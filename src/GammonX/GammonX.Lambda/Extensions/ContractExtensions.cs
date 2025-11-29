@@ -73,7 +73,7 @@ namespace GammonX.Lambda.Extensions
 				AvgPipesLeft = avgPipesLeft,
 				AvgTurns = avgTurns,
 				Gammons = gammons,
-				BackGammons = backGammons,
+				Backgammons = backGammons,
 				AvgDoubles = avgDoubles,
 			};
 			return matchItem;

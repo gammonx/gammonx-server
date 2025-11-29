@@ -67,11 +67,10 @@ namespace GammonX.DynamoDb.Repository
 		}
 
 		// <inheritdoc />
-		public async Task<IEnumerable<T>> GetItemsByGSIPK<T>(Guid gsi1PkId,string gsi1SK)
+		public async Task<IEnumerable<T>> GetItemsByGSIPK<T>(Guid gsi1PkId, string gsi1Sk)
 		{
 			var factory = ItemFactoryCreator.Create<T>();
 			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
-			var gsi1sk = string.Format(factory.GSI1SKFormat, gsi1SK);
 			var request = new QueryRequest
 			{
 				TableName = _tableName,
@@ -80,7 +79,7 @@ namespace GammonX.DynamoDb.Repository
 				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
 				{
 					{ ":gsi1pk", new AttributeValue(gsi1pk) },
-					{ ":gsi1sk", new AttributeValue(gsi1sk) }
+					{ ":gsi1sk", new AttributeValue(gsi1Sk) }
 				}
 			};
 			var response = await _client.QueryAsync(request);
