@@ -5,7 +5,9 @@
 ;[Started At '29/11/2025 09:33:37']
 ;[Ended At '29/11/2025 09:33:41']
 ;[Length '3']
-;[Game 'a8fd3971-2963-47bd-af88-e76fd9326fc4']
+;[Game 'c57e0961-02e7-4aac-857f-565e9d78db09']
+;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
+;[Player 2 Black Checkers 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Game Modus 'Portes']
 ;[Winner 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Points '1']
@@ -198,6 +200,8 @@ Black Roll 1 5
 Black Move 0/off
 
 ;[Game '3cf7ebbe-e0dd-4a2d-baa8-361014efa989']
+;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
+;[Player 2 Black Checkers 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Game Modus 'Plakoto']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '2']
@@ -504,6 +508,8 @@ White Move 23/off
 White Move 23/off
 
 ;[Game '48fb1a93-9c2b-4245-803b-8361be6c6838']
+;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
+;[Player 2 Black Checkers 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Game Modus 'Fevga']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '1']

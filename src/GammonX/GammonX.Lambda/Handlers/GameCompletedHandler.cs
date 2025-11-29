@@ -55,10 +55,10 @@ namespace GammonX.Lambda.Handlers
 			// create game history item
 			var gameHistory = gameRecord.ToGameHistory();
 			// parse game history and calculate some stats
-			var parserFactory = HistoryParserFactory.Create(gameHistory.Format);
-			var parsedGameHistory = parserFactory.Parse(gameHistory.Data);
+			var parserFactory = HistoryParserFactory.Create<IGameHistoryParser>(gameHistory.Format);
+			var parsedHistory = parserFactory.ParseGame(gameHistory.Data);
 			// create game item
-			var gameItem = gameRecord.ToGame(parsedGameHistory);
+			var gameItem = gameRecord.ToGame(parsedHistory);
 
 			await _repo.SaveAsync(gameItem);
 			// TODO: avoid writing history twice

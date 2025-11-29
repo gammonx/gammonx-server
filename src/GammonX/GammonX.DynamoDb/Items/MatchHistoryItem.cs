@@ -4,10 +4,10 @@ using GammonX.Models.Enums;
 
 namespace GammonX.DynamoDb.Items
 {
-	public class GameHistoryItem
+	public class MatchHistoryItem
 	{
 		/// <summary>
-		/// Gets a primary key like 'GAME#{gameId}'
+		/// Gets a primary key like 'MATCH#{matchId}'
 		/// </summary>
 		[DynamoDBHashKey("PK")]
 		public string PK => ConstructPK();
@@ -23,7 +23,7 @@ namespace GammonX.DynamoDb.Items
 		/// </summary>
 		public Guid Id { get; set; } = Guid.Empty;
 
-		public string ItemType { get; } = ItemTypes.GameHistoryItemType;
+		public string ItemType { get; } = ItemTypes.MatchHistoryItemType;
 
 		/// <summary>
 		/// Gets or sets the history in a string format.
@@ -37,13 +37,13 @@ namespace GammonX.DynamoDb.Items
 
 		private string ConstructPK()
 		{
-			var factory = new GameHistoryItemFactory();
+			var factory = new MatchHistoryItemFactory();
 			return string.Format(factory.PKFormat, Id);
 		}
 
 		private static string ConstructSK()
 		{
-			var factory = new GameHistoryItemFactory();
+			var factory = new MatchHistoryItemFactory();
 			return factory.SKFormat;
 		}
 	}

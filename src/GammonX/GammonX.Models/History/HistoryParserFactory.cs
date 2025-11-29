@@ -5,12 +5,12 @@ namespace GammonX.Models.History
 {
 	public static class HistoryParserFactory
 	{
-		public static IGameHistoryParser Create(HistoryFormat format)
+		public static T Create<T>(HistoryFormat format) where T : IHistoryParser
 		{
 			switch (format)
 			{
 				case HistoryFormat.MAT:
-					return new MatParser();
+					return (T)(IHistoryParser)new MATParser();
 				case HistoryFormat.Unknown:
 				default:
 					throw new InvalidOperationException($"The given format '{format}' is unknown");

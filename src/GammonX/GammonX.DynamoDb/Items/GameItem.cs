@@ -25,7 +25,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "GAME#{gameId}#Portes#{WON|LOST}")
+		/// Gets the global search index sort key. (e.g. "GAME#{gameId}#Portes#{WON|LOST|NOTFINISHED}")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
@@ -47,7 +47,7 @@ namespace GammonX.DynamoDb.Items
 		public int Points { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets the amount of turns played in the related game..
+		/// Gets or sets the amount of turns played in the related game by the given player.
 		/// </summary>
 		public int Length { get; set; } = 0;
 
@@ -86,7 +86,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructSK()
 		{
 			var factory = new GameItemFactory();
-			var wonOrLost = Result.HasWon() ? "WON" : "LOST";
+			var wonOrLost = WonOrLost(Result);
 			return string.Format(factory.SKFormat, Id, wonOrLost);
 		}
 
@@ -100,8 +100,18 @@ namespace GammonX.DynamoDb.Items
 		{
 			var factory = new GameItemFactory();
 			var modusStr = Modus.ToString();
-			var wonOrLost = Result.HasWon() ? "WON" : "LOST";
+			var wonOrLost = WonOrLost(Result);
 			return string.Format(factory.GSI1SKFormat, Id, modusStr, wonOrLost);
+		}
+
+		private static string WonOrLost(GameResult result)
+		{
+			var value = result.HasWon();
+			if (value.HasValue)
+			{
+				return value.Value ? "WON" : "LOST";
+			}
+			return "NOTFINISHED";
 		}
 	}
 }

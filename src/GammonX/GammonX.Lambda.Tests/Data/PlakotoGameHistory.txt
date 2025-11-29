@@ -1,0 +1,307 @@
+;[Game '3cf7ebbe-e0dd-4a2d-baa8-361014efa989']
+;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
+;[Player 2 Black Checkers 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
+;[Game Modus 'Plakoto']
+;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
+;[Points '2']
+;[Started At '29/11/2025 09:33:37']
+;[Ended At '29/11/2025 09:33:39']
+Black Roll 1 1 1 1
+Black Move 23/22
+Black Move 22/21
+Black Move 21/20
+Black Move 20/19
+White Roll 3 5
+White Move 0/3
+White Move 0/5
+Black Roll 4 4 4 4
+Black Move 19/15
+Black Move 15/11
+Black Move 11/7
+Black Move 7/3
+White Roll 2 2 2 2
+White Move 0/2
+White Move 0/2
+White Move 0/2
+White Move 0/2
+Black Roll 1 2
+Black Move 23/22
+Black Move 3/1
+White Roll 3 2
+White Move 0/3
+White Move 0/2
+Black Roll 1 4
+Black Move 22/21
+Black Move 21/17
+White Roll 6 1
+White Move 0/6
+White Move 0/1
+Black Roll 1 5
+Black Move 17/16
+Black Move 16/11
+White Roll 2 2 2 2
+White Move 0/2
+White Move 0/2
+White Move 0/2
+White Move 0/2
+Black Roll 2 3
+Black Move 11/9
+Black Move 9/6
+White Roll 4 1
+White Move 0/4
+White Move 1/2
+Black Roll 3 1
+Black Move 23/20
+Black Move 1/0
+White Roll 4 1
+White Move 3/7
+White Move 2/3
+Black Roll 4 1
+Black Move 20/16
+Black Move 6/5
+White Roll 5 5 5 5
+White Move 2/7
+White Move 2/7
+White Move 2/7
+White Move 2/7
+Black Roll 1 4
+Black Move 5/4
+Black Move 4/0
+White Roll 5 6
+White Move 2/7
+White Move 2/8
+Black Roll 1 3
+Black Move 16/15
+Black Move 15/12
+White Roll 5 1
+White Move 2/7
+White Move 2/3
+Black Roll 4 5
+Black Move 12/8
+Black Move 23/18
+White Roll 2 5
+White Move 2/4
+White Move 4/9
+Black Roll 2 2 2 2
+Black Move 8/6
+Black Move 6/4
+Black Move 4/2
+Black Move 2/0
+White Roll 1 6
+White Move 3/4
+White Move 3/9
+Black Roll 1 4
+Black Move 18/17
+Black Move 17/13
+White Roll 4 5
+White Move 3/7
+White Move 4/9
+Black Roll 5 2
+Black Move 13/8
+Black Move 8/6
+White Roll 1 4
+White Move 4/5
+White Move 5/9
+Black Roll 6 3
+Black Move 6/0
+Black Move 23/20
+White Roll 3 4
+White Move 5/8
+White Move 6/10
+Black Roll 3 1
+Black Move 20/17
+Black Move 17/16
+White Roll 1 4
+White Move 7/8
+White Move 7/11
+Black Roll 3 5
+Black Move 16/13
+Black Move 23/18
+White Roll 4 6
+White Move 7/11
+White Move 7/13
+Black Roll 4 2
+Black Move 18/14
+Black Move 14/12
+White Roll 2 1
+White Move 7/9
+White Move 7/8
+Black Roll 1 5
+Black Move 23/22
+Black Move 22/17
+White Roll 4 4 4 4
+White Move 7/11
+White Move 7/11
+White Move 8/12
+White Move 8/12
+Black Roll 4 2
+Black Move 23/19
+Black Move 17/15
+White Roll 1 1 1 1
+White Move 8/9
+White Move 8/9
+White Move 9/10
+White Move 9/10
+Black Roll 5 3
+Black Move 19/14
+Black Move 23/20
+White Roll 6 6 6 6
+White Move 9/15
+White Move 9/15
+White Move 9/15
+White Move 9/15
+Black Roll 3 4
+Black Move 20/17
+Black Move 23/19
+White Roll 2 6
+White Move 9/11
+White Move 10/16
+Black Roll 2 1
+Black Move 19/17
+Black Move 17/16
+White Roll 3 2
+White Move 10/13
+White Move 10/12
+Black Roll 4 6
+Black Move 14/10
+Black Move 10/4
+White Roll 5 5 5 5
+White Move 12/17
+White Move 12/17
+White Move 12/17
+White Move 13/18
+Black Roll 5 6
+Black Move 12/7
+Black Move 7/1
+White Roll 5 6
+White Move 13/18
+White Move 11/17
+Black Roll 5 5 5 5
+Black Move 13/8
+Black Move 8/3
+White Roll 1 2
+White Move 11/12
+White Move 11/13
+Black Roll 2 2 2 2
+Black Move 3/1
+Black Move 4/2
+Black Move 2/0
+Black Move 16/14
+White Roll 1 5
+White Move 11/12
+White Move 11/16
+Black Roll 1 3
+Black Move 1/0
+Black Move 14/11
+White Roll 3 3 3 3
+White Move 12/15
+White Move 12/15
+White Move 13/16
+White Move 15/18
+Black Roll 3 1
+Black Move 11/8
+Black Move 1/0
+White Roll 6 3
+White Move 15/21
+White Move 15/18
+Black Roll 3 3 3 3
+Black Move 8/5
+Black Move 5/2
+Black Move 23/20
+Black Move 23/20
+White Roll 1 4
+White Move 15/16
+White Move 15/19
+Black Roll 2 2 2 2
+Black Move 2/0
+Black Move 23/21
+Black Move 21/19
+Black Move 23/21
+White Roll 6 5
+White Move 16/22
+White Move 17/22
+Black Roll 5 6
+Black Move 19/14
+Black Move 14/8
+White Roll 5 5 5 5
+White Move 17/22
+White Move 17/22
+White Move 17/22
+White Move 18/23
+Black Roll 3 3 3 3
+Black Move 8/5
+Black Move 5/2
+Black Move 17/14
+Black Move 14/11
+White Roll 2 6
+White Move 15/17
+White Move 16/22
+Black Roll 3 3 3 3
+Black Move 11/8
+Black Move 8/5
+Black Move 5/2
+Black Move 15/12
+White Roll 6 3
+White Move 16/22
+White Move 16/19
+Black Roll 6 2
+Black Move 12/6
+Black Move 2/0
+White Roll 3 6
+White Move 19/22
+White Move 17/23
+Black Roll 2 1
+Black Move 2/0
+Black Move 6/5
+White Roll 3 3 3 3
+White Move 19/22
+Black Roll 4 4 4 4
+Black Move 5/1
+Black Move 20/16
+Black Move 16/12
+Black Move 12/8
+White Roll 5 2
+White Move 18/23
+White Move 18/20
+Black Roll 4 6
+Black Move 8/4
+Black Move 21/15
+White Roll 4 5
+White Move 18/22
+White Move 20/off
+Black Roll 1 2
+Black Move 1/0
+Black Move 4/2
+White Roll 5 3
+White Move 21/off
+White Move 22/off
+Black Roll 6 6 6 6
+Black Move 15/9
+Black Move 9/3
+Black Move 20/14
+Black Move 14/8
+White Roll 4 3
+White Move 22/off
+White Move 22/off
+Black Roll 6 3
+Black Move 8/2
+Black Move 3/0
+White Roll 6 6 6 6
+White Move 22/off
+White Move 22/off
+White Move 22/off
+White Move 22/off
+Black Roll 1 3
+Black Move 2/1
+White Roll 4 3
+White Move 22/off
+White Move 22/off
+Black Roll 2 2 2 2
+Black Move 2/0
+White Roll 4 6
+White Move 22/off
+White Move 23/off
+Black Roll 2 4
+White Roll 6 6 6 6
+White Move 23/off
+White Move 23/off

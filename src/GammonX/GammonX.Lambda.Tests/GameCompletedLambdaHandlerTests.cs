@@ -16,7 +16,7 @@ namespace GammonX.Lambda.Tests
 		[Fact]
 		public async Task OnGameCompletedEventTest()
 		{
-			var gameId = Guid.NewGuid();
+			var gameId = Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09");
 			// player ids must match with the game history
 			var player1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
 			var player2Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
@@ -28,11 +28,6 @@ namespace GammonX.Lambda.Tests
 			{
 				Id = gameId,
 				PlayerId = player1Id,
-				StartedAt = DateTime.UtcNow,
-				EndedAt = DateTime.UtcNow.AddHours(1),
-				Length = 55,
-				Modus = Models.Enums.GameModus.Portes,
-				Points = 7,
 				Result = Models.Enums.GameResult.Single,
 				DoublingCubeValue = null,
 				PipesLeft = 0,
@@ -43,11 +38,6 @@ namespace GammonX.Lambda.Tests
 			{
 				Id = gameId,
 				PlayerId = player2Id,
-				StartedAt = DateTime.UtcNow,
-				EndedAt = DateTime.UtcNow.AddHours(1),
-				Length = 55,
-				Modus = Models.Enums.GameModus.Portes,
-				Points = 5,
 				Result = Models.Enums.GameResult.Lost,
 				DoublingCubeValue = null,
 				PipesLeft = 55,

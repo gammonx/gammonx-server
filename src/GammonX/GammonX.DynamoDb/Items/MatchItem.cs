@@ -8,16 +8,6 @@ namespace GammonX.DynamoDb.Items
 {
 	public class MatchItem
 	{
-		public const string PKFormat = "MATCH#{0}";
-		public const string SKFormat = "DETAILS#{0}";
-		public const string SKPrefix = "DETAILS#";
-		public const string GSI1PKFormat = "PLAYER#{0}";
-		/// <summary>
-		/// Format for GSI1SK like 'MATCH#888#Backgammon#7PointGame#Ranked#{WINNER|LOSER}'
-		/// </summary>
-		public const string GSI1SKFormat = "MATCH#{0}#{1}#{2}#{3}#{4}";
-		public const string GSI1SKPrefix = "MATCH#";
-
 		/// <summary>
 		/// Gets a primary key like 'MATCH#{matchId}'
 		/// </summary>
@@ -37,7 +27,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST}")
+		/// Gets the global search index sort key. (e.g. "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST|NOTFINISHED}")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
@@ -71,34 +61,82 @@ namespace GammonX.DynamoDb.Items
 
 		public DateTime EndedAt { get; set; } = DateTime.UtcNow;
 
+		public MatchResult Result { get; set; } = MatchResult.Unknown;
+
 		/// <summary>
-		/// Gets or sets a boolean if the given match item relates to the winner or loser of the match.
+		/// Gets or sets the average pipes left for the games which were lost.
 		/// </summary>
-		public bool Won { get; set; } = false;
+		public double AvgPipesLeft { get; set; } = 0;
+
+		public double AvgDoubleDices { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the amount of <see cref="GameResult.Gammon"/> wins.
+		/// </summary>
+		public int Gammons { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the amount of <see cref="GameResult.Backgammon"/> wins.
+		/// </summary>
+		public int BackGammons { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the average turns per game.
+		/// </summary>
+		public int AvgTurns { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the average game duration.
+		/// </summary>
+		public TimeSpan AvgDuration { get; set; } = TimeSpan.Zero;
+
+		/// <summary>
+		/// Gets the duration of the match.
+		/// </summary>
+		public TimeSpan Duration { get; set; } = TimeSpan.Zero;
+
+		/// <summary>
+		/// Gets the average amount of doubling cube offers.
+		/// </summary>
+		public double AvgDoubles { get; set; } = 0;
 
 		private string ConstructPK()
 		{
-			return string.Format(PKFormat, Id);
+			var factory = new MatchItemFactory();
+			return string.Format(factory.PKFormat, Id);
 		}
 
 		private string ConstructSK()
 		{
-			var wonOrLost = Won ? "WON" : "LOST";
-			return string.Format(SKFormat, wonOrLost);
+			var factory = new MatchItemFactory();
+			var wonOrLost = WonOrLost(Result);
+			return string.Format(factory.SKFormat, wonOrLost);
 		}
 
 		private string ConstructGS1PK()
 		{
-			return string.Format(GSI1PKFormat, PlayerId);
+			var factory = new MatchItemFactory();
+			return string.Format(factory.GSI1PKFormat, PlayerId);
 		}
 
 		private string ConstructGS1SK()
 		{
+			var factory = new MatchItemFactory();
 			var variantStr = Variant.ToString();
 			var modusStr = Modus.ToString();
 			var typeStr = Type.ToString();
-			var wonOrLost = Won ? "WON" : "LOST";
-			return string.Format(GSI1SKFormat, Id, variantStr, typeStr, modusStr, wonOrLost);
+			var wonOrLost = WonOrLost(Result);
+			return string.Format(factory.GSI1SKFormat, Id, variantStr, typeStr, modusStr, wonOrLost);
+		}
+
+		private static string WonOrLost(MatchResult result)
+		{
+			var value = result.HasWon();
+			if (value.HasValue)
+			{
+				return value.Value ? "WON" : "LOST";
+			}
+			return "NOTFINISHED";
 		}
 	}
 }

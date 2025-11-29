@@ -77,7 +77,7 @@ We create two entries, one for the winner and one for the loser
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
   "Length": 3,
-  "Won": true,
+  "Result": "{MatchResult}",
   "GSI1PK": "PLAYER#123",
   "GSI1SK": "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST}"
 }
@@ -94,14 +94,13 @@ We create two entries, one for the winner and one for the loser
   "PlayerId": "PLAYER#123",
   "Points": 7,
   "Length": 55,
-  "Won": true,
   "Modus": "Portes",
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
   "Duration": "{TimeSpan}",
   "PipesLeft": "{int}",
   "DiceDoubles": "{int}",
-  "GameResult": "{GameResult}",
+  "Result": "{GameResult}",
   "DoublingCubeValue": "{int?}",
   "GSI1PK": "PLAYER#123",
   "GSI1SK": "GAME#456#Portes#{WON|LOST}"

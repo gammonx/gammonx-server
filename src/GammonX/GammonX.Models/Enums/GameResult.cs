@@ -30,7 +30,7 @@
 
 	public static class GameResultExtensions
 	{
-		public static bool HasWon(this GameResult gameResult)
+		public static bool? HasWon(this GameResult gameResult)
 		{
 			switch (gameResult)
 			{
@@ -43,7 +43,7 @@
 					return false;
 				case GameResult.Unknown:
 				default:
-					throw new InvalidOperationException($"Unable to determine the game result for '{gameResult}'");
+					return null;
 			}
 		}
 	}

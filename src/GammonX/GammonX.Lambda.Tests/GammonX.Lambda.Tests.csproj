@@ -18,6 +18,12 @@
     <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Data\FevgaGameHistory.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\PlakotoGameHistory.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Data\PortesGameHistory.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

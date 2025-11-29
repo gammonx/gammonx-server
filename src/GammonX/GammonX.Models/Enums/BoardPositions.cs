@@ -1,11 +1,9 @@
-﻿namespace GammonX.Engine.Models
+﻿namespace GammonX.Models.Enums
 {
-	// TODO: migrate to models copy
-
 	/// <summary>
 	/// Contains well-known board positions for different game modes.
 	/// </summary>
-	public static class WellKnownBoardPositions
+	public static class BoardPositions
 	{
 		/// <summary>
 		/// Gets the well known <c>to</c> value for bearing off white legal move tuples.
