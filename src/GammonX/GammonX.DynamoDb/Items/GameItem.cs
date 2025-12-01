@@ -79,27 +79,27 @@ namespace GammonX.DynamoDb.Items
 
 		private string ConstructPK()
 		{
-			var factory = new GameItemFactory();
-			return string.Format(factory.PKFormat, Id);
+			var factory = ItemFactoryCreator.Create<GameItem>();
+            return string.Format(factory.PKFormat, Id);
 		}
 
 		private string ConstructSK()
 		{
-			var factory = new GameItemFactory();
-			var wonOrLost = WonOrLost(Result);
+			var factory = ItemFactoryCreator.Create<GameItem>();
+            var wonOrLost = WonOrLost(Result);
 			return string.Format(factory.SKFormat, Id, wonOrLost);
 		}
 
 		private string ConstructGS1PK()
 		{
-			var factory = new GameItemFactory();
-			return string.Format(factory.GSI1PKFormat, PlayerId);
+			var factory = ItemFactoryCreator.Create<GameItem>();
+            return string.Format(factory.GSI1PKFormat, PlayerId);
 		}
 
 		private string ConstructGS1SK()
 		{
-			var factory = new GameItemFactory();
-			var modusStr = Modus.ToString();
+			var factory = ItemFactoryCreator.Create<GameItem>();
+            var modusStr = Modus.ToString();
 			var wonOrLost = WonOrLost(Result);
 			return string.Format(factory.GSI1SKFormat, modusStr, wonOrLost);
 		}

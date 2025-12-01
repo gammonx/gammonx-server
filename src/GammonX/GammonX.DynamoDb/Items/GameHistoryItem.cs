@@ -37,14 +37,14 @@ namespace GammonX.DynamoDb.Items
 
 		private string ConstructPK()
 		{
-			var factory = new GameHistoryItemFactory();
+			var factory = ItemFactoryCreator.Create<GameHistoryItem>();
 			return string.Format(factory.PKFormat, Id);
 		}
 
 		private static string ConstructSK()
 		{
-			var factory = new GameHistoryItemFactory();
-			return factory.SKFormat;
+			var factory = ItemFactoryCreator.Create<GameHistoryItem>();
+            return factory.SKFormat;
 		}
 	}
 }

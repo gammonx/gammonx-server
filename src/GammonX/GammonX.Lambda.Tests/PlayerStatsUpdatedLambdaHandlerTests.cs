@@ -1,9 +1,12 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
 using Newtonsoft.Json;
+
 using Xunit;
 
 namespace GammonX.Lambda.Tests
@@ -11,7 +14,7 @@ namespace GammonX.Lambda.Tests
 	public class PlayerStatsUpdatedLambdaHandlerTests
 	{
 		[Fact]
-		public async Task OnMatchCompletedEventTest()
+		public async Task OnPlayerStatsUpdatedEventTest()
 		{
 			var parser = HistoryParserFactory.Create<IGameHistoryParser>(Models.Enums.HistoryFormat.MAT);
 

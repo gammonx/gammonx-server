@@ -29,13 +29,24 @@ namespace GammonX.Lambda.Handlers
 		}
 
 		// <inheritdoc />
-		public async Task HandleAsync(SQSEvent evnt, ILambdaContext context)
+		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			foreach (var message in evnt.Records)
-			{				
-				await ProcessMessageAsync(message, context);
-			}
-		}
+			try
+			{
+                foreach (var message in @event.Records)
+                {
+                    await ProcessMessageAsync(message, context);
+                }
+            }
+            catch (Exception ex)
+            {
+                foreach (var record in @event.Records)
+                {
+                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
+
+                }
+            }
+        }
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{

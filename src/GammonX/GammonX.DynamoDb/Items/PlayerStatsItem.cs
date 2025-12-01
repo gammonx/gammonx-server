@@ -103,14 +103,14 @@ namespace GammonX.DynamoDb.Items
 
 		private string ConstructPK()
 		{
-			var factory = new PlayerStatsItemFactory();
-			return string.Format(factory.PKFormat, PlayerId);
+			var factory = ItemFactoryCreator.Create<PlayerStatsItem>();
+            return string.Format(factory.PKFormat, PlayerId);
 		}
 
 		private string ConstructSK()
 		{
-			var factory = new PlayerStatsItemFactory();
-			return string.Format(factory.SKFormat, Variant, Type, Modus);
+			var factory = ItemFactoryCreator.Create<PlayerStatsItem>();
+            return string.Format(factory.SKFormat, Variant, Type, Modus);
 		}
 	}
 }

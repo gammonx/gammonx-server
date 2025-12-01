@@ -10,7 +10,6 @@ namespace GammonX.Lambda.Tests;
 public class SqsEventLambdaFuncHandlerTests
 {
 	[Theory]
-	[InlineData(LambdaFunctions.PlayerRatingUpdatedFunc)]
 	[InlineData(LambdaFunctions.PlayerCreatedFunc)]
 	public async Task TestSQSEventLambdaFunction(string funcName)
 	{

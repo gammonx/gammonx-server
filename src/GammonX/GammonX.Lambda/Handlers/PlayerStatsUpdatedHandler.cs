@@ -1,10 +1,14 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
+
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
+
 using GammonX.Lambda.Extensions;
+
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
 using Newtonsoft.Json;
 
 namespace GammonX.Lambda.Handlers
@@ -26,13 +30,24 @@ namespace GammonX.Lambda.Handlers
 		}
 
 		// <inheritdoc />
-		public async Task HandleAsync(SQSEvent evnt, ILambdaContext context)
+		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			foreach (var message in evnt.Records)
+			try
 			{
-				await ProcessMessageAsync(message, context);
-			}
-		}
+                foreach (var message in @event.Records)
+                {
+                    await ProcessMessageAsync(message, context);
+                }
+            }
+            catch (Exception ex)
+            {
+                foreach (var record in @event.Records)
+                {
+                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
+
+                }
+            }
+        }
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
@@ -58,7 +73,7 @@ namespace GammonX.Lambda.Handlers
 			var typeStr = matchRecord.Type.ToString();
 			var modusStr = matchRecord.Modus.ToString();
 			var matchGsiSk = string.Format(matchItemFactory.GSI1SKAllFormat, variantStr, typeStr, modusStr);
-			var playerMatches = (await _repo.GetItemsByGSIPK<MatchItem>(newMatchId, matchGsiSk)).ToList();
+			var playerMatches = (await _repo.GetItemsByGSIPKAsync<MatchItem>(newMatchId, matchGsiSk)).ToList();
 
 			// we check if the finished match was already posted to the db
 			if (!playerMatches.Any(pm => pm.Id.Equals(matchRecord.Id)))

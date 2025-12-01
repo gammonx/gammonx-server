@@ -48,6 +48,7 @@ namespace GammonX.Lambda
 			services.AddKeyedTransient<ISqsLambdaHandler, GameCompletedHandler>(LambdaFunctions.GameCompletedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerRatingUpdatedHandler>(LambdaFunctions.PlayerRatingUpdatedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerStatsUpdatedHandler>(LambdaFunctions.PlayerStatsUpdatedFunc);
+			services.AddKeyedTransient<ISqsLambdaHandler, PlayerCreateHandler>(LambdaFunctions.PlayerCreatedFunc);
 			// -------------------------------------------------------------------------------
 			// DATABASE SETUP
 			// -------------------------------------------------------------------------------

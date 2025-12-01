@@ -26,7 +26,7 @@ namespace GammonX.DynamoDb.Repository
 		#region Generic ItemType
 
 		// <inheritdoc />
-		public async Task<IEnumerable<T>> GetItems<T>(Guid pkId)
+		public async Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId)
 		{
 			var factory = ItemFactoryCreator.Create<T>();			
 			var pk = string.Format(factory.PKFormat, pkId);
@@ -45,8 +45,32 @@ namespace GammonX.DynamoDb.Repository
 			return response.Items.Select(factory.CreateItem);
 		}
 
-		// <inheritdoc />
-		public async Task<IEnumerable<T>> GetItemsByGSIPK<T>(Guid gsi1PkId)
+        // <inheritdoc />
+        public async Task<T?> GetItemAsync<T>(Guid pkId, string sk)
+        {
+            var factory = ItemFactoryCreator.Create<T>();
+            var pk = string.Format(factory.PKFormat, pkId);
+            var request = new QueryRequest
+            {
+                TableName = _tableName,
+                KeyConditionExpression = "PK = :pk and begins_with(SK, :skPrefix)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    { ":pk", new AttributeValue(pk) },
+                    { ":skPrefix", new AttributeValue(sk) }
+                }
+            };
+            var response = await _client.QueryAsync(request);
+			var result = response.Items.FirstOrDefault();
+			if (result != null)
+			{
+                return factory.CreateItem(result);
+            }
+            return default;
+        }
+
+        // <inheritdoc />
+        public async Task<IEnumerable<T>> GetItemsByGSIPKAsync<T>(Guid gsi1PkId)
 		{
 			var factory = ItemFactoryCreator.Create<T>();
 			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
@@ -67,7 +91,7 @@ namespace GammonX.DynamoDb.Repository
 		}
 
 		// <inheritdoc />
-		public async Task<IEnumerable<T>> GetItemsByGSIPK<T>(Guid gsi1PkId, string gsi1Sk)
+		public async Task<IEnumerable<T>> GetItemsByGSIPKAsync<T>(Guid gsi1PkId, string gsi1Sk)
 		{
 			var factory = ItemFactoryCreator.Create<T>();
 			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
@@ -163,7 +187,7 @@ namespace GammonX.DynamoDb.Repository
 			var sk = PlayerItem.SKValue;
 
 			// delete player rating items
-			var playerRatings = await GetRatingsAsync(playerId);
+			var playerRatings = await GetItemsAsync<PlayerRatingItem>(playerId);
 			foreach (var rating in playerRatings)
 			{
 				var deleteRatingKey = new Dictionary<string, AttributeValue>
@@ -178,7 +202,7 @@ namespace GammonX.DynamoDb.Repository
 				};
 				await _client.DeleteItemAsync(deleteRatingRequest);
 			}
-			var playerMatches = await GetItemsByGSIPK<MatchItem>(playerId);
+			var playerMatches = await GetItemsByGSIPKAsync<MatchItem>(playerId);
 			foreach (var match in playerMatches)
 			{
 				var deleteMatchKey = new Dictionary<string, AttributeValue>
@@ -210,71 +234,5 @@ namespace GammonX.DynamoDb.Repository
 		}
 
 		#endregion Player ItemType
-
-		#region PlayerRating ItemType
-
-		// TODO: move player rating to generic
-
-		// <inheritdoc />
-		public async Task<IEnumerable<PlayerRatingItem>> GetRatingsAsync(Guid playerId)
-		{
-			var pk = string.Format(PlayerRatingItem.PKFormat, playerId.ToString());
-			var sk = PlayerRatingItem.SKPrefix;
-			var request = new QueryRequest
-			{
-				TableName = _tableName,
-				KeyConditionExpression = "PK = :pk and begins_with(SK, :ratingPrefix)",
-				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-				{
-					{ ":pk", new AttributeValue(pk) },
-					{ ":ratingPrefix", new AttributeValue(sk) }
-				}
-			};
-
-			var response = await _client.QueryAsync(request);
-
-			return response.Items.Select(item => new PlayerRatingItem
-			{
-				PlayerId = Guid.Parse(item["Id"].S),
-				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
-				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
-				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
-				Rating = int.Parse(item["Rating"].N),
-				HighestRating = int.Parse(item["HighestRating"].N),
-				LowestRating = int.Parse(item["LowestRating"].N)
-			});
-		}
-
-		// <inheritdoc />
-		public async Task SaveAsync(PlayerRatingItem playerRating)
-		{
-			var variantStr = playerRating.Variant.ToString();
-			var modusStr = playerRating.Modus.ToString();
-			var typeStr = playerRating.Type.ToString();
-			var pk = string.Format(PlayerRatingItem.PKFormat, playerRating.PlayerId);
-			var sk = string.Format(PlayerRatingItem.SKFormat, variantStr);
-			var item = new Dictionary<string, AttributeValue>
-			{
-				{ "PK", new AttributeValue(pk) },
-				{ "SK", new AttributeValue(sk) },
-				{ "Id", new AttributeValue(playerRating.PlayerId.ToString()) },
-				{ "ItemType", new AttributeValue(ItemTypes.PlayerRatingItemType) },
-				{ "Variant", new AttributeValue(variantStr) },
-				{ "Modus", new AttributeValue(modusStr) },
-				{ "Type", new AttributeValue(typeStr) },
-				{ "Rating", new AttributeValue() { N = playerRating.Rating.ToString() } },
-				{ "HighestRating", new AttributeValue() { N = playerRating.HighestRating.ToString() } },
-				{ "LowestRating", new AttributeValue() { N = playerRating.LowestRating.ToString() } }
-			};
-
-			var request = new PutItemRequest
-			{
-				TableName = _tableName,
-				Item = item
-			};
-			await _client.PutItemAsync(request);
-		}
-
-		#endregion PlayerRating ItemType
 	}
 }

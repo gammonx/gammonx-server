@@ -457,8 +457,13 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public IGameSessionModel? GetGameSession(int gameRound)
 		{
-			var existingSession = _gameSessions[gameRound - 1];
-			return existingSession;
+			var targetIndex = gameRound - 1;
+            if (targetIndex < _gameSessions.Length)
+            {
+                var existingSession = _gameSessions[targetIndex];
+                return existingSession;
+            }
+			return null;
 		}
 
 		// <inheritdoc />

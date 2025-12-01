@@ -31,9 +31,11 @@ No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
   "Variant": "Backgammon",
   "Type": "7PointGame",
   "Modus": "Ranked",
-  "Rating": 1640,
-  "LowestRating": 1200,
-  "HighestRating": 1800
+  "Rating": "{double}",
+  "RatingDeviation": "{double}",
+  "Sigma": "{double}",
+  "LowestRating": "{double}",
+  "HighestRating": "{double}"
 }
 ```
 

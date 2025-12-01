@@ -1,16 +1,14 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
+
+using GammonX.DynamoDb.Stats;
+
 using GammonX.Models.Enums;
+using System.Text.RegularExpressions;
 
 namespace GammonX.DynamoDb.Items
 {
 	public class PlayerRatingItem
 	{
-		public const string PKFormat = "PLAYER#{0}";
-
-		public const string SKFormat = "RATING#{0}";
-
-		public const string SKPrefix = "RATING#";
-
 		/// <summary>
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
@@ -36,20 +34,49 @@ namespace GammonX.DynamoDb.Items
 
 		public Models.Enums.MatchType Type { get; set; } = Models.Enums.MatchType.Unknown;
 
-		public int Rating { get; set; } = 1200;
+        /// <summary>
+        /// Gets or sets the ordinary rating of the player for the given variant/modus/type.
+        /// </summary>
+        public double Rating { get; set; } = Glicko2Constants.DefaultRating;
 
-		public int HighestRating { get; set; } = 1200;
+        /// <summary>
+        /// Gets or sets the rating deviation of the player for the given variant/modus/type.
+        /// </summary>
+        /// <remarks>
+        /// Asks on how uncertain is the rating?
+        /// RD ranges:
+		/// - Low RD (trusted rating): 30–80
+		/// - Medium RD: 80–150
+		/// - High RD(not enough recent games): 150–350
+		/// RD increases automatically when inactive (because uncertainty grows).
+		/// </remarks>
+        public double RatingDeviation { get; set; } = Glicko2Constants.DefaultRD;
 
-		public int LowestRating { get; set; } = 1200;
+        /// <summary>
+        /// Gets or sets the volatility of the player for the given variant/modus/type.
+        /// </summary>
+		/// <remarks>
+		/// Asks on how How swingy is the player?
+		/// A player who is inconsistent, has unpredictable results and changes performance quickly
+		/// gets higher volatility and allows bigger rating changes.
+		/// A stable consistent player gets lower volatility and small rating changes.
+		/// </remarks>
+        public double Sigma { get; set; } = Glicko2Constants.DefaultSigma;
+
+        public double HighestRating { get; set; } = Glicko2Constants.DefaultRating;
+
+		public double LowestRating { get; set; } = Glicko2Constants.DefaultRating;
 
 		private string ConstructPK()
 		{
-			return string.Format(PKFormat, PlayerId);
+			var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
+			return string.Format(factory.PKFormat, PlayerId);
 		}
 
 		private string ConstructSK()
 		{
-			return string.Format(SKFormat, Variant);
+            var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            return string.Format(factory.SKFormat, Variant);
 		}
 	}
 }

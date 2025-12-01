@@ -2,6 +2,14 @@
 using Amazon.Lambda.SQSEvents;
 
 using GammonX.DynamoDb.Repository;
+using GammonX.DynamoDb.Services;
+
+using GammonX.Lambda.Extensions;
+
+using GammonX.Models.Contracts;
+using GammonX.Models.History;
+
+using Newtonsoft.Json;
 
 namespace GammonX.Lambda.Handlers
 {
@@ -22,18 +30,57 @@ namespace GammonX.Lambda.Handlers
 		}
 
 		// <inheritdoc />
-		public async Task HandleAsync(SQSEvent evnt, ILambdaContext context)
+		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			foreach (var message in evnt.Records)
+			try
 			{
-				await ProcessMessageAsync(message, context);
+                // we expect exactly to match records, one for the winner and one for the loser
+                if (@event.Records.Count == 2)
+                {
+                    context.Logger.LogInformation($"Processing message with id '{@event.Records[0].MessageId}'");
+                    context.Logger.LogInformation($"Processing message with id '{@event.Records[1].MessageId}'");
+                    var matchRecords = @event.Records.Select(r => JsonConvert.DeserializeObject<MatchRecordContract>(r.Body));
+                    var wonMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Won);
+                    var lostMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Lost);
+                    foreach (var record in matchRecords)
+					{
+                        await ProcessMessageAsync(record?.PlayerId, wonMatch, lostMatch);
+                    }
+                    context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch?.PlayerId}' after match '{wonMatch?.Id}'");
+                    context.Logger.LogInformation($"Processed rating update for player with id '{lostMatch?.PlayerId}' after match '{lostMatch?.Id}'");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects exactle two match records.");
+                }
+            }
+			catch (Exception ex) 
+			{
+				foreach (var record in @event.Records)
+				{
+					context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
+
+                }
 			}
 		}
 
-		private static async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
+		private async Task ProcessMessageAsync(Guid? playerId, MatchRecordContract? wonMatch, MatchRecordContract? lostMatch)
 		{
-			context.Logger.LogInformation($"Processed message {message.Body}");
-			await Task.CompletedTask;
+			ArgumentNullException.ThrowIfNull(wonMatch, nameof(wonMatch));
+			ArgumentNullException.ThrowIfNull(lostMatch, nameof(lostMatch));
+            ArgumentNullException.ThrowIfNull(playerId, nameof(playerId));
+
+            var wonMatchHistory = wonMatch.ToMatchHistory();
+			var wonParser = HistoryParserFactory.Create<IMatchHistoryParser>(wonMatchHistory.Format);
+			var wonParsedHistory = wonParser.ParseMatch(wonMatchHistory.Data);
+			var wonMatchItem = wonMatch.ToMatch(wonParsedHistory);
+
+            var lostMatchHistory = lostMatch.ToMatchHistory();
+            var lostParser = HistoryParserFactory.Create<IMatchHistoryParser>(lostMatchHistory.Format);
+            var lostParsedHistory = lostParser.ParseMatch(lostMatchHistory.Data);
+            var lostMatchItem = lostMatch.ToMatch(lostParsedHistory);
+
+            await _repo.UpdatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
 		}
 	}
 }

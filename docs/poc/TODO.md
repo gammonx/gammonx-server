@@ -13,6 +13,7 @@
     - unit tests dynamo db layer // item typess
     - test data
     - unit tests stat calculation 
+    - unit tests rating calculation (Glicko2)
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto
