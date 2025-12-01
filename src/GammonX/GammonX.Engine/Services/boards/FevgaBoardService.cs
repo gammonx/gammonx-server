@@ -212,22 +212,22 @@ namespace GammonX.Engine.Services
 			var clone = board.DeepClone();
 			if (isWhite)
 			{
-				if (from != WellKnownBoardPositions.HomeBarWhite)
+				if (from != BoardPositions.HomeBarWhite)
 				{
 					clone.Fields[from] = clone.Fields[from] + 1;
 				}
-				if (to != WellKnownBoardPositions.BearOffWhite)
+				if (to != BoardPositions.BearOffWhite)
 				{
 					clone.Fields[to] = clone.Fields[to] - 1;
 				}
 			}
 			else
 			{
-				if (from != WellKnownBoardPositions.HomeBarBlack)
+				if (from != BoardPositions.HomeBarBlack)
 				{
 					clone.Fields[from] = clone.Fields[from] - 1;
 				}
-				if (to != WellKnownBoardPositions.BearOffBlack)
+				if (to != BoardPositions.BearOffBlack)
 				{
 					clone.Fields[to] = clone.Fields[to] + 1;
 				}

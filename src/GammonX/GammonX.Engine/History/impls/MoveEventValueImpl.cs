@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Enums;
 
 namespace GammonX.Engine.History
 {
@@ -29,11 +29,11 @@ namespace GammonX.Engine.History
 
 		private static string Convert(int position)
 		{
-			if (position == WellKnownBoardPositions.BearOffWhite || position == WellKnownBoardPositions.BearOffBlack)
+			if (position == BoardPositions.BearOffWhite || position == BoardPositions.BearOffBlack)
 			{
 				return "off";
 			}
-			if (position == WellKnownBoardPositions.HomeBarWhite || position == WellKnownBoardPositions.HomeBarBlack)
+			if (position == BoardPositions.HomeBarWhite || position == BoardPositions.HomeBarBlack)
 			{
 				return "bar";
 			}

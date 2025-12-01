@@ -473,7 +473,7 @@ namespace GammonX.Server.Tests
 			await Task.Delay(1500);
 
 			// player 1 moves first checker and wins the first game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, WellKnownBoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
 
 			await Task.Delay(500);
 
@@ -489,7 +489,7 @@ namespace GammonX.Server.Tests
 			await Task.Delay(1500);
 
 			// player 1 moves first checker and wins the second game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, WellKnownBoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
 
 			await Task.Delay(500);
 
@@ -505,7 +505,7 @@ namespace GammonX.Server.Tests
 			await Task.Delay(1500);
 
 			// player 1 moves first checker and wins the third game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, WellKnownBoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
 
 			// match ended
 			await Task.Delay(500);

@@ -260,11 +260,11 @@ namespace GammonX.Server.Bot
 			{
 				if (isWhite)
 				{
-					play.From = WellKnownBoardPositions.HomeBarWhite;
+					play.From = BoardPositions.HomeBarWhite;
 				}
 				else
 				{
-					play.From = WellKnownBoardPositions.HomeBarBlack;
+					play.From = BoardPositions.HomeBarBlack;
 				}
 			}
 			else
@@ -277,11 +277,11 @@ namespace GammonX.Server.Bot
 			{
 				if (isWhite)
 				{
-					play.To = WellKnownBoardPositions.BearOffWhite;
+					play.To = BoardPositions.BearOffWhite;
 				}
 				else
 				{
-					play.To = WellKnownBoardPositions.BearOffBlack;
+					play.To = BoardPositions.BearOffBlack;
 				}
 			}
 			else
@@ -294,12 +294,12 @@ namespace GammonX.Server.Bot
 			{
 				int convertedFrom = play.From;
 				int convertedTo = play.To;
-				if (play.From != WellKnownBoardPositions.HomeBarBlack && play.From != WellKnownBoardPositions.HomeBarWhite)
+				if (play.From != BoardPositions.HomeBarBlack && play.From != BoardPositions.HomeBarWhite)
 				{
 					// we need to invert the play for the white checkers perspective
 					convertedFrom = (maxFieldIndex) - play.From;
 				}
-				if (play.To != WellKnownBoardPositions.BearOffBlack && play.To != WellKnownBoardPositions.BearOffWhite)
+				if (play.To != BoardPositions.BearOffBlack && play.To != BoardPositions.BearOffWhite)
 				{
 					// we need to invert the play for the white checkers perspective
 					convertedTo = (maxFieldIndex) - play.To;

@@ -151,7 +151,7 @@ namespace GammonX.Engine.Services
 		protected virtual void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
 		{
 			// ignore undo last moves here
-			if (to == WellKnownBoardPositions.HomeBarWhite || to == WellKnownBoardPositions.HomeBarBlack)
+			if (to == BoardPositions.HomeBarWhite || to == BoardPositions.HomeBarBlack)
 				return;
 
 			// we know that the opponents checker can be hit, otherwise the move could not have been made
@@ -217,9 +217,9 @@ namespace GammonX.Engine.Services
 		/// <returns>Boolean indicating if the to position bears off.</returns>
 		protected virtual bool IsBearOffMove(IBoardModel model, int to, bool isWhite)
 		{
-			if (isWhite && to == WellKnownBoardPositions.BearOffWhite)
+			if (isWhite && to == BoardPositions.BearOffWhite)
 				return true;
-			if (!isWhite && to == WellKnownBoardPositions.BearOffBlack)
+			if (!isWhite && to == BoardPositions.BearOffBlack)
 				return true;
 			return false;
 		}
@@ -289,7 +289,7 @@ namespace GammonX.Engine.Services
 					// remove a negative checker from the old position
 					model.Fields.SetValue(model.Fields[from] += 1, from);
 					// check if its an undo move back to the homebar
-					if (to == WellKnownBoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
+					if (to == BoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
 					{
 						homeBarModel.AddToHomeBar(isWhite, 1);
 					}
@@ -313,7 +313,7 @@ namespace GammonX.Engine.Services
 					// remove a positive checker from the old position
 					model.Fields.SetValue(model.Fields[from] -= 1, from);
 					// check if its an undo move back to the homebar
-					if (to == WellKnownBoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
+					if (to == BoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
 					{
 						homeBarModel.AddToHomeBar(isWhite, 1);
 					}
@@ -330,7 +330,7 @@ namespace GammonX.Engine.Services
 		{
 			if (isWhite)
 			{
-				if (to == WellKnownBoardPositions.BearOffWhite)
+				if (to == BoardPositions.BearOffWhite)
 				{
 					// we remove a negative checker from the old position
 					model.Fields.SetValue(model.Fields[from] += 1, from);
@@ -341,7 +341,7 @@ namespace GammonX.Engine.Services
 			}
 			else
 			{
-				if (to == WellKnownBoardPositions.BearOffBlack)
+				if (to == BoardPositions.BearOffBlack)
 				{
 					// we remove a positive checker from the old position
 					model.Fields.SetValue(model.Fields[from] -= 1, from);
@@ -437,7 +437,7 @@ namespace GammonX.Engine.Services
 			{
 				if (CanBearOffChecker(shadowBoard, from, diceRoll, isWhite))
 				{
-					int to = isWhite ? WellKnownBoardPositions.BearOffWhite : WellKnownBoardPositions.BearOffBlack;
+					int to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
 					moves.Add(new MoveModel(from, to));
 				}
 				else if (CanMoveChecker(shadowBoard, from, diceRoll, isWhite))

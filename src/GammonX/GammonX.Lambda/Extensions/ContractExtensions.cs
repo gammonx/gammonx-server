@@ -59,7 +59,7 @@ namespace GammonX.Lambda.Extensions
 		public static MatchItem ToMatch(this MatchRecordContract contract, IParsedMatchHistory history)
 		{
 			var avgDiceDoubles = history.AvgDoubleDiceCount(contract.PlayerId);
-			var avgDuration = history.AvgDuration(contract.PlayerId);
+			var avgDuration = history.AvgDuration();
 			var avgPipesLeft = contract.AvgPipesLeft();
 			var avgTurns = history.AvgTurnCount(contract.PlayerId);
 			var gammons = contract.GammonCount();

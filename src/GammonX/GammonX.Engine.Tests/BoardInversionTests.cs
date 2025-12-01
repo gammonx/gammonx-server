@@ -81,10 +81,10 @@ namespace GammonX.Engine.Tests
 		[InlineData(5, 10, 18, 13)]
 		[InlineData(23, 21, 0, 2)]
 		[InlineData(10, 0, 13, 23)]
-		[InlineData(WellKnownBoardPositions.HomeBarWhite, 5, WellKnownBoardPositions.HomeBarBlack, 18)]
-		[InlineData(5, WellKnownBoardPositions.BearOffWhite, 18, WellKnownBoardPositions.BearOffBlack)]
-		[InlineData(WellKnownBoardPositions.HomeBarBlack, 18, WellKnownBoardPositions.HomeBarWhite, 5)]
-		[InlineData(18, WellKnownBoardPositions.BearOffBlack, 5, WellKnownBoardPositions.BearOffWhite)]
+		[InlineData(BoardPositions.HomeBarWhite, 5, BoardPositions.HomeBarBlack, 18)]
+		[InlineData(5, BoardPositions.BearOffWhite, 18, BoardPositions.BearOffBlack)]
+		[InlineData(BoardPositions.HomeBarBlack, 18, BoardPositions.HomeBarWhite, 5)]
+		[InlineData(18, BoardPositions.BearOffBlack, 5, BoardPositions.BearOffWhite)]
 		public void InvertBoardMoveHorizontallyShouldMapCorrectly(int from, int to, int expectedFrom, int expectedTo)
 		{
 			var (actualFrom, actualTo) = BoardBroker.InvertBoardMoveHorizontally(from, to);
@@ -96,10 +96,10 @@ namespace GammonX.Engine.Tests
 		[InlineData(0, 5)]
 		[InlineData(5, 10)]
 		[InlineData(23, 21)]
-		[InlineData(WellKnownBoardPositions.HomeBarWhite, 5)]
-		[InlineData(5, WellKnownBoardPositions.BearOffWhite)]
-		[InlineData(WellKnownBoardPositions.HomeBarBlack, 18)]
-		[InlineData(18, WellKnownBoardPositions.BearOffBlack)]
+		[InlineData(BoardPositions.HomeBarWhite, 5)]
+		[InlineData(5, BoardPositions.BearOffWhite)]
+		[InlineData(BoardPositions.HomeBarBlack, 18)]
+		[InlineData(18, BoardPositions.BearOffBlack)]
 		public void InvertBoardMoveHorizontallyShouldBeSymmetric(int from, int to)
 		{
 			// invert twice should yield the original move
@@ -114,8 +114,8 @@ namespace GammonX.Engine.Tests
 		[InlineData(22, 2, 10, 14)]
 		[InlineData(0, 2, 12, 14)]
 		[InlineData(11, 15, 23, 3)]
-		[InlineData(WellKnownBoardPositions.HomeBarWhite, 5, WellKnownBoardPositions.HomeBarBlack, 17)]
-		[InlineData(WellKnownBoardPositions.BearOffWhite, WellKnownBoardPositions.BearOffBlack, WellKnownBoardPositions.BearOffBlack, WellKnownBoardPositions.BearOffWhite)]
+		[InlineData(BoardPositions.HomeBarWhite, 5, BoardPositions.HomeBarBlack, 17)]
+		[InlineData(BoardPositions.BearOffWhite, BoardPositions.BearOffBlack, BoardPositions.BearOffBlack, BoardPositions.BearOffWhite)]
 		public void InvertHorizontalDiagonalBoardMoveShouldMapCorrectly(int from, int to, int expectedFrom, int expectedTo)
 		{
 			var (actualFrom, actualTo) = BoardBroker.InvertBoardMoveDiagonalHorizontally(from, to);
@@ -128,7 +128,7 @@ namespace GammonX.Engine.Tests
 		[InlineData(22, 2)]
 		[InlineData(0, 2)]
 		[InlineData(11, 15)]
-		[InlineData(WellKnownBoardPositions.HomeBarWhite, 5)]
+		[InlineData(BoardPositions.HomeBarWhite, 5)]
 		public void InvertHorizontalDiagonalBoardMoveShouldBeSymmetric(int from, int to)
 		{
 			var invertedOnce = BoardBroker.InvertBoardMoveDiagonalHorizontally(from, to);

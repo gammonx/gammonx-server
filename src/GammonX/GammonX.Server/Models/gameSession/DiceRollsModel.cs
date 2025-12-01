@@ -110,13 +110,13 @@ namespace GammonX.Server.Models
 
 		public static int GetMoveDistance(IBoardModel model, int from, int to, out bool bearOffMove)
 		{
-			if (to == WellKnownBoardPositions.BearOffWhite)
+			if (to == BoardPositions.BearOffWhite)
 			{
 				var distance = Math.Abs(from - (model.HomeRangeWhite.End.Value + 1));
 				bearOffMove = true;
 				return distance;
 			}
-			else if (to == WellKnownBoardPositions.BearOffBlack)
+			else if (to == BoardPositions.BearOffBlack)
 			{
 				// black checkers in fevga move same direction as white in others
 				if (model.Modus == GameModus.Fevga)
@@ -133,7 +133,7 @@ namespace GammonX.Server.Models
 				}
 			}
 			// black checkers in fevga mode start from index 12
-			else if (from == WellKnownBoardPositions.HomeBarBlack && model.Modus == GameModus.Fevga)
+			else if (from == BoardPositions.HomeBarBlack && model.Modus == GameModus.Fevga)
 			{
 				var distance = Math.Abs(model.StartRangeBlack.Start.Value - 1 - to);
 				bearOffMove = false;
