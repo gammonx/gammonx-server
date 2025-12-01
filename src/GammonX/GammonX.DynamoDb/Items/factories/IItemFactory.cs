@@ -70,6 +70,8 @@ namespace GammonX.DynamoDb.Items
 				return (IItemFactory<T>)new PlayerStatsItemFactory();
             if (typeof(T) == typeof(PlayerRatingItem))
                 return (IItemFactory<T>)new PlayerRatingItemFactory();
+			if (typeof(T) == typeof(PlayerItem))
+				return (IItemFactory<T>) new PlayerItemFactory();
 
             throw new InvalidOperationException($"Unknown item type '{typeof(T)}'");
 		}

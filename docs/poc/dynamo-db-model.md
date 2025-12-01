@@ -15,8 +15,10 @@
 {
   "PK": "PLAYER#123",
   "SK": "PROFILE",
+  "Id": "{guid}",
   "ItemType": "Player",
   "Username": "{name}",
+  "CreatedAt": "{DateTime}"
 }
 ```
 

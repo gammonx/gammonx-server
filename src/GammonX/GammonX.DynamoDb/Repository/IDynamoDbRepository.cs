@@ -51,27 +51,14 @@ namespace GammonX.DynamoDb.Repository
 		/// <returns>A task to be awaited.</returns>
 		Task SaveAsync<T>(T item);
 
-		#endregion Generic ItemType
-
 		/// <summary>
-		/// Gets the player by its unique identifier.
+		/// Deletes the item of given <typeparamref name="T"/> with the specified <paramref name="pkId"/>.
 		/// </summary>
-		/// <param name="playerId">Unique player identifier.</param>
-		/// <returns>Player item type instance.</returns>
-		Task<PlayerItem?> GetAsync(Guid playerId);
+		/// <typeparam name="T">Item type.</typeparam>
+		/// <param name="pkId">Primary key guid.</param>
+		/// <returns>Returns a boolean indicating delete success.</returns>
+		Task<bool> DeleteAsync<T>(Guid pkId);
 
-		/// <summary>
-		/// Saves the given player item type.
-		/// </summary>
-		/// <param name="player">Player item to save.</param>
-		/// <returns>A task to be awaited.</returns>
-		Task SaveAsync(PlayerItem player);
-
-		/// <summary>
-		/// Deletes the player with the given unique identifier.
-		/// </summary>
-		/// <param name="playerId">Unique player identifier.</param>
-		/// <returns>Task to be awaited.</returns>
-		Task DeleteAsync(Guid playerId);
-	}
+        #endregion Generic ItemType
+    }
 }

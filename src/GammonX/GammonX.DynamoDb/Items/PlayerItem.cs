@@ -4,10 +4,6 @@ namespace GammonX.DynamoDb.Items
 {
 	public class PlayerItem
 	{
-		public const string PKFormat = "PLAYER#{0}";
-
-		public const string SKValue = "PROFILE";
-
 		/// <summary>
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
@@ -30,12 +26,14 @@ namespace GammonX.DynamoDb.Items
 
 		private string ConstructPK()
 		{
-			return string.Format(PKFormat, Id);
+			var factory = ItemFactoryCreator.Create<PlayerItem>();
+			return string.Format(factory.PKFormat, Id);
 		}
 
-		private string ConstructSK()
+		private static string ConstructSK()
 		{
-			return SKValue;
+            var factory = ItemFactoryCreator.Create<PlayerItem>();
+            return factory.SKPrefix;
 		}
 	}
 }

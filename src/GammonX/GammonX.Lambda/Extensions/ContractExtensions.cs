@@ -7,6 +7,17 @@ namespace GammonX.Lambda.Extensions
 {
 	public static class ContractExtensions
 	{
+		public static PlayerItem ToPlayer(this PlayerRecordContract contract)
+		{
+			var playerItem = new PlayerItem()
+			{
+				Id = contract.Id,
+				UserName = contract.UserName,
+				CreatedAt = DateTime.UtcNow
+			};
+			return playerItem;
+		}
+
 		public static GameItem ToGame(this GameRecordContract contract, IParsedGameHistory history)
 		{
 			var diceDoubles = history.DoubleDiceCount(contract.PlayerId);

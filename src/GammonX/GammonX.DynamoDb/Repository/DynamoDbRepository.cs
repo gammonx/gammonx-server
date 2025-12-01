@@ -3,7 +3,6 @@ using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.Model;
 
 using GammonX.DynamoDb.Items;
-using GammonX.Models.Enums;
 
 using Microsoft.Extensions.Options;
 
@@ -123,116 +122,25 @@ namespace GammonX.DynamoDb.Repository
 			await _client.PutItemAsync(request);
 		}
 
+        // <inheritdoc />
+        public async Task<bool> DeleteAsync<T>(Guid pkId)
+		{
+            var factory = ItemFactoryCreator.Create<T>();
+			var pk = string.Format(factory.PKFormat, pkId);
+            var deleteKey = new Dictionary<string, AttributeValue>
+            {
+                { "PK", new AttributeValue(pk) },
+            };
+
+            var deletePlayerReq = new DeleteItemRequest
+            {
+                TableName = _tableName,
+                Key = deleteKey
+            };
+            var response = await _client.DeleteItemAsync(deletePlayerReq);
+			return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
 		#endregion Generic ItemType
-
-		#region Player ItemType
-
-		// TODO: move player to generic
-
-		// <inheritdoc />
-		public async Task<PlayerItem?> GetAsync(Guid playerId)
-		{
-			var pk = string.Format(PlayerItem.PKFormat, playerId);
-			var sk = PlayerItem.SKValue;
-
-			var request = new GetItemRequest
-			{
-				TableName = _tableName,
-				Key = new Dictionary<string, AttributeValue>
-			{
-				{ "PK", new AttributeValue(pk) },
-				{ "SK", new AttributeValue(sk) }
-			}
-			};
-
-			var response = await _client.GetItemAsync(request);
-			if (!response.IsItemSet)
-				return null;
-
-			return new PlayerItem
-			{
-				Id = Guid.Parse(response.Item["Id"].S),
-				UserName = response.Item["Username"].S,
-				CreatedAt = DateTime.Parse(response.Item["CreatedAt"].S)
-			};
-		}
-
-		// <inheritdoc />
-		public async Task SaveAsync(PlayerItem player)
-		{
-			var pk = string.Format(PlayerItem.PKFormat, player.Id);
-			var sk = PlayerItem.SKValue;
-			var item = new Dictionary<string, AttributeValue>
-			{
-				{ "PK", new AttributeValue(pk) },
-				{ "SK", new AttributeValue(sk) },
-				{ "Id", new AttributeValue(player.Id.ToString()) },
-				{ "ItemType", new AttributeValue(ItemTypes.PlayerItemType) },
-				{ "Username", new AttributeValue(player.UserName) },
-				{ "CreatedAt", new AttributeValue { S = player.CreatedAt.ToString("o") } }
-			};
-
-			var request = new PutItemRequest
-			{
-				TableName = _tableName,
-				Item = item
-			};
-			await _client.PutItemAsync(request);
-		}
-
-		// <inheritdoc />
-		public async Task DeleteAsync(Guid playerId)
-		{
-			var pk = string.Format(PlayerItem.PKFormat, playerId);
-			var sk = PlayerItem.SKValue;
-
-			// delete player rating items
-			var playerRatings = await GetItemsAsync<PlayerRatingItem>(playerId);
-			foreach (var rating in playerRatings)
-			{
-				var deleteRatingKey = new Dictionary<string, AttributeValue>
-				{
-					{ "PK", new AttributeValue(rating.PK) },
-					{ "SK", new AttributeValue(rating.SK) }
-				};
-				var deleteRatingRequest = new DeleteItemRequest
-				{
-					TableName = _tableName,
-					Key = deleteRatingKey
-				};
-				await _client.DeleteItemAsync(deleteRatingRequest);
-			}
-			var playerMatches = await GetItemsByGSIPKAsync<MatchItem>(playerId);
-			foreach (var match in playerMatches)
-			{
-				var deleteMatchKey = new Dictionary<string, AttributeValue>
-				{
-					{ "PK", new AttributeValue(match.PK) },
-					{ "SK", new AttributeValue(match.SK) }
-				};
-				var deleteMatchRequest = new DeleteItemRequest
-				{
-					TableName = _tableName,
-					Key = deleteMatchKey
-				};
-				await _client.DeleteItemAsync(deleteMatchRequest);
-			}
-
-			// delete player item
-			var deletePlayerKey = new Dictionary<string, AttributeValue>
-			{
-				{ "PK", new AttributeValue(pk) },
-				{ "SK", new AttributeValue(sk) }
-			};
-
-			var deletePlayerReq = new DeleteItemRequest
-			{
-				TableName = _tableName,
-				Key = deletePlayerKey
-			};
-			await _client.DeleteItemAsync(deletePlayerReq);
-		}
-
-		#endregion Player ItemType
 	}
 }
