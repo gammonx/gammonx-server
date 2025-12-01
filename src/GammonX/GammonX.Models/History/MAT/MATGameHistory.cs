@@ -5,8 +5,6 @@ namespace GammonX.Models.History.MAT
 	// <inheritdoc />
 	public class MATGameHistory : IParsedGameHistory
 	{
-		// TODO: add unit tests
-
 		public Guid Id { get; set; } = Guid.Empty;
 
 		public Guid Player1Id { get; set; } = Guid.Empty;
@@ -61,25 +59,31 @@ namespace GammonX.Models.History.MAT
 		}
 	}
 
-	public class MatHeaderEntry
+    /// <summary>
+    /// Marker interface for a MAT game event.
+    /// </summary>
+    public interface IMatEvent 
 	{
-		public string Key { get; set; } = "";
+        /// <summary>
+        /// Gets or sets the id of the player who performed this event.
+        /// </summary>
+        Guid PlayerId { get; set; }
+    }
 
-		public string Value { get; set; } = "";
-	}
-
-	public interface IMatEvent { }
-
-	public class MatRollEvent : IMatEvent
+    // <inheritdoc />
+    public class MatRollEvent : IMatEvent
 	{
-		public Guid PlayerId { get; set; } = Guid.Empty;
+        // <inheritdoc />
+        public Guid PlayerId { get; set; } = Guid.Empty;
 
 		public int[] Dice { get; set; } = [];
 	}
 
-	public class MatMoveEvent : IMatEvent
+    // <inheritdoc />
+    public class MatMoveEvent : IMatEvent
 	{
-		public Guid PlayerId { get; set; } = Guid.Empty;
+        // <inheritdoc />
+        public Guid PlayerId { get; set; } = Guid.Empty;
 
 		public int? From { get; set; } = null;
 

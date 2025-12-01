@@ -7,8 +7,6 @@ namespace GammonX.Models.History.MAT
 	// <inheritdoc />
 	public partial class MATParser : IGameHistoryParser, IMatchHistoryParser
 	{
-		// TODO: add unit tests
-
 		[GeneratedRegex(@";\[(.+?) '(.+?)'\]", RegexOptions.Compiled)]
 		protected partial Regex GameHeaderRegex();
 
@@ -94,7 +92,7 @@ namespace GammonX.Models.History.MAT
 
 			switch (key)
 			{
-				case "Match": match.MatchId = Guid.Parse(value); break;
+				case "Match": match.Id = Guid.Parse(value); break;
 				case "Name": match.Name = value; break;
 				case "Player 1 White Checkers": match.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": match.Player2Id = Guid.Parse(value); break;

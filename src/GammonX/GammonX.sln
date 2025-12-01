@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36301.6
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Server", "GammonX.Server\GammonX.Server.csproj", "{470F0267-C935-48AE-ABA6-29C70DF8CF72}"
 EndProject
@@ -25,6 +25,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.DynamoDb", "GammonX.DynamoDb\GammonX.DynamoDb.csproj", "{C12B28ED-81DA-4FFD-905E-2CF20F07D874}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Models", "GammonX.Models\GammonX.Models.csproj", "{3222F07D-42DD-4C7C-90C2-9B63964D2A16}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Models.Tests", "GammonX.Models.Tests\GammonX.Models.Tests.csproj", "{8693395D-678A-406B-8D9E-CEC15C945007}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -64,6 +66,10 @@ Global
 		{3222F07D-42DD-4C7C-90C2-9B63964D2A16}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3222F07D-42DD-4C7C-90C2-9B63964D2A16}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3222F07D-42DD-4C7C-90C2-9B63964D2A16}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8693395D-678A-406B-8D9E-CEC15C945007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8693395D-678A-406B-8D9E-CEC15C945007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8693395D-678A-406B-8D9E-CEC15C945007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8693395D-678A-406B-8D9E-CEC15C945007}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

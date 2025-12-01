@@ -1,8 +1,11 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
+
 using Newtonsoft.Json;
+
 using Xunit;
 
 namespace GammonX.Lambda.Tests
