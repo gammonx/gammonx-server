@@ -118,13 +118,14 @@ namespace GammonX.DynamoDb.Repository
 		}
 
         // <inheritdoc />
-        public async Task<bool> DeleteAsync<T>(Guid pkId)
+        public async Task<bool> DeleteAsync<T>(Guid pkId, string sk)
 		{
             var factory = ItemFactoryCreator.Create<T>();
 			var pk = string.Format(factory.PKFormat, pkId);
             var deleteKey = new Dictionary<string, AttributeValue>
             {
                 { "PK", new AttributeValue(pk) },
+				{ "SK", new AttributeValue(sk) }
             };
 
             var deletePlayerReq = new DeleteItemRequest

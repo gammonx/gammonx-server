@@ -8,13 +8,13 @@ namespace GammonX.DynamoDb.Items
     public class RatingPeriodItem
     {
         /// <summary>
-		/// Gets a primary key like 'MATCH#{matchId}'
+		/// Gets a primary key like 'PLAYER#{matchId}'
 		/// </summary>
 		[DynamoDBHashKey("PK")]
         public string PK => ConstructPK();
 
         /// <summary>
-        /// Gets a sort key like 'RATING#{PlayerId}#{OpponentId}'.
+        /// Gets a sort key like 'MATCH#{variant}#{type}#{modus}#{matchId}'.
         /// </summary>
         [DynamoDBRangeKey("SK")]
         public string SK => ConstructSK();

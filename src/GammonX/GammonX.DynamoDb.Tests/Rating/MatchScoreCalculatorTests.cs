@@ -2,7 +2,7 @@
 
 using GammonX.DynamoDb.Stats;
 
-namespace GammonX.DynamoDb.Tests
+namespace GammonX.DynamoDb.Tests.Rating
 {
     public class MatchScoreCalculatorTests
     {

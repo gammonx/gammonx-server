@@ -1,5 +1,4 @@
 ﻿using Amazon.DynamoDBv2.Model;
-using System.Numerics;
 
 namespace GammonX.DynamoDb.Items
 {

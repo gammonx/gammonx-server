@@ -4,7 +4,7 @@ using GammonX.DynamoDb.Stats;
 
 namespace GammonX.DynamoDb.Services
 {
-    public static class PlayerRatingBroker
+    public static class DynamoDbRepositoryExtensions
     {
         /// <summary>
         /// Updates the player with the given <paramref name="playerId"/> based on the <paramref name="wonMatch"/> and
@@ -118,10 +118,6 @@ namespace GammonX.DynamoDb.Services
         // <inheritdoc />
         public static async Task DeletePlayerAsync(this IDynamoDbRepository repo, Guid playerId, bool recursive = false)
         {
-            var playerItemFactory = ItemFactoryCreator.Create<PlayerItemFactory>();
-            var pk = string.Format(playerItemFactory.PKFormat, playerId);
-            var sk = playerItemFactory.SKPrefix;
-
             var deletionTasks = new List<Task<bool>>();
 
             if (recursive)
@@ -130,19 +126,26 @@ namespace GammonX.DynamoDb.Services
                 var playerRatings = await repo.GetItemsAsync<PlayerRatingItem>(playerId);
                 foreach (var rating in playerRatings)
                 {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerRatingItem>(rating.PlayerId));
+                    deletionTasks.Add(repo.DeleteAsync<PlayerRatingItem>(rating.PlayerId, rating.SK));
                 }
                 // player stats
                 var playerStats = await repo.GetItemsAsync<PlayerStatsItem>(playerId);
                 foreach (var stats in playerStats)
                 {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerStatsItem>(stats.PlayerId));
+                    deletionTasks.Add(repo.DeleteAsync<PlayerStatsItem>(stats.PlayerId, stats.SK));
+                }
+                // rating periods
+                var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId);
+                foreach (var ratingPeriod in ratingPeriods)
+                {
+                    deletionTasks.Add(repo.DeleteAsync<RatingPeriodItem>(ratingPeriod.PlayerId, ratingPeriod.SK));
                 }
                 // we keep the matches, games and their history for some data mining purposes
             }
 
             // delete player item
-            var deletePlayerTask = repo.DeleteAsync<PlayerItem>(playerId);
+            var playerItemFactory = ItemFactoryCreator.Create<PlayerItem>();
+            var deletePlayerTask = repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
             deletionTasks.Add(deletePlayerTask);
 
             await Task.WhenAll(deletionTasks);

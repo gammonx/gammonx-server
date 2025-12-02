@@ -1,8 +1,9 @@
 ﻿using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Stats;
+
 using System.Runtime.ConstrainedExecution;
 
-namespace GammonX.DynamoDb.Tests
+namespace GammonX.DynamoDb.Tests.Rating
 {
     public class Glicko2RatingCalculatorTests
     {

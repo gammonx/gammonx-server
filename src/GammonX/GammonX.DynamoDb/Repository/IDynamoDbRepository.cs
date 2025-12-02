@@ -56,8 +56,9 @@ namespace GammonX.DynamoDb.Repository
 		/// </summary>
 		/// <typeparam name="T">Item type.</typeparam>
 		/// <param name="pkId">Primary key guid.</param>
+		/// <param name="sk">Secondary key string.</param>
 		/// <returns>Returns a boolean indicating delete success.</returns>
-		Task<bool> DeleteAsync<T>(Guid pkId);
+		Task<bool> DeleteAsync<T>(Guid pkId, string sk);
 
         #endregion Generic ItemType
     }

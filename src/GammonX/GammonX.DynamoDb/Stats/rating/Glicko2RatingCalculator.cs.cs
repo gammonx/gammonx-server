@@ -1,8 +1,11 @@
-﻿using Amazon.DynamoDBv2.Model;
-using GammonX.DynamoDb.Items;
+﻿using GammonX.DynamoDb.Items;
 
 namespace GammonX.DynamoDb.Stats
 {
+    /// <summary>
+    /// Provides a .net implementation of the Glicko2 rating system.
+    /// </summary>
+    /// <seealso cref="https://www.glicko.net/glicko/glicko2.pdf"/>
     internal static class Glicko2RatingCalculator
     {
         /// <summary>
