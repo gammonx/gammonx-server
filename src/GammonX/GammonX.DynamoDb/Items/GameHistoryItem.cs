@@ -21,7 +21,7 @@ namespace GammonX.DynamoDb.Items
 		/// <summary>
 		/// Gets or sets the game id.
 		/// </summary>
-		public Guid Id { get; set; } = Guid.Empty;
+		public Guid GameId { get; set; } = Guid.Empty;
 
 		public string ItemType { get; } = ItemTypes.GameHistoryItemType;
 
@@ -38,7 +38,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructPK()
 		{
 			var factory = ItemFactoryCreator.Create<GameHistoryItem>();
-			return string.Format(factory.PKFormat, Id);
+			return string.Format(factory.PKFormat, GameId);
 		}
 
 		private static string ConstructSK()

@@ -6,7 +6,9 @@
 
 		public const string PlayerRatingItemType = "PlayerRating";
 
-		public const string PlayerStatsItemType = "PlayerStats";
+		public const string RatingPeriodItemType = "RatingPeriod";
+
+        public const string PlayerStatsItemType = "PlayerStats";
 
 		public const string MatchItemType = "Match";
 

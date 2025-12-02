@@ -30,5 +30,15 @@
         /// Convert between Glicko and Glicko-2 scales
         /// </summary>
         public const double Scale = 173.7178;
+
+        /// <summary>
+        /// Gets the number of matches per rating period.
+        /// </summary>
+        public const int RatingPeriod = 30;
+
+        /// <summary>
+        /// Gets the max loop iterations for volatility calculation.
+        /// </summary>
+        public const int MaxIterations = 1000;
     }
 }

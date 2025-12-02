@@ -1,4 +1,7 @@
-﻿namespace GammonX.DynamoDb.Stats
+﻿using Amazon.DynamoDBv2.Model;
+using GammonX.DynamoDb.Items;
+
+namespace GammonX.DynamoDb.Stats
 {
     internal static class Glicko2RatingCalculator
     {
@@ -18,73 +21,78 @@
         /// <summary>
         /// Updates the rating of the given <paramref name="player"/>.
         /// </summary>
+        /// <remarks>
+        /// The rating is not peristed yet to the database. Instead it just returns the updated rating instance.
+        /// </remarks>
         /// <param name="player">Player rating to update.</param>
-        /// <param name="opponent">Opponent rating to analyze.</param>
-        /// <param name="matchScore">Match score.</param>
+        /// <param name="ratingPeriodItems">Rating periods to include.</param>
         /// <returns>Updted Glicko2 rating.</returns>
-        public static Glicko2Rating Update(Glicko2Rating player, Glicko2Rating opponent, double matchScore)
+        public static Glicko2Rating Calculate(Glicko2Rating player, params RatingPeriodItem[] ratingPeriodItems)
         {
-            if (FromMu(opponent.Mu) == Glicko2Constants.DefaultRating && FromPhi(opponent.Phi) == Glicko2Constants.DefaultRD)
+            var periods = ratingPeriodItems.ToList();
+
+            if (periods.Count == 0)
             {
-                // no games and RD increases due to decay
-                double tmpPhiPrime = Math.Sqrt(player.Phi * player.Phi + player.Sigma * player.Sigma);
-                return new Glicko2Rating(player.Mu, tmpPhiPrime, player.Sigma);
+                // no matches played in the given rating period > increase uncertainty
+                double phiPrimeD = Math.Sqrt(player.Phi * player.Phi + player.Sigma * player.Sigma);
+                return new Glicko2Rating(player.Mu, phiPrimeD, player.Sigma);
             }
 
-            var s = matchScore;
-            var muOpp = opponent.Mu;
-            var phiOpp = opponent.Phi;
+            // STEP 1 :: convert opponent ratings
+            var converted = ratingPeriodItems
+                .Select(r => (muJ: ToMu(r.OpponentRating), phiJ: ToPhi(r.OpponentRatingDeviation), s: r.MatchScore))
+                .ToList();
 
             // STEP 2 :: compute variance v
-            double vInv = g(phiOpp) * g(phiOpp) * E(player.Mu, muOpp, phiOpp) * (1 - E(player.Mu, muOpp, phiOpp));
+            double vInv = converted.Sum(r => g(r.phiJ) * g(r.phiJ) * E(player.Mu, r.muJ, r.phiJ) * (1 - E(player.Mu, r.muJ, r.phiJ)));
             double v = 1.0 / vInv;
 
             // STEP 3 :: compute Δ
-            double delta = v * g(phiOpp) * (s - E(player.Mu, muOpp, phiOpp));
+            double delta = v * converted.Sum(r => g(r.phiJ) * (r.s - E(player.Mu, r.muJ, r.phiJ)));
 
             // STEP 4 :: new volatility (sigma σ')
             double a = Math.Log(player.Sigma * player.Sigma);
             double A = a;
             double B;
 
-            if (delta * delta > (player.Phi * player.Phi + v))
+            if (delta * delta > player.Phi * player.Phi + v)
             {
                 B = Math.Log(delta * delta - player.Phi * player.Phi - v);
             }
             else
             {
                 int k = 1;
-                B = a - k * Glicko2Constants.Tau;
-
+                B = a - k * Math.Sqrt(Glicko2Constants.Tau * Glicko2Constants.Tau);
                 while (f(B, delta, player.Phi, v, a) < 0)
                 {
                     k++;
-                    B = a - k * Glicko2Constants.Tau;
-
-                    if (k > 1000)
-                        throw new Exception("Glicko2 volatility iteration failed to converge.");
+                    B = a - k * Math.Sqrt(Glicko2Constants.Tau * Glicko2Constants.Tau);
                 }
             }
 
             double fA = f(A, delta, player.Phi, v, a);
             double fB = f(B, delta, player.Phi, v, a);
 
-            // STEP 5 :: safe volatility iteration (binary search)
-            while (Math.Abs(B - A) > 0.000001)
+            var iteration = 0;
+            while (Math.Abs(B - A) > 1e-6 && iteration < Glicko2Constants.MaxIterations)
             {
-                double C = (A + B) / 2;
+                double C = A + (A - B) * fA / (fB - fA);
                 double fC = f(C, delta, player.Phi, v, a);
 
-                if (fC * fA < 0)
+                if (fC * fB < 0)
                 {
-                    B = C;
-                    fB = fC;
+                    A = B;
+                    fA = fB;
                 }
                 else
                 {
-                    A = C;
-                    fA = fC;
+                    fA = fA / 2;
                 }
+
+                B = C;
+                fB = fC;
+
+                iteration++;
             }
 
             double sigmaPrime = Math.Exp(A / 2);
@@ -93,14 +101,14 @@
             // this ensures that a players rating does not freeze at some point
             sigmaPrime = Math.Max(sigmaPrime, 0.03);
 
-            // STEP 6 :: pre-new phi*
+            // STEP 5 :: pre-new phi*
             double phiStar = Math.Sqrt(player.Phi * player.Phi + sigmaPrime * sigmaPrime);
 
-            // STEP 7 :: new phi
+            // STEP 6 :: new phi
             double phiPrime = 1.0 / Math.Sqrt(1.0 / (phiStar * phiStar) + 1.0 / v);
 
-            // STEP 8 :: new mu
-            double muPrime = player.Mu + phiPrime * phiPrime * g(phiOpp) * (s - E(player.Mu, muOpp, phiOpp));
+            // STEP 7 :: new mu
+            double muPrime = player.Mu + phiPrime * phiPrime * converted.Sum(r => g(r.phiJ) * (r.s - E(player.Mu, r.muJ, r.phiJ)));
 
             return new Glicko2Rating(muPrime, phiPrime, sigmaPrime);
         }

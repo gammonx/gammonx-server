@@ -6,7 +6,7 @@ namespace GammonX.DynamoDb.Stats
 {
     internal static class MatchScoreCalculator
     {
-        public static double Build(Guid playerId, MatchItem wonMatchItem, MatchItem lostMatchItem)
+        public static double Calculate(Guid playerId, MatchScoreInput wonMatchItem, MatchScoreInput lostMatchItem)
         {
             var playersMatch = GetPlayersMatch(playerId, wonMatchItem, lostMatchItem);
             bool playerWon = playersMatch.Result == MatchResult.Won;
@@ -52,9 +52,23 @@ namespace GammonX.DynamoDb.Stats
             return finalScore;
         }
 
+        public static MatchScoreInput From(this MatchItem item)
+        {
+            return new MatchScoreInput()
+            {
+                PlayerId = item.PlayerId,
+                Result = item.Result,
+                Gammons = item.Gammons,
+                Backgammons = item.Backgammons,
+                AvgPipesLeft = item.AvgPipesLeft,
+                Points = item.Points,
+                Length = item.Length
+            };
+        }
+
         private static double Sigmoid(double x) => 1.0 / (1.0 + Math.Exp(-x));
 
-        private static MatchItem GetPlayersMatch(Guid playerId, params MatchItem[] matches)
+        private static MatchScoreInput GetPlayersMatch(Guid playerId, params MatchScoreInput[] matches)
         {
             foreach (var match in matches)
             {

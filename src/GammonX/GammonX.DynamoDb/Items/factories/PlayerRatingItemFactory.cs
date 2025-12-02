@@ -38,7 +38,8 @@ namespace GammonX.DynamoDb.Items
                 RatingDeviation = double.Parse(item["RatingDeviation"].N),
                 Sigma = double.Parse(item["Sigma"].N),
                 HighestRating = double.Parse(item["HighestRating"].N),
-                LowestRating = double.Parse(item["LowestRating"].N)
+                LowestRating = double.Parse(item["LowestRating"].N),
+                MatchesPlayed = int.Parse(item["MatchesPlayed"].N)
             };
             return playerRatingItem;
         }
@@ -62,7 +63,8 @@ namespace GammonX.DynamoDb.Items
                 { "RatingDeviation", new AttributeValue() { N = item.RatingDeviation.ToString() } },
                 { "Sigma", new AttributeValue() { N = item.Sigma.ToString() } },
                 { "HighestRating", new AttributeValue() { N = item.HighestRating.ToString() } },
-                { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString() } }
+                { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString() } },
+                { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString() } }
             };
             return itemDict;
         }

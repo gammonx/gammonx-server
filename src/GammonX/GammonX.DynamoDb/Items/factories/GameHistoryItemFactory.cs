@@ -29,7 +29,7 @@ namespace GammonX.DynamoDb.Items
 		{
 			var gameHistoryItem = new GameHistoryItem
 			{
-				Id = Guid.Parse(item["Id"].S),
+				GameId = Guid.Parse(item["GameId"].S),
 				Data = item["Data"].S,
 				Format = Enum.Parse<HistoryFormat>(item["Format"].S)
 			};
@@ -45,7 +45,7 @@ namespace GammonX.DynamoDb.Items
 				{ "PK", new AttributeValue(item.PK) },
 				{ "SK", new AttributeValue(item.SK) },
 				{ "ItemType", new AttributeValue(item.ItemType) },
-				{ "Id", new AttributeValue(item.Id.ToString()) },
+				{ "GameId", new AttributeValue(item.GameId.ToString()) },
 				{ "Format", new AttributeValue(formatString) },
 				{ "Data", new AttributeValue(item.Data) },
 			};

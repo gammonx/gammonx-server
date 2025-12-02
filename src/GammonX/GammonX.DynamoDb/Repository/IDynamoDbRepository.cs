@@ -17,14 +17,14 @@ namespace GammonX.DynamoDb.Repository
 		/// <returns>A list of items matching the given <paramref name="pkId"/> and sk prefix.</returns>
 		Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId);
 
-        /// <summary>
-        /// Gets item of <typeparamref name="T"/> by its PK and SK.
-        /// </summary>
-        /// <typeparam name="T">Item Type.</typeparam>
-        /// <param name="pkId">Primary key guid</param>
-        /// <param name="sk">Secondary key.</param>
-        /// <returns>An item of <typeparamref name="T"/> matching the given <paramref name="pkId"/> and <paramref name="sk"/>.</returns>
-        Task<T?> GetItemAsync<T>(Guid pkId, string sk);
+		/// <summary>
+		/// Gets a list of <typeparamref name="T"/> by its PK and SK.
+		/// </summary>
+		/// <typeparam name="T">Item Type.</typeparam>
+		/// <param name="pkId">Primary key guid</param>
+		/// <param name="sk">Secondary key.</param>
+		/// <returns>An lost of <typeparamref name="T"/> items. matching the given <paramref name="pkId"/> and <paramref name="sk"/>.</returns>
+		Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId, string sk);
 
         /// <summary>
         /// Gets items of <typeparamref name="T"/> by its GSI1PK and GSI1SKPrefix.

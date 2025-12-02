@@ -1,6 +1,6 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
-
+using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Services;
 
@@ -42,10 +42,21 @@ namespace GammonX.Lambda.Handlers
                     var matchRecords = @event.Records.Select(r => JsonConvert.DeserializeObject<MatchRecordContract>(r.Body));
                     var wonMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Won);
                     var lostMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Lost);
+					var results = new List<(PlayerRatingItem, RatingPeriodItem)>();
                     foreach (var record in matchRecords)
 					{
-                        await ProcessMessageAsync(record?.PlayerId, wonMatch, lostMatch);
+                        var result = await ProcessMessageAsync(record?.PlayerId, wonMatch, lostMatch);
+                        results.Add(result);
                     }
+                    // we persist the player ratings and their rating periods after both players have been processed
+					foreach (var result in results)
+					{
+						// we persist the updated player rating
+						await _repo.SaveAsync(result.Item1);
+                        // we persist the rating period entry
+                        await _repo.SaveAsync(result.Item1);
+                    }
+
                     context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch?.PlayerId}' after match '{wonMatch?.Id}'");
                     context.Logger.LogInformation($"Processed rating update for player with id '{lostMatch?.PlayerId}' after match '{lostMatch?.Id}'");
                 }
@@ -64,7 +75,7 @@ namespace GammonX.Lambda.Handlers
 			}
 		}
 
-		private async Task ProcessMessageAsync(Guid? playerId, MatchRecordContract? wonMatch, MatchRecordContract? lostMatch)
+		private async Task<(PlayerRatingItem, RatingPeriodItem)> ProcessMessageAsync(Guid? playerId, MatchRecordContract? wonMatch, MatchRecordContract? lostMatch)
 		{
 			ArgumentNullException.ThrowIfNull(wonMatch, nameof(wonMatch));
 			ArgumentNullException.ThrowIfNull(lostMatch, nameof(lostMatch));
@@ -80,7 +91,8 @@ namespace GammonX.Lambda.Handlers
             var lostParsedHistory = lostParser.ParseMatch(lostMatchHistory.Data);
             var lostMatchItem = lostMatch.ToMatch(lostParsedHistory);
 
-            await _repo.UpdatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
+            var result = await _repo.CalculatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
+			return result;
 		}
 	}
 }

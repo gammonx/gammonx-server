@@ -5,15 +5,9 @@
 ## Active
 - palamedes schreiben
 - lambda functions + sqs
-    - player created lambda
-    - player rating updated lambda
     - game/match history > umbrüche escapen
-    - unit tests game/match parser
-    - unit tests models
     - unit tests dynamo db layer // item typess
     - test data
-    - unit tests stat calculation 
-    - unit tests rating calculation (Glicko2)
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto

@@ -45,7 +45,7 @@ namespace GammonX.DynamoDb.Repository
 		}
 
         // <inheritdoc />
-        public async Task<T?> GetItemAsync<T>(Guid pkId, string sk)
+        public async Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId, string sk)
         {
             var factory = ItemFactoryCreator.Create<T>();
             var pk = string.Format(factory.PKFormat, pkId);
@@ -60,12 +60,7 @@ namespace GammonX.DynamoDb.Repository
                 }
             };
             var response = await _client.QueryAsync(request);
-			var result = response.Items.FirstOrDefault();
-			if (result != null)
-			{
-                return factory.CreateItem(result);
-            }
-            return default;
+            return response.Items.Select(factory.CreateItem);
         }
 
         // <inheritdoc />

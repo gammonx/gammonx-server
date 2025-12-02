@@ -5,7 +5,15 @@ namespace GammonX.DynamoDb.Stats
 {
 	internal static class StatsAggregator
 	{
-		public static double WeightedAverage<T>(
+        /// <summary>
+        /// Calculates the weighted average of double values.
+        /// </summary>
+        /// <typeparam name="T">Type to provide the property selectors.</typeparam>
+        /// <param name="items">Item list to analyze.</param>
+        /// <param name="valueSelector">Double property selector.</param>
+        /// <param name="weightSelector">Weigth selector.</param>
+        /// <returns>The weighted average double based on the given selectors.</returns>
+        public static double WeightedAverage<T>(
 			IEnumerable<T> items,
 			Func<T, double> valueSelector,
 			Func<T, double> weightSelector)
@@ -23,7 +31,15 @@ namespace GammonX.DynamoDb.Stats
 			return totalWeight == 0 ? 0 : weightedSum / totalWeight;
 		}
 
-		public static TimeSpan WeightedAverage<T>(
+        /// <summary>
+        /// Calculates the weighted average of TimeSpan values.
+        /// </summary>
+        /// <typeparam name="T">Type to provide the property selectors.</typeparam>
+        /// <param name="items">Item list to analyze.</param>
+        /// <param name="valueSelector">TimeSpan property selector.</param>
+        /// <param name="weightSelector">Weigth selector.</param>
+        /// <returns>The weighted average TimeSpan based on the given selectors.</returns>
+        public static TimeSpan WeightedAverage<T>(
 			IEnumerable<T> items,
 			Func<T, TimeSpan> valueSelector,
 			Func<T, double> weightSelector)
@@ -41,7 +57,12 @@ namespace GammonX.DynamoDb.Stats
 			return totalWeight == 0 ? TimeSpan.Zero : TimeSpan.FromTicks(Convert.ToInt64(weightedSum / totalWeight));
 		}
 
-		public static (int CurrentStreak, int LongestStreak) CalculateWinStreaks(IEnumerable<MatchItem> matches)
+        /// <summary>
+        /// Evaluates the current and longest win streak from a list of matches.
+        /// </summary>
+        /// <param name="matches">Matches to analyze.</param>
+        /// <returns>The current and longest streak in the given match list.</returns>
+        public static (int CurrentStreak, int LongestStreak) CalculateWinStreaks(IEnumerable<MatchItem> matches)
 		{
 			var ordered = matches
 				.OrderBy(m => m.EndedAt)

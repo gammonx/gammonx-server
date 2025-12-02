@@ -13,7 +13,7 @@
 ## Player
 ```json
 {
-  "PK": "PLAYER#123",
+  "PK": "PLAYER#{Id}",
   "SK": "PROFILE",
   "Id": "{guid}",
   "ItemType": "Player",
@@ -22,13 +22,36 @@
 }
 ```
 
+## Rating Period
+The Glicko2 rating algorithm needs the last 10 matchups of the given player in order to properly calculate the rating change for a given match. The match variant, type and modus is implictly set by the given match id.
+```json
+{
+  "PK": "PLAYER#{playerId}",
+  "SK": "MATCH#{variant}#{type}#{modus}#{matchId}",
+  "Variant": "Backgammon",
+  "Type": "7PointGame",
+  "Modus": "Ranked",
+  "MatchId": "{guid}",
+  "PlayerId": "{guid}",
+  "OpponentId": "{guid}",
+  "MatchScore": "{int}",
+  "PlayerRating": "{double}",
+  "PlayerRatingDeviation": "{double}",
+  "PlayerSigma": "{double}",
+  "OpponentRating": "{double}",
+  "OpponentRatingDeviation": "{double}",
+  "OpponentSigma": "{double}",
+  "CreatedAt": "{DateTime}",
+}
+```
+
 ## Player Rating
 No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
 ```json
 {
-  "PK": "PLAYER#123",
+  "PK": "PLAYER#{PlayerId}",
   "SK": "RATING#Backgammon",
-  "PlayerId": "123",
+  "PlayerId": "{guid}",
   "ItemType": "PlayerRating",
   "Variant": "Backgammon",
   "Type": "7PointGame",
@@ -37,16 +60,17 @@ No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
   "RatingDeviation": "{double}",
   "Sigma": "{double}",
   "LowestRating": "{double}",
-  "HighestRating": "{double}"
+  "HighestRating": "{double}",
+  "MatchesPlayed": "{int}",
 }
 ```
 
 ## Player Stats
 ```json
 {
-  "PK": "PLAYER#123",
+  "PK": "PLAYER#{PlayerId}",
   "SK": "STATS#Backgammon#7PointGame#Ranked",
-  "PlayerId": "123",
+  "PlayerId": "{guid}",
   "ItemType": "PlayerStats",
   "Variant": "Backgammon",
   "Type": "7PointGame",
@@ -75,11 +99,11 @@ No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
 We create two entries, one for the winner and one for the loser
 ```json
 {
-  "PK": "MATCH#888",
+  "PK": "MATCH#{Id}",
   "SK": "DETAILS#{WON|LOST}",
-  "Id": "888",
+  "Id": "{guid}",
   "ItemType": "Match",
-  "PlayerId": "123",
+  "PlayerId": "{guid}",
   "Points": 7,
   "Variant": "Backgammon",
   "Type": "7PointGame",
@@ -88,8 +112,8 @@ We create two entries, one for the winner and one for the loser
   "EndedAt": "{DateTime}",
   "Length": 3,
   "Result": "{MatchResult}",
-  "GSI1PK": "PLAYER#123",
-  "GSI1SK": "MATCH#Backgammon#7PointGame#Ranked#{WON|LOST}"
+  "GSI1PK": "PLAYER#{PlayerId}",
+  "GSI1SK": "MATCH#Backgammon#7PointGame#Ranked#{WON|LOST|NOTFINISHED}"
 }
 ```
 
@@ -97,11 +121,11 @@ We create two entries, one for the winner and one for the loser
 We create two entries, one for the winner and one for the loser
 ```json
 {
-  "PK": "MATCH#888",
-  "SK": "GAME#456#{WON|LOST}",
-  "Id": "456",
+  "PK": "MATCH#{Id}",
+  "SK": "GAME#{guid}#{WON|LOST}",
+  "Id": "{guid}",
   "ItemType": "Game",
-  "PlayerId": "PLAYER#123",
+  "PlayerId": "{guid}",
   "Points": 7,
   "Length": 55,
   "Modus": "Portes",
@@ -119,16 +143,17 @@ We create two entries, one for the winner and one for the loser
   "AvgTurns": "{int}",
   "AvgDuration": "{timeSpan}",
   "AvgDoubles": "{double}",
-  "GSI1PK": "PLAYER#123",
-  "GSI1SK": "GAME#Portes#{WON|LOST}"
+  "GSI1PK": "PLAYER#{PlayerId}",
+  "GSI1SK": "GAME#Portes#{WON|LOST|NOTFINISHED}"
 }
 ```
 
 ## Match History
 ```json
 {
-  "PK": "MATCH#888",
+  "PK": "MATCH#{MatchId}",
   "SK": "HISTORY",
+  "MatchId": "{guid}",
   "ItemType": "MatchHistory",
   "Data": "{MatchHistoryInFormatX}",
   "Format": "MAT"
@@ -138,9 +163,9 @@ We create two entries, one for the winner and one for the loser
 ## Game History
 ```json
 {
-  "PK": "GAME#888",
+  "PK": "GAME#{GameId}",
   "SK": "HISTORY",
-  "Id": "{Guid}",
+  "GameId": "{guid}",
   "ItemType": "GameHistory",
   "Data": "{MatchHistoryInFormatX}",
   "Format": "MAT"

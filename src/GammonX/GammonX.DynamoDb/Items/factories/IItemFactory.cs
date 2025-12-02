@@ -2,7 +2,11 @@
 
 namespace GammonX.DynamoDb.Items
 {
-	public interface IItemFactory<T>
+    /// <summary>
+    /// Provides the capability to create items of type <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">Item type.</typeparam>
+    public interface IItemFactory<T>
 	{
 		/// <summary>
 		/// Gets the format of the primary key (hash key).
@@ -72,6 +76,8 @@ namespace GammonX.DynamoDb.Items
                 return (IItemFactory<T>)new PlayerRatingItemFactory();
 			if (typeof(T) == typeof(PlayerItem))
 				return (IItemFactory<T>) new PlayerItemFactory();
+            if (typeof(T) == typeof(RatingPeriodItem))
+                return (IItemFactory<T>)new RatingPeriodItemFactory();
 
             throw new InvalidOperationException($"Unknown item type '{typeof(T)}'");
 		}

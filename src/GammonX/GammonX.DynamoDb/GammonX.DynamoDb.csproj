@@ -20,4 +20,8 @@
 	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="GammonX.DynamoDb.Tests" />
+	</ItemGroup>
+
 </Project>

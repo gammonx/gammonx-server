@@ -49,7 +49,7 @@ namespace GammonX.Lambda.Extensions
 		{
 			var gameHistoryItem = new GameHistoryItem()
 			{
-				Id = contract.Id,
+				GameId = contract.Id,
 				Data = contract.GameHistory,
 				Format = contract.Format
 			};
@@ -94,7 +94,7 @@ namespace GammonX.Lambda.Extensions
 		{
 			var gameHistoryItem = new MatchHistoryItem()
 			{
-				Id = contract.Id,
+				MatchId = contract.Id,
 				Data = contract.MatchHistory,
 				Format = contract.Format
 			};

@@ -19,9 +19,9 @@ namespace GammonX.DynamoDb.Items
 		public string SK => ConstructSK();
 
 		/// <summary>
-		/// Gets or sets the game id.
+		/// Gets or sets the match id.
 		/// </summary>
-		public Guid Id { get; set; } = Guid.Empty;
+		public Guid MatchId { get; set; } = Guid.Empty;
 
 		public string ItemType { get; } = ItemTypes.MatchHistoryItemType;
 
@@ -38,7 +38,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructPK()
 		{
 			var factory = ItemFactoryCreator.Create<MatchHistoryItem>();
-            return string.Format(factory.PKFormat, Id);
+            return string.Format(factory.PKFormat, MatchId);
 		}
 
 		private static string ConstructSK()

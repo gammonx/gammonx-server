@@ -67,7 +67,15 @@ namespace GammonX.DynamoDb.Items
 
 		public double LowestRating { get; set; } = Glicko2Constants.DefaultRating;
 
-		private string ConstructPK()
+		/// <summary>
+		/// Gets or sets the amount of matches played by the given player for the given variant, type and modus.
+		/// </summary>
+		/// <remarks>
+		/// The Glicko2 rating system needs atleast 10 matches played in order to calculate a proper rating value.
+		/// </remarks>
+		public int MatchesPlayed { get; set; } = 0;
+
+        private string ConstructPK()
 		{
 			var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
 			return string.Format(factory.PKFormat, PlayerId);

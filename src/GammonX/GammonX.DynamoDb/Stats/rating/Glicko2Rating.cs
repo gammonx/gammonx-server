@@ -3,7 +3,7 @@
 namespace GammonX.DynamoDb.Stats
 {
     /// <summary>
-    /// TODO
+    /// Provides the glicko2 rating (unscaled).
     /// </summary>
     internal sealed class Glicko2Rating
     {
