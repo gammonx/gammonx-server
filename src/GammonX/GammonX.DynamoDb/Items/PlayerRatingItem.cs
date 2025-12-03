@@ -3,7 +3,6 @@
 using GammonX.DynamoDb.Stats;
 
 using GammonX.Models.Enums;
-using System.Text.RegularExpressions;
 
 namespace GammonX.DynamoDb.Items
 {

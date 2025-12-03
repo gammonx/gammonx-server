@@ -116,7 +116,7 @@ namespace GammonX.DynamoDb.Items
         private string ConstructSK()
         {
             var factory = ItemFactoryCreator.Create<RatingPeriodItem>();
-            return string.Format(factory.SKFormat, Variant, Type, Modus);
+            return string.Format(factory.SKFormat, Variant, Type, Modus, MatchId);
         }
     }
 }

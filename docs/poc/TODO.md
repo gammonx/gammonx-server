@@ -7,7 +7,8 @@
 - lambda functions + sqs
     - game/match history > umbrüche escapen
     - unit tests dynamo db layer // item typess
-    - test data
+    - query lambda handler (e.g. get player rating in matchmaking worker)
+    - integrate simple queue service
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto
