@@ -7,6 +7,8 @@ namespace GammonX.Lambda.Extensions
 {
 	public static class ContractExtensions
 	{
+		// TODO: unit tests
+
 		public static PlayerItem ToPlayer(this PlayerRecordContract contract)
 		{
 			var playerItem = new PlayerItem()
@@ -31,6 +33,7 @@ namespace GammonX.Lambda.Extensions
 			{
 				Id = contract.Id,
 				PlayerId = contract.PlayerId,
+				MatchId = contract.MatchId,
 				Length = turnCount,
 				Modus = modus,
 				Points = points,

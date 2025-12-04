@@ -36,9 +36,14 @@ namespace GammonX.DynamoDb.Items
 		public Guid Id { get; set; } = Guid.Empty;
 
 		/// <summary>
-		/// Gets or sets the id of the <see cref="GameHistoryItem"/> this rating belongs to."/>
+		/// Gets or sets the id of the <see cref="PlayerItem"/> this game belongs to."/>
 		/// </summary>
 		public Guid PlayerId { get; set; } = Guid.Empty;
+
+		/// <summary>
+		/// Gets or sets the id of the <see cref="MatchItem"/> this game belongs to.
+		/// </summary>
+		public Guid MatchId { get; set; } = Guid.Empty;
 
 		/// <summary>
 		/// Gets or sets the points awarded to the given palyer.
@@ -80,7 +85,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructPK()
 		{
 			var factory = ItemFactoryCreator.Create<GameItem>();
-            return string.Format(factory.PKFormat, Id);
+            return string.Format(factory.PKFormat, MatchId);
 		}
 
 		private string ConstructSK()

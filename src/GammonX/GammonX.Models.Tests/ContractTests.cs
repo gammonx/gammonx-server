@@ -43,12 +43,14 @@ namespace GammonX.Models.Tests
         {
             var gameId = Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09");
             var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+            var matchId = Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e");
             var gameHistoryPath = Path.Combine("Data", "PortesGameHistory.txt");
             var gameHistory = File.ReadAllText(gameHistoryPath);
             var gameRecord = new GameRecordContract()
             {
                 Id = gameId,
                 PlayerId = playerId,
+                MatchId = matchId,
                 Result = GameResult.Gammon,
                 DoublingCubeValue = null,
                 PipesLeft = 0,
@@ -59,6 +61,7 @@ namespace GammonX.Models.Tests
             var json = JsonConvert.SerializeObject(gameRecord);
             Assert.Contains(gameId.ToString(), json);
             Assert.Contains(playerId.ToString(), json);
+            Assert.Contains(matchId.ToString(), json);
             Assert.Contains("\"Result\":1", json);
             Assert.Contains("\"Format\":0", json);
             Assert.Contains(";[Game Modus 'Portes']", json);
@@ -74,6 +77,7 @@ namespace GammonX.Models.Tests
             Assert.NotNull(gameRecord);
             Assert.Equal(Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09"), gameRecord.Id);
             Assert.Equal(Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba"), gameRecord.PlayerId);
+            Assert.Equal(Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e"), gameRecord.MatchId);
             Assert.Equal(GameResult.Gammon, gameRecord.Result);
             Assert.Null(gameRecord.DoublingCubeValue);
             Assert.Equal(0, gameRecord.PipesLeft);
@@ -93,6 +97,7 @@ namespace GammonX.Models.Tests
             var gameRecord = new GameRecordContract()
             {
                 Id = gameId,
+                MatchId = matchId,
                 PlayerId = playerId,
                 Result = GameResult.Gammon,
                 DoublingCubeValue = null,
@@ -154,6 +159,7 @@ namespace GammonX.Models.Tests
             Assert.NotNull(gameRecord);
             Assert.Equal(Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09"), gameRecord.Id);
             Assert.Equal(Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8"), gameRecord.PlayerId);
+            Assert.Equal(Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e"), gameRecord.MatchId);
             Assert.Equal(GameResult.Gammon, gameRecord.Result);
             Assert.Null(gameRecord.DoublingCubeValue);
             Assert.Equal(0, gameRecord.PipesLeft);

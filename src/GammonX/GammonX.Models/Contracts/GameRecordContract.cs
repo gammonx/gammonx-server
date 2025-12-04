@@ -16,6 +16,9 @@ namespace GammonX.Models.Contracts
 		[DataMember(Name = "PlayerId")]
 		public Guid PlayerId { get; set; } = Guid.Empty;
 
+        [DataMember(Name = "MatchId")]
+        public Guid MatchId { get; set; } = Guid.Empty;
+
 		[DataMember(Name = "PipesLeft")]
 		public int PipesLeft { get; set; } = 0;
 

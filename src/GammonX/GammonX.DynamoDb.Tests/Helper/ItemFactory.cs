@@ -2,7 +2,7 @@
 using GammonX.DynamoDb.Stats;
 
 using GammonX.Models.Enums;
-
+using System.Net.NetworkInformation;
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.DynamoDb.Tests.Helper
@@ -41,6 +41,50 @@ namespace GammonX.DynamoDb.Tests.Helper
                 UserName = $"babahaft-{id}"
             };
             return playerItem;
+        }
+
+        public static GameHistoryItem CreateGameHistory(Guid gameId)
+        {
+            var historyItem = new GameHistoryItem()
+            {
+                GameId = gameId,
+                Format = HistoryFormat.MAT,
+                Data = "empty",
+            };
+            return historyItem;
+        }
+
+        public static GameItem CreateGame(Guid gameId, MatchItem matchItem, PlayerItem playerItem, GameResult result, GameModus modus)
+        {
+            var hasWon = result.HasWon() ?? false;
+            var gameItem = new GameItem()
+            {
+                Id = gameId,
+                PlayerId = playerItem.Id,
+                MatchId = matchItem.Id,
+                Modus = modus,
+                Result = result,
+                StartedAt = DateTime.Now.AddMinutes(-10),
+                EndedAt = DateTime.Now,
+                Duration = TimeSpan.FromMinutes(10),
+                Points = hasWon ? 1 : 0,
+                PipesLeft = hasWon ? 0 : 55,
+                DiceDoubles = 10,
+                DoublingCubeValue = null,
+                Length = 66
+            };
+            return gameItem;
+        }
+
+        public static MatchHistoryItem CreateMatchHistory(Guid matchId)
+        {
+            var historyItem = new MatchHistoryItem()
+            {
+                MatchId = matchId,
+                Format = HistoryFormat.MAT,
+                Data = "empty",
+            };
+            return historyItem;
         }
 
         public static MatchItem CreateMatch(Guid matchId, PlayerItem playerItem, MatchResult result, MatchVariant variant, MatchModus modus, MatchType type)

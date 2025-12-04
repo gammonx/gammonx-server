@@ -121,9 +121,10 @@ We create two entries, one for the winner and one for the loser
 We create two entries, one for the winner and one for the loser
 ```json
 {
-  "PK": "MATCH#{Id}",
-  "SK": "GAME#{guid}#{WON|LOST}",
+  "PK": "MATCH#{MatchId}",
+  "SK": "GAME#{Id}#{WON|LOST}",
   "Id": "{guid}",
+  "MatchId": "{guid}",
   "ItemType": "Game",
   "PlayerId": "{guid}",
   "Points": 7,
