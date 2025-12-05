@@ -1,6 +1,5 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
-
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 
@@ -8,7 +7,7 @@ using Newtonsoft.Json;
 
 using Xunit;
 
-namespace GammonX.Lambda.Tests
+namespace GammonX.Lambda.Tests.Sqs
 {
     public class PlayerCreatedLambdaHandlerTests
     {
@@ -45,7 +44,8 @@ namespace GammonX.Lambda.Tests
             };
 
             var services = Startup.Configure();
-            var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.PlayerCreatedFunc);
+            await Startup.ConfigureDynamoDbTableAsync(services);
+            var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerCreatedFunc);
 
             await handler.HandleAsync(sqsEvent, context);
             Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());

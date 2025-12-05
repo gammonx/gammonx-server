@@ -1,4 +1,5 @@
-﻿using GammonX.Lambda.Handlers;
+﻿using GammonX.DynamoDb.Items;
+using GammonX.Lambda.Handlers;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -6,7 +7,7 @@ namespace GammonX.Lambda.Services
 {
 	public static class LambdaFunctionFactory
 	{
-		public static ISqsLambdaHandler Create(IServiceProvider services, string functionName)
+		public static ISqsLambdaHandler CreateSqsHandler(IServiceProvider services, string functionName)
 		{
 			switch (functionName)
 			{
@@ -16,9 +17,21 @@ namespace GammonX.Lambda.Services
 				case LambdaFunctions.MatchCompletedFunc:
 				case LambdaFunctions.PlayerCreatedFunc:
 					return services.GetRequiredKeyedService<ISqsLambdaHandler>(functionName);
-				default:
+                default:
 					throw new InvalidOperationException($"unknown lambda function with name '{functionName}'");
 			}
 		}
-	}
+
+		public static IApiLambdaHandler CreateApiHandler(IServiceProvider services, string functionName)
+		{
+			switch (functionName)
+			{
+                case LambdaFunctions.GetPlayerRatingFunc:
+                    return services.GetRequiredKeyedService<IApiLambdaHandler>(functionName);
+                default:
+                    throw new InvalidOperationException($"unknown lambda function with name '{functionName}'");
+            }
+		}
+
+    }
 }

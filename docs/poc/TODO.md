@@ -1,12 +1,11 @@
 ## DONE
-- database
-    - dynamo db konzept testen > mit access keys local to aws
+- sqs event handler (lambda)
+- dynamo db data layer 
 
 ## Active
 - palamedes schreiben
 - lambda functions + sqs
     - game/match history > umbrüche escapen
-    - unit tests dynamo db layer // item typess
     - query lambda handler (e.g. get player rating in matchmaking worker)
     - integrate simple queue service
 

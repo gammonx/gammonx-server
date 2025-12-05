@@ -43,7 +43,6 @@ namespace GammonX.Lambda.Handlers
                 foreach (var record in @event.Records)
                 {
                     context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
-
                 }
             }
         }

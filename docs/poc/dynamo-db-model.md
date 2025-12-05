@@ -9,6 +9,7 @@
 | `MATCH#<MatchId>`   | `GAME#<GameId>`                  | Game         |
 | `MATCH#<MatchId>`   | `HISTORY`                        | MatchHistory |
 | `GAME#<GameId>`     | `HISTORY`                        | GameHistory  |
+| `PLAYER#<PlayerId>` | `MATCH#<Va>#<Ty>#<Mo>#<MatchId>` | RatingPeriod |
 
 ## Player
 ```json

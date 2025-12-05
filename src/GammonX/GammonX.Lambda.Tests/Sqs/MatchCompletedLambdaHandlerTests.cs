@@ -6,7 +6,7 @@ using GammonX.Models.History;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace GammonX.Lambda.Tests
+namespace GammonX.Lambda.Tests.Sqs
 {
 	public class MatchCompletedLambdaHandlerTests
 	{
@@ -152,7 +152,8 @@ namespace GammonX.Lambda.Tests
 			};
 
 			var services = Startup.Configure();
-			var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.MatchCompletedFunc);
+            await Startup.ConfigureDynamoDbTableAsync(services);
+            var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.MatchCompletedFunc);
 
 			await handler.HandleAsync(sqsEvent, context);
 			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());

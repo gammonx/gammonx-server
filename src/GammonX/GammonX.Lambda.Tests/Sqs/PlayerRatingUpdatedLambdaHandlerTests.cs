@@ -1,8 +1,6 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
-
 using GammonX.Lambda.Services;
-
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
 
@@ -10,7 +8,7 @@ using Newtonsoft.Json;
 
 using Xunit;
 
-namespace GammonX.Lambda.Tests
+namespace GammonX.Lambda.Tests.Sqs
 {
     public  class PlayerRatingUpdatedLambdaHandlerTests
     {
@@ -156,7 +154,8 @@ namespace GammonX.Lambda.Tests
             };
 
             var services = Startup.Configure();
-            var handler = LambdaFunctionFactory.Create(services, LambdaFunctions.PlayerRatingUpdatedFunc);
+            await Startup.ConfigureDynamoDbTableAsync(services);
+            var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerRatingUpdatedFunc);
 
             await handler.HandleAsync(sqsEvent, context);
             Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());

@@ -2,7 +2,9 @@
 {
 	public static class LambdaFunctions
 	{
-		public const string MatchCompletedFunc = "MATCH_COMPELTED";
+        #region SQS Lambda Handlers
+
+        public const string MatchCompletedFunc = "MATCH_COMPELTED";
 
 		public const string GameCompletedFunc = "GAME_COMPLETED";
 
@@ -11,5 +13,13 @@
 		public const string PlayerStatsUpdatedFunc = "PLAYER_STATS_UPDATED";
 
 		public const string PlayerCreatedFunc = "PLAYER_CREATED";
-	}
+
+        #endregion SQS Lambda Handlers
+
+        #region API Gateway Lambda Handlers
+
+        public const string GetPlayerRatingFunc = "GET_PLAYER_RATING";
+
+        #endregion
+    }
 }

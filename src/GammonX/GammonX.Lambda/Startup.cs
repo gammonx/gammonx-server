@@ -1,18 +1,37 @@
-﻿using DotNetEnv;
+﻿using Amazon.DynamoDBv2;
+
+using DotNetEnv;
 
 using GammonX.DynamoDb;
 using GammonX.DynamoDb.Extensions;
+using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
+using GammonX.DynamoDb.Services;
+
 using GammonX.Lambda.Handlers;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace GammonX.Lambda
 {
 	public static class Startup
 	{
 		private static IServiceProvider? _provider;
+
+		public static async Task ConfigureDynamoDbTableAsync(IServiceProvider services)
+		{
+            using (var scope = services.CreateScope())
+            {
+                var options = services.GetRequiredService<IOptions<DynamoDbOptions>>().Value;
+                if (options.Required)
+                {
+                    var dynamoClient = scope.ServiceProvider.GetRequiredService<IAmazonDynamoDB>();
+                    await DynamoDbInitializer.EnsureTablesExistAsync(dynamoClient, options);
+                }
+            }
+        }
 
 		public static IServiceProvider Configure()
 		{
@@ -49,6 +68,8 @@ namespace GammonX.Lambda
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerRatingUpdatedHandler>(LambdaFunctions.PlayerRatingUpdatedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerStatsUpdatedHandler>(LambdaFunctions.PlayerStatsUpdatedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerCreatedHandler>(LambdaFunctions.PlayerCreatedFunc);
+
+			services.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(LambdaFunctions.GetPlayerRatingFunc);
 			// -------------------------------------------------------------------------------
 			// DATABASE SETUP
 			// -------------------------------------------------------------------------------
