@@ -39,19 +39,25 @@ namespace GammonX.Lambda
 				return _provider;
 
 			var services = new ServiceCollection();
-			// -------------------------------------------------------------------------------
-			// ENVIRONMENT SETUP
-			// -------------------------------------------------------------------------------
-			var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
-			var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-			if (File.Exists(envLocal))
+
+            // -------------------------------------------------------------------------------
+            // ENVIRONMENT SETUP
+            // -------------------------------------------------------------------------------
+            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+			// we only want to load the .env files if ran outside of docker.
+			if (!isDocker)
 			{
-				Env.Load(envLocal);
-			}
-			else if (File.Exists(env))
-			{
-				Env.Load(env);
-			}
+                var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
+                var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+                if (File.Exists(envLocal))
+                {
+                    Env.Load(envLocal);
+                }
+                else if (File.Exists(env))
+                {
+                    Env.Load(env);
+                }
+            }
 			// -------------------------------------------------------------------------------
 			// CONFIGURATION SETUP
 			// -------------------------------------------------------------------------------
@@ -69,7 +75,7 @@ namespace GammonX.Lambda
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerStatsUpdatedHandler>(LambdaFunctions.PlayerStatsUpdatedFunc);
 			services.AddKeyedTransient<ISqsLambdaHandler, PlayerCreatedHandler>(LambdaFunctions.PlayerCreatedFunc);
 
-			services.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(LambdaFunctions.GetPlayerRatingFunc);
+			services.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(typeof(GetPlayerRatingHandler));
 			// -------------------------------------------------------------------------------
 			// DATABASE SETUP
 			// -------------------------------------------------------------------------------

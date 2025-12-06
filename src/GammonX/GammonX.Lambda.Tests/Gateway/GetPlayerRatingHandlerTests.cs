@@ -54,8 +54,6 @@ namespace GammonX.Lambda.Tests.Gateway
 
             await _repo.SaveAsync(playerRating);
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(_services, LambdaFunctions.GetPlayerRatingFunc);
-
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext
             {
@@ -63,6 +61,9 @@ namespace GammonX.Lambda.Tests.Gateway
             };
 
             var request = MakeRequest(playerId, variant);
+
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            Assert.NotNull(handler);
 
             var result = await handler.HandleAsync(request, context);
 
@@ -113,12 +114,13 @@ namespace GammonX.Lambda.Tests.Gateway
             await _repo.SaveAsync(item1);
             await _repo.SaveAsync(item2);
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(_services, LambdaFunctions.GetPlayerRatingFunc);
-
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext { Logger = logger };
 
             var request = MakeRequest(playerId, variant);
+
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            Assert.NotNull(handler);
 
             var result = await handler.HandleAsync(request, context);
 
@@ -135,13 +137,13 @@ namespace GammonX.Lambda.Tests.Gateway
         [InlineData(MatchVariant.Tavla)]
         public async Task GetPlayerRatingShouldReturnNullWhenPlayerIdIsInvalid(MatchVariant variant)
         {
-            var handler = LambdaFunctionFactory.CreateApiHandler(_services, LambdaFunctions.GetPlayerRatingFunc);
-
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext { Logger = logger };
 
             var request = new APIGatewayProxyRequest
             {
+                Resource = "/players/{id}/{variant}/rating",
+                HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
                     ["id"] = "NOT-A-GUID",
@@ -149,10 +151,37 @@ namespace GammonX.Lambda.Tests.Gateway
                 }
             };
 
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            Assert.NotNull(handler);
+
             var result = await handler.HandleAsync(request, context);
 
             Assert.Null(result);
             Assert.Contains("An error occurred", logger.Buffer.ToString());
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon)]
+        [InlineData(MatchVariant.Tavli)]
+        [InlineData(MatchVariant.Tavla)]
+        public async Task LambdaFactoryShouldReturnNullOnUnknownAPIRoute(MatchVariant variant)
+        {
+            var logger = new TestLambdaLogger();
+            var context = new TestLambdaContext { Logger = logger };
+
+            var request = new APIGatewayProxyRequest
+            {
+                Resource = "/players/{id}/{variant}/rating123",
+                HttpMethod = "GET",
+                PathParameters = new Dictionary<string, string>
+                {
+                    ["id"] = "NOT-A-GUID",
+                    ["variant"] = variant.ToString()
+                }
+            };
+
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            Assert.Null(handler);
         }
 
         [Fact]
@@ -165,25 +194,28 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton(mockRepo.Object);
-            serviceCollection.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(LambdaFunctions.GetPlayerRatingFunc);
-
-            var handler = LambdaFunctionFactory.CreateApiHandler(serviceCollection.BuildServiceProvider(), LambdaFunctions.GetPlayerRatingFunc);
+            serviceCollection.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(typeof(GetPlayerRatingHandler));
 
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext { Logger = logger };
 
             var request = MakeRequest(Guid.NewGuid(), MatchVariant.Backgammon);
 
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            Assert.NotNull(handler);
+
             var result = await handler.HandleAsync(request, context);
 
             Assert.Null(result);
-            Assert.Contains("Repo failure", logger.Buffer.ToString());
+            Assert.Contains("Error: An error occurred while reading", logger.Buffer.ToString());
         }
 
         private static APIGatewayProxyRequest MakeRequest(Guid playerId, MatchVariant variant)
         {
             return new APIGatewayProxyRequest
             {
+                Resource = "/players/{id}/{variant}/rating",
+                HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
                     ["id"] = playerId.ToString(),

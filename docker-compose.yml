@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
+      target: server-final
       args:
         BUILD_CONFIGURATION: Debug
     container_name: server
@@ -12,8 +13,9 @@ services:
       - "8081:8081"   # signalR port
     environment:
       - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
       - GAME_SERVICE__BASEPATH=/game
-      - BOT_SERVICE__BASEURL=http://localhost:8082/bot/wildbg/
+      - BOT_SERVICE__BASEURL=http://wildbg-service:8082/bot/wildbg/
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
@@ -36,8 +38,9 @@ services:
   lambda-service:
     image: gammonx/lambda-service
     build:
-      context: ./src/GammonX/GammonX.Lambda/
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
       args:
         BUILD_CONFIGURATION: Debug
     container_name: lambda
@@ -45,16 +48,29 @@ services:
       - "9000:8080"
     environment:
       - DOTNET_ENVIRONMENT=Development
-      ### SQS EVENT FUNCTIONS      
-      - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      #################################
+      ###### SQS EVENT FUNCTIONS ######
+      #################################      
+      # - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
       # - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
       # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_RATING_UPDATED
       # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_STATS_UPDATED
       # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_CREATED
-      ### API GATEWAY FUNCTIONS
-      # - AWS_LAMBDA_FUNCTION_NAME=GET_PLAYER_RATING
-      - AWS__DYNAMODB_TABLENAME=GammonX=
+      #################################
+      ##### API GATEWAY FUNCTIONS #####
+      #################################
+      - AWS_LAMBDA_FUNCTION_NAME=API_GATEWAY_HANDLER
+      #################################
+      ##### AWS DYNAMO DB OPTIONS #####
+      #################################
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
 
   dynamodb-local:
       image: amazon/dynamodb-local

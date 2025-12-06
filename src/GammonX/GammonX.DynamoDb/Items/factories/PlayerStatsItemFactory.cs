@@ -3,6 +3,7 @@
 using GammonX.DynamoDb.Stats;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
@@ -48,7 +49,7 @@ namespace GammonX.DynamoDb.Items
 				WinStreak = int.Parse(item["WinStreak"].N),
 				LongestWinStreak = int.Parse(item["LongestWinStreak"].N),
 				TotalPlayTime = TimeSpan.Parse(item["TotalPlayTime"].S),
-				LastMatch = DateTime.Parse(item["LastMatch"].S),
+				LastMatch = DateTimeHelper.ParseFlexible(item["LastMatch"].S),
 				MatchesLast7 = int.Parse(item["MatchesLast7"].N),
 				MatchesLast30 = int.Parse(item["MatchesLast30"].N),
 				AvgGammons = double.Parse(item["AvgGammons"].N),

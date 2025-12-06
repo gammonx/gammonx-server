@@ -32,7 +32,4 @@
 		<ProjectReference Include="..\GammonX.Lambda\GammonX.Lambda.csproj" />
 		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
-	<ItemGroup>
-		<Folder Include="Data\" />
-	</ItemGroup>
 </Project>

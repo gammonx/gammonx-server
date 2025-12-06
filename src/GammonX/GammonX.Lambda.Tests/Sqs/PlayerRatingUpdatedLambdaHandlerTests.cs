@@ -160,6 +160,8 @@ namespace GammonX.Lambda.Tests.Sqs
             await handler.HandleAsync(sqsEvent, context);
             Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
             Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed rating update for player with id '{player1Id}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed rating update for player with id '{player2Id}'", logger.Buffer.ToString());
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 namespace GammonX.DynamoDb.Items
 {
@@ -39,8 +40,8 @@ namespace GammonX.DynamoDb.Items
                 Points = int.Parse(item["Points"].N),
 				Length = int.Parse(item["Length"].N),
 				Modus = Enum.Parse<GameModus>(item["Modus"].S, true),
-				StartedAt = DateTime.Parse(item["StartedAt"].S),
-				EndedAt = DateTime.Parse(item["EndedAt"].S),
+				StartedAt = DateTimeHelper.ParseFlexible(item["StartedAt"].S),
+				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
 				Result = Enum.Parse<GameResult>(item["Result"].S, true),
 				DiceDoubles = int.Parse(item["DiceDoubles"].N),
 				DoublingCubeValue = value != null ? int.Parse(value) : null,

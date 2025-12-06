@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 namespace GammonX.DynamoDb.Items
 {
@@ -45,7 +46,7 @@ namespace GammonX.DynamoDb.Items
                 OpponentRating = double.Parse(item["OpponentRating"].N),
                 OpponentRatingDeviation = double.Parse(item["OpponentRatingDeviation"].N),
                 OpponentSigma = double.Parse(item["OpponentSigma"].N),
-                CreatedAt = DateTime.Parse(item["CreatedAt"].S)
+                CreatedAt = DateTimeHelper.ParseFlexible(item["CreatedAt"].S)
             };
             return ratingPeriodItem;
         }

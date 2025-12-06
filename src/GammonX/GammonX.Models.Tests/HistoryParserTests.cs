@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 using GammonX.Models.History;
 
 namespace GammonX.Models.Tests
@@ -35,8 +36,8 @@ namespace GammonX.Models.Tests
             Assert.Equal(blackPlayer, match.Player2Id);
             Assert.Equal(HistoryFormat.MAT, match.Format);
             Assert.Equal(3, match.Length);
-            Assert.Equal(DateTime.Parse("29/11/2025 09:33:37"), match.StartedAt);
-            Assert.Equal(DateTime.Parse("29/11/2025 09:33:41"), match.EndedAt);
+            Assert.Equal(DateTimeHelper.ParseFlexible("29/11/2025 09:33:37"), match.StartedAt);
+            Assert.Equal(DateTimeHelper.ParseFlexible("29/11/2025 09:33:41"), match.EndedAt);
             Assert.Equal(3, match.PointCount(whitePlayer));
             Assert.Equal(1, match.PointCount(blackPlayer));
             Assert.Equal(11, match.AvgDoubleDiceCount(whitePlayer));
@@ -61,8 +62,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTime.Parse("29/11/2025 09:33:37");
-            var expEndedAt = DateTime.Parse("29/11/2025 09:33:37");
+            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
+            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -92,8 +93,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTime.Parse("29/11/2025 09:33:37");
-            var expEndedAt = DateTime.Parse("29/11/2025 09:33:39");
+            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
+            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:39");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -123,8 +124,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTime.Parse("29/11/2025 09:33:39");
-            var expEndedAt = DateTime.Parse("29/11/2025 09:33:41");
+            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:39");
+            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:41");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);

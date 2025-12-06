@@ -74,8 +74,9 @@ namespace GammonX.Lambda.Tests.Sqs
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.GameCompletedFunc);
 
 			await handler.HandleAsync(sqsEvent, context);
-			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
-			Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
+            Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
+            Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed completed game with id '{gameId}'", logger.Buffer.ToString());
 		}
 	}
 }

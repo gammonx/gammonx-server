@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
+using GammonX.Models.Helpers;
+
 namespace GammonX.DynamoDb.Items
 {
     // <inheritdoc />
@@ -30,7 +32,7 @@ namespace GammonX.DynamoDb.Items
             {
                 Id = Guid.Parse(item["Id"].S),
                 UserName = item["Username"].S,
-                CreatedAt = DateTime.Parse(item["CreatedAt"].S)
+                CreatedAt = DateTimeHelper.ParseFlexible(item["CreatedAt"].S)
             };
         }
 

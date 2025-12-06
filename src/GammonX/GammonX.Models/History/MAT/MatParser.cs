@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using System.Text.RegularExpressions;
 
@@ -96,8 +97,8 @@ namespace GammonX.Models.History.MAT
 				case "Name": match.Name = value; break;
 				case "Player 1 White Checkers": match.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": match.Player2Id = Guid.Parse(value); break;
-				case "Started At": match.StartedAt = DateTime.Parse(value); break;
-				case "Ended At": match.EndedAt = DateTime.Parse(value); break;
+				case "Started At": match.StartedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Ended At": match.EndedAt = DateTimeHelper.ParseFlexible(value); break;
 				case "Length": match.Length = int.Parse(value); break;
 			}
 		}
@@ -112,8 +113,8 @@ namespace GammonX.Models.History.MAT
 				case "Game Modus": game.Modus = Enum.Parse<GameModus>(value); break;
 				case "Winner": game.Winner = Guid.Parse(value); break;
 				case "Points": game.Points = int.Parse(value); break;
-				case "Started At": game.StartedAt = DateTime.Parse(value); break;
-				case "Ended At": game.EndedAt = DateTime.Parse(value); break;
+				case "Started At": game.StartedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Ended At": game.EndedAt = DateTimeHelper.ParseFlexible(value); break;
 				case "Player 1 White Checkers": game.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": game.Player2Id = Guid.Parse(value); break;
 			}

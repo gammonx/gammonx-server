@@ -16,16 +16,20 @@ using Serilog;
 // -------------------------------------------------------------------------------
 // ENVIRONMENT SETUP
 // -------------------------------------------------------------------------------
-var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
-var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+if (!isDocker)
+{
+    var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
+    var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 
-if (File.Exists(envLocal))
-{
-	Env.Load(envLocal);
-}
-else if (File.Exists(env))
-{
-	Env.Load(env);
+    if (File.Exists(envLocal))
+    {
+        Env.Load(envLocal);
+    }
+    else if (File.Exists(env))
+    {
+        Env.Load(env);
+    }
 }
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();

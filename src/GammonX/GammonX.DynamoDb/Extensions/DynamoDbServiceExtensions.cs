@@ -8,6 +8,7 @@ using GammonX.DynamoDb.Repository;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Sprache;
 
 namespace GammonX.DynamoDb.Extensions
 {
@@ -23,9 +24,18 @@ namespace GammonX.DynamoDb.Extensions
 				return;
 			}
 
-			services.AddSingleton<IAmazonDynamoDB>(sp =>
+            services.AddSingleton<IAmazonDynamoDB>(sp =>
 			{
 				var options = sp.GetRequiredService<IOptions<DynamoDbOptions>>().Value;
+
+#if DEBUG
+				Console.WriteLine($"{options.DYNAMODB_TABLENAME}");
+				Console.WriteLine($"{options.DYNAMODB_SERVICEURL}");
+				Console.WriteLine($"{options.AWS_ACCESS_KEY_ID}");
+				Console.WriteLine($"{options.AWS_SECRET_ACCESS_KEY}");
+				Console.WriteLine($"{options.REGION}");
+#endif
+
 				var isLocal = string.IsNullOrEmpty(options.REGION);
 				var keyAuth = !string.IsNullOrEmpty(options.AWS_ACCESS_KEY_ID) && !string.IsNullOrEmpty(options.AWS_SECRET_ACCESS_KEY);
 				if (isLocal)

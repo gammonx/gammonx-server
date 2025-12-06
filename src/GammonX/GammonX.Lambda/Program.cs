@@ -4,6 +4,7 @@ using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
+using GammonX.Lambda.Handlers.Contracts;
 using GammonX.Lambda.Services;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -18,25 +19,44 @@ namespace GammonX.Lambda
 		{
 			var services = Startup.Configure();
 
-            await Startup.ConfigureDynamoDbTableAsync(services);
+            // NOTE: we should avoid calling any aws resources during bootstrap
+            // await Startup.ConfigureDynamoDbTableAsync(services);
 
 			async Task<object> Router(object input, ILambdaContext context)
 			{
-				if (input is SQSEvent sqsEvent)
+                context.Logger.LogInformation($"Received input of type: '{input.GetType().FullName}' for function '{context.FunctionName}'");
+
+                if (input is MemoryStream stream)
                 {
-                    return HandleSqsEventAsync(context, services, sqsEvent);
-                }
-                else if (input is APIGatewayProxyRequest apiRequest)
-                {
-                    return HandleGatewayRequestAsync(context, services, apiRequest);
-                }
+                    var json = await ReadStreamAsStringAsync(stream);
+                    context.Logger.LogInformation($"Received input JSON: {json.Length} characters");
+
+                    var deserializedInput = DeserializeFunctionInput(json, context.FunctionName);
+
+                    if (deserializedInput is SQSEvent sqsEvent)
+                    {
+                        context.Logger.LogInformation($"Received SQS event. Creating dedicated function handler...");
+                        return await HandleSqsEventAsync(context, services, sqsEvent);
+                    }
+                    else if (deserializedInput is APIGatewayProxyRequest apiRequest)
+                    {
+                        context.Logger.LogInformation($"Received API Gateway request. Creating dedicated function handler...");
+                        return await HandleGatewayRequestAsync(context, services, apiRequest);
+                    }
+                    else
+                    {
+                        context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
+                        return new object();
+                    }
+                }                
                 else
                 {
+                    context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
                     return new object();
                 }
 			}
 
-			var bootstrapper = LambdaBootstrapBuilder.Create<object>(Router, new DefaultLambdaJsonSerializer()).Build();
+			var bootstrapper = LambdaBootstrapBuilder.Create(Router, new DefaultLambdaJsonSerializer()).Build();
 			await bootstrapper.RunAsync();
         }
 
@@ -53,32 +73,65 @@ namespace GammonX.Lambda
             try
             {
                 using var scope = services.CreateScope();
-                var handler = LambdaFunctionFactory.CreateApiHandler(scope.ServiceProvider, context.FunctionName);
+                var handler = LambdaFunctionFactory.CreateApiHandler(apiRequest, scope.ServiceProvider);
+
+                if (handler == null)
+                {
+                    var notFound = ResponseContractExtensions.ToResponse("The requested api route does not exist");
+                    return CreateGatewayResponse(404, notFound);
+                }
 
                 var result = await handler.HandleAsync(apiRequest, context);
-
-                return new APIGatewayProxyResponse
+                if (result == null)
                 {
-                    StatusCode = 200,
-                    Body = JsonConvert.SerializeObject(result),
-                    Headers = new Dictionary<string, string>
-                    {
-                        {"Content-Type", "application/json"}
-                    }
-                };
+                    var error = ResponseContractExtensions.ToResponse("An error occurred while handling the api request");
+                    return CreateGatewayResponse(500, error);
+                }
+                return CreateGatewayResponse(200, result);
             }
             catch (Exception ex)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = 500,
-                    Body = ex.Message,
-                    Headers = new Dictionary<string, string>
-                    {
-                        {"Content-Type", "application/text"}
-                    }
-                };
+                return CreateGatewayResponse(500, ResponseContractExtensions.ToResponse(ex.Message));
             }
+        }
+
+        private static APIGatewayProxyResponse CreateGatewayResponse(int httpCode, BaseResponseContract response)
+        {
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = httpCode,
+                Body = JsonConvert.SerializeObject(response),
+                Headers = new Dictionary<string, string>
+                {
+                    {"Content-Type", "application/json"}
+                }
+            };
+        }
+
+        private static object? DeserializeFunctionInput(string json, string functionName)
+        {
+            switch (functionName)
+            {
+                case LambdaFunctions.GameCompletedFunc:
+                case LambdaFunctions.MatchCompletedFunc:
+                case LambdaFunctions.PlayerCreatedFunc:
+                case LambdaFunctions.PlayerRatingUpdatedFunc:
+                case LambdaFunctions.PlayerStatsUpdatedFunc:
+                    var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
+                    return sqsEvent;
+                case LambdaFunctions.ApiGatewayHandlerFunc:
+                    var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
+                    return apiEvent;
+                default:
+                    return null;
+            }
+        }
+
+        private static async Task<string> ReadStreamAsStringAsync(Stream stream)
+        {
+            stream.Position = 0;
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync();
         }
     }
 }

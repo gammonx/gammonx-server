@@ -19,15 +19,19 @@ namespace GammonX.DynamoDb.Tests.Helper
 
             var services = new ServiceCollection();
 
-            var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
-            var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
-            if (File.Exists(envLocal))
+            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+            if (!isDocker)
             {
-                Env.Load(envLocal);
-            }
-            else if (File.Exists(env))
-            {
-                Env.Load(env);
+                var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
+                var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+                if (File.Exists(envLocal))
+                {
+                    Env.Load(envLocal);
+                }
+                else if (File.Exists(env))
+                {
+                    Env.Load(env);
+                }
             }
 
             var configuration = new ConfigurationBuilder()

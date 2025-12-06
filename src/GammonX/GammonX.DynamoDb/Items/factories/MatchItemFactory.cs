@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 namespace GammonX.DynamoDb.Items
 {
@@ -44,8 +45,8 @@ namespace GammonX.DynamoDb.Items
 				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
 				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
 				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
-				StartedAt = DateTime.Parse(item["StartedAt"].S),
-				EndedAt = DateTime.Parse(item["EndedAt"].S),
+				StartedAt = DateTimeHelper.ParseFlexible(item["StartedAt"].S),
+				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
 				Duration = TimeSpan.Parse(item["Duration"].S),
 				AvgDuration = TimeSpan.Parse(item["AvgDuration"].S),
 				Result = Enum.Parse<MatchResult>(item["Result"].S, true),

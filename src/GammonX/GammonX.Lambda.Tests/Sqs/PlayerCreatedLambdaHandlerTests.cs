@@ -1,5 +1,6 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 
@@ -49,6 +50,7 @@ namespace GammonX.Lambda.Tests.Sqs
 
             await handler.HandleAsync(sqsEvent, context);
             Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed created player with id '{playerId}'", logger.Buffer.ToString());
         }
     }
 }

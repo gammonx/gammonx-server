@@ -18,7 +18,7 @@
 
         #region API Gateway Lambda Handlers
 
-        public const string GetPlayerRatingFunc = "GET_PLAYER_RATING";
+        public const string ApiGatewayHandlerFunc = "API_GATEWAY_HANDLER";
 
         #endregion
     }

@@ -59,7 +59,7 @@ namespace GammonX.DynamoDb.Services
 
             // we get the last 9 rating periods of the given player
             var ratingPeriodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
-            var sk2 = string.Format(ratingPeriodFactory.SKFormat, variant, type, modus);
+            var sk2 = string.Format(ratingPeriodFactory.SKFormat, variant, type, modus, wonMatch.Id);
             var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId, sk2);
             var lastRatingPeriods = ratingPeriods.OrderBy(rp => rp.CreatedAt).Take(Glicko2Constants.RatingPeriod - 1).ToList();
 

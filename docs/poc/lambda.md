@@ -1,18 +1,30 @@
 ## SQS Events
+Each SQS events redirects to a own lambda instance with a gvien entrypoint
+- `MATCH_COMPELTED`
+- `GAME_COMPLETED`
+- `PLAYER_RATING_UPDATED`
+- `PLAYER_STATS_UPDATED`
+- `PLAYER_CREATED`
 
-### Game finished
-- player who lost sends `GAME_COMPLETED`
-- player who won sends `GAME_COMPLETED`
-- player 1 + 2 sends `PLAYER_STATS_UPDATED`
+### SQS Queue + Events
+Each SQS event has it own queue.
 
-### Match Finished
-- player 1 + 2 sends `PLAYER_RATING_UPDATED`
-- player 1 + 2 sends `MATCH_COMPLETED`
+#### Game finishes
+- Server sends game state to SQS queue
+    - 2 Game records to `GAME_COMPLETED` queue, one for each player for `GameItem`
+    - 2 Game records to `PLAYER_STATS_UPDATED` queue, one for each player for `PlayerStatsItem`
 
-### Player Created
-- client send `PLAYER_CREATED` on sign up
+#### Match finishes
+- Server sends match state to SQS queue
+    - 2 Match records to `MATCH_COMPELTED` queue, one for each player for `MatchItem`
+    - 2 Match records to `PLAYER_RATING_UPDATED` queue, one for each player for `PlayerRatingItem` (for ranked only)
 
-## Lambda Queries
+#### App creates Player
+- client sends player record to `PLAYER_CREATED` queue for `PlayerItem`
 
-### Get Player Rating for a Variant
+## API Gateway Requests
+- A single lambda instance with entrypoint `API_GATEWAY_HANDLER`.
+- Internal routing of the requested resource
+
+### Supported API Gateway Resources
 - `GET /players/{id}/{variant}/rating`

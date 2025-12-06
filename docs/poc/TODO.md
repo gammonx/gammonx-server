@@ -1,12 +1,14 @@
 ## DONE
 - sqs event handler (lambda)
-- dynamo db data layer 
+- dynamo db data layer
+- lambda sqs handler
+- lambda api gateway handler
 
 ## Active
 - palamedes schreiben
 - lambda functions + sqs
+    - test api gateway lambda container (get player rating)
     - game/match history > umbrüche escapen
-    - query lambda handler (e.g. get player rating in matchmaking worker)
     - integrate simple queue service
 
 ## TODO 
