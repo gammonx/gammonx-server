@@ -38,13 +38,19 @@ namespace GammonX.Lambda.Handlers
                     var ratingItem =  ratings.First();
                     return ratingItem.ToResponse();
                 }
-
-                throw new InvalidOperationException($"Multiple player ratings found for the given player '{playerId}' and variant '{variant}'");
+                else if (ratings.Count() == 0)
+                {
+                    throw new InvalidOperationException($"None player rating found for the given player '{playerId}' and variant '{variant}'");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Multiple player ratings found for the given player '{playerId}' and variant '{variant}'");
+                }
             }
             catch (Exception ex)
             {
                 context.Logger.LogError(ex, $"An error occurred while reading player rating. Error '{ex.Message}'.");
-                return null;
+                throw;
             }            
         }
     }

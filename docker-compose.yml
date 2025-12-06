@@ -69,8 +69,6 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
-    depends_on:
-      - dynamodb-local
 
   dynamodb-local:
       image: amazon/dynamodb-local

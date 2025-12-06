@@ -1,18 +1,11 @@
 # Lambda Function Container
 
-## Function Names
-- MATCH_COMPELTED
-    - Writes Match Details (2x LOST + WON)
-- GAME_COMPLETED
-    - Writes Game Details (2x LOST + WON)
-    - Writes Game History (also two times?)
-- PLAYER_RATING_UPDATED
-    - Writes Player Rating
-- PLAYER_STATS_UPDATED
-    - Writes Player Stats
+## Function and their Payloads
+- See [Lambda Functions](LambdaFunctions.cs)
+- See [Lambda Function Payloads](../GammonX.Lambda.Tests/Data/)
 
 ## How to
-- set env variable `AWS_LAMBDA_FUNCTION_NAME`
+- set env variable `AWS_LAMBDA_FUNCTION_NAME` in [`docker-compose.yml`](../../../docker-compose.yml)
 - run `docker compose build lambda-service`
 - OR run `docker compose up lambda-service`
-- run `curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"Records":[{"body":"test123"}]}'`
+- run `curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{PAYLOAD}'`
