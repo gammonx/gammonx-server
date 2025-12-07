@@ -43,11 +43,11 @@ namespace GammonX.DynamoDb.Tests.Items
             var fevgaWin = ItemFactory.CreateGame(fevgaId, wonMatch, player, GameResult.Single, GameModus.Fevga);
             await _repo.SaveAsync(fevgaWin);
 
-            var portesLoss = ItemFactory.CreateGame(portesId, lostMatch, opponent, GameResult.Lost, GameModus.Portes);
+            var portesLoss = ItemFactory.CreateGame(portesId, lostMatch, opponent, GameResult.LostSingle, GameModus.Portes);
             await _repo.SaveAsync(portesLoss);
-            var plakotoLoss = ItemFactory.CreateGame(plakotoId, lostMatch, opponent, GameResult.Lost, GameModus.Plakoto);
+            var plakotoLoss = ItemFactory.CreateGame(plakotoId, lostMatch, opponent, GameResult.LostSingle, GameModus.Plakoto);
             await _repo.SaveAsync(plakotoLoss);
-            var fevgaLoss = ItemFactory.CreateGame(fevgaId, lostMatch, opponent, GameResult.Lost, GameModus.Fevga);
+            var fevgaLoss = ItemFactory.CreateGame(fevgaId, lostMatch, opponent, GameResult.LostSingle, GameModus.Fevga);
             await _repo.SaveAsync(fevgaLoss);
 
             // get all games from a match

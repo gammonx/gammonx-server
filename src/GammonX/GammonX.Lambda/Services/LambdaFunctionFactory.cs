@@ -49,7 +49,7 @@ namespace GammonX.Lambda.Services
         private static readonly Dictionary<(string method, string resource), Type> ApiRoutes =
 			new()
 			{
-				{ ("GET", "/players/{id}/{variant}/rating"), typeof(GetPlayerRatingHandler) }
+				{ ("GET", "/players/{id}/rating/{variant}"), typeof(GetPlayerRatingHandler) }
 			};
     }
 }

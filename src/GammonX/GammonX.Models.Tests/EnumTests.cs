@@ -32,8 +32,8 @@ namespace GammonX.Models.Tests
             Assert.Equal(0, (int)GameResult.Single);
             Assert.Equal(1, (int)GameResult.Gammon);
             Assert.Equal(2, (int)GameResult.Backgammon);
-            Assert.Equal(97, (int)GameResult.DoubleDeclined);
-            Assert.Equal(98, (int)GameResult.Lost);
+            Assert.Equal(97, (int)GameResult.LostDoubleDeclined);
+            Assert.Equal(98, (int)GameResult.LostSingle);
             Assert.Equal(99, (int)GameResult.Unknown);
         }
 
@@ -43,8 +43,8 @@ namespace GammonX.Models.Tests
             Assert.True(GameResult.Single.HasWon());
             Assert.True(GameResult.Gammon.HasWon());
             Assert.True(GameResult.Backgammon.HasWon());
-            Assert.False(GameResult.DoubleDeclined.HasWon());
-            Assert.False(GameResult.Lost.HasWon());
+            Assert.False(GameResult.LostDoubleDeclined.HasWon());
+            Assert.False(GameResult.LostSingle.HasWon());
             Assert.Null(GameResult.Unknown.HasWon());
         }
 

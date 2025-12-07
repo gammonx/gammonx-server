@@ -9,7 +9,7 @@ using GammonX.Models.Enums;
 namespace GammonX.Lambda.Handlers
 {
     /// <summary>variant}/
-    /// GET /players/{id}/{variant}/rating > Lambda: GetPlayerRatingHandler
+    /// GET /players/{id}/rating/{variant} > Lambda: GetPlayerRatingHandler
     /// </summary>
     public class GetPlayerRatingHandler : LambdaHandlerBaseImpl, IApiLambdaHandler
     {

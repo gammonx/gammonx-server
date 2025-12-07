@@ -142,7 +142,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
-                Resource = "/players/{id}/{variant}/rating",
+                Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
@@ -154,10 +154,7 @@ namespace GammonX.Lambda.Tests.Gateway
             var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
             Assert.NotNull(handler);
 
-            var result = await handler.HandleAsync(request, context);
-
-            Assert.Null(result);
-            Assert.Contains("An error occurred", logger.Buffer.ToString());
+            await Assert.ThrowsAsync<FormatException>(async () => await handler.HandleAsync(request, context));
         }
 
         [Theory]
@@ -171,7 +168,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
-                Resource = "/players/{id}/{variant}/rating123",
+                Resource = "/players/{id}/rating/{variant}123",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
@@ -204,17 +201,14 @@ namespace GammonX.Lambda.Tests.Gateway
             var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
             Assert.NotNull(handler);
 
-            var result = await handler.HandleAsync(request, context);
-
-            Assert.Null(result);
-            Assert.Contains("Error: An error occurred while reading", logger.Buffer.ToString());
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await handler.HandleAsync(request, context));
         }
 
         private static APIGatewayProxyRequest MakeRequest(Guid playerId, MatchVariant variant)
         {
             return new APIGatewayProxyRequest
             {
-                Resource = "/players/{id}/{variant}/rating",
+                Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {

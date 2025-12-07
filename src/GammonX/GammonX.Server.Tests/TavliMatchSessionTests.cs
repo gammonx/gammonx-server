@@ -6,6 +6,7 @@ using GammonX.Server.Models;
 using GammonX.Server.Services;
 
 using GammonX.Server.Tests.Utils;
+
 using Moq;
 
 namespace GammonX.Server.Tests
@@ -60,7 +61,11 @@ namespace GammonX.Server.Tests
 			Assert.Single(matchState.GameRounds);
 			Assert.Equal(GameModus.Portes, matchState.GameRounds[0].Modus);
 			Assert.Equal(GamePhase.GameOver, matchState.GameRounds[0].Phase);
-			Assert.Equal(1, matchState.GameRounds[0].Points);
+            Assert.Equal(session.Player1.Id, gameSession.Result.WinnerId);
+            Assert.Equal(1, gameSession.Result.Points);
+            Assert.Equal(GameResult.Single, gameSession.Result.WinnerResult);
+            Assert.Equal(GameResult.LostSingle, gameSession.Result.LoserResult);
+            Assert.Equal(1, matchState.GameRounds[0].Points);
 			Assert.Equal(0, matchState.GameRounds[0].GameRoundIndex);
 			Assert.Equal(session.Player1.Id, matchState.GameRounds[0].Winner);
 			// match not over yet
@@ -114,8 +119,12 @@ namespace GammonX.Server.Tests
 			Assert.Equal(1, matchState.Player2.Points);
 			Assert.NotNull(matchState.GameRounds);
 			Assert.Equal(1, matchState.GameRounds[0].Points);
-			// match not over yet
-			Assert.Null(matchState.Winner);
+            Assert.Equal(session.Player2.Id, gameSession.Result.WinnerId);
+            Assert.Equal(1, gameSession.Result.Points);
+            Assert.Equal(GameResult.Single, gameSession.Result.WinnerResult);
+            Assert.Equal(GameResult.LostSingle, gameSession.Result.LoserResult);
+            // match not over yet
+            Assert.Null(matchState.Winner);
 			Assert.Null(matchState.WinnerPoints);
 			Assert.Null(matchState.Loser);
 			Assert.Null(matchState.LoserPoints);
@@ -143,7 +152,11 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player1.Points);
+            Assert.Equal(session.Player1.Id, gameSession.Result.WinnerId);
+            Assert.Equal(2, gameSession.Result.Points);
+            Assert.Equal(GameResult.Gammon, gameSession.Result.WinnerResult);
+            Assert.Equal(GameResult.LostGammon, gameSession.Result.LoserResult);
+            Assert.Equal(2, session.Player1.Points);
 			Assert.Equal(0, session.Player2.Points);
 			var matchState = session.ToPayload(session.Player1.Id);
 			Assert.NotNull(matchState.Player1);
@@ -189,7 +202,11 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-			Assert.Equal(2, session.Player2.Points);
+            Assert.Equal(session.Player2.Id, gameSession.Result.WinnerId);
+            Assert.Equal(2, gameSession.Result.Points);
+            Assert.Equal(GameResult.Gammon, gameSession.Result.WinnerResult);
+            Assert.Equal(GameResult.LostGammon, gameSession.Result.LoserResult);
+            Assert.Equal(2, session.Player2.Points);
 			Assert.Equal(0, session.Player1.Points);
 			var matchState = session.ToPayload(session.Player2.Id);
 			Assert.NotNull(matchState.Player2);

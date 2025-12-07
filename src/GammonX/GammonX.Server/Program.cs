@@ -5,8 +5,8 @@ using GammonX.Engine.Services;
 using GammonX.Models.Enums;
 
 using GammonX.Server;
-using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
+using GammonX.Server.Extensions;
 using GammonX.Server.Services;
 
 using Microsoft.Extensions.Options;
@@ -48,6 +48,10 @@ builder.Host.UseSerilog((context, services, configuration) =>
 builder.Services.Configure<GameServiceOptions>(
 	builder.Configuration.GetSection("GAME_SERVICE"));
 // -------------------------------------------------------------------------------
+// WORK QUEUE SETUP
+// -------------------------------------------------------------------------------
+builder.Services.AddWorkQueueServices(builder.Configuration.GetSection("WORK_QUEUE"));
+// -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
 builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(MatchModus.Normal);
@@ -61,12 +65,6 @@ builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
-// -------------------------------------------------------------------------------
-// MATCH ANALYSIS
-// -------------------------------------------------------------------------------
-builder.Services.AddSingleton<IMatchAnalysisQueue, MatchAnalysisQueue>();
-builder.Services.AddScoped<IMatchAnalysisService, MatchAnalysisService>();
-builder.Services.AddHostedService<MatchAnalysisWorker>();
 // -------------------------------------------------------------------------------
 // BOT SERVICE SETUP
 // -------------------------------------------------------------------------------

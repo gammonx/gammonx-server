@@ -35,9 +35,17 @@ namespace GammonX.Server.Models
 		public GamePhase Phase { get; }
 
 		/// <summary>
-		/// Gets the player id of the player whos turn it is.
+		/// Gets the information on how the game ended (e.g. single win, loss, backgammon etc.)
 		/// </summary>
-		public Guid ActivePlayer { get; }
+		/// <remarks>
+		/// Returns <see cref="GameResultModel.Empty()"/> if the match did not conclude yet.
+		/// </remarks>
+        GameResultModel Result { get; }
+
+        /// <summary>
+        /// Gets the player id of the player whos turn it is.
+        /// </summary>
+        public Guid ActivePlayer { get; }
 
 		/// <summary>
 		/// Gets the player id of the player who is not the active player.
@@ -95,9 +103,8 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Stops the current game session.
 		/// </summary>
-		/// <param name="winner">Player id who won the game.</param>
-		/// <param name="score">Score achieved by the winner.</param>
-		public void StopGame(Guid winner, int score);
+		/// <param name="result">Game result for the winning player.</param>
+		public void StopGame(GameResultModel result);
 
 		/// <summary>
 		/// The player1 rolled his dices and made his moves. Now the active player is switched to player2.

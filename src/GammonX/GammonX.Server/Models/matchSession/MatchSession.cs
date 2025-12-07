@@ -30,7 +30,7 @@ namespace GammonX.Server.Models
 		public MatchModus Modus { get; }
 
 		// <inheritdoc />
-		public GammonX.Models.Enums.MatchType Type { get; }
+		public MatchType Type { get; }
 
 		// <inheritdoc />
 		public DateTime StartedAt { get; private set; }
@@ -202,10 +202,10 @@ namespace GammonX.Server.Models
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
 			_lastExecutedCommand = ServerCommands.MoveCommand;
 
-			if (GameOver(callingPlayerId, out var points))
+			if (GameOver(callingPlayerId, out var result))
 			{
 				var activePlayer = GetPlayer(callingPlayerId);
-				activePlayer.Points += points;
+				activePlayer.Points += result.Points;
 				Player1.ActiveGameOver();
 				Player2.ActiveGameOver();
 				return true;
@@ -324,12 +324,13 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			// Other player gets the points for his score
+			// other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			var gamePoints = CalculateResignGamePoints();
-			otherPlayer.Points += gamePoints;
-			activeSession.StopGame(otherPlayerId, gamePoints);
+			var points = CalculateResignGamePoints();
+			otherPlayer.Points += points;
+			var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
+			activeSession.StopGame(result);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
 			_lastExecutedCommand = ServerCommands.ResignGameCommand;
@@ -355,10 +356,11 @@ namespace GammonX.Server.Models
 				var gameSession = _gameSessions[i];
 				if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
 				{
-					var gameScore = CalculateResignGamePoints();
+					var points = CalculateResignGamePoints();
 					gameSession ??= GetOrCreateGameSession(i + 1);
-					gameSession.StopGame(otherPlayerId, gameScore);
-					scoreToAdd += gameScore;
+                    var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
+                    gameSession.StopGame(result);
+					scoreToAdd += points;
 				}
 			}
 
@@ -479,7 +481,7 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <param name="playerId">Player who won the game round.</param>
 		/// <returns>Amount of points/score.</returns>
-		protected abstract int CalculatePoints(Guid playerId);
+		protected abstract GameResultModel ConcludeGame(Guid playerId);
 
 		/// <summary>
 		/// Calculates the amout of points for the score of the non-resigning player.
@@ -508,27 +510,27 @@ namespace GammonX.Server.Models
 			return false;
 		}
 
-		protected bool GameOver(Guid playerId, out int points)
+		protected bool GameOver(Guid playerId, out GameResultModel result)
 		{
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			points = 0;
-			var isWhite = IsWhite(playerId);
+			result = GameResultModel.Empty();
+            var isWhite = IsWhite(playerId);
 			if (!activeSession.GameOver(isWhite))
 				return false;
-			
+
 			if (Player1.Id.Equals(playerId))
 			{
-				points = CalculatePoints(playerId);
-				activeSession.StopGame(playerId, points);
+				result = ConcludeGame(playerId);
+				activeSession.StopGame(result);
 				return true;
 			}
 			else if (Player2.Id.Equals(playerId))
 			{
-				points = CalculatePoints(playerId);
-				activeSession.StopGame(playerId, points);
+                result = ConcludeGame(playerId);
+				activeSession.StopGame(result);
 				return true;
 			}
 			else

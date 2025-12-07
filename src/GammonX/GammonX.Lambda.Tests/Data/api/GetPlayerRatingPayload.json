@@ -1,5 +1,5 @@
 {
-  "Resource": "/players/{id}/{variant}/rating",
+  "Resource": "/players/{id}/rating/{variant}",
   "Path": null,
   "HttpMethod": "GET",
   "Headers": null,

@@ -8,7 +8,6 @@ using GammonX.DynamoDb.Repository;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Sprache;
 
 namespace GammonX.DynamoDb.Extensions
 {

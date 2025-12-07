@@ -36,7 +36,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			{
 				Id = gameId,
 				PlayerId = player2Id,
-				Result = Models.Enums.GameResult.Lost,
+				Result = Models.Enums.GameResult.LostSingle,
 				DoublingCubeValue = null,
 				PipesLeft = 55,
 				Format = Models.Enums.HistoryFormat.MAT,

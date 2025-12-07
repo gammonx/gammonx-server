@@ -4,7 +4,7 @@ using GammonX.Models.Enums;
 
 using System.Text;
 
-namespace GammonX.Server.Models.gameSession
+namespace GammonX.Server.Models
 {
 	// <inheritdoc />
 	internal sealed class GameHistoryImpl : IGameHistory

@@ -22,19 +22,19 @@ namespace GammonX.Server.Models
 			// pass
 		}
 
-		/// <summary>
-		/// Calculates the score for the player who won the game.
-		/// </summary>
-		/// <remarks>
-		/// At the end of the game, if the losing player has borne off at least one checker, 
-		/// he loses only the value showing on the doubling cube (one point, if there have been no doubles). 
-		/// However, if the loser has not borne off any of his checkers, he is gammoned and loses twice the value of the doubling cube. 
-		/// Or, worse, if the loser has not borne off any of his checkers and still has a checker on the bar or in the winner's home board, 
-		/// he is backgammoned and loses three times the value of the doubling cube.
-		/// </remarks>
-		/// <param name="playerId">Player id who won the game</param>
-		/// <returns>Score won with the game.</returns>
-		protected override int CalculatePoints(Guid playerId)
+        /// <summary>
+        /// Calculates the score for the player who won the game.
+        /// </summary>
+        /// <remarks>
+        /// At the end of the game, if the losing player has borne off at least one checker, 
+        /// he loses only the value showing on the doubling cube (one point, if there have been no doubles). 
+        /// However, if the loser has not borne off any of his checkers, he is gammoned and loses twice the value of the doubling cube. 
+        /// Or, worse, if the loser has not borne off any of his checkers and still has a checker on the bar or in the winner's home board, 
+        /// he is backgammoned and loses three times the value of the doubling cube.
+        /// </remarks>
+        /// <param name="playerId">Player id who won the game</param>
+        /// <returns>Result of the concluded game.</returns>
+        protected override GameResultModel ConcludeGame(Guid playerId)
 		{
 			var activeSession = GetGameSession(GameRound);
 
@@ -58,18 +58,23 @@ namespace GammonX.Server.Models
 				// white checker player
 				if (board.BearOffCountBlack == 0 && (homeBarModel.HomeBarCountBlack > 0 || LoserHasCheckersInWinnersHomeBoard(board, true)))
 				{
-					return 3 * cubeValue; // backgammon
+					var points = 3 * cubeValue;
+					var result = new GameResultModel(playerId, GameResult.Backgammon, GameResult.LostBackgammon, points);
+					return result;
 				}
 				if (board.BearOffCountBlack == 0)
 				{
-					// player won with a double game
-					return 2 * cubeValue; // gammon
+                    var points = 2 * cubeValue;
+                    var result = new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, points);
+					return result;
 				}
 				else
 				{
-					// player won with a single game
-					return 1 * cubeValue; // single game
-				}
+                    var points = 1 * cubeValue;
+                    var result = new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, points);
+					return result;
+
+                }
 			}
 			else if (Player2.Id.Equals(playerId))
 			{
@@ -80,18 +85,22 @@ namespace GammonX.Server.Models
 				// white checker player
 				if (board.BearOffCountWhite == 0 && (homeBarModel.HomeBarCountWhite > 0 || LoserHasCheckersInWinnersHomeBoard(board, false)))
 				{
-					return 3 * cubeValue; // backgammon
-				}
+                    var points = 3 * cubeValue;
+                    var result = new GameResultModel(playerId, GameResult.Backgammon, GameResult.LostBackgammon, points);
+                    return result;
+                }
 				else if (board.BearOffCountWhite == 0)
 				{
-					// player won with a double game
-					return 2 * cubeValue; // gammon
-				}
+                    var points = 2 * cubeValue;
+                    var result = new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, points);
+                    return result;
+                }
 				else
 				{
-					// player won with a single game
-					return 1 * cubeValue; // single game
-				}
+                    var points = 1 * cubeValue;
+                    var result = new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, points);
+                    return result;
+                }
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
@@ -322,9 +331,10 @@ namespace GammonX.Server.Models
 			// Other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			var gameScore = 1 * doublingCubeModel.DoublingCubeValue;
-			otherPlayer.Points += gameScore;
-			activeSession.StopGame(otherPlayerId, gameScore);
+			var gamePoints = 1 * doublingCubeModel.DoublingCubeValue;
+			var gameResult = new GameResultModel(otherPlayerId, GameResult.DoubleDeclined, GameResult.LostDoubleDeclined, gamePoints);
+			otherPlayer.Points += gamePoints;
+			activeSession.StopGame(gameResult);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
 

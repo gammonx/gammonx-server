@@ -1,11 +1,10 @@
 ﻿using GammonX.Engine.Services;
-
 using GammonX.Models.Enums;
 
-using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
+using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.SignalR;
@@ -23,20 +22,20 @@ namespace GammonX.Server
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
 		private readonly IBotService _botService;
-		private readonly IMatchAnalysisQueue _analysisQueue;
+		private readonly IWorkQueueService _workQueue;
 
 		public MatchLobbyHub(
+            IWorkQueueService workQueue,
 			IMatchmakingService matchmakingService,
 			MatchSessionRepository repository,
 			IDiceServiceFactory diceServiceFactory,
-			IBotService botService,
-			IMatchAnalysisQueue analysisQueue)
+			IBotService botService)
 		{
-			_matchmakingService = matchmakingService;
+			_workQueue = workQueue;
+            _matchmakingService = matchmakingService;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
 			_botService = botService;
-			_analysisQueue = analysisQueue;
 		}
 
 		#region Overrides
@@ -98,7 +97,9 @@ namespace GammonX.Server
 						if (matchLobby.QueueKey.MatchModus == MatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
-							var botPlayer = new LobbyEntry(Guid.NewGuid());
+							// we assign an fixed guid to the bot player in order to track his stats and rating in the db
+							// TODO: assign different bot player ids to different types of bots
+							var botPlayer = new LobbyEntry(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
 							botPlayer.SetConnectionId(Guid.Empty.ToString());
 							matchSession.JoinSession(botPlayer);
 						}
@@ -764,6 +765,7 @@ namespace GammonX.Server
 
 		private Guid GetStartingPlayerId(IMatchSessionModel matchSession)
 		{
+			// TODO :: properly implement starting dice roll logic
 			var activeSession = matchSession.GetGameSession(matchSession.GameRound);
 			// if null, the active game session is the first
 			if (activeSession == null)
@@ -830,21 +832,38 @@ namespace GammonX.Server
 				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, contractPlayer2);
 			}
 
-			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+			if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
 			{
-				// TODO :: match ended async :: to database
-				var analysisJob = new MatchAnalysisJob(matchSession.Id);
-				await _analysisQueue.EnqueueAsync(analysisJob);
+				var gameRound = GetLastConcludedGameRoundIndex(matchSession);
+                await _workQueue.EnqueueGameResult(matchSession, gameRound, CancellationToken.None);
+            }
+            else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+			{
+				// we have to enqueue the last game of the match aswell
+                var gameRound = GetLastConcludedGameRoundIndex(matchSession);
+                await _workQueue.EnqueueGameResult(matchSession, gameRound, CancellationToken.None);
 
-				// clients can now safely disconnect from socket
-				var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
+                // TODO :: match ended async :: to database
+                //var analysisJob = new MatchAnalysisJob(matchSession.Id);
+                //await _analysisQueue.EnqueueAsync(analysisJob);
+
+                // clients can now safely disconnect from socket
+                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
 				await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
 				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, payloadPlayer1.GroupName);
 				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, payloadPlayer1.GroupName);
 			}
 		}
 
-		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
+		private static int GetLastConcludedGameRoundIndex(IMatchSessionModel match)
+		{
+			var gameSessions = match.GetGameSessions().ToList();
+			gameSessions.Reverse();
+			var lastConcludedGame = gameSessions.First(gr => gr != null && gr.Result.IsConcluded);
+			return match.GetGameSessions().ToList().IndexOf(lastConcludedGame) + 1;
+		}
+
+        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);

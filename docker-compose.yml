@@ -70,6 +70,14 @@ services:
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
 
+  aws-stack-local:
+    image: localstack/localstack:latest
+    environment:
+      - SERVICES=sqs
+      - DEBUG=1
+    ports:
+      - "4566:4566"
+
   dynamodb-local:
       image: amazon/dynamodb-local
       container_name: dynamodb-local

@@ -40,7 +40,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			{
 				Id = portesGameId,
 				PlayerId = player2Id,
-				Result = Models.Enums.GameResult.Lost,
+				Result = Models.Enums.GameResult.LostSingle,
 				DoublingCubeValue = null,
 				PipesLeft = 55,
 				Format = Models.Enums.HistoryFormat.MAT,
@@ -65,7 +65,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			{
 				Id = plakotoGameId,
 				PlayerId = player2Id,
-				Result = Models.Enums.GameResult.Lost,
+				Result = Models.Enums.GameResult.LostSingle,
 				DoublingCubeValue = null,
 				PipesLeft = 55,
 				Format = Models.Enums.HistoryFormat.MAT,
@@ -90,7 +90,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			{
 				Id = fevgaGameId,
 				PlayerId = player2Id,
-				Result = Models.Enums.GameResult.Lost,
+				Result = Models.Enums.GameResult.LostSingle,
 				DoublingCubeValue = null,
 				PipesLeft = 55,
 				Format = Models.Enums.HistoryFormat.MAT,
