@@ -19,9 +19,6 @@ namespace GammonX.Lambda
 		{
 			var services = Startup.Configure();
 
-            // NOTE: we should avoid calling any aws resources during bootstrap
-            // await Startup.ConfigureDynamoDbTableAsync(services);
-
 			async Task<object> Router(object input, ILambdaContext context)
 			{
                 context.Logger.LogInformation($"Received input of type: '{input.GetType().FullName}' for function '{context.FunctionName}'");

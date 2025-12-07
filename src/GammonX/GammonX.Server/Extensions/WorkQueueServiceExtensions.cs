@@ -93,7 +93,38 @@ namespace GammonX.Server.Extensions
                 });
             }
 
-            // todo add other queues
+            var playerCreatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__PLAYER_CREATED_QUEUE_URL");
+            if (!string.IsNullOrEmpty(playerCreatedQueueUrl))
+            {
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, key) =>
+                {
+                    var sqs = sp.GetRequiredService<IAmazonSQS>();
+                    var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
+                    return new SqsWorkQueue(sqs, options.PLAYER_CREATED_QUEUE_URL);
+                });
+            }
+
+            var statsUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__STATS_UPDATED_QUEUE_URL");
+            if (!string.IsNullOrEmpty(statsUpdatedQueueUrl))
+            {
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, key) =>
+                {
+                    var sqs = sp.GetRequiredService<IAmazonSQS>();
+                    var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
+                    return new SqsWorkQueue(sqs, options.STATS_UPDATED_QUEUE_URL);
+                });
+            }
+
+            var ratingUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__RATING_UPDATED_QUEUE_URL");
+            if (!string.IsNullOrEmpty(ratingUpdatedQueueUrl))
+            {
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, key) =>
+                {
+                    var sqs = sp.GetRequiredService<IAmazonSQS>();
+                    var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
+                    return new SqsWorkQueue(sqs, options.RATING_UPDATED_QUEUE_URL);
+                });
+            }
         }
     }
 }

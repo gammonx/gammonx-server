@@ -9,6 +9,8 @@ using GammonX.Lambda.Extensions;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using Newtonsoft.Json;
 
 namespace GammonX.Lambda.Handlers
@@ -19,21 +21,37 @@ namespace GammonX.Lambda.Handlers
 	/// </summary>
 	public class PlayerStatsUpdatedHandler : LambdaHandlerBaseImpl, ISqsLambdaHandler
 	{
-		/// <summary>
-		/// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
-		/// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
-		/// region the Lambda function is executed in.
-		/// </summary>
-		public PlayerStatsUpdatedHandler(IDynamoDbRepository repo) : base(repo)
+        /// <summary>
+        /// Default constructor for container based lambda execution. 
+        /// This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
+        /// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
+        /// region the Lambda function is executed in.
+        /// </summary>
+        public PlayerStatsUpdatedHandler(IDynamoDbRepository repo) : base(repo)
 		{
 			// pass
 		}
 
-		// <inheritdoc />
-		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        /// <summary>
+        /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
+        /// </summary>
+        public PlayerStatsUpdatedHandler() : base()
+        {
+            // pass
+        }
+
+        // <inheritdoc />
+        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
 			try
 			{
+                if (_repo == null)
+                {
+                    context.Logger.LogInformation($"Setting up DI services...");
+                    var services = Startup.Configure();
+                    _repo = services.GetRequiredService<IDynamoDbRepository>();
+                }
+
                 foreach (var message in @event.Records)
                 {
                     await ProcessMessageAsync(message, context);
@@ -51,7 +69,10 @@ namespace GammonX.Lambda.Handlers
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
+            if (_repo == null)
+                throw new NullReferenceException("db repo must not be null");
+
+            context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
 
 			var json = message.Body;
 			var matchRecord = JsonConvert.DeserializeObject<MatchRecordContract>(json);

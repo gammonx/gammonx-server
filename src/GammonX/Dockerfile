@@ -54,7 +54,7 @@ COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Lambda"
 RUN dotnet publish -c ${BUILD_CONFIGURATION} -o /build --self-contained true -r linux-x64
 
-# we use custom runtime in order to setup DI
+# we use custom runtime container in order to setup DI
 FROM public.ecr.aws/lambda/provided:al2 AS lambda-runtime
 WORKDIR /var/task
 COPY --from=lambda-build /build /var/task/

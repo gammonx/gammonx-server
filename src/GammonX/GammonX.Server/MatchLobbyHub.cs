@@ -843,9 +843,10 @@ namespace GammonX.Server
                 var gameRound = GetLastConcludedGameRoundIndex(matchSession);
                 await _workQueue.EnqueueGameResultAsync(matchSession, gameRound, CancellationToken.None);
 
-                // TODO :: match ended async :: to database
-                //var analysisJob = new MatchAnalysisJob(matchSession.Id);
-                //await _analysisQueue.EnqueueAsync(analysisJob);
+				await _workQueue.EnqueueMatchResultAsync(matchSession, CancellationToken.None);
+
+				// TODO :: rating update
+				// TODO :: stats update
 
                 // clients can now safely disconnect from socket
                 var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());

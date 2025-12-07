@@ -36,7 +36,11 @@ namespace GammonX.Models.History.MAT
 		public int PointCount(Guid playerId)
 		{
 			var wonGames = Games.Where(g => g.Winner == playerId);
-			return wonGames.Sum(wg => wg.Points);
+			if (wonGames.Any())
+			{
+                return wonGames.Sum(wg => wg.Points);
+            }
+			return 0;
 		}
 
 		// <inheritdoc />
@@ -60,16 +64,24 @@ namespace GammonX.Models.History.MAT
 		// <inheritdoc />
 		public TimeSpan AvgDuration()
 		{
-			var timeSpans = Games.Select(g => g.Duration());
-			var avgDuration = new TimeSpan(Convert.ToInt64(timeSpans.Average(ts => ts.Ticks)));
-			return avgDuration;
+			if (Games.Count != 0)
+			{
+                var timeSpans = Games.Select(g => g.Duration());
+                var avgDuration = new TimeSpan(Convert.ToInt64(timeSpans.Average(ts => ts.Ticks)));
+                return avgDuration;
+            }
+			return TimeSpan.Zero;
 		}
 
 		// <inheritdoc />
 		public int AvgTurnCount(Guid playerId)
 		{
-			var turnCount = Games.Sum(g => g.TurnCount(playerId));
-			return turnCount / Games.Count;
+			if (Games.Count != 0)
+			{
+                var turnCount = Games.Sum(g => g.TurnCount(playerId));
+                return turnCount / Games.Count;
+            }
+			return 0;
 		}
 	}
 }

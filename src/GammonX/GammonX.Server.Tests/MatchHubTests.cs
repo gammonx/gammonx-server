@@ -297,6 +297,7 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
         }
 
 		[Theory]
@@ -477,6 +478,7 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
         }
 
 		[Theory]
@@ -619,6 +621,7 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
         }
 
 		[Theory]

@@ -5,7 +5,7 @@
         GameCompleted = 0,
         MatchCompleted = 1,
         PlayerCreated = 2,
-        PlayerRatingUpdated = 3,
-        PlayerStatsUpdated = 4
+        RatingUpdated = 3,
+        StatsUpdated = 4
     }
 }

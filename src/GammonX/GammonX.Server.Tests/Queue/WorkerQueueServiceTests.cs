@@ -39,20 +39,54 @@ namespace GammonX.Server.Tests.Queue
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE");
             });
 
-            // TODO other queue types
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, key) =>
+            {
+                var sqs = sp.GetRequiredService<IAmazonSQS>();
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE");
+            });
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, key) =>
+            {
+                var sqs = sp.GetRequiredService<IAmazonSQS>();
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE");
+            });
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, key) =>
+            {
+                var sqs = sp.GetRequiredService<IAmazonSQS>();
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE");
+            });
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, key) =>
+            {
+                var sqs = sp.GetRequiredService<IAmazonSQS>();
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE");
+            });
 
             _serviceProvider = services.BuildServiceProvider();
 
         }
 
         [Fact]
+        public async Task CanEnqueueMatchRecord()
+        {
+            // TODO :: create a proper finished match
+            var service = new WorkQueueService(_serviceProvider);
+            var match = CreateAndStartSimpleMatch();
+            await service.EnqueueMatchResultAsync(match, CancellationToken.None);
+        }
+
+        [Fact]
         public async Task CanEnqueueGameRecord()
         {
+            // TODO :: create a proper finished game
             var service = new WorkQueueService(_serviceProvider);
+            var match = CreateAndStartSimpleMatch();
+            await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+        }
 
+        private static IMatchSessionModel CreateAndStartSimpleMatch()
+        {
             var diceFactory = new DiceServiceFactory();
             var gameFactory = new GameSessionFactory(diceFactory);
             var factory = new MatchSessionFactory(gameFactory);
@@ -69,8 +103,7 @@ namespace GammonX.Server.Tests.Queue
             match.JoinSession(player2);
 
             match.StartNextGame(match.Player1.Id);
-
-            await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+            return match;
         }
     }
 }

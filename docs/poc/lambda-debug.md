@@ -10,11 +10,11 @@ curl "http://localhost:9002/2015-03-31/functions/function/invocations" -d '{PAYL
 ```
 curl "http://localhost:9001/2015-03-31/functions/function/invocations" -d '{PAYLOAD}'
 ```
-# PLAYER_STATS_UPDATED
+# STATS_UPDATED
 ```
 curl "http://localhost:9004/2015-03-31/functions/function/invocations" -d '{PAYLOAD}'
 ```
-# PLAYER_RATING_UPDATED
+# RATING_UPDATED
 ```
 curl "http://localhost:9005/2015-03-31/functions/function/invocations" -d '{PAYLOAD}'
 ```

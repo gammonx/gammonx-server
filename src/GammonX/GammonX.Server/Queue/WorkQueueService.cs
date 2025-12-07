@@ -18,6 +18,14 @@ namespace GammonX.Server.Queue
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A task to be awaited.</returns>
         Task EnqueueGameResultAsync(IMatchSessionModel match, int gameRound, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Enqueues the given <paramref name="match"/> result.
+        /// </summary>
+        /// <param name="match">Match to process..</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task to be awaited.</returns>
+        Task EnqueueMatchResultAsync(IMatchSessionModel match, CancellationToken cancellationToken);
     }
 
     // <inheritdoc />
@@ -38,6 +46,16 @@ namespace GammonX.Server.Queue
             var player2GameRecord = match.ToRecord(gameRound, match.Player2.Id);
             var gameRecords = new GameRecordContract[] { player1GameRecord, player2GameRecord };
             await workQueue.EnqueueBatchAsync(gameRecords, cancellationToken);
+        }
+
+        // <inheritdoc />
+        public async Task EnqueueMatchResultAsync(IMatchSessionModel match, CancellationToken cancellationToken)
+        {
+            var workQueue = GetWorkQueue(WorkQueueType.MatchCompleted);
+            var player1MatchRecord = match.ToRecord(match.Player1.Id);
+            var player2MatchRecord = match.ToRecord(match.Player2.Id);
+            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
+            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
         }
 
         private IWorkQueue GetWorkQueue(WorkQueueType queueType)
