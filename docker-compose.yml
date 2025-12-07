@@ -35,7 +35,7 @@ services:
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
 
-  lambda-service:
+  lambda-game-completed:
     image: gammonx/lambda-service
     build:
       context: .
@@ -43,27 +43,118 @@ services:
       target: lambda-runtime
       args:
         BUILD_CONFIGURATION: Debug
-    container_name: lambda
+    container_name: lambda-gc
     ports:
-      - "9000:8080"
+      - "9001:8080"
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
-      #################################
-      ###### SQS EVENT FUNCTIONS ######
-      #################################      
-      # - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
-      # - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
-      # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_RATING_UPDATED
-      # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_STATS_UPDATED
-      # - AWS_LAMBDA_FUNCTION_NAME=PLAYER_CREATED
-      #################################
-      ##### API GATEWAY FUNCTIONS #####
-      #################################
+      - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+
+  lambda-match-completed:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-mc
+    ports:
+      - "9002:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+
+  lambda-player-created:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-pc
+    ports:
+      - "9003:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=PLAYER_CREATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+
+  lambda-player-stats-updated:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-ps
+    ports:
+      - "9004:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=PLAYER_STATS_UPDATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+
+  lambda-player-rating-updated:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-pr
+    ports:
+      - "9005:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=PLAYER_RATING_UPDATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+
+  lambda-api-gateway:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-ag
+    ports:
+      - "9006:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
       - AWS_LAMBDA_FUNCTION_NAME=API_GATEWAY_HANDLER
-      #################################
-      ##### AWS DYNAMO DB OPTIONS #####
-      #################################
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
       - AWS__AWS_SECRET_ACCESS_KEY=local
@@ -73,10 +164,12 @@ services:
   aws-stack-local:
     image: localstack/localstack:latest
     environment:
-      - SERVICES=sqs
-      - DEBUG=1
+      - SERVICES=sqs,lambda
     ports:
       - "4566:4566"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./localstack-init.sh:/etc/localstack/init/ready.d/init.sh
 
   dynamodb-local:
       image: amazon/dynamodb-local

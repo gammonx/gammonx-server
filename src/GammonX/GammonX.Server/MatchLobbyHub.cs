@@ -835,13 +835,13 @@ namespace GammonX.Server
 			if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
 			{
 				var gameRound = GetLastConcludedGameRoundIndex(matchSession);
-                await _workQueue.EnqueueGameResult(matchSession, gameRound, CancellationToken.None);
+                await _workQueue.EnqueueGameResultAsync(matchSession, gameRound, CancellationToken.None);
             }
             else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{
 				// we have to enqueue the last game of the match aswell
                 var gameRound = GetLastConcludedGameRoundIndex(matchSession);
-                await _workQueue.EnqueueGameResult(matchSession, gameRound, CancellationToken.None);
+                await _workQueue.EnqueueGameResultAsync(matchSession, gameRound, CancellationToken.None);
 
                 // TODO :: match ended async :: to database
                 //var analysisJob = new MatchAnalysisJob(matchSession.Id);

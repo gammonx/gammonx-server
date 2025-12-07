@@ -27,4 +27,4 @@ Each SQS event has it own queue.
 - Internal routing of the requested resource
 
 ### Supported API Gateway Resources
-- `GET /players/{id}/{variant}/rating`
+- `GET /players/{id}/rating/{variant}`

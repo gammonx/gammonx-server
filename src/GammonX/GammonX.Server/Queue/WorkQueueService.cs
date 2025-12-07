@@ -17,7 +17,7 @@ namespace GammonX.Server.Queue
         /// <param name="gameRound">Game round index.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A task to be awaited.</returns>
-        Task EnqueueGameResult(IMatchSessionModel match, int gameRound, CancellationToken cancellationToken);
+        Task EnqueueGameResultAsync(IMatchSessionModel match, int gameRound, CancellationToken cancellationToken);
     }
 
     // <inheritdoc />
@@ -31,7 +31,7 @@ namespace GammonX.Server.Queue
         }
 
         // <inheritdoc />
-        public async Task EnqueueGameResult(IMatchSessionModel match, int gameRound, CancellationToken cancellationToken)
+        public async Task EnqueueGameResultAsync(IMatchSessionModel match, int gameRound, CancellationToken cancellationToken)
         {
             var workQueue = GetWorkQueue(WorkQueueType.GameCompleted);
             var player1GameRecord = match.ToRecord(gameRound, match.Player1.Id);
