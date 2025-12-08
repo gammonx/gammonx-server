@@ -49,6 +49,23 @@ services:
     networks:
     - gammonx-network   
 
+  lambda-image:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-image
+    ports:
+      - "9000:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    networks:
+    - gammonx-network   
+
   lambda-game-completed:
     image: gammonx/lambda-service
     build:
