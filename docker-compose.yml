@@ -28,6 +28,7 @@ services:
       # - WORK_QUEUE__PLAYER_CREATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE
       # - WORK_QUEUE__STATS_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE
       # - WORK_QUEUE__RATING_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE
+      # - REPOSITORY__BASEURL=http://aws-stack-local:4566/restapis/{api-id}/dev/_user_request_
     depends_on:
       - wildbg-service
     networks:
@@ -201,7 +202,7 @@ services:
   aws-stack-local:
     image: localstack/localstack:latest
     environment:
-      - SERVICES=sqs,lambda
+      - SERVICES=sqs,lambda,apigateway
       - DOTNET_RUNNING_IN_CONTAINER=true
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -214,6 +215,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - ./stack-init.sh:/etc/localstack/init/ready.d/init.sh
       - ./src/GammonX/GammonX.Lambda/zip/:/tmp/lambdas
+      - ./src/GammonX/GammonX.Server/:/tmp/game-service
     networks:
       - gammonx-network
     depends_on:

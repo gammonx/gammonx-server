@@ -1,7 +1,7 @@
 ﻿using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 
-using GammonX.Lambda.Handlers.Contracts;
+using GammonX.Models.Contracts;
 
 namespace GammonX.Lambda.Handlers
 {

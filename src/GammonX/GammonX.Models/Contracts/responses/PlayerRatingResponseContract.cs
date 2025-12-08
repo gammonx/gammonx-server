@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Lambda.Handlers.Contracts
+namespace GammonX.Models.Contracts
 {
     /// <summary>
     /// Provides a minimum contract for player rating response.

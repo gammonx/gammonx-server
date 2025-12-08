@@ -4,10 +4,10 @@ using Amazon.Lambda.TestUtilities;
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 using GammonX.Lambda.Handlers;
-using GammonX.Lambda.Handlers.Contracts;
 using GammonX.Lambda.Services;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Contracts;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -182,7 +182,7 @@ namespace GammonX.Lambda.Tests.Gateway
         }
 
         [Fact]
-        public async Task GetPlayerRatingShouldReturnNullWhenRepositoryThrows()
+        public async Task GetPlayerRatingShouldReturnDefaultRatingOnNewPlayer()
         {
             // create local stubbed repo that throws
             var mockRepo = new Mock<IDynamoDbRepository>();
@@ -196,12 +196,23 @@ namespace GammonX.Lambda.Tests.Gateway
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext { Logger = logger };
 
-            var request = MakeRequest(Guid.NewGuid(), MatchVariant.Backgammon);
+            var newPlayerId = Guid.NewGuid();
+            var request = MakeRequest(newPlayerId, MatchVariant.Backgammon);
 
             var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
             Assert.NotNull(handler);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await handler.HandleAsync(request, context));
+            var result = await handler.HandleAsync(request, context);
+            var ratingResult = result as PlayerRatingResponseContract;
+            Assert.NotNull(ratingResult);
+
+            Assert.NotNull(result);
+            Assert.Contains("Create new player rating for Player: '", logger.Buffer.ToString());
+            var initialPlayerRating = PlayerRatingItemFactory.CreateInitial(newPlayerId, MatchVariant.Backgammon, Models.Enums.MatchType.SevenPointGame);
+            Assert.NotNull(initialPlayerRating);
+            Assert.Equal(initialPlayerRating.Rating, ratingResult.Rating);
+            Assert.Equal(initialPlayerRating.HighestRating, ratingResult.Rating);
+            Assert.Equal(initialPlayerRating.LowestRating, ratingResult.Rating);
         }
 
         private static APIGatewayProxyRequest MakeRequest(Guid playerId, MatchVariant variant)

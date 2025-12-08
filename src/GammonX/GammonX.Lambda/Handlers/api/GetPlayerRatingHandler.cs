@@ -3,8 +3,15 @@ using Amazon.Lambda.Core;
 
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
-using GammonX.Lambda.Handlers.Contracts;
+
+using GammonX.Lambda.Extensions;
+
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Lambda.Handlers
 {
@@ -24,6 +31,16 @@ namespace GammonX.Lambda.Handlers
         {
             try
             {
+                if (_repo == null)
+                {
+                    context.Logger.LogInformation($"Setting up DI services...");
+                    var services = Startup.Configure();
+                    _repo = services.GetRequiredService<IDynamoDbRepository>();
+                }
+
+                if (_repo == null)
+                    throw new NullReferenceException("db repo must not be null");
+
                 var playerIdStr = request.PathParameters["id"];
                 var playerId = Guid.Parse(playerIdStr);
                 var variantStr = request.PathParameters["variant"];
@@ -40,7 +57,10 @@ namespace GammonX.Lambda.Handlers
                 }
                 else if (ratings.Count() == 0)
                 {
-                    throw new InvalidOperationException($"None player rating found for the given player '{playerId}' and variant '{variant}'");
+                    context.Logger.LogInformation($"Create new player rating for Player: '{playerId}' Variant: '{variant}' Type: '{MatchType.SevenPointGame}'");
+                    // the player has no rating yet, we create one
+                    var newRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, MatchType.SevenPointGame);
+                    return newRating.ToResponse();
                 }
                 else
                 {

@@ -139,7 +139,21 @@ namespace GammonX.Server.Tests
 			await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
 		}
 
-		private static JoinRequest CreatePlayer(Guid playerId, MatchVariant variant, MatchModus queueType)
+        [Fact]
+        public async Task KnownPlayersCanJoinRankedMatch()
+        {
+            var player1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+            var player2Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
+            var player1 = CreatePlayer(player1Id, MatchVariant.Tavli, MatchModus.Ranked);
+            var player2 = CreatePlayer(player2Id, MatchVariant.Tavli, MatchModus.Ranked);
+            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame);
+            var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Ranked);
+            // join queue and fetch rating
+            await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
+            await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
+        }
+
+        private static JoinRequest CreatePlayer(Guid playerId, MatchVariant variant, MatchModus queueType)
 		{
 			return new JoinRequest(playerId, variant, queueType, MatchType.CashGame);
 		}

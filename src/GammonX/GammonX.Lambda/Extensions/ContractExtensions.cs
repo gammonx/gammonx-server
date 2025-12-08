@@ -104,7 +104,15 @@ namespace GammonX.Lambda.Extensions
 			return gameHistoryItem;
 		}
 
-		private static double AvgPipesLeft(this MatchRecordContract contract)
+        public static PlayerRatingResponseContract ToResponse(this PlayerRatingItem item)
+        {
+            return new PlayerRatingResponseContract()
+            {
+                Rating = item.Rating
+            };
+        }
+
+        private static double AvgPipesLeft(this MatchRecordContract contract)
 		{
 			var lostGamesCount = contract.Games.Count(g => g.PipesLeft > 0);
 			if (lostGamesCount > 0)

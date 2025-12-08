@@ -4,7 +4,8 @@ using Amazon.Lambda.RuntimeSupport;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
-using GammonX.Lambda.Handlers.Contracts;
+using GammonX.Models.Contracts;
+
 using GammonX.Lambda.Services;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -74,21 +75,21 @@ namespace GammonX.Lambda
 
                 if (handler == null)
                 {
-                    var notFound = ResponseContractExtensions.ToResponse("The requested api route does not exist");
+                    var notFound = Models.Contracts.ContractExtensions.ToResponse("The requested api route does not exist");
                     return CreateGatewayResponse(404, notFound);
                 }
 
                 var result = await handler.HandleAsync(apiRequest, context);
                 if (result == null)
                 {
-                    var error = ResponseContractExtensions.ToResponse("An error occurred while handling the api request");
+                    var error = Models.Contracts.ContractExtensions.ToResponse("An error occurred while handling the api request");
                     return CreateGatewayResponse(500, error);
                 }
                 return CreateGatewayResponse(200, result);
             }
             catch (Exception ex)
             {
-                return CreateGatewayResponse(500, ResponseContractExtensions.ToResponse(ex.Message));
+                return CreateGatewayResponse(500, Models.Contracts.ContractExtensions.ToResponse(ex.Message));
             }
         }
 

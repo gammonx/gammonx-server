@@ -108,9 +108,11 @@ namespace GammonX.Server.Tests.Queue
             var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame);
             var match = factory.Create(Guid.NewGuid(), queueKey);
 
-            var player1 = new LobbyEntry(Guid.NewGuid());
+            var player1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");
+            var player1 = new LobbyEntry(player1Id);
             player1.SetConnectionId(Guid.NewGuid().ToString());
-            var player2 = new LobbyEntry(Guid.NewGuid());
+            var player2Id = Guid.Parse("d8e1f3b4-6120-4c16-acf2-b2b8d03f14aa");
+            var player2 = new LobbyEntry(player2Id);
             player2.SetConnectionId(Guid.NewGuid().ToString());
 
             match.JoinSession(player1);

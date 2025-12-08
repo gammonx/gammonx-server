@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Lambda.Handlers.Contracts
+namespace GammonX.Models.Contracts
 {
     [DataContract]
     public sealed class ErrorResponseContract : BaseResponseContract

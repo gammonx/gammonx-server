@@ -52,6 +52,10 @@ builder.Services.Configure<GameServiceOptions>(
 // -------------------------------------------------------------------------------
 builder.Services.AddWorkQueueServices(builder.Configuration.GetSection("WORK_QUEUE"));
 // -------------------------------------------------------------------------------
+// API GATEWAY SETUP
+// -------------------------------------------------------------------------------
+builder.Services.AddRepositoryServices(builder.Configuration.GetSection("REPOSITORY"));
+// -------------------------------------------------------------------------------
 // DEPENDENCY INJECTION
 // -------------------------------------------------------------------------------
 builder.Services.AddKeyedSingleton<IMatchmakingService, NormalMatchmakingService>(MatchModus.Normal);

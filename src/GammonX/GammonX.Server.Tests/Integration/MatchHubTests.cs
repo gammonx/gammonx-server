@@ -5,6 +5,7 @@ using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Queue;
+using GammonX.Server.Repository;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Testdata;
 using GammonX.Server.Tests.Utils;
@@ -51,7 +52,9 @@ namespace GammonX.Server.Tests.Integration
             _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-            _rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
+			var stubRepoClient = new SimpleRepositoryClient();
+
+            _rankedService = new RankedMatchmakingService(stubRepoClient);
 			_botMatchService = new BotMatchmakingService();
 			var compositeService = new CompositeMatchmakingService();
 			compositeService.SetServices(_normalService, _rankedService, _botMatchService);

@@ -2,6 +2,8 @@
 
 using GammonX.Models.Enums;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.DynamoDb.Items 
 {
     // <inheritdoc />
@@ -32,7 +34,7 @@ namespace GammonX.DynamoDb.Items
             {
                 PlayerId = Guid.Parse(item["Id"].S),
                 Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
-                Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
+                Type = Enum.Parse<MatchType>(item["Type"].S, true),
                 Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
                 Rating = double.Parse(item["Rating"].N),
                 RatingDeviation = double.Parse(item["RatingDeviation"].N),
@@ -67,6 +69,17 @@ namespace GammonX.DynamoDb.Items
                 { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString() } }
             };
             return itemDict;
+        }
+
+        public static PlayerRatingItem CreateInitial(Guid playerId, MatchVariant variant, MatchType type)
+        {
+            return new PlayerRatingItem()
+            {
+                PlayerId = playerId,
+                MatchesPlayed = 0,
+                Variant = variant,
+                Type = type,
+            };
         }
     }
 }
