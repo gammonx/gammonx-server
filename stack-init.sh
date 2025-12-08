@@ -46,6 +46,13 @@ create_and_map_sqs_zip_lambda() {
     --function-name $function_name \
     --runtime provided.al2 \
     --handler bootstrap \
+      --environment "Variables={
+        DOTNET_RUNNING_IN_CONTAINER=true,
+        AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000,
+        AWS__AWS_ACCESS_KEY_ID=local,
+        AWS__AWS_SECRET_ACCESS_KEY=local,
+        AWS__DYNAMODB_TABLENAME=GammonX,
+      }" \
     --zip-file fileb:///tmp/lambdas/lambda.zip \
     --role arn:aws:iam::000000000000:role/lambda-role
 

@@ -77,11 +77,33 @@ namespace GammonX.Server.Extensions
         {
             if (match.Player1.Id.Equals(playerId))
             {
-                return match.Player1.Points > match.Player2.Points ? MatchResult.Won : MatchResult.Lost;
+                if (match.Player1.Points > match.Player2.Points)
+                {
+                    return MatchResult.Won;
+                }
+                else if (match.Player1.Points < match.Player2.Points)
+                {
+                    return MatchResult.Lost;
+                }
+                else
+                {
+                    return MatchResult.Unknown;
+                }
             }
             else if (match.Player2.Id.Equals(playerId))
             {
-                return match.Player2.Points > match.Player1.Points ? MatchResult.Won : MatchResult.Lost;
+                if (match.Player2.Points > match.Player1.Points)
+                {
+                    return MatchResult.Won;
+                }
+                else if (match.Player2.Points < match.Player1.Points)
+                {
+                    return MatchResult.Lost;
+                }
+                else
+                {
+                    return MatchResult.Unknown;
+                }
             }
             throw new InvalidOperationException("Player is not part of this match session.");
         }

@@ -22,10 +22,26 @@ namespace GammonX.Server.Queue
         /// <summary>
         /// Enqueues the given <paramref name="match"/> result.
         /// </summary>
-        /// <param name="match">Match to process..</param>
+        /// <param name="match">Match to process.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A task to be awaited.</returns>
         Task EnqueueMatchResultAsync(IMatchSessionModel match, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Enqueues the given <paramref name="match"/> result for processing player stats.
+        /// </summary>
+        /// <param name="match">Match to process.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task to be awaited.</returns>
+        Task EnqueueStatProcessingAsync(IMatchSessionModel match, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Enqueues the given <paramref name="match"/> result for processing player rating update.
+        /// </summary>
+        /// <param name="match">Match to process.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>A task to be awaited.</returns>
+        Task EnqueueRatingProcessingAsync(IMatchSessionModel match, CancellationToken cancellationToken);
     }
 
     // <inheritdoc />
@@ -52,6 +68,26 @@ namespace GammonX.Server.Queue
         public async Task EnqueueMatchResultAsync(IMatchSessionModel match, CancellationToken cancellationToken)
         {
             var workQueue = GetWorkQueue(WorkQueueType.MatchCompleted);
+            var player1MatchRecord = match.ToRecord(match.Player1.Id);
+            var player2MatchRecord = match.ToRecord(match.Player2.Id);
+            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
+            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+        }
+
+        // <inheritdoc />
+        public async Task EnqueueRatingProcessingAsync(IMatchSessionModel match, CancellationToken cancellationToken)
+        {
+            var workQueue = GetWorkQueue(WorkQueueType.RatingUpdated);
+            var player1MatchRecord = match.ToRecord(match.Player1.Id);
+            var player2MatchRecord = match.ToRecord(match.Player2.Id);
+            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
+            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+        }
+
+        // <inheritdoc />
+        public async Task EnqueueStatProcessingAsync(IMatchSessionModel match, CancellationToken cancellationToken)
+        {
+            var workQueue = GetWorkQueue(WorkQueueType.StatsUpdated);
             var player1MatchRecord = match.ToRecord(match.Player1.Id);
             var player2MatchRecord = match.ToRecord(match.Player2.Id);
             var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };

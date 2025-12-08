@@ -2,7 +2,6 @@
 using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
-
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -20,7 +19,7 @@ using System.Net.Http.Json;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Server.Tests
+namespace GammonX.Server.Tests.Integration
 {
 	public class SimpleBotGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 	{

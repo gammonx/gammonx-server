@@ -14,10 +14,10 @@ namespace GammonX.DynamoDb.Items
 		[DynamoDBHashKey("PK")]
 		public string PK => ConstructPK();
 
-		/// <summary>
-		/// Gets a sort key like 'DETAILS#{WON|LOST}'
-		/// </summary>
-		[DynamoDBRangeKey("SK")]
+        /// <summary>
+        /// Gets a sort key like 'DETAILS#{WON|LOST|NOTFINISHED}'
+        /// </summary>
+        [DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
 
 		/// <summary>
@@ -132,14 +132,15 @@ namespace GammonX.DynamoDb.Items
 			return string.Format(factory.GSI1SKFormat, variantStr, typeStr, modusStr, wonOrLost);
 		}
 
-		private static string WonOrLost(MatchResult result)
+		private string WonOrLost(MatchResult result)
 		{
 			var value = result.HasWon();
 			if (value.HasValue)
 			{
 				return value.Value ? "WON" : "LOST";
 			}
-			return "NOTFINISHED";
-		}
+            // we append the player id to the sk in order to make it unique
+            return $"NOTFINISHED#{PlayerId}";
+        }
 	}
 }

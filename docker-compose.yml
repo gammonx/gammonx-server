@@ -19,6 +19,15 @@ services:
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
+      # - WORK_QUEUE__SERVICEURL=http://aws-stack-local:4566
+      # - WORK_QUEUE__AWS_ACCESS_KEY_ID=local
+      # - WORK_QUEUE__AWS_SECRET_ACCESS_KEY=local
+      # - WORK_QUEUE__REGION=
+      # - WORK_QUEUE__GAME_COMPLETED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE
+      # - WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE
+      # - WORK_QUEUE__PLAYER_CREATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE
+      # - WORK_QUEUE__STATS_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE
+      # - WORK_QUEUE__RATING_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE
     depends_on:
       - wildbg-service
     networks:
@@ -59,6 +68,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 
@@ -82,6 +93,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 
@@ -105,6 +118,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 
@@ -128,6 +143,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 
@@ -151,6 +168,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 
@@ -174,6 +193,8 @@ services:
       - AWS__AWS_SECRET_ACCESS_KEY=local
       - AWS__DYNAMODB_TABLENAME=GammonX
       - AWS__REGION=
+    depends_on:
+      - dynamodb-local
     networks:
     - gammonx-network   
 

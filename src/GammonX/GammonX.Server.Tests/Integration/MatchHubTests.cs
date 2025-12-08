@@ -1,7 +1,6 @@
 ﻿using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
-
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -20,7 +19,7 @@ using System.Security.Claims;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Server.Tests
+namespace GammonX.Server.Tests.Integration
 {
 	public class MatchHubTests
 	{
@@ -48,8 +47,11 @@ namespace GammonX.Server.Tests
 
             _workQueueService = new();
             _workQueueService.Setup(x => x.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-			_rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
+            _rankedService = new RankedMatchmakingService(mockScopeFactory.Object);
 			_botMatchService = new BotMatchmakingService();
 			var compositeService = new CompositeMatchmakingService();
 			compositeService.SetServices(_normalService, _rankedService, _botMatchService);
@@ -298,6 +300,11 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+			if (modus == MatchModus.Ranked)
+			{
+                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            }
         }
 
 		[Theory]
@@ -479,6 +486,11 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            if (modus == MatchModus.Ranked)
+            {
+                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            }
         }
 
 		[Theory]
@@ -622,6 +634,8 @@ namespace GammonX.Server.Tests
 			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never());
         }
 
 		[Theory]

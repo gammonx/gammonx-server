@@ -3,13 +3,13 @@
 - dynamo db data layer
 - lambda sqs handler
 - lambda api gateway handler
+- local dev environment
 
 ## Active
 - palamedes schreiben
 - lambda functions + sqs
-    - test api gateway lambda container (get player rating)
-    - game/match history > umbrüche escapen
-    - integrate simple queue service
+    - run all tests
+    - implement api gateway client + dummy
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto

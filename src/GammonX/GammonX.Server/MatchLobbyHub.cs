@@ -814,47 +814,57 @@ namespace GammonX.Server
 			}
 		}
 
-		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession)
+		private async Task SendMatchState(string serverEventName, IMatchSessionModel match)
 		{
-			// TODO :: match ended sync :: stats for end screen
-			// - game rounds points
-			// - rating change (ranked) > calculate elo
-			// > send ServerEventTypes.MatchStatsEvent
-			// > new payload extension for ranked/paid subscriptions?
+			// we put the results in the work queue if applicable
+			await ProcessMatchResultsAsync(match, serverEventName);
+			
+			// TODO: game finished screen > stats
+			// TODO match finished screen > stats/rating
 
-			var payloadPlayer1 = matchSession.ToPayload(matchSession.Player1.Id);
+			var payloadPlayer1 = match.ToPayload(match.Player1.Id);
 			var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
-			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, contractPlayer1);
-			if (matchSession.Modus != MatchModus.Bot)
+			await SendToClient(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+			if (match.Modus != MatchModus.Bot)
 			{
-				var payloadPlayer2 = matchSession.ToPayload(matchSession.Player2.Id);
+				var payloadPlayer2 = match.ToPayload(match.Player2.Id);
 				var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
-				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, contractPlayer2);
+				await SendToClient(match.Player2.ConnectionId, serverEventName, contractPlayer2);
 			}
 
-			if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{
-				var gameRound = GetLastConcludedGameRoundIndex(matchSession);
-                await _workQueue.EnqueueGameResultAsync(matchSession, gameRound, CancellationToken.None);
-            }
-            else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
-			{
-				// we have to enqueue the last game of the match aswell
-                var gameRound = GetLastConcludedGameRoundIndex(matchSession);
-                await _workQueue.EnqueueGameResultAsync(matchSession, gameRound, CancellationToken.None);
-
-				await _workQueue.EnqueueMatchResultAsync(matchSession, CancellationToken.None);
-
-				// TODO :: rating update
-				// TODO :: stats update
-
                 // clients can now safely disconnect from socket
                 var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
 				await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
-				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, payloadPlayer1.GroupName);
-				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, payloadPlayer1.GroupName);
+				await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
+				await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
 			}
 		}
+
+		private async Task ProcessMatchResultsAsync(IMatchSessionModel match, string serverEventName)
+		{
+			if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+			{
+				var gameRound = GetLastConcludedGameRoundIndex(match);
+				await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+			}
+			else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+			{
+                // we have to enqueue the last game of the match aswell
+                var gameRound = GetLastConcludedGameRoundIndex(match);
+                await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                // we process the match result
+                await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                // we update the player stats based on the match result
+                await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                // we update the player rating based on the match result if a ranked was played
+                if (match.Modus == MatchModus.Ranked)
+                {
+                    await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                }
+            }
+        }
 
 		private static int GetLastConcludedGameRoundIndex(IMatchSessionModel match)
 		{

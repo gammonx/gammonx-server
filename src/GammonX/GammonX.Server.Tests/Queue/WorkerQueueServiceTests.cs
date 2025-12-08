@@ -68,9 +68,24 @@ namespace GammonX.Server.Tests.Queue
         }
 
         [Fact]
+        public async Task CanEnqueueRatingUpdateRecord()
+        {
+            var service = new WorkQueueService(_serviceProvider);
+            var match = CreateAndStartSimpleMatch();
+            await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task CanEnqueueStatUpdateRecord()
+        {
+            var service = new WorkQueueService(_serviceProvider);
+            var match = CreateAndStartSimpleMatch();
+            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+        }
+
+        [Fact]
         public async Task CanEnqueueMatchRecord()
         {
-            // TODO :: create a proper finished match
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndStartSimpleMatch();
             await service.EnqueueMatchResultAsync(match, CancellationToken.None);
@@ -79,7 +94,6 @@ namespace GammonX.Server.Tests.Queue
         [Fact]
         public async Task CanEnqueueGameRecord()
         {
-            // TODO :: create a proper finished game
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndStartSimpleMatch();
             await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);

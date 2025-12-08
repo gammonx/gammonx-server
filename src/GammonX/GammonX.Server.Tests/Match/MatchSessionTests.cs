@@ -1,17 +1,15 @@
 ﻿using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
-
 using GammonX.Server.Models;
 using GammonX.Server.Services;
-
 using GammonX.Server.Tests.Utils;
 
 using Moq;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Server.Tests
+namespace GammonX.Server.Tests.Match
 {
 	public class MatchSessionTests
 	{

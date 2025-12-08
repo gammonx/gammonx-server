@@ -59,8 +59,15 @@ namespace GammonX.Lambda.Handlers
                     context.Logger.LogInformation($"Processing message with id '{@event.Records[0].MessageId}'");
                     context.Logger.LogInformation($"Processing message with id '{@event.Records[1].MessageId}'");
                     var matchRecords = @event.Records.Select(r => JsonConvert.DeserializeObject<MatchRecordContract>(r.Body));
-                    var wonMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Won);
-                    var lostMatch = matchRecords.First(mr => mr?.Result == Models.Enums.MatchResult.Lost);
+                    var wonMatch = matchRecords.FirstOrDefault(mr => mr?.Result == Models.Enums.MatchResult.Won);
+                    var lostMatch = matchRecords.FirstOrDefault(mr => mr?.Result == Models.Enums.MatchResult.Lost);
+
+                    if (wonMatch == null || lostMatch == null)
+                    {
+                        context.Logger.LogWarning($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects two match records with a decisive result.");
+                        return;
+                    }
+
 					var results = new List<(PlayerRatingItem, RatingPeriodItem)>();
                     foreach (var record in matchRecords)
 					{
@@ -81,7 +88,7 @@ namespace GammonX.Lambda.Handlers
                 }
                 else
                 {
-                    throw new InvalidOperationException($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects exactle two match records.");
+                    throw new InvalidOperationException($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects exactly two match records.");
                 }
             }
 			catch (Exception ex) 

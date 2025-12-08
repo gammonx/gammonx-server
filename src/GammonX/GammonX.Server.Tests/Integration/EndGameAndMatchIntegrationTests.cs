@@ -2,7 +2,6 @@ using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
-
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -19,7 +18,7 @@ using System.Net.Http.Json;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Server.Tests
+namespace GammonX.Server.Tests.Integration
 {
 	public class EndGameAndMatchIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 	{

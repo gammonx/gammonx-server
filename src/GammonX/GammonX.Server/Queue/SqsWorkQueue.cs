@@ -8,8 +8,6 @@ namespace GammonX.Server.Queue
     // <inheritdoc />
     public class SqsWorkQueue : IWorkQueue
     {
-        // TODO: somehow test sqs enqueuing locally?
-
         private readonly IAmazonSQS _sqs;
         private readonly string _queueUrl;
 
