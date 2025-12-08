@@ -1,4 +1,5 @@
 ﻿using Amazon.Lambda.Core;
+using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
 using GammonX.DynamoDb.Repository;
@@ -35,6 +36,7 @@ namespace GammonX.Lambda.Handlers
         }
 
         // <inheritdoc />
+        [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
         public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
             try
@@ -58,7 +60,7 @@ namespace GammonX.Lambda.Handlers
 					context.Logger.LogError(ex, $"An error occurred while processing player created. Message id: '{record.MessageId}'");
 
                 }
-}
+            }
 		}
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)

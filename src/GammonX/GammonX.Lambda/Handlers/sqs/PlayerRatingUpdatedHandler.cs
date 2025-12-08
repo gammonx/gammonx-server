@@ -1,4 +1,5 @@
 ﻿using Amazon.Lambda.Core;
+using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
 using GammonX.DynamoDb.Items;
@@ -42,6 +43,7 @@ namespace GammonX.Lambda.Handlers
         }
 
         // <inheritdoc />
+        [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
         public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
 			try
