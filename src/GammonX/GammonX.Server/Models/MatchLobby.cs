@@ -1,4 +1,6 @@
-﻿namespace GammonX.Server.Models
+﻿using GammonX.Models.Enums;
+
+namespace GammonX.Server.Models
 {
 	public class MatchLobby
 	{
@@ -7,7 +9,7 @@
 			MatchId = matchId;
 			Player1 = player1;
 			QueueKey = queueKey;
-			if (queueKey.MatchModus == WellKnownMatchModus.Bot)
+			if (queueKey.MatchModus == MatchModus.Bot)
 			{
 				// a match lobby against a bot is instantly ready
 				Status = QueueEntryStatus.OpponentFound;
@@ -54,7 +56,7 @@
 		/// <param name="player2">Second player.</param>
 		public void Join(LobbyEntry player2)
 		{
-			if (QueueKey.MatchModus == WellKnownMatchModus.Bot)
+			if (QueueKey.MatchModus == MatchModus.Bot)
 			{
 				throw new InvalidOperationException("Second player cannot join a bot game");
 			}

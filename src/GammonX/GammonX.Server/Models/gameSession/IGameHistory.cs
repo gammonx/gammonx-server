@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.History;
-using GammonX.Engine.Models;
+
+using GammonX.Models.Enums;
 
 namespace GammonX.Server.Models
 {
@@ -12,6 +13,16 @@ namespace GammonX.Server.Models
 		/// Gets the game id.
 		/// </summary>
 		public Guid Id { get; }
+
+		/// <summary>
+		/// Gets the player id of the white checker player.
+		/// </summary>
+		public Guid Player1 { get; }
+
+		/// <summary>
+		/// Gets the player id of the black checker player.
+		/// </summary>
+		public Guid Player2 { get; }
 
 		/// <summary>
 		/// Gets the well known modus of the board.
@@ -42,5 +53,10 @@ namespace GammonX.Server.Models
 		/// Getst the board history.
 		/// </summary>
 		public IBoardHistory BoardHistory { get; }
+
+		/// <summary>
+		/// Gets the format type of the string serialization.
+		/// </summary>
+		public HistoryFormat Format { get; }
 	}
 }

@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
+      target: server-final
       args:
         BUILD_CONFIGURATION: Debug
     container_name: server
@@ -12,16 +13,29 @@ services:
       - "8081:8081"   # signalR port
     environment:
       - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
       - GAME_SERVICE__BASEPATH=/game
-      - BOT_SERVICE__BASEURL=http://localhost:8082/bot/wildbg/
+      - BOT_SERVICE__BASEURL=http://wildbg-service:8082/bot/wildbg/
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
+      # - WORK_QUEUE__SERVICEURL=http://aws-stack-local:4566
+      # - WORK_QUEUE__AWS_ACCESS_KEY_ID=local
+      # - WORK_QUEUE__AWS_SECRET_ACCESS_KEY=local
+      # - WORK_QUEUE__REGION=
+      # - WORK_QUEUE__GAME_COMPLETED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE
+      # - WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE
+      # - WORK_QUEUE__PLAYER_CREATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE
+      # - WORK_QUEUE__STATS_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE
+      # - WORK_QUEUE__RATING_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE
+      # - REPOSITORY__BASEURL=http://aws-stack-local:4566/restapis/{api-id}/dev/_user_request_
     depends_on:
-      - bot-service
+      - wildbg-service
+    networks:
+    - gammonx-network   
 
-  bot-service:
-    image: gammonx/bot-service
+  wildbg-service:
+    image: gammonx/wildbg-service
     build:
       context: ../gammonx-wildbg
       dockerfile: ./dockerfile
@@ -32,6 +46,197 @@ services:
       - "8082:8082"
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
+    networks:
+    - gammonx-network   
+
+  lambda-image:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-image
+    ports:
+      - "9000:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    networks:
+    - gammonx-network   
+
+  lambda-game-completed:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-gc
+    ports:
+      - "9001:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  lambda-match-completed:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-mc
+    ports:
+      - "9002:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  lambda-player-created:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-pc
+    ports:
+      - "9003:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=PLAYER_CREATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  lambda-stats-updated:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-ps
+    ports:
+      - "9004:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=STATS_UPDATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  lambda-rating-updated:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-pr
+    ports:
+      - "9005:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=RATING_UPDATED
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  lambda-api-gateway:
+    image: gammonx/lambda-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: lambda-runtime
+      args:
+        BUILD_CONFIGURATION: Debug
+    container_name: lambda-ag
+    ports:
+      - "9006:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS_LAMBDA_FUNCTION_NAME=API_GATEWAY_HANDLER
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    depends_on:
+      - dynamodb-local
+    networks:
+    - gammonx-network   
+
+  aws-stack-local:
+    image: localstack/localstack:latest
+    environment:
+      - SERVICES=sqs,lambda,apigateway
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
+      - AWS__AWS_ACCESS_KEY_ID=local
+      - AWS__AWS_SECRET_ACCESS_KEY=local
+      - AWS__DYNAMODB_TABLENAME=GammonX
+      - AWS__REGION=
+    ports:
+      - "4566:4566"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./stack-init.sh:/etc/localstack/init/ready.d/init.sh
+      - ./src/GammonX/GammonX.Lambda/zip/:/tmp/lambdas
+      - ./src/GammonX/GammonX.Server/:/tmp/game-service
+    networks:
+      - gammonx-network
+    depends_on:
+      - dynamodb-local
 
   dynamodb-local:
       image: amazon/dynamodb-local
@@ -41,6 +246,8 @@ services:
       command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
       volumes:
         - ./dynamodb-data:/home/dynamodblocal/data
+      networks:
+      - gammonx-network        
 
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin
@@ -51,3 +258,9 @@ services:
       - DYNAMO_ENDPOINT=http://dynamodb-local:8000
     depends_on:
       - dynamodb-local
+    networks:
+    - gammonx-network        
+
+networks:
+  gammonx-network:
+    driver: bridge

@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -73,7 +75,7 @@ namespace GammonX.Server.Bot
 				int to = move.To;
 				// the further forward the better
 				score += isWhite ? to : (23 - to);
-				if (to == WellKnownBoardPositions.BearOffWhite || to == WellKnownBoardPositions.BearOffBlack)
+				if (to == BoardPositions.BearOffWhite || to == BoardPositions.BearOffBlack)
 				{
 					// bearing off is very good
 					score += 100;

@@ -1,5 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
+
 using Moq;
 
 namespace GammonX.Server.Tests.Utils

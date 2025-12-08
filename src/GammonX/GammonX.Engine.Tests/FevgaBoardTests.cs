@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.Tests
 {
     public class FevgaBoardTests
@@ -274,18 +276,18 @@ namespace GammonX.Engine.Tests
             Assert.Equal(5, roll);
             roll = board.RecoverRollOperator(true, 17, 23);
             Assert.Equal(6, roll);
-            roll = board.RecoverRollOperator(true, WellKnownBoardPositions.HomeBarWhite, 5);
+            roll = board.RecoverRollOperator(true, BoardPositions.HomeBarWhite, 5);
             Assert.Equal(6, roll);
-            roll = board.RecoverRollOperator(true, 18, WellKnownBoardPositions.BearOffWhite);
+            roll = board.RecoverRollOperator(true, 18, BoardPositions.BearOffWhite);
             Assert.Equal(6, roll);
             // black checkers
             roll = board.RecoverRollOperator(false, 18, 0);
             Assert.Equal(6, roll);
             roll = board.RecoverRollOperator(false, 5, 11);
             Assert.Equal(6, roll);
-            roll = board.RecoverRollOperator(false, WellKnownBoardPositions.HomeBarBlack, 17);
+            roll = board.RecoverRollOperator(false, BoardPositions.HomeBarBlack, 17);
             Assert.Equal(6, roll);
-            roll = board.RecoverRollOperator(false, 6, WellKnownBoardPositions.BearOffBlack);
+            roll = board.RecoverRollOperator(false, 6, BoardPositions.BearOffBlack);
             Assert.Equal(6, roll);
 		}
     }

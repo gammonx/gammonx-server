@@ -1,4 +1,7 @@
 ﻿using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
+
 using System.Diagnostics;
 using System.Runtime.Serialization;
 

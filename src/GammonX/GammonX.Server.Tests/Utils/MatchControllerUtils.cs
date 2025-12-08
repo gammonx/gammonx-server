@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Contracts;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 
 using Newtonsoft.Json;
@@ -9,7 +11,7 @@ namespace GammonX.Server.Tests.Utils
 {
 	public static class MatchControllerUtils
 	{
-		public static async Task<RequestQueueEntryPayload> PollAsync(this HttpClient client, Guid playerId, Guid queueId, WellKnownMatchModus modus)
+		public static async Task<RequestQueueEntryPayload> PollAsync(this HttpClient client, Guid playerId, Guid queueId, MatchModus modus)
 		{
 			var req = new StatusRequest(playerId, modus);
 			var response = await client.PostAsJsonAsync($"/api/matches/queues/{queueId}", req);

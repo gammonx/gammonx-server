@@ -1,6 +1,10 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Bot
 {
@@ -45,7 +49,7 @@ namespace GammonX.Server.Bot
 				// wildbg bot only supports cash and single point games
 				// we also use cash games for all match variants
 				// a five/seven point game equals in this context to multiple cash games
-				if (matchSession.Type == WellKnownMatchType.CashGame)
+				if (matchSession.Type == MatchType.CashGame)
 				{
 					requestParameters.XPointsAway = 0;
 					requestParameters.OPointsAway = 0;
@@ -256,11 +260,11 @@ namespace GammonX.Server.Bot
 			{
 				if (isWhite)
 				{
-					play.From = WellKnownBoardPositions.HomeBarWhite;
+					play.From = BoardPositions.HomeBarWhite;
 				}
 				else
 				{
-					play.From = WellKnownBoardPositions.HomeBarBlack;
+					play.From = BoardPositions.HomeBarBlack;
 				}
 			}
 			else
@@ -273,11 +277,11 @@ namespace GammonX.Server.Bot
 			{
 				if (isWhite)
 				{
-					play.To = WellKnownBoardPositions.BearOffWhite;
+					play.To = BoardPositions.BearOffWhite;
 				}
 				else
 				{
-					play.To = WellKnownBoardPositions.BearOffBlack;
+					play.To = BoardPositions.BearOffBlack;
 				}
 			}
 			else
@@ -290,12 +294,12 @@ namespace GammonX.Server.Bot
 			{
 				int convertedFrom = play.From;
 				int convertedTo = play.To;
-				if (play.From != WellKnownBoardPositions.HomeBarBlack && play.From != WellKnownBoardPositions.HomeBarWhite)
+				if (play.From != BoardPositions.HomeBarBlack && play.From != BoardPositions.HomeBarWhite)
 				{
 					// we need to invert the play for the white checkers perspective
 					convertedFrom = (maxFieldIndex) - play.From;
 				}
-				if (play.To != WellKnownBoardPositions.BearOffBlack && play.To != WellKnownBoardPositions.BearOffWhite)
+				if (play.To != BoardPositions.BearOffBlack && play.To != BoardPositions.BearOffWhite)
 				{
 					// we need to invert the play for the white checkers perspective
 					convertedTo = (maxFieldIndex) - play.To;

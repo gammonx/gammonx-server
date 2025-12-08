@@ -1,0 +1,50 @@
+﻿using Amazon.DynamoDBv2.DataModel;
+
+using GammonX.Models.Enums;
+
+namespace GammonX.DynamoDb.Items
+{
+	public class MatchHistoryItem
+	{
+		/// <summary>
+		/// Gets a primary key like 'MATCH#{matchId}'
+		/// </summary>
+		[DynamoDBHashKey("PK")]
+		public string PK => ConstructPK();
+
+		/// <summary>
+		/// Gets a sort key like 'HISTORY'
+		/// </summary>
+		[DynamoDBRangeKey("SK")]
+		public string SK => ConstructSK();
+
+		/// <summary>
+		/// Gets or sets the match id.
+		/// </summary>
+		public Guid MatchId { get; set; } = Guid.Empty;
+
+		public string ItemType { get; } = ItemTypes.MatchHistoryItemType;
+
+		/// <summary>
+		/// Gets or sets the history in a string format.
+		/// </summary>
+		public string Data { get; set; } = string.Empty;
+
+		/// <summary>
+		/// Gets or sets the format of the given <see cref="Data"/> string.
+		/// </summary>
+		public HistoryFormat Format { get; set; } = HistoryFormat.Unknown;
+
+		private string ConstructPK()
+		{
+			var factory = ItemFactoryCreator.Create<MatchHistoryItem>();
+            return string.Format(factory.PKFormat, MatchId);
+		}
+
+		private static string ConstructSK()
+		{
+			var factory = ItemFactoryCreator.Create<MatchHistoryItem>();
+            return factory.SKFormat;
+		}
+	}
+}

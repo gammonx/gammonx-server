@@ -1,15 +1,22 @@
 ﻿using GammonX.Engine.History;
-using GammonX.Engine.Models;
+
+using GammonX.Models.Enums;
 
 using System.Text;
 
-namespace GammonX.Server.Models.gameSession
+namespace GammonX.Server.Models
 {
 	// <inheritdoc />
 	internal sealed class GameHistoryImpl : IGameHistory
 	{
 		// <inheritdoc />
 		public Guid Id { get; private set; }
+
+		// <inheritdoc />
+		public Guid Player1 { get; private set; }
+
+		// <inheritdoc />
+		public Guid Player2 { get; private set; }
 
 		// <inheritdoc />
 		public GameModus Modus { get; private set; }
@@ -29,17 +36,27 @@ namespace GammonX.Server.Models.gameSession
 		// <inheritdoc />
 		public IBoardHistory BoardHistory { get; private set; }
 
+		// <inheritdoc />
+		public HistoryFormat Format => HistoryFormat.MAT;
+
 		private GameHistoryImpl()
 		{
 			BoardHistory = BoardHistoryFactory.CreateEmpty();
 		}
 
-		public static IGameHistory Create(IGameSessionModel model, Guid winnerPlayerId, int points)
+		public static IGameHistory Create(
+			IGameSessionModel model, 
+			Guid player1,
+			Guid player2,
+			Guid winnerPlayerId, 
+			int points)
 		{
 			return new GameHistoryImpl()
 			{
 				Id = model.Id,
-				Modus = model.Modus,
+				Player1 = player1,
+				Player2 = player2,
+				Modus = (GameModus)model.Modus,
 				Points = points,
 				WinnerPlayerId = winnerPlayerId,
 				StartedAt = model.StartedAt,
@@ -56,6 +73,8 @@ namespace GammonX.Server.Models.gameSession
 		{
 			var stringBuilder = new StringBuilder();
 			stringBuilder.AppendLine($";[Game '{Id}']");
+			stringBuilder.AppendLine($";[Player 1 White Checkers '{Player1}']");
+			stringBuilder.AppendLine($";[Player 2 Black Checkers '{Player2}']");
 			stringBuilder.AppendLine($";[Game Modus '{Modus}']");
 			stringBuilder.AppendLine($";[Winner '{WinnerPlayerId}']");
 			stringBuilder.AppendLine($";[Points '{Points}']");

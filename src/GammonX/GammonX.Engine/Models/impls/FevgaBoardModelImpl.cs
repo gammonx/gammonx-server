@@ -1,4 +1,6 @@
-﻿namespace GammonX.Engine.Models
+﻿using GammonX.Models.Enums;
+
+namespace GammonX.Engine.Models
 {
 	/// <summary>
 	/// Fevga implementation.
@@ -85,7 +87,7 @@
 			if (isWhite)
 			{
 				// white moves from 0 to 23
-				if (to == WellKnownBoardPositions.BearOffWhite)
+				if (to == BoardPositions.BearOffWhite)
 				{
 					to = HomeRangeWhite.End.Value + 1;
 				}
@@ -94,7 +96,7 @@
 			}
 			else
 			{
-				if (to == WellKnownBoardPositions.BearOffBlack)
+				if (to == BoardPositions.BearOffBlack)
 				{
 					to = HomeRangeBlack.End.Value + 1;
 				}
@@ -138,7 +140,7 @@
 				int to = MoveOperator(isWhite, currentPosition, moveDistance);
 				// checkers with the perfect bear off roll can always be taken out
 				// except if a black fevga checkers is played from the homebar
-				if (to == HomeRangeBlack.End.Value + 1 && currentPosition != WellKnownBoardPositions.HomeBarBlack)
+				if (to == HomeRangeBlack.End.Value + 1 && currentPosition != BoardPositions.HomeBarBlack)
 				{
 					return true;
 				}
@@ -172,10 +174,10 @@
 		public int HomeBarCountBlack { get; private set; } = 14;
 
 		// <inheritdoc />
-		public int StartIndexWhite => WellKnownBoardPositions.HomeBarWhite;
+		public int StartIndexWhite => BoardPositions.HomeBarWhite;
 
 		// <inheritdoc />
-		public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
+		public int StartIndexBlack => BoardPositions.HomeBarBlack;
 
 		// <inheritdoc />
 		public bool MustEnterFromHomebar => false;

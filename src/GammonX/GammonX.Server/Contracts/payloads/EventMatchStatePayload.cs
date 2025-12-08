@@ -1,4 +1,4 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
 
 using System.Runtime.Serialization;
 
@@ -32,13 +32,13 @@ namespace GammonX.Server.Contracts
 		public GameRoundContract[]? GameRounds { get; set; }
 
 		[DataMember(Name = "variant", IsRequired = true)]
-		public WellKnownMatchVariant Variant { get; set; }
+		public MatchVariant Variant { get; set; }
 
 		[DataMember(Name = "modus", IsRequired = true)]
-		public WellKnownMatchModus Modus { get; set; }
+		public MatchModus Modus { get; set; }
 
 		[DataMember(Name = "type", IsRequired = true)]
-		public WellKnownMatchType Type { get; set; }	
+		public GammonX.Models.Enums.MatchType Type { get; set; }	
 
 		[DataMember(Name = "player1", IsRequired = true)]
 		public PlayerContract? Player1 { get; set; }

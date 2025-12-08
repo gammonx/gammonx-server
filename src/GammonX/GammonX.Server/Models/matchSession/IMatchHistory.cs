@@ -1,4 +1,6 @@
-﻿namespace GammonX.Server.Models
+﻿using GammonX.Models.Enums;
+
+namespace GammonX.Server.Models
 {
 	/// <summary>
 	/// Provides the capabilites to caputre a match session and all its actions.
@@ -49,5 +51,10 @@
 		/// Gets a list of game sessions played within the given match session.
 		/// </summary>
 		public IGameHistory[] Games { get; }
+
+		/// <summary>
+		/// Gets the type format of the string serialization.
+		/// </summary>
+		public HistoryFormat Format { get; }
 	}
 }

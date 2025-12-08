@@ -1,6 +1,8 @@
 ﻿
 using GammonX.Engine.History;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.Models
 {
 	/// <summary>
@@ -70,7 +72,7 @@ namespace GammonX.Engine.Models
 			if (isWhite)
 			{
 				// white moves from 0 to 23
-				if (to == WellKnownBoardPositions.BearOffWhite)
+				if (to == BoardPositions.BearOffWhite)
 				{
 					to = HomeRangeWhite.End.Value + 1;
 				}
@@ -80,7 +82,7 @@ namespace GammonX.Engine.Models
 			else
 			{
 				// black moves forward (wraps from 23 -> 0)
-				if (to == WellKnownBoardPositions.BearOffBlack)
+				if (to == BoardPositions.BearOffBlack)
 				{
 					to = HomeRangeBlack.End.Value;
 					int bearOffRoll = from - to + 1;

@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.Services
 {
     /// <summary>
@@ -209,10 +211,10 @@ namespace GammonX.Engine.Services
 			{
 				return index switch
 				{
-					WellKnownBoardPositions.HomeBarWhite => WellKnownBoardPositions.HomeBarBlack,
-					WellKnownBoardPositions.HomeBarBlack => WellKnownBoardPositions.HomeBarWhite,
-					WellKnownBoardPositions.BearOffWhite => WellKnownBoardPositions.BearOffBlack,
-					WellKnownBoardPositions.BearOffBlack => WellKnownBoardPositions.BearOffWhite,
+					BoardPositions.HomeBarWhite => BoardPositions.HomeBarBlack,
+					BoardPositions.HomeBarBlack => BoardPositions.HomeBarWhite,
+					BoardPositions.BearOffWhite => BoardPositions.BearOffBlack,
+					BoardPositions.BearOffBlack => BoardPositions.BearOffWhite,
 					_ => (23 - index)
 				};
 			}
@@ -236,10 +238,10 @@ namespace GammonX.Engine.Services
 			{
 				return index switch
 				{
-					WellKnownBoardPositions.HomeBarWhite => WellKnownBoardPositions.HomeBarBlack,
-					WellKnownBoardPositions.HomeBarBlack => WellKnownBoardPositions.HomeBarWhite,
-					WellKnownBoardPositions.BearOffWhite => WellKnownBoardPositions.BearOffBlack,
-					WellKnownBoardPositions.BearOffBlack => WellKnownBoardPositions.BearOffWhite,
+					BoardPositions.HomeBarWhite => BoardPositions.HomeBarBlack,
+					BoardPositions.HomeBarBlack => BoardPositions.HomeBarWhite,
+					BoardPositions.BearOffWhite => BoardPositions.BearOffBlack,
+					BoardPositions.BearOffBlack => BoardPositions.BearOffWhite,
 					< 0 => index,       // in case of unexpected negatives
 					< 12 => index + 12, // top half > bottom half
 					_ => index - 12     // bottom half > top half

@@ -95,5 +95,5 @@ $RECYCLE.BIN/
 
 # Optional: secrets.json (wenn nicht bewusst eingecheckt)
 **/secrets.json
-/src/GammonX/GammonX.Server/.env.local
-/dynamodb-data
+*.env.local
+*dynamodb-data

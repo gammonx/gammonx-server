@@ -1,0 +1,17 @@
+{
+  "Resource": "/players/{id}/rating/{variant}",
+  "Path": null,
+  "HttpMethod": "GET",
+  "Headers": null,
+  "MultiValueHeaders": null,
+  "QueryStringParameters": null,
+  "MultiValueQueryStringParameters": null,
+  "PathParameters": {
+    "id": "aa79360d-6016-405d-834e-c1e59b424c4f",
+    "variant": "Tavli"
+  },
+  "StageVariables": null,
+  "RequestContext": null,
+  "Body": null,
+  "IsBase64Encoded": false
+}

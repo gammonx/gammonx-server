@@ -1,13 +1,14 @@
 ## DONE
+- sqs event handler (lambda)
+- dynamo db data layer
+- lambda sqs handler
+- lambda api gateway handler
+- local dev environment
 
 ## Active
 - palamedes schreiben
-- database
-    - dynamo db konzept testen > mit access keys local to aws
 
 ## TODO 
-- lambda functions + sqs
-- auth/user account > how to identify premium accounts?
 - dice roller backgammon galaxy // urandom crypto
 - time out // turn timer
 - disconnect/reconnect
@@ -17,6 +18,9 @@
 - fevga/plakoto bot implementation
 - subscription service (clientside?)
 - tournament mode
+- auth/user account > how to identify premium accounts?
+    - authentication with api gateway
+    - authorization required
 
 ## Open Points
 - enhance matchmaking?

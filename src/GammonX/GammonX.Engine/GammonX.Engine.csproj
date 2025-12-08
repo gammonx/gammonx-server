@@ -15,5 +15,8 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
+	</ItemGroup>
 
 </Project>

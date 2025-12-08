@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.Models
 {
 	/// <summary>
@@ -62,10 +64,10 @@ namespace GammonX.Engine.Models
         public int HomeBarCountBlack { get; private set; } = 0;
 
 		// <inheritdoc />
-		public int StartIndexWhite => WellKnownBoardPositions.HomeBarWhite;
+		public int StartIndexWhite => BoardPositions.HomeBarWhite;
 
 		// <inheritdoc />
-		public int StartIndexBlack => WellKnownBoardPositions.HomeBarBlack;
+		public int StartIndexBlack => BoardPositions.HomeBarBlack;
 
 		// <inheritdoc />
 		public bool MustEnterFromHomebar => true;

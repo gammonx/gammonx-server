@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+    <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
   </ItemGroup>
 
   <ItemGroup>

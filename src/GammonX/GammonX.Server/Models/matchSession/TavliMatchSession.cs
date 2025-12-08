@@ -1,7 +1,10 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Services;
-using Microsoft.AspNetCore.SignalR;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
@@ -17,17 +20,17 @@ namespace GammonX.Server.Models
 			// pass
 		}
 
-		/// <summary>
-		/// Calculates the score for the player who won the game.
-		/// </summary>
-		/// <remarks>
-		/// The first player to bear off all his checkers gets one point, or, 
-		/// if the winner bears off all his checkers before the loser has borne off any, he gets two points. 
-		/// There is no triple game.
-		/// </remarks>
-		/// <param name="playerId">Player id who won the game</param>
-		/// <returns>Score won with the game.</returns>
-		protected override int CalculatePoints(Guid playerId)
+        /// <summary>
+        /// Calculates the score for the player who won the game.
+        /// </summary>
+        /// <remarks>
+        /// The first player to bear off all his checkers gets one point, or, 
+        /// if the winner bears off all his checkers before the loser has borne off any, he gets two points. 
+        /// There is no triple game.
+        /// </remarks>
+        /// <param name="playerId">Player id who won the game</param>
+        /// <returns>Result of the concluded game.</returns>
+        protected override GameResultModel ConcludeGame(Guid playerId)
 		{
 			var activeSession = GetGameSession(GameRound);
 
@@ -38,7 +41,7 @@ namespace GammonX.Server.Models
 			// the game ends in a tie and concluded with 0 points
 			if (activeSession.BoardModel is IPinModel pinModel && pinModel.BothMothersArePinned)
 			{
-				return 0;
+                return GameResultModel.Draw();
 			}
 
 			if (Player1.Id.Equals(playerId))
@@ -49,14 +52,12 @@ namespace GammonX.Server.Models
 				// white checker player
 				if (activeSession.BoardModel.BearOffCountBlack == 0)
 				{
-					// player won with a double game
-					return 2;
-				}
+                    return new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, 2);
+                }
 				else
 				{
-					// player won with a single game
-					return 1;
-				}
+                    return new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, 1);
+                }
 			}
 			else if (Player2.Id.Equals(playerId))
 			{
@@ -67,14 +68,12 @@ namespace GammonX.Server.Models
 				// white checker player
 				if (activeSession.BoardModel.BearOffCountWhite == 0)
 				{
-					// player won with a double game
-					return 2;
-				}
+                    return new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, 2);
+                }
 				else
 				{
-					// player won with a single game
-					return 1;
-				}
+                    return new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, 1);
+                }
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
@@ -88,19 +87,19 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override GameModus[] GetGameModusList(WellKnownMatchType matchType)
+		protected override GameModus[] GetGameModusList(MatchType matchType)
 		{
-			if (matchType == WellKnownMatchType.CashGame)
+			if (matchType == MatchType.CashGame)
 			{
 				// we play max 3 rounds in a cash game
 				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga];
 			}
-			else if (matchType == WellKnownMatchType.FivePointGame)
+			else if (matchType == MatchType.FivePointGame)
 			{
 				// we play max 9 rounds in a five point game
 				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga];
 			}
-			else if (matchType == WellKnownMatchType.SevenPointGame)
+			else if (matchType == MatchType.SevenPointGame)
 			{
 				// we play max 13 rounds in a seven point game
 				return [GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto, GameModus.Fevga, GameModus.Portes, GameModus.Plakoto];

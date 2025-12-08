@@ -1,0 +1,16 @@
+{
+  "Records": [
+    {
+      "MessageId": "3fd8a488-9c1b-413c-a20e-68ca3f71e530",
+      "ReceiptHandle": null,
+      "Body": "{\"Id\":\"7e94fe1e-7dc8-4cdf-b9a1-afb64daffad9\",\"Username\":\"bestInTown\"}",
+      "Md5OfBody": null,
+      "Md5OfMessageAttributes": null,
+      "EventSourceArn": null,
+      "EventSource": null,
+      "AwsRegion": null,
+      "Attributes": null,
+      "MessageAttributes": null
+    }
+  ]
+}

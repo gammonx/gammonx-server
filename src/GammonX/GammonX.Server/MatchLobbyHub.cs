@@ -1,10 +1,10 @@
-﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
+using GammonX.Models.Enums;
 
-using GammonX.Server.Analysis;
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
+using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.SignalR;
@@ -22,20 +22,20 @@ namespace GammonX.Server
 		private readonly MatchSessionRepository _repository;
 		private readonly IDiceService _diceService;
 		private readonly IBotService _botService;
-		private readonly IMatchAnalysisQueue _analysisQueue;
+		private readonly IWorkQueueService _workQueue;
 
 		public MatchLobbyHub(
+            IWorkQueueService workQueue,
 			IMatchmakingService matchmakingService,
 			MatchSessionRepository repository,
 			IDiceServiceFactory diceServiceFactory,
-			IBotService botService,
-			IMatchAnalysisQueue analysisQueue)
+			IBotService botService)
 		{
-			_matchmakingService = matchmakingService;
+			_workQueue = workQueue;
+            _matchmakingService = matchmakingService;
 			_repository = repository;
 			_diceService = diceServiceFactory.Create();
 			_botService = botService;
-			_analysisQueue = analysisQueue;
 		}
 
 		#region Overrides
@@ -94,10 +94,12 @@ namespace GammonX.Server
 						matchSession.JoinSession(matchLobby.Player1);
 						await Groups.AddToGroupAsync(matchLobby.Player1.ConnectionId, groupName);
 
-						if (matchLobby.QueueKey.MatchModus == WellKnownMatchModus.Bot)
+						if (matchLobby.QueueKey.MatchModus == MatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
-							var botPlayer = new LobbyEntry(Guid.NewGuid());
+							// we assign an fixed guid to the bot player in order to track his stats and rating in the db
+							// TODO: assign different bot player ids to different types of bots
+							var botPlayer = new LobbyEntry(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
 							botPlayer.SetConnectionId(Guid.Empty.ToString());
 							matchSession.JoinSession(botPlayer);
 						}
@@ -162,7 +164,7 @@ namespace GammonX.Server
 					{
 						matchSession.Player1.AcceptNextGame();
 
-						if (matchSession.Modus == WellKnownMatchModus.Bot)
+						if (matchSession.Modus == MatchModus.Bot)
 						{
 							// in a bot game, the player 2 is always the "bot"
 							matchSession.Player2.AcceptNextGame();
@@ -763,6 +765,7 @@ namespace GammonX.Server
 
 		private Guid GetStartingPlayerId(IMatchSessionModel matchSession)
 		{
+			// TODO :: properly implement starting dice roll logic
 			var activeSession = matchSession.GetGameSession(matchSession.GameRound);
 			// if null, the active game session is the first
 			if (activeSession == null)
@@ -805,45 +808,73 @@ namespace GammonX.Server
 			var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id);
 			var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
 			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
-			if (matchSession.Modus != WellKnownMatchModus.Bot)
+			if (matchSession.Modus != MatchModus.Bot)
 			{
 				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
 			}
 		}
 
-		private async Task SendMatchState(string serverEventName, IMatchSessionModel matchSession)
+		private async Task SendMatchState(string serverEventName, IMatchSessionModel match)
 		{
-			// TODO :: match ended sync :: stats for end screen
-			// - game rounds points
-			// - rating change (ranked) > calculate elo
-			// > send ServerEventTypes.MatchStatsEvent
-			// > new payload extension for ranked/paid subscriptions?
+			// we put the results in the work queue if applicable
+			await ProcessMatchResultsAsync(match, serverEventName);
+			
+			// TODO: game finished screen > stats
+			// TODO match finished screen > stats/rating
 
-			var payloadPlayer1 = matchSession.ToPayload(matchSession.Player1.Id);
+			var payloadPlayer1 = match.ToPayload(match.Player1.Id);
 			var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
-			await SendToClient(matchSession.Player1.ConnectionId, serverEventName, contractPlayer1);
-			if (matchSession.Modus != WellKnownMatchModus.Bot)
+			await SendToClient(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+			if (match.Modus != MatchModus.Bot)
 			{
-				var payloadPlayer2 = matchSession.ToPayload(matchSession.Player2.Id);
+				var payloadPlayer2 = match.ToPayload(match.Player2.Id);
 				var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
-				await SendToClient(matchSession.Player2.ConnectionId, serverEventName, contractPlayer2);
+				await SendToClient(match.Player2.ConnectionId, serverEventName, contractPlayer2);
 			}
 
 			if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
 			{
-				// TODO :: match ended async :: to database
-				var analysisJob = new MatchAnalysisJob(matchSession.Id);
-				await _analysisQueue.EnqueueAsync(analysisJob);
-
-				// clients can now safely disconnect from socket
-				var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
+                // clients can now safely disconnect from socket
+                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
 				await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
-				await Groups.RemoveFromGroupAsync(matchSession.Player1.ConnectionId, payloadPlayer1.GroupName);
-				await Groups.RemoveFromGroupAsync(matchSession.Player2.ConnectionId, payloadPlayer1.GroupName);
+				await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
+				await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
 			}
 		}
 
-		private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
+		private async Task ProcessMatchResultsAsync(IMatchSessionModel match, string serverEventName)
+		{
+			if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+			{
+				var gameRound = GetLastConcludedGameRoundIndex(match);
+				await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+			}
+			else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+			{
+                // we have to enqueue the last game of the match aswell
+                var gameRound = GetLastConcludedGameRoundIndex(match);
+                await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                // we process the match result
+                await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                // we update the player stats based on the match result
+                await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                // we update the player rating based on the match result if a ranked was played
+                if (match.Modus == MatchModus.Ranked)
+                {
+                    await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                }
+            }
+        }
+
+		private static int GetLastConcludedGameRoundIndex(IMatchSessionModel match)
+		{
+			var gameSessions = match.GetGameSessions().ToList();
+			gameSessions.Reverse();
+			var lastConcludedGame = gameSessions.First(gr => gr != null && gr.Result.IsConcluded);
+			return match.GetGameSessions().ToList().IndexOf(lastConcludedGame) + 1;
+		}
+
+        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
 		{
 			var payload = new EventErrorPayload(errorCode, message);
 			var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
@@ -916,7 +947,7 @@ namespace GammonX.Server
 
 		private static bool IsBotTurn(IMatchSessionModel matchSession, Guid playerId)
 		{
-			if (matchSession.Modus == WellKnownMatchModus.Bot)
+			if (matchSession.Modus == MatchModus.Bot)
 			{
 				if (matchSession.Player1.Id == playerId)
 				{

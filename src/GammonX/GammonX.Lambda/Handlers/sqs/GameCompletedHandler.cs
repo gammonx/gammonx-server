@@ -1,0 +1,103 @@
+﻿using Amazon.Lambda.Core;
+using Amazon.Lambda.Serialization.SystemTextJson;
+using Amazon.Lambda.SQSEvents;
+
+using GammonX.DynamoDb.Repository;
+
+using GammonX.Lambda.Extensions;
+
+using GammonX.Models.Contracts;
+using GammonX.Models.History;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Newtonsoft.Json;
+
+namespace GammonX.Lambda.Handlers
+{
+	/// <summary>
+	/// Handles <see cref="LambdaFunctions.GameCompletedFunc"/> event.
+	/// Writes game details for winner and loser and the game history.
+	/// </summary>
+	public class GameCompletedHandler : LambdaHandlerBaseImpl, ISqsLambdaHandler
+	{
+		/// <summary>
+		/// Default constructor for container based lambda execution. 
+		/// This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
+		/// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
+		/// region the Lambda function is executed in.
+		/// </summary>
+		public GameCompletedHandler(IDynamoDbRepository repo) : base(repo)
+		{
+			// pass
+		}
+
+		/// <summary>
+		/// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
+		/// </summary>
+		public GameCompletedHandler() : base()
+		{
+			// pass
+		}
+
+        // <inheritdoc />
+        [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
+        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+		{
+			try
+			{
+				if (_repo == null)
+				{
+                    context.Logger.LogInformation($"Setting up DI services...");
+                    var services = Startup.Configure();
+					_repo = services.GetRequiredService<IDynamoDbRepository>();
+				}
+
+                foreach (var message in @event.Records)
+                {
+                    await ProcessMessageAsync(message, context);
+                }
+            }
+            catch (Exception ex)
+            {
+                foreach (var record in @event.Records)
+                {
+                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
+                }
+            }
+        }
+
+		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
+		{
+			if (_repo == null)
+				throw new NullReferenceException("db repo must not be null");
+
+			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
+
+			var json = message.Body;
+			var gameRecord = JsonConvert.DeserializeObject<GameRecordContract>(json);
+
+			if (gameRecord == null)
+			{
+				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
+				return;
+			}
+
+			context.Logger.LogInformation($"Processing completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+
+			// create game history item
+			var gameHistory = gameRecord.ToGameHistory();
+			// parse game history and calculate some stats
+			var parserFactory = HistoryParserFactory.Create<IGameHistoryParser>(gameHistory.Format);
+			var parsedHistory = parserFactory.ParseGame(gameHistory.Data);
+			// create game item
+			var gameItem = gameRecord.ToGame(parsedHistory);
+
+			await _repo.SaveAsync(gameItem);
+			// TODO: avoid writing history twice
+			await _repo.SaveAsync(gameHistory);
+
+			context.Logger.LogInformation($"Processed completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+		}
+	}
+}

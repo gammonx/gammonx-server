@@ -2,8 +2,9 @@
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Contracts;
-using GammonX.Server.Models.gameSession;
 
 namespace GammonX.Server.Models
 {
@@ -12,9 +13,6 @@ namespace GammonX.Server.Models
 	{
 		private readonly IBoardService _boardService;
 		private IDiceService _diceService;
-
-		private int _winnerPoints;
-		private Guid _winnerPlayerId;
 
 		private readonly Stack<MoveModel> _activeUndoStack = new();
 
@@ -29,6 +27,9 @@ namespace GammonX.Server.Models
 
 		// <inheritdoc />
 		public GamePhase Phase { get; set; }
+
+        // <inheritdoc />
+        public GameResultModel Result { get; protected set; } = GameResultModel.Empty();
 
 		// <inheritdoc />
 		public Guid ActivePlayer { get; protected set; }
@@ -82,10 +83,9 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public void StopGame(Guid winnerPlayerId, int points)
+		public void StopGame(GameResultModel result)
 		{
-			_winnerPlayerId = winnerPlayerId;
-			_winnerPoints = points;
+			Result = result;
 			Phase = GamePhase.GameOver;
 			EndedAt = DateTime.UtcNow;
 		}
@@ -297,16 +297,16 @@ namespace GammonX.Server.Models
 
 			if (Phase == GamePhase.GameOver)
 			{
-				contract.Winner = _winnerPlayerId;
-				contract.Points = _winnerPoints;
+				contract.Winner = Result.WinnerId;
+				contract.Points = Result.Points;
 			}
 			return contract;
 		}
 
 		// <inheritdoc />
-		public IGameHistory GetHistory()
+		public IGameHistory GetHistory(Guid player1, Guid player2)
 		{
-			return GameHistoryImpl.Create(this, _winnerPlayerId, _winnerPoints);
+			return GameHistoryImpl.Create(this, player1, player2, Result.WinnerId, Result.Points);
 		}
 
 		/// <summary>

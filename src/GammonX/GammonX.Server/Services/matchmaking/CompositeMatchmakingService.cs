@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
@@ -12,7 +14,7 @@ namespace GammonX.Server.Services
 		{
 			_serviceProvider = serviceProvider;
 			_services = new List<IMatchmakingService>();
-			foreach (var matchModus in Enum.GetValues(typeof(WellKnownMatchModus)))
+			foreach (var matchModus in Enum.GetValues(typeof(MatchModus)))
 			{
 				var service = serviceProvider.GetRequiredKeyedService<IMatchmakingService>(matchModus);
 				_services.Add(service);

@@ -1,13 +1,14 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Testdata;
 using GammonX.Server.Tests.Utils;
 
 using Moq;
-using System.ComponentModel;
 
 namespace GammonX.Server.Tests
 {

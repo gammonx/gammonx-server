@@ -1,5 +1,8 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
+using GammonX.Models.Enums;
+
 using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
 
@@ -529,12 +532,12 @@ namespace GammonX.Engine.Tests
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1);
 			Assert.Single(legalMoves);
-			Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 0), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarWhite, 0), legalMoves);
 
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1, 2);
 			Assert.Equal(2, legalMoves.Count());
-			Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 0), legalMoves);
-			Assert.Contains((WellKnownBoardPositions.HomeBarWhite, 1), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarWhite, 0), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarWhite, 1), legalMoves);
 		}
 
 		[Theory]
@@ -550,12 +553,12 @@ namespace GammonX.Engine.Tests
 			homeBarModel.AddToHomeBar(false, 5); // Add 5 black checkers to home bar
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1);
 			Assert.Single(legalMoves);
-			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 23), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarBlack, 23), legalMoves);
 
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1, 2);
 			Assert.Equal(2, legalMoves.Count());
-			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 23), legalMoves);
-			Assert.Contains((WellKnownBoardPositions.HomeBarBlack, 22), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarBlack, 23), legalMoves);
+			Assert.Contains((BoardPositions.HomeBarBlack, 22), legalMoves);
 		}
 
 		[Theory]
@@ -621,11 +624,11 @@ namespace GammonX.Engine.Tests
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((23, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((23, BoardPositions.BearOffWhite), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((22, WellKnownBoardPositions.BearOffWhite), legalMoves);
-			Assert.Contains((18, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((22, BoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((18, BoardPositions.BearOffWhite), legalMoves);
 		}
 
 		[Theory]
@@ -640,11 +643,11 @@ namespace GammonX.Engine.Tests
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((0, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((0, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 2);
 			Assert.Equal(7, legalMoves.Count());
-			Assert.Contains((1, WellKnownBoardPositions.BearOffBlack), legalMoves);
-			Assert.Contains((5, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((1, BoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((5, BoardPositions.BearOffBlack), legalMoves);
 		}
 
 		[Theory]
@@ -660,11 +663,11 @@ namespace GammonX.Engine.Tests
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((23, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((23, BoardPositions.BearOffWhite), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((22, WellKnownBoardPositions.BearOffWhite), legalMoves);
-			Assert.Contains((18, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((22, BoardPositions.BearOffWhite), legalMoves);
+			Assert.Contains((18, BoardPositions.BearOffWhite), legalMoves);
 		}
 
 		[Theory]
@@ -680,11 +683,11 @@ namespace GammonX.Engine.Tests
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((11, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((11, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 2);
 			Assert.Equal(6, legalMoves.Count());
-			Assert.Contains((10, WellKnownBoardPositions.BearOffBlack), legalMoves);
-			Assert.Contains((6, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((10, BoardPositions.BearOffBlack), legalMoves);
+			Assert.Contains((6, BoardPositions.BearOffBlack), legalMoves);
 		}
 
 		[Theory]
@@ -738,12 +741,12 @@ namespace GammonX.Engine.Tests
 			// white cannot enter board, black checkers block entry
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 2);
 			Assert.Equal(3, legalMoves.Count());
-			Assert.DoesNotContain((23, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.DoesNotContain((23, BoardPositions.BearOffWhite), legalMoves);
 			Assert.DoesNotContain((21, 23), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
 			Assert.Equal(3, legalMoves.Count());
-			Assert.DoesNotContain((22, WellKnownBoardPositions.BearOffWhite), legalMoves);
-			Assert.DoesNotContain((18, WellKnownBoardPositions.BearOffWhite), legalMoves);
+			Assert.DoesNotContain((22, BoardPositions.BearOffWhite), legalMoves);
+			Assert.DoesNotContain((18, BoardPositions.BearOffWhite), legalMoves);
 		}
 
 		[Theory]
@@ -761,11 +764,11 @@ namespace GammonX.Engine.Tests
 			// black cannot enter board, white checkers block entry
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 3);
 			Assert.Equal(2, legalMoves.Count());
-			Assert.DoesNotContain((3, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.DoesNotContain((3, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 3);
 			Assert.Equal(2, legalMoves.Count());
-			Assert.DoesNotContain((3, WellKnownBoardPositions.BearOffBlack), legalMoves);
-			Assert.DoesNotContain((5, WellKnownBoardPositions.BearOffBlack), legalMoves);
+			Assert.DoesNotContain((3, BoardPositions.BearOffBlack), legalMoves);
+			Assert.DoesNotContain((5, BoardPositions.BearOffBlack), legalMoves);
 		}
 
 		#endregion Bearing Off Tests

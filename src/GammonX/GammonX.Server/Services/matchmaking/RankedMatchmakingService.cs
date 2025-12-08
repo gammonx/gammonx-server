@@ -1,4 +1,7 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Models;
+using GammonX.Server.Repository;
 
 using System.Collections.Concurrent;
 
@@ -7,17 +10,17 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal class RankedMatchmakingService : MatchmakingServiceBaseImpl
 	{
-		private readonly IServiceScopeFactory _scopeFactory;
+		private readonly IRepositoryClient _repoClient;
 
-		public RankedMatchmakingService(IServiceScopeFactory scopeFactory)
+		public RankedMatchmakingService(IRepositoryClient client)
 		{
-			_scopeFactory = scopeFactory;
+            _repoClient = client;
 		}
 
 		// <inheritdoc />
-		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
+		public override async Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
 		{
-			if (queueKey.MatchModus != WellKnownMatchModus.Ranked)
+			if (queueKey.MatchModus != MatchModus.Ranked)
 			{
 				throw new InvalidOperationException("Match modus must be of type normal in order to join this queue");
 			}
@@ -27,14 +30,15 @@ namespace GammonX.Server.Services
 				throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
 			}
 
-			// TODO: get rating from AWS lambda function
-			// TODO: or from server access layer
-			var relevantRating = 1200;
-			var newEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating);
+			var ratingResponse = await _repoClient.GetRatingAsync(playerId, queueKey.MatchVariant, CancellationToken.None);
+			// use default glicko2 rating if player has no rating yet
+			var relevantRating = ratingResponse?.Rating ?? 1200;
+
+            var newEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating);
 			var queue = _modeQueues.GetOrAdd(queueKey, _ => new ConcurrentQueue<Guid>());
 			_queue[newEntry.Id] = newEntry;
 			queue.Enqueue(newEntry.Id);
-			return Task.FromResult(newEntry);
+			return newEntry;
 		}
 
 		// <inheritdoc />

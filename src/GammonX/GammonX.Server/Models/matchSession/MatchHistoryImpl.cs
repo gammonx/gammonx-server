@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using GammonX.Models.Enums;
+
+using System.Text;
 
 namespace GammonX.Server.Models
 {
@@ -29,6 +31,9 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public IGameHistory[] Games { get; private set; }
 
+		// <inheritdoc />
+		public HistoryFormat Format => HistoryFormat.MAT;
+
 		private MatchHistoryImpl()
 		{
 			Name = string.Empty;
@@ -47,7 +52,7 @@ namespace GammonX.Server.Models
 				StartedAt = model.StartedAt,
 				EndedAt = model.EndedAt ?? DateTime.UtcNow,
 				Length = playedGames.Count(),
-				Games = playedGames.Select(gs => gs.GetHistory()).ToArray()
+				Games = playedGames.Select(gs => gs.GetHistory(model.Player1.Id, model.Player2.Id)).ToArray()
 			};
 
 		}
