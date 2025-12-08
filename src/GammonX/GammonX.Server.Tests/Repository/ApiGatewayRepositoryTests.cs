@@ -63,7 +63,9 @@ namespace GammonX.Server.Tests.Repository
         {
             var existingPlayer1Id = Guid.Empty;
             var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, CancellationToken.None);
-            Assert.Null(rating);
+            Assert.NotNull(rating);
+            // we expect a default value for the rating
+            Assert.Equal(1200, rating.Rating);
         }
 
         [Fact]
@@ -71,7 +73,9 @@ namespace GammonX.Server.Tests.Repository
         {
             var existingPlayer1Id = Guid.Empty;
             var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Unknown, CancellationToken.None);
-            Assert.Null(rating);
+            Assert.NotNull(rating);
+            // we expect a default value for the rating
+            Assert.Equal(1200, rating.Rating);
         }
     }
 }
