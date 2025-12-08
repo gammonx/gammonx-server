@@ -2,7 +2,7 @@ using GammonX.Models.Enums;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Models.Tests
+namespace GammonX.Models.Tests.Enums
 {
     public class EnumTests
     {

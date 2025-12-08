@@ -2,10 +2,11 @@
 
 namespace GammonX.Models.Helpers
 {
+    /// <summary>
+    /// Provides helper functions for handling DateTime objects in diferent cultures and variants.
+    /// </summary>
     public static class DateTimeHelper
     {
-        // TODO unit tests
-
         private static readonly string[] CommonFormats = new[]
         {
             "dd/MM/yyyy HH:mm:ss",

@@ -163,5 +163,57 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal("GAME#{0}#{1}", gameItemFactory.GSI1SKFormat);
             Assert.Equal("GAME#", gameItemFactory.GSI1SKPrefix);
         }
+
+        [Fact]
+        public void GameItemConstructsCorrectPrimaryKeys()
+        {
+            // use stable ids to verify string formatting
+            var gameId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+            var playerId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+            var matchId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+
+            var item = new GameItem
+            {
+                Id = gameId,
+                PlayerId = playerId,
+                MatchId = matchId,
+                Result = GameResult.LostResign,
+
+            };
+
+            // pk and sk must follow the factory rules
+            var factory = ItemFactoryCreator.Create<GameItem>();
+
+            Assert.Equal(string.Format(factory.PKFormat, matchId), item.PK);
+            Assert.StartsWith(factory.SKPrefix, item.SK);
+            Assert.Equal(string.Format(factory.SKFormat, gameId, "LOST"), item.SK);
+        }
+
+        [Fact]
+        public void GameItemConstructsCorrectGsiKeys()
+        {
+            var item = new GameItem
+            {
+                Id = Guid.NewGuid(),
+                PlayerId = Guid.NewGuid(),
+                MatchId = Guid.NewGuid(),
+                Result = GameResult.Single,
+                Modus = GameModus.Portes
+            };
+
+            var factory = ItemFactoryCreator.Create<GameItem>();
+
+            // gsi partition key must follow the factory format
+            Assert.Equal(
+                string.Format(factory.GSI1PKFormat, item.PlayerId),
+                item.GSI1PK
+            );
+
+            // gsi sort key must follow the factory prefix
+            Assert.Equal(
+                string.Format(factory.GSI1SKFormat, GameModus.Portes, "WON"),
+                item.GSI1SK
+            );
+        }
     }
 }

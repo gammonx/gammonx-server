@@ -8,8 +8,7 @@
 ## Active
 - palamedes schreiben
 - lambda functions + sqs
-    - run all tests
-    - implement api gateway client + dummy
+    - make lambda handler imdepotent
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto

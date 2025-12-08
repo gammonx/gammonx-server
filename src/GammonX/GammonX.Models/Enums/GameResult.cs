@@ -61,11 +61,17 @@
 				case GameResult.Gammon:
 				case GameResult.Backgammon:
 				case GameResult.Single:
+				case GameResult.DoubleDeclined:
+				case GameResult.Resign:
 					return true;
 				case GameResult.LostDoubleDeclined:
 				case GameResult.LostSingle:
+				case GameResult.LostResign:
+				case GameResult.LostBackgammon:
+				case GameResult.LostGammon:
 					return false;
 				case GameResult.Unknown:
+				case GameResult.Draw:
 				default:
 					return null;
 			}

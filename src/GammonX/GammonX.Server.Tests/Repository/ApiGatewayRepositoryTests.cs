@@ -40,7 +40,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(baseUrl, _client.BaseUrl);
         }
 
-        [Fact(Skip = "AWS Integration")]
+        [Fact]
         public async Task CanGetRatingFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
@@ -49,7 +49,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating > 1200);
         }
 
-        [Fact(Skip = "AWS Integration")]
+        [Fact]
         public async Task CanGetRatingFromRepository2()
         {
             var existingPlayer1Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");

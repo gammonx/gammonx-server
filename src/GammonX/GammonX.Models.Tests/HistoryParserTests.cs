@@ -6,13 +6,11 @@ namespace GammonX.Models.Tests
 {
     public class HistoryParserTests
     {
-        // TODO :: add unit tests for all variants and types
-
         [Fact]
         public void UnknownParserThrowsException()
         {
-            Assert.Throws<InvalidOperationException>(() => HistoryParserFactory.Create<IMatchHistoryParser>(Enums.HistoryFormat.Unknown));
-            Assert.Throws<InvalidOperationException>(() => HistoryParserFactory.Create<IGameHistoryParser>(Enums.HistoryFormat.Unknown));
+            Assert.Throws<InvalidOperationException>(() => HistoryParserFactory.Create<IMatchHistoryParser>(HistoryFormat.Unknown));
+            Assert.Throws<InvalidOperationException>(() => HistoryParserFactory.Create<IGameHistoryParser>(HistoryFormat.Unknown));
         }
 
         [Fact]
