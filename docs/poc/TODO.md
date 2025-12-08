@@ -7,8 +7,6 @@
 
 ## Active
 - palamedes schreiben
-- lambda functions + sqs
-    - make lambda handler imdepotent
 
 ## TODO 
 - dice roller backgammon galaxy // urandom crypto
