@@ -1,21 +1,17 @@
 ## DONE
-- sqs event handler (lambda)
-- dynamo db data layer
-- lambda sqs handler
-- lambda api gateway handler
-- local dev environment
 
 ## Active
-- palamedes schreiben
+- dice roller backgammon galaxy // urandom crypto
 
 ## TODO 
-- dice roller backgammon galaxy // urandom crypto
+- fevga/plakoto bot implementation
+- palamedes schreiben
 - time out // turn timer
 - disconnect/reconnect
+    - queue disconnect
 - match equity/stats afer match :: win percentage to user
 - export matches to sgf/.mat format
 - bot dificulty levels
-- fevga/plakoto bot implementation
 - subscription service (clientside?)
 - tournament mode
 - auth/user account > how to identify premium accounts?
