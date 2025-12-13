@@ -743,6 +743,12 @@ namespace GammonX.Server.Tests.Integration
 				foreach (var move in moves)
 				{
 					var isWhite = matchSession.Player1.Id == gameSession.ActivePlayer;
+
+					if (gameSession.GameOver(isWhite))
+					{
+						break;
+					}
+
 					if (isWhite)
 					{
 						await activeHub.MoveAsync(matchIdStr, move.From, move.To);
@@ -766,7 +772,17 @@ namespace GammonX.Server.Tests.Integration
 			}
 			else if (!matchSession.IsMatchOver())
 			{
-				await otherHub.StartGameAsync(matchIdStr);
+                if (gameSession.Result.Equals(GameResultModel.Draw()))
+                {
+                    Assert.Null(gameSession.Result.WinnerId);
+                    Assert.True(gameSession.Result.IsConcluded);
+                    Assert.Equal(GameResult.Draw, gameSession.Result.WinnerResult);
+                    Assert.Equal(GameResult.Draw, gameSession.Result.LoserResult);
+                    Assert.Equal(0, gameSession.Result.Points);
+                    Assert.True(gameSession.Result.IsDraw);
+                }
+
+                await otherHub.StartGameAsync(matchIdStr);
 				await activeHub.StartGameAsync(matchIdStr);
 			}
 		}

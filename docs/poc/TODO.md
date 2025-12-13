@@ -1,18 +1,19 @@
 ## DONE
+- crypto dice roller
 
 ## Active
-- dice roller backgammon galaxy // urandom crypto
+- match/game start roll decision
 
 ## TODO 
-- fevga/plakoto bot implementation
-- palamedes schreiben
 - time out // turn timer
 - disconnect/reconnect
     - queue disconnect
-- match equity/stats afer match :: win percentage to user
+- fevga/plakoto bot implementation
+- palamedes schreiben
 - export matches to sgf/.mat format
 - bot dificulty levels
 - subscription service (clientside?)
+- match equity/stats afer match :: win percentage to user
 - tournament mode
 - auth/user account > how to identify premium accounts?
     - authentication with api gateway

@@ -21,7 +21,7 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	public class MatchSessionFactory : IMatchSessionFactory
 	{
-		private IGameSessionFactory _gameSessionFactory;
+		private readonly IGameSessionFactory _gameSessionFactory;
 
 		public MatchSessionFactory(IGameSessionFactory gameSessionFactory)
 		{
@@ -40,7 +40,7 @@ namespace GammonX.Server.Services
 				case MatchVariant.Tavli:
 					return new TavliMatchSession(id, queueKey, _gameSessionFactory);
 				default:
-					throw new ArgumentOutOfRangeException(nameof(queueKey.MatchVariant), "Unknown match variant.");
+					throw new ArgumentOutOfRangeException(nameof(queueKey), "Unknown match variant from queue key.");
 			}
 		}
 	}

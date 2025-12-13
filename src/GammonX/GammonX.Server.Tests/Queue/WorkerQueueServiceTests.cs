@@ -67,7 +67,7 @@ namespace GammonX.Server.Tests.Queue
 
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanEnqueueRatingUpdateRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -75,7 +75,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanEnqueueStatUpdateRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -83,7 +83,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanEnqueueMatchRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -91,7 +91,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueMatchResultAsync(match, CancellationToken.None);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanEnqueueGameRecord()
         {
             var service = new WorkQueueService(_serviceProvider);

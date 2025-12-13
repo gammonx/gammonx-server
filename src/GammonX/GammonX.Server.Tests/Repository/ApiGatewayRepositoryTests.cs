@@ -1,8 +1,8 @@
 ﻿using DotNetEnv;
 
 using GammonX.Models.Enums;
+
 using GammonX.Server.Repository;
-using System.ComponentModel;
 
 namespace GammonX.Server.Tests.Repository
 {
@@ -40,7 +40,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(baseUrl, _client.BaseUrl);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanGetRatingFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
@@ -49,7 +49,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating > 1200);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CanGetRatingFromRepository2()
         {
             var existingPlayer1Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
@@ -58,7 +58,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating < 1200);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CannotGetRatingOnWrongPlayerId()
         {
             var existingPlayer1Id = Guid.Empty;
@@ -68,7 +68,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(1200, rating.Rating);
         }
 
-        [Fact]
+        [Fact(Skip = "AWS STACK TEST")]
         public async Task CannotGetRatingOnWrongVariant()
         {
             var existingPlayer1Id = Guid.Empty;

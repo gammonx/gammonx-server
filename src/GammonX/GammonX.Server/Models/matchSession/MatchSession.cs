@@ -204,8 +204,11 @@ namespace GammonX.Server.Models
 
 			if (GameOver(callingPlayerId, out var result))
 			{
-				var activePlayer = GetPlayer(callingPlayerId);
-				activePlayer.Points += result.Points;
+				if (!activeSession.Result.IsDraw)
+				{
+                    var activePlayer = GetPlayer(callingPlayerId);
+                    activePlayer.Points += result.Points;
+                }
 				Player1.ActiveGameOver();
 				Player2.ActiveGameOver();
 				return true;

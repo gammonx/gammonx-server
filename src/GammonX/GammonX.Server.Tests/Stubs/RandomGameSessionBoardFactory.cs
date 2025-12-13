@@ -66,7 +66,7 @@ namespace GammonX.Server.Tests.Stubs
 					matchId,
 					modus,
 					_boardServiceMock.Object,
-					_diceFactory.Create()
+					_diceFactory.Create(DiceServiceType.Crypto)
 				);
 			}
 			else if (modus == GameModus.Backgammon)
@@ -75,7 +75,7 @@ namespace GammonX.Server.Tests.Stubs
 					matchId,
 					modus,
 					_boardServiceMock.Object,
-					_diceFactory.Create()
+					_diceFactory.Create(DiceServiceType.Crypto)
 				);
 			}
 			else
@@ -84,7 +84,7 @@ namespace GammonX.Server.Tests.Stubs
 					matchId,
 					modus,
 					_boardServiceMock.Object,
-					_diceFactory.Create()
+					_diceFactory.Create(DiceServiceType.Crypto)
 				);
 			}
 		}

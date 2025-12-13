@@ -1,37 +1,3 @@
-using System.Security.Cryptography;
-
-public static class Dice
-{
-    private static readonly RandomNumberGenerator Rng = RandomNumberGenerator.Create();
-
-    public static int RollSingleDie()
-    {
-        Span<byte> buffer = stackalloc byte[1];
-
-        while (true)
-        {
-            Rng.GetBytes(buffer);
-            byte randByte = buffer[0];
-
-            if (randByte < 252)
-                return (randByte % 6) + 1;
-        }
-    }
-}
-
-RandomNumberGenerator pulls randomness backed by the system’s CSPRNG:
-On Linux → /dev/urandom (ChaCha20 or similar)
-On Windows → CNG (CryptGenRandom equivalent)
-These are cryptographically secure pseudorandom number generators (CSPRNGs).
-Designed to:
-- Output is unpredictable
-- Suitable for security, cryptography, games, tokens, etc.
-- High quality entropy from OS kernel sources (timing jitter, hardware RNG, interrupts, etc.)
-  - Random numbers are truly unpredictable
-  - No patterns can be detected in the output
-  - The randomness is suitable for cryptographic purposes
-  - The implementation is secure against timing attacks
-
   ## Backgammon Match Start Use Case
 
   When `exclude_doubles: true`, this function is specifically designed for Backgammon

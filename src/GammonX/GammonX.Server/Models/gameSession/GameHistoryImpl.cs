@@ -25,7 +25,7 @@ namespace GammonX.Server.Models
 		public int Points { get; private set; }
 
 		// <inheritdoc />
-		public Guid WinnerPlayerId { get; private set; }
+		public Guid? WinnerPlayerId { get; private set; }
 
 		// <inheritdoc />
 		public DateTime StartedAt { get; private set; }
@@ -48,7 +48,7 @@ namespace GammonX.Server.Models
 			IGameSessionModel model, 
 			Guid player1,
 			Guid player2,
-			Guid winnerPlayerId, 
+			Guid? winnerPlayerId, 
 			int points)
 		{
 			return new GameHistoryImpl()
@@ -56,7 +56,7 @@ namespace GammonX.Server.Models
 				Id = model.Id,
 				Player1 = player1,
 				Player2 = player2,
-				Modus = (GameModus)model.Modus,
+				Modus = model.Modus,
 				Points = points,
 				WinnerPlayerId = winnerPlayerId,
 				StartedAt = model.StartedAt,

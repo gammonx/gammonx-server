@@ -34,7 +34,7 @@ namespace GammonX.Server
 			_workQueue = workQueue;
             _matchmakingService = matchmakingService;
 			_repository = repository;
-			_diceService = diceServiceFactory.Create();
+			_diceService = diceServiceFactory.Create(DiceServiceType.Crypto);
 			_botService = botService;
 		}
 

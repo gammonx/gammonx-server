@@ -4,7 +4,7 @@ namespace GammonX.Server.Tests.Stubs
 {
 	internal class StartDiceServiceFactoryStub : IDiceServiceFactory
 	{
-		public IDiceService Create()
+		public IDiceService Create(DiceServiceType type)
 		{
 			return new StartDiceServiceStub();
 		}
