@@ -13,9 +13,20 @@
 		/// </summary>
 		public string ConnectionId { get; private set; }
 
+		/// <summary>
+		/// Gets the player id.
+		/// </summary>
 		public Guid Id { get; private set; }
 
-		public bool NextGameAccepted { get; private set; } = false;
+		/// <summary>
+		/// Gets the starting dice roll value of the player.
+		/// </summary>
+		public int? StartDiceRoll { get; private set; } = null;
+
+        /// <summary>
+        /// Gets a boolean indicaitng if the the given player already accepted the next game.
+        /// </summary>
+        public bool NextGameAccepted { get; private set; } = false;
 
 		/// <summary>
 		/// Gets the score of the player in the current match session.
@@ -47,5 +58,14 @@
 		{
 			NextGameAccepted = false;
 		}
-	}
+
+        /// <summary>
+        /// Sets the starting dice roll value of the player.
+        /// </summary>
+        /// <param name="roll">Dice roll value.</param>
+        public void SetStartDiceRoll(int? roll)
+		{
+			StartDiceRoll = roll;
+        }
+    }
 }

@@ -39,8 +39,10 @@ namespace GammonX.Server.Tests
 			Assert.Equal(modus, matchSession.GetGameModus());
 
 			// black checker bot moves first
-			matchSession.StartNextGame(botPlayer2Id);
-			matchSession.RollDices(botPlayer2Id);
+			var gameSession = matchSession.StartMatch(botPlayer2Id);
+			Assert.NotNull(gameSession);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+            matchSession.RollDices(botPlayer2Id);
 			var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
 			var canMove = true;
 			foreach (var nextMove in nextMoves.Moves)
@@ -65,7 +67,7 @@ namespace GammonX.Server.Tests
 		[Theory]
 		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
 		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla)]
 		public async Task TwoBotsCanPlayStandalone(MatchVariant variant, GameModus modus)
 		{
 			var diceFactory = new DiceServiceFactory();
@@ -83,14 +85,23 @@ namespace GammonX.Server.Tests
 			Assert.Equal(modus, matchSession.GetGameModus());
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
-			do
+			matchSession.StartMatch(activePlayerId);
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+            do
 			{
 				if (matchSession.CanStartNextGame())
 				{
 					matchSession.StartNextGame(activePlayerId);
-				}
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                }
 
-				matchSession.RollDices(activePlayerId);
+				Assert.NotNull(gameSession);
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
+				{
+                    matchSession.RollDices(activePlayerId);
+                }
 				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
 				var hasWon = false;
 				foreach (var nextMove in nextMoves.Moves)
@@ -115,7 +126,7 @@ namespace GammonX.Server.Tests
 
 			Assert.True(matchSession.IsMatchOver());
 			Assert.False(matchSession.CanStartNextGame());
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
 			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
@@ -150,7 +161,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(modus, matchSession.GetGameModus());
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
-			matchSession.StartNextGame(activePlayerId);
+			matchSession.StartMatch(activePlayerId);
 
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
@@ -182,7 +193,10 @@ namespace GammonX.Server.Tests
 					}
 				}
 
-				matchSession.RollDices(activePlayerId);
+				if (gameSession.Phase == GamePhase.WaitingForRoll)
+				{
+                    matchSession.RollDices(activePlayerId);
+                }
 				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
 				var hasWon = false;
 				foreach (var nextMove in nextMoves.Moves)
@@ -332,8 +346,10 @@ namespace GammonX.Server.Tests
 			Assert.Equal(modus, matchSession.GetGameModus());
 
 			// black checker bot moves first
-			matchSession.StartNextGame(botPlayer2Id);
-			matchSession.RollDices(botPlayer2Id);
+			var gameSession = matchSession.StartMatch(botPlayer2Id);
+			Assert.NotNull(gameSession);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+            matchSession.RollDices(botPlayer2Id);
 			var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
 			var canMove = true;
 

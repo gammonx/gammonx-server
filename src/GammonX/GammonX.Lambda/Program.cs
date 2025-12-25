@@ -75,21 +75,21 @@ namespace GammonX.Lambda
 
                 if (handler == null)
                 {
-                    var notFound = Models.Contracts.ContractExtensions.ToResponse("The requested api route does not exist");
+                    var notFound = ContractExtensions.ToResponse("The requested api route does not exist");
                     return CreateGatewayResponse(404, notFound);
                 }
 
                 var result = await handler.HandleAsync(apiRequest, context);
                 if (result == null)
                 {
-                    var error = Models.Contracts.ContractExtensions.ToResponse("An error occurred while handling the api request");
+                    var error = ContractExtensions.ToResponse("An error occurred while handling the api request");
                     return CreateGatewayResponse(500, error);
                 }
                 return CreateGatewayResponse(200, result);
             }
             catch (Exception ex)
             {
-                return CreateGatewayResponse(500, Models.Contracts.ContractExtensions.ToResponse(ex.Message));
+                return CreateGatewayResponse(500, ContractExtensions.ToResponse(ex.Message));
             }
         }
 

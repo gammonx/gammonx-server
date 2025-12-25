@@ -10,8 +10,9 @@ namespace GammonX.Server.Contracts
 			{
 				Id = model.Id,
 				Points = model.Points,
-				UserName = null
-			};
+				UserName = null,
+				StartDiceRoll = model.StartDiceRoll
+            };
 		}
 	}
 }

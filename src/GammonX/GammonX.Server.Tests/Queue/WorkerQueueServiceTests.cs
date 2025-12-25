@@ -118,7 +118,7 @@ namespace GammonX.Server.Tests.Queue
             match.JoinSession(player1);
             match.JoinSession(player2);
 
-            match.StartNextGame(match.Player1.Id);
+            match.StartMatch(match.Player1.Id);
             return match;
         }
     }

@@ -112,25 +112,43 @@ namespace GammonX.Server.Models
 		/// <param name="playerId">Player id of the player which is the next active player.</param>
 		public void NextTurn(Guid playerId);
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="playerId"></param>
-		/// <param name="isWhite"></param>
-		void RollDices(Guid playerId, bool isWhite);
+        /// <summary>
+        /// Sets the given <paramref name="rolls"/> as dice rolls for the active turn.
+		/// It implicitly calculates all legal moves for the active player after setting the dice rolls.
+        /// </summary>
+        /// <param name="rolls">Dice rolls to set.</param>
+        /// <param name="isWhite">Boolean indicating if black or white is active.</param>
+        void SetDiceRolls(int[] rolls, bool isWhite);
 
-		/// <summary>
-		/// Moves the checkers of the active player <paramref name="callingPlayerId"/> from one position to another.
-		/// The given <paramref name="from"/> <paramref name="to"/> move can be a single move sequence or a combined move sequence.
-		/// </summary>
+        /// <summary>
+        /// Rolls the given <paramref name="amount"/> of dices.
+        /// </summary>
+        /// <param name="amount">Amount of dices rolled.</param>
+        /// <returns>Array of rolled dice values.</returns>
+        int[] RollDices(int amount);
+
+        /// <summary>
+        /// Rolls the dices for the given <paramref name="playerId"/>.
+        /// </summary>
 		/// <remarks>
-		/// Validates if the given <paramref name="callingPlayerId"/> is actually the active player and if the move is valid.
+		/// Implcitly calculates all legal moves for the active player after the dice roll.
 		/// </remarks>
-		/// <param name="callingPlayerId">Active player.</param>
-		/// <param name="from">Board array from index.</param>
-		/// <param name="to">Board array to index.</param>
-		/// <param name="isWhite">Indicates if the <paramref name="callingPlayerId"/> playing the white checkers. False if black checkers.</param>
-		void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
+        /// <param name="playerId">Player who rolls the dices.</param>
+        /// <param name="isWhite">Boolean indicating if black or white rolls.</param>
+        void RollDices(Guid playerId, bool isWhite);
+
+        /// <summary>
+        /// Moves the checkers of the active player <paramref name="callingPlayerId"/> from one position to another.
+        /// The given <paramref name="from"/> <paramref name="to"/> move can be a single move sequence or a combined move sequence.
+        /// </summary>
+        /// <remarks>
+        /// Validates if the given <paramref name="callingPlayerId"/> is actually the active player and if the move is valid.
+        /// </remarks>
+        /// <param name="callingPlayerId">Active player.</param>
+        /// <param name="from">Board array from index.</param>
+        /// <param name="to">Board array to index.</param>
+        /// <param name="isWhite">Indicates if the <paramref name="callingPlayerId"/> playing the white checkers. False if black checkers.</param>
+        void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite);
 
 		/// <summary>
 		/// Undoes the last move made by the given player with <paramref name="callingPlayerId"/>.

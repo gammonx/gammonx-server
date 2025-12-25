@@ -1,13 +1,13 @@
 ## DONE
 - crypto dice roller
-
-## Active
 - match/game start roll decision
 
-## TODO 
+## Active
 - time out // turn timer
 - disconnect/reconnect
     - queue disconnect
+
+## TODO 
 - fevga/plakoto bot implementation
 - palamedes schreiben
 - export matches to sgf/.mat format
@@ -20,6 +20,7 @@
     - authorization required
 
 ## Open Points
+- sns > sqs
 - enhance matchmaking?
 - Chat
 - Spectator mode

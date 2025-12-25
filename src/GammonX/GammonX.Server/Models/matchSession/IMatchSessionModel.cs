@@ -65,18 +65,28 @@ namespace GammonX.Server.Models
 		/// <param name="player">Play to join the match session.</param>
 		void JoinSession(LobbyEntry player);
 
-		/// <summary>
-		/// Gets a boolean indicating if the game can be started or the next round can be player.
-		/// </summary>
-		/// <returns>Boolean indicating if the game can be started or the next round started.</returns>
-		bool CanStartNextGame();
+        /// <summary>
+        /// Gets a boolean indicating if the game can be started or the next round can be player.
+        /// </summary>
+        /// <returns>Boolean indicating if the game can be started or the next round started.</returns>
+        bool CanStartNextGame();
 
-		/// <summary>
-		/// Starts a match session and the next game round.	
-		/// </summary>
-		/// <param name="playerId">Id of the player who is starting to roll the dices.</param>
-		/// <returns>The state of the started game round.</returns>
-		IGameSessionModel StartNextGame(Guid playerId);
+        /// <summary>
+        /// Starts the match session by implicitly starting the first game round.
+        /// </summary>
+        /// <param name="callingPlayerId">Id of the player who is starting to roll the dices.</param>
+        /// <returns>The state of the started game round.</returns>
+        IGameSessionModel StartMatch(Guid callingPlayerId);
+
+        /// <summary>
+        /// Starts the next game round in the match session.
+        /// </summary>
+		/// <remarks>
+		/// Shall be used for all subsequent game rounds after the first game round has been started with <see cref="StartMatch(Guid)"/>.
+		/// </remarks>
+        /// <param name="callingPlayerId">Id of the player who is starting to roll the dices.</param>
+        /// <returns>The state of the started game round.</returns>
+        IGameSessionModel StartNextGame(Guid callingPlayerId);
 
 		/// <summary>
 		/// Rolls the dices for the active player in the current game session and updates the game state accordingly.
@@ -171,9 +181,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.
 		/// </summary>
-		/// <param name="playerId">Player who receives the game state.</param>
+		/// <param name="callingPlayerId">Player who receives the game state.</param>
 		/// <returns>Returns the game state payload.</returns>
-		EventGameStatePayload GetGameState(Guid playerId);
+		EventGameStatePayload GetGameState(Guid callingPlayerId);
 
 		/// <summary>
 		/// Constructs and returns the match state payload for both players.

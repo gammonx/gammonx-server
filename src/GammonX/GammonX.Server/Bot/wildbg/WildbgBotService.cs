@@ -269,8 +269,8 @@ namespace GammonX.Server.Bot
 			}
 			else
 			{
+				// we convert back to a null based board index array
 				play.From = play.From - 1;
-
 			}
 			// 0 is bear off index
 			if (play.To == 0)
@@ -286,7 +286,8 @@ namespace GammonX.Server.Bot
 			}
 			else
 			{
-				play.To = play.To - 1;
+                // we convert back to a null based board index array
+                play.To = play.To - 1;
 			}
 
 			var maxFieldIndex = gameSession.BoardModel.Fields.Length - 1;

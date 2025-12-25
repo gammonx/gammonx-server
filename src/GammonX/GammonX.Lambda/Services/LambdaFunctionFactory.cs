@@ -33,7 +33,7 @@ namespace GammonX.Lambda.Services
 		/// </remarks>
 		/// <param name="request">API gateway request.</param>
 		/// <param name="services">Service provider.</param>
-		/// <returns>An intance of <see cref="IApiLambdaHandler"/>.</returns>
+		/// <returns>An instance of <see cref="IApiLambdaHandler"/>.</returns>
 		public static IApiLambdaHandler? CreateApiHandler(APIGatewayProxyRequest request, IServiceProvider services)
 		{
             if (ApiRoutes.TryGetValue((request.HttpMethod, request.Resource), out var handlerType))
