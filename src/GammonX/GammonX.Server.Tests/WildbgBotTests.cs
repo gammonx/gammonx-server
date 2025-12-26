@@ -10,6 +10,8 @@ using GammonX.Server.Tests.Stubs;
 using GammonX.Server.Tests.Testdata;
 using GammonX.Server.Tests.Utils;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Tests
 {
 	public class WildbgBotTests
@@ -17,15 +19,21 @@ namespace GammonX.Server.Tests
 		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
 
 		[Theory]
-		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
-		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]
-		public async Task BotCanPlayStandardStartBoards(MatchVariant variant, GameModus modus)
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.SevenPointGame)]
+        public async Task BotCanPlayStandardStartBoards(MatchVariant variant, GameModus modus, MatchType type)
 		{
 			var diceFactory = new DiceServiceFactory();
 			var gameSessionFactory = new GameSessionFactory(diceFactory);
 			var matchFactory = new MatchSessionFactory(gameSessionFactory);
-			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, matchFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, type, matchFactory);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
 			var botService = new WildbgBotService(_wildBgClient);
@@ -65,15 +73,21 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
-		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
-        [InlineData(MatchVariant.Tavla, GameModus.Tavla)]
-		public async Task TwoBotsCanPlayStandalone(MatchVariant variant, GameModus modus)
+		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, MatchType.SevenPointGame)]
+        public async Task TwoBotsCanPlayStandalone(MatchVariant variant, GameModus modus, MatchType type)
 		{
 			var diceFactory = new DiceServiceFactory();
 			var gameSessionFactory = new GameSessionFactory(diceFactory);
 			var matchFactory = new MatchSessionFactory(gameSessionFactory);
-			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, matchFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 			Assert.True(matchSession.Player1.IsBot);
@@ -132,14 +146,60 @@ namespace GammonX.Server.Tests
 			Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
 		}
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
-		public async Task TwoBotsCanPlayStandaloneWithCubeDecisions(MatchVariant variant, GameModus modus)
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
+		public async Task BotServiceReturnsBearOffShootOverMoves(MatchVariant variant, MatchType type)
+		{
+            var diceFactory = new DiceServiceFactory();
+            var gameSessionFactory = new GameSessionFactory(diceFactory);
+            var matchFactory = new MatchSessionFactory(gameSessionFactory);
+            var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
+
+            var botService = new WildbgBotService(_wildBgClient);
+
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+
+            var botPlayer1Id = matchSession.Player1.Id;
+            var botPlayer2Id = matchSession.Player2.Id;
+            var activePlayerId = botPlayer1Id;
+            var otherPlayerId = botPlayer2Id;
+			Assert.NotEqual(activePlayerId, otherPlayerId);
+
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+            matchSession.StartMatch(activePlayerId);
+
+			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+			Assert.NotNull(gameSession);
+			gameSession.BoardModel.SetFields(BoardMocks.BearOffBoardPositionWhite);
+			gameSession.BoardModel.BearOffChecker(true, 8);
+			gameSession.BoardModel.BearOffChecker(false, 11);
+
+			gameSession.SetDiceRolls(new int[] { 5, 6 }, true);
+
+			var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+			var legalMoveSeq = boardService.GetLegalMoveSequences(gameSession.BoardModel, true, 5, 6);
+			Assert.Equal(gameSession.MoveSequences, legalMoveSeq);
+
+            var botMoveSequence = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+			foreach (var botMove in botMoveSequence.Moves)
+			{
+				matchSession.MoveCheckers(activePlayerId, botMove.From, botMove.To);
+			}
+        }
+
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.SevenPointGame)]
+        public async Task TwoBotsCanPlayStandaloneWithCubeDecisions(MatchVariant variant, GameModus modus, MatchType type)
 		{
 			var diceFactory = new DiceServiceFactory();
 			var gameSessionFactory = new GameSessionFactory(diceFactory);
 			var matchFactory = new MatchSessionFactory(gameSessionFactory);
-			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, matchFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
 			var cubeSession = matchSession as IDoubleCubeMatchSession;
 			Assert.NotNull(cubeSession);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
@@ -192,8 +252,8 @@ namespace GammonX.Server.Tests
 						}
 					}
 				}
-
-				if (gameSession.Phase == GamePhase.WaitingForRoll)
+				Assert.NotNull(gameSession);
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
 				{
                     matchSession.RollDices(activePlayerId);
                 }
@@ -212,6 +272,13 @@ namespace GammonX.Server.Tests
 					activePlayerId = otherPlayerId;
 					otherPlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
 				}
+				else if (!matchSession.IsMatchOver())
+				{
+					matchSession.Player1.AcceptNextGame();
+					matchSession.Player2.AcceptNextGame();
+					matchSession.StartNextGame(activePlayerId);
+					gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                }
 			}
 			while (!matchSession.IsMatchOver());
 
@@ -332,7 +399,7 @@ namespace GammonX.Server.Tests
 			var diceFactory = new SeededDiceServiceFactory(seed);
 			var gameSessionFactory = new RandomGameSessionBoardFactory(diceFactory, modus, fields, bearOffBlack, bearOffWhite, barBlack, barWhite);
 			var matchFactory = new MatchSessionFactory(gameSessionFactory);
-			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, matchFactory);
+			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, MatchType.CashGame, matchFactory);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
 			var botService = new WildbgBotService(_wildBgClient);

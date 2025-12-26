@@ -161,13 +161,16 @@ namespace GammonX.Server.Models
                 throw new InvalidOperationException("It's not your turn to move the checkers.");
             }
 
-            if (!DiceRolls.TryUseDice(BoardModel, from, to))
-            {
-                throw new InvalidOperationException($"No unused dice roll for the move '{from}'/'{to}' left");
-            }
-
             if (MoveSequences.TryUseMove(from, to, out var playedMoves))
             {
+                foreach (var move in playedMoves)
+                {
+                    if (!DiceRolls.TryUseDice(BoardModel, move.From, move.To))
+                    {
+                        throw new InvalidOperationException($"No unused dice roll for the submove '{move.From}'/'{move.To}' of client move '{from}'/'{to}' left");
+                    }
+                }
+
                 if (playedMoves == null || playedMoves.Count == 0)
                 {
                     throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");

@@ -858,7 +858,14 @@ namespace GammonX.Server.Tests.Match
 			{
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();
-				matchSession.StartNextGame(gameSession.ActivePlayer);
+				if (matchSession.CanStartNextGame())
+				{
+                    matchSession.StartNextGame(gameSession.ActivePlayer);
+                }
+				else
+				{
+					throw new InvalidOperationException("Cannot start next game although match is not over.");
+                }
 			}
 		}
 	}

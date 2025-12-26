@@ -61,14 +61,25 @@ namespace GammonX.Server.Bot
 				}
 
 				var client = new WildbgClient(_httpClient);
-				var result = await client.GetMoveAsync(requestParameters);
-				var legalMoveSequences = result.LegalMoves.Select(lm => ConvertMoveToSequence(gameSession, lm, isWhite)).ToList();
+				GetMoveResponse? result = null;
+				try
+				{
+                    result = await client.GetMoveAsync(requestParameters);
+                }
+                catch (Exception)
+                {
+                    // debugging purposes only
+                    throw;
+                }
+
+                var legalMoveSequences = result.LegalMoves.Select(lm => ConvertMoveToSequence(gameSession, lm, isWhite)).ToList();
 
 				// get first move which has the highest match equity
 				var bestMoveSequence = legalMoveSequences.FirstOrDefault();
+
 				if (bestMoveSequence != null && bestMoveSequence.Moves.Count > 0)
-				{					
-					return bestMoveSequence;
+				{
+                    return bestMoveSequence;
 				}
 
 				return new MoveSequenceModel();
