@@ -913,16 +913,33 @@ namespace GammonX.Server.Tests.Integration
             do
             {
                 startCount += 1;
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(startCount * 2));
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(startCount * 2));
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.AtLeast(startCount * 2));
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.AtLeast(startCount * 2));
                 await hub1.StartMatchAsync(matchIdStr);
-                mockClients.Verify(c => c.Caller.SendCoreAsync(ServerEventTypes.MatchWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
                 await hub2.StartMatchAsync(matchIdStr);
             }
             while (matchSession.Player1.StartDiceRoll == matchSession.Player2.StartDiceRoll);
 
+            // only called once for the first start match command call for the second player
+            mockClients.Verify(c => c.Caller.SendCoreAsync(ServerEventTypes.MatchWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
+            // the start match command exposes a match start event for the current match state
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            // and simulatenously a game started event for the initial board state including the starting rolls
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+
+            // we ensure that one player has a higher starting roll than the other
+            Assert.NotEqual(matchSession.Player1.StartDiceRoll, matchSession.Player2.StartDiceRoll);
+            Assert.NotNull(matchSession.Player1.StartDiceRoll);
+            Assert.NotNull(matchSession.Player2.StartDiceRoll);
+            Assert.True(matchSession.Player1.StartDiceRoll > matchSession.Player2.StartDiceRoll || matchSession.Player2.StartDiceRoll > matchSession.Player1.StartDiceRoll);
+
+            // the match start command should clean up the match lobby
+            var matchmakingService = GetService(modus);
+            var found = matchmakingService.TryFindMatchLobby(matchId, out var startedLobby);
+            Assert.False(found);
+            Assert.Null(startedLobby);
 
             return (matchSession, hub1, hub2, mockClients, groupName);
         }

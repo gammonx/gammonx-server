@@ -50,13 +50,13 @@ namespace GammonX.Server.Models
 		public IBoardModel BoardModel { get; }
 
 		// <inheritdoc />
-		public DateTime StartedAt { get; private set; }
+		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
 
-		// <inheritdoc />
-		public DateTime EndedAt { get; private set; }
+        // <inheritdoc />
+        public DateTime EndedAt { get; private set; } = DateTime.MaxValue;
 
-		// <inheritdoc />
-		public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
+        // <inheritdoc />
+        public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
 
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{
