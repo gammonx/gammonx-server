@@ -10,16 +10,17 @@
 ## TODO 
 - fevga/plakoto bot implementation
 - palamedes schreiben
+- doubling cube to history/stats
 - export matches to sgf/.mat format
 - bot dificulty levels
 - subscription service (clientside?)
 - match equity/stats afer match :: win percentage to user
-- tournament mode
 - auth/user account > how to identify premium accounts?
     - authentication with api gateway
     - authorization required
 
 ## Open Points
+- tournament mode
 - sns > sqs
 - enhance matchmaking?
 - Chat

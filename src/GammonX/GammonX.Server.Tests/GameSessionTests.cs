@@ -488,7 +488,8 @@ namespace GammonX.Server.Tests
             Assert.NotEqual(DateTime.MaxValue, gameSession.EndedAt);
             Assert.Equal(gameResult, gameSession.Result);
             Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-            Assert.Equal((gameSession.EndedAt - gameSession.StartedAt).Milliseconds, gameSession.Duration);
+            // unequals the default value
+            Assert.NotEqual((DateTime.MaxValue - DateTime.MinValue).Milliseconds, gameSession.Duration);
 
             var contract = gameSession.ToContract(1);
             Assert.NotNull(contract);

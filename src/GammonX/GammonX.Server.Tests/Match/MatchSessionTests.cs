@@ -43,6 +43,8 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
 			Assert.IsAssignableFrom<MatchSession>(session);
+			Assert.Equal(DateTime.MinValue, session.StartedAt);
+			Assert.Equal(DateTime.MaxValue, session.EndedAt);
 		}
 
 		[Theory]

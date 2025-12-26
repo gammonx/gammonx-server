@@ -33,10 +33,10 @@ namespace GammonX.Server.Models
 		public MatchType Type { get; }
 
 		// <inheritdoc />
-		public DateTime StartedAt { get; private set; }
+		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
 
 		// <inheritdoc />
-		public DateTime? EndedAt { get; private set; }
+		public DateTime? EndedAt { get; private set; } = DateTime.MaxValue;
 
 		// <inheritdoc />
 		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;

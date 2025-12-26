@@ -4,7 +4,8 @@ namespace GammonX.Engine.Services
 {
     /// <summary>
     /// Cryptographically secure dice service.
-    /// <para>
+    /// </summary
+    /// <remarks>
     /// RandomNumberGenerator pulls randomness backed by the systems CSPRNG:
     /// On Linux equals to /dev/urandom(ChaCha20 or similar)
     /// On Windows equals to CNG(CryptGenRandom equivalent)
@@ -16,8 +17,7 @@ namespace GammonX.Engine.Services
     /// <c>high quality entropy from OS kernel sources (timing jitter, hardware RNG, interrupts, etc.)</c>
     /// <c>the implementation is secure against timing attacks</c>
     /// </list>
-    /// </para>
-    /// </summary
+    /// </remarks>
     internal class CryptoDiceService : IDiceService
     {
         private static readonly RandomNumberGenerator Rng = RandomNumberGenerator.Create();
