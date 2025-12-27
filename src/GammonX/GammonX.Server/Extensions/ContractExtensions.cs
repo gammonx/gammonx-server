@@ -1,6 +1,7 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Server.Contracts;
+using GammonX.Server.Models;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Server.Extensions
 {
 	public static class ContractExtensions
 	{

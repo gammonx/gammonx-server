@@ -1,6 +1,6 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
-
+using GammonX.Engine.Tests.Utils;
 using GammonX.Models.Enums;
 
 using Moq;
@@ -25,7 +25,7 @@ namespace GammonX.Engine.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Tavla)]
-		public void HasHomeBarAndCanHit(GameModus gameModus)
+        public void HasHomeBarAndCanHit(GameModus gameModus)
         {
             var service = BoardServiceFactory.Create(gameModus);
             var boardModel = service.CreateBoard();
@@ -33,25 +33,25 @@ namespace GammonX.Engine.Tests
             Assert.NotNull(homeBarModel);
             Assert.Equal(-1, homeBarModel.StartIndexWhite);
             Assert.Equal(24, homeBarModel.StartIndexBlack);
-			Assert.True(homeBarModel.CanSendToHomeBar);
-			Assert.True(homeBarModel.MustEnterFromHomebar);
-		}
+            Assert.True(homeBarModel.CanSendToHomeBar);
+            Assert.True(homeBarModel.MustEnterFromHomebar);
+        }
 
-		[Theory]
-		[InlineData(GameModus.Fevga)]
-		public void HasHomeBarAndCannotnHit(GameModus gameModus)
-		{
-			var service = BoardServiceFactory.Create(gameModus);
-			var boardModel = service.CreateBoard();
-			var homeBarModel = boardModel as IHomeBarModel;
-			Assert.NotNull(homeBarModel);
-			Assert.Equal(-1, homeBarModel.StartIndexWhite);
-			Assert.Equal(24, homeBarModel.StartIndexBlack);
+        [Theory]
+        [InlineData(GameModus.Fevga)]
+        public void HasHomeBarAndCannotnHit(GameModus gameModus)
+        {
+            var service = BoardServiceFactory.Create(gameModus);
+            var boardModel = service.CreateBoard();
+            var homeBarModel = boardModel as IHomeBarModel;
+            Assert.NotNull(homeBarModel);
+            Assert.Equal(-1, homeBarModel.StartIndexWhite);
+            Assert.Equal(24, homeBarModel.StartIndexBlack);
             Assert.False(homeBarModel.CanSendToHomeBar);
             Assert.False(homeBarModel.MustEnterFromHomebar);
-		}
+        }
 
-		[Theory]
+        [Theory]
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Tavla)]
@@ -100,9 +100,9 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
+            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -147,8 +147,8 @@ namespace GammonX.Engine.Tests
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
             mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -196,9 +196,9 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
+            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -252,9 +252,9 @@ namespace GammonX.Engine.Tests
 
             mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-			mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-			mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-			mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
+            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
+            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
+            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
             mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
             mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
@@ -295,7 +295,66 @@ namespace GammonX.Engine.Tests
 
         #endregion CanMove OnHomeBarCount Tests
 
+        #region Bugs
+
+        [Theory]
+        [InlineData(GameModus.Fevga)]
+        public void CanNotBearOffWhenHomebarIsNotEmpty(GameModus modus)
+        {
+            // mock board is only applicable for fevga but behavior is same for other boards with homebar
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            var homeBarModel = board as IHomeBarModel;
+            Assert.NotNull(homeBarModel);
+
+            board.SetFields(FevgaCannotBearOffBoard);
+            homeBarModel.AddToHomeBar(false, 13);
+            homeBarModel.AddToHomeBar(true, 6);
+            board.BearOffChecker(false, 2);
+
+            var canBearOffOperator = board.CanBearOffOperator(false, homeBarModel.StartIndexBlack, 4);
+            Assert.False(canBearOffOperator);
+            var allInHomeRange = board.AllPiecesInHomeRange(false);
+            Assert.False(allInHomeRange);
+            var canBearOff = service.CanBearOffChecker(board, homeBarModel.StartIndexBlack, 4, false);
+            Assert.False(canBearOff);
+            var moveSeq = service.GetLegalMoveSequences(board, false, 4);
+            var moves = moveSeq.SelectMany(ms => ms.Moves);
+            Assert.All(moves, move => Assert.True(move.From == homeBarModel.StartIndexBlack));
+            Assert.All(moves, move => Assert.False(move.To == BoardPositions.BearOffBlack));
+        }
+
+        #endregion Bugs
+
         #region Mock Data
+
+        private readonly int[] FevgaCannotBearOffBoard = new int[24]
+        {
+            -2,
+            -1,
+            -1,
+            0,
+            0,
+            -4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        };
 
         private readonly int[] BackgammonHitBoard = new int[24]
         {

@@ -114,7 +114,13 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public override Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
 		{
-			if (isWhite)
+            // we cannot bear off if some checkers are still on the homebar
+			// this case is only valid in fevga, because we do not must enter from the homebar
+            var homebarCount = isWhite ? HomeBarCountWhite : HomeBarCountBlack;
+			if (homebarCount > 0)
+				return false;
+
+            if (isWhite)
 			{
 				int to = MoveOperator(isWhite, currentPosition, moveDistance);
 				// checkers with the perfect bear off roll can always be taken out
@@ -148,6 +154,7 @@ namespace GammonX.Engine.Models
 				// if there does not exist a checker with a lower index/distance.
 				else if (to > HomeRangeBlack.End.Value)
 				{
+					// TODO: also check if something is on the homebar
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeBlack.Start.Value)

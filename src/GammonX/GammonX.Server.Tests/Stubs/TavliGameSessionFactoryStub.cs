@@ -92,6 +92,8 @@ namespace GammonX.Server.Tests.Stubs
 				fevgaBoard.BearOffChecker(true, 14);
 				fevgaBoard.SetFields(new int[24]);
 				fevgaBoard.Fields[23] = -1;
+				fevgaBoard.RemoveFromHomeBar(true, 14);
+				fevgaBoard.RemoveFromHomeBar(false, 14);
 				boardServiceMock.Setup(x => x.CreateBoard()).Returns(fevgaBoard);
 
 				return new GameSessionImpl(

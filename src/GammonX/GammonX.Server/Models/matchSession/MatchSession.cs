@@ -1,6 +1,7 @@
 ﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Extensions;
 using GammonX.Server.Services;
 
 using MatchType = GammonX.Models.Enums.MatchType;
