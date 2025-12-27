@@ -23,7 +23,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];
@@ -81,7 +81,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
@@ -136,7 +136,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var singleGameWinBoard = new int[24];
@@ -171,7 +171,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);

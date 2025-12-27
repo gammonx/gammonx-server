@@ -82,7 +82,7 @@ namespace GammonX.Lambda.Handlers
 						// we persist the updated player rating
 						await _repo.SaveAsync(result.Item1);
                         // we persist the rating period entry
-                        await _repo.SaveAsync(result.Item1);
+                        await _repo.SaveAsync(result.Item2);
                     }
 
                     context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch?.PlayerId}' after match '{wonMatch?.Id}'");

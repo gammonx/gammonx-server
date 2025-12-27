@@ -260,8 +260,12 @@ namespace GammonX.Engine.Tests
 		{
 			var service = BoardServiceFactory.Create(GameModus.Fevga);
 			var board = service.CreateBoard();
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+            homebarModel.RemoveFromHomeBar(true, 14);
+            homebarModel.RemoveFromHomeBar(false, 14);
 
-			var mock = new Mock<IBoardModel>();
+            var mock = new Mock<IBoardModel>();
 			mock.SetupGet(b => b.Fields).Returns(BoardMocks.FevgaCanBearOffBoard);
 			mock.SetupGet(b => b.HomeRangeBlack).Returns(board.HomeRangeBlack);
 			mock.SetupGet(b => b.HomeRangeWhite).Returns(board.HomeRangeWhite);

@@ -34,7 +34,7 @@ namespace GammonX.Server.Tests.Stubs
 			_seed = seed;
 		}
 
-		public IDiceService Create()
+		public IDiceService Create(DiceServiceType type)
 		{
 			return new SeededDiceService(_seed);
 		}

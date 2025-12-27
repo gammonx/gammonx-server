@@ -729,9 +729,13 @@ namespace GammonX.Engine.Tests
 			var service = BoardServiceFactory.Create(GameModus.Fevga);
 			var board = service.CreateBoard();
 			board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+            homebarModel.RemoveFromHomeBar(true, 14);
+            homebarModel.RemoveFromHomeBar(false, 14);
 
-			// can bear off black
-			Assert.Equal(5, board.Fields[6]);
+            // can bear off black
+            Assert.Equal(5, board.Fields[6]);
 			Assert.True(board.CanBearOff(6, 6, false));
 			service.MoveCheckerTo(board, 6, BoardPositions.BearOffBlack, false);
 			Assert.Equal(1, board.BearOffCountBlack);

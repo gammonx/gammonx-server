@@ -30,7 +30,10 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "turnNumber")]
 		public int TurnNumber { get; set; }
 
-		[DataMember(Name = "diceRolls")]
+        /// <summary>
+        /// Gets or sets the dice rolls of the current turn.
+        /// </summary>
+        [DataMember(Name = "diceRolls")]
 		public DiceRollContract[] DiceRolls { get; set; }
 
 		[DataMember(Name = "moveSequences")]

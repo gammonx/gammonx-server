@@ -13,50 +13,66 @@ namespace GammonX.Server.Models
 			// pass
 		}
 
-		/// <summary>
-		/// Tries to use the given from/to move and evaluates which move sequences were used.
-		/// </summary>
-		/// <param name="from">From move index.</param>
-		/// <param name="to">To move index.</param>
-		/// <param name="playedMoves">Played moves.</param>
-		/// <returns>A boolean indicating if the given from to move was present.</returns>
-		public bool TryUseMove(int from, int to, out List<MoveModel> playedMoves)
+        /// <summary>
+        /// Tries to use the given from/to move and evaluates which move sequences were used.
+        /// Enforces strict contiguity and exact matching order.
+        /// </summary>
+        /// <param name="from">From move index.</param>
+        /// <param name="to">To move index.</param>
+        /// <param name="playedMoves">Played moves.</param>
+        /// <returns>A boolean indicating if the given from to move was present.</returns>
+        public bool TryUseMove(int from, int to, out List<MoveModel> playedMoves)
 		{
-			playedMoves = new List<MoveModel>();
+            playedMoves = new();
 
-			// the given from index act as a constraint for the possible move seuqences
-			var potentialMoveSequences = this.ToList();
-			// evaluate the move seuqences which contains a move sequence with the given to index
-			foreach (MoveSequenceModel moveSeq in potentialMoveSequences)
-			{
-				var moves = moveSeq.DeepClone().Moves.ToList();
-				// we iterate from the first move and check if there was a combined move played
-				for (int i = 0; i < moves.Count; i++)
-				{
-					var move = moves[i];
-					// the given from/to move was a single move, therefore we can return the move right away
-					if (move.From == from && move.To == to)
-					{
-						playedMoves.Add(move);
-						break;
-					}
-					// the from/to move was a combined one, therefore we need to return multiple moves in order to properly play it
-					// but exclude always the first move in the sequence and check if the moves before actually were chained together
-					else if (move.To == to && i != 0 && moves.Take(new Range(0, i)).Any(m => m.From == from))
-					{
-						playedMoves.AddRange(moves.Take(new Range(0, i + 1)));
-						break;
-					}
-				}
+            var sequences = this.ToList();
 
-				// we found our moves based on the given from/to
-				if (playedMoves.Count > 0)
-				{
-					break;
-				}
-			}
-			return playedMoves.Count > 0;
-		}
+            // exact single move always wins (anywhere)
+            foreach (var seq in sequences)
+            {
+                var exact = seq.Moves.FirstOrDefault(m => m.From == from && m.To == to);
+
+                if (exact != null)
+                {
+                    playedMoves.Add(exact);
+                    return true;
+                }
+            }
+
+            // secondly combined move = contiguous PREFIX (length 2–4)
+            foreach (var seq in sequences)
+            {
+                var moves = seq.Moves;
+                if (moves.Count < 2)
+                    continue;
+
+                // must start at from
+                if (moves[0].From != from)
+                    continue;
+
+                int current = from;
+
+                for (int i = 0; i < moves.Count; i++)
+                {
+                    var move = moves[i];
+
+                    // strict contiguity
+                    if (move.From != current)
+                        break;
+
+                    current = move.To;
+
+                    // prefix matches exactly
+                    if (current == to)
+                    {
+                        playedMoves.AddRange(moves.Take(i + 1));
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
 
 		/// <summary>
 		/// Creates a contract representation of the move sequences.

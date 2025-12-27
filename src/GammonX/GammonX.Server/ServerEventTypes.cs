@@ -19,11 +19,23 @@ namespace GammonX.Server
 		/// </summary>
 		public static string MatchLobbyFoundEvent = "match-lobby-found";
 
-		/// <summary>
-		/// Invoked when both players joined the match session.
-		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
-		/// </summary>
-		public static string MatchStartedEvent = "match-started";
+        /// <summary>
+        /// Invoked when both players joined the match session and have not yet started the match (rolled their opening dice).
+        /// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+        /// </summary>
+        public static string MatchWaitingForStartEvent = "match-waiting-for-start";
+
+        /// <summary>
+        /// Invoked when the first player started the match and rolled their opening dice.
+        /// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+        /// </summary>
+        public static string MatchWaitingEvent = "match-waiting";
+
+        /// <summary>
+        /// Invoked when both players joined the match session.
+        /// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+        /// </summary>
+        public static string MatchStartedEvent = "match-started";
 
 		/// <summary>
 		/// Invoked when the active player made his last move to win the last game round.

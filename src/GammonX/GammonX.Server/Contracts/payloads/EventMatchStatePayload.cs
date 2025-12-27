@@ -45,5 +45,5 @@ namespace GammonX.Server.Contracts
 
 		[DataMember(Name = "player2", IsRequired = true)]
 		public PlayerContract? Player2 { get; set; }
-	}
+    }
 }

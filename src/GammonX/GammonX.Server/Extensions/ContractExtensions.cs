@@ -1,6 +1,7 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Server.Contracts;
+using GammonX.Server.Models;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Server.Extensions
 {
 	public static class ContractExtensions
 	{
@@ -10,8 +11,9 @@ namespace GammonX.Server.Contracts
 			{
 				Id = model.Id,
 				Points = model.Points,
-				UserName = null
-			};
+				UserName = null,
+				StartDiceRoll = model.StartDiceRoll
+            };
 		}
 	}
 }

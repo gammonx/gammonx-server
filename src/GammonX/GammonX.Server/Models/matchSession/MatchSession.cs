@@ -1,6 +1,7 @@
 ﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Extensions;
 using GammonX.Server.Services;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -17,8 +18,8 @@ namespace GammonX.Server.Models
 
 		protected string _lastExecutedCommand = string.Empty;
 
-		// <inheritdoc />
-		public Guid Id { get; }
+        // <inheritdoc />
+        public Guid Id { get; }
 
 		// <inheritdoc />
 		public int GameRound { get; private set; }
@@ -33,10 +34,10 @@ namespace GammonX.Server.Models
 		public MatchType Type { get; }
 
 		// <inheritdoc />
-		public DateTime StartedAt { get; private set; }
+		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
 
 		// <inheritdoc />
-		public DateTime? EndedAt { get; private set; }
+		public DateTime? EndedAt { get; private set; } = DateTime.MaxValue;
 
 		// <inheritdoc />
 		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;
@@ -99,7 +100,21 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public bool CanStartNextGame()
+		[ServerCommand(ServerCommands.StartMatchCommand)]
+        public IGameSessionModel StartMatch(Guid callingPlayerId)
+		{
+            var valid = IsCommandCallValid(callingPlayerId, ServerCommands.StartMatchCommand);
+            if (!valid)
+            {
+                throw new InvalidOperationException($"The given command '{ServerCommands.StartMatchCommand}' is not in the list of allowed commands.");
+            }
+            var startedGame = StartGame(callingPlayerId);
+            _lastExecutedCommand = ServerCommands.StartMatchCommand;
+            return startedGame;
+        }
+
+        // <inheritdoc />
+        public bool CanStartNextGame()
 		{
 			var activeGameSession = GetGameSession(GameRound);
 
@@ -117,42 +132,19 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		[ServerCommand(ServerCommands.StartGameCommand)]
 		public IGameSessionModel StartNextGame(Guid callingPlayerId)
-		{
-			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.StartGameCommand);
-			if (!valid)
-			{
-				throw new InvalidOperationException($"The given command '{ServerCommands.StartGameCommand}' is not in the list of allowed commands.");
-			}
+        {
+            var valid = IsCommandCallValid(callingPlayerId, ServerCommands.StartGameCommand);
+            if (!valid)
+            {
+                throw new InvalidOperationException($"The given command '{ServerCommands.StartGameCommand}' is not in the list of allowed commands.");
+            }
+            var startedGame = StartGame(callingPlayerId);
+            _lastExecutedCommand = ServerCommands.StartGameCommand;
+            return startedGame;
+        }
 
-			var gameSession = GetOrCreateGameSession(GameRound);
-			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
-
-			if (gameSession.Phase != GamePhase.GameOver)
-			{
-				if (GameRound == 1)
-				{
-					StartedAt = DateTime.UtcNow;
-				}
-				gameSession.StartGame(callingPlayerId, otherPlayerId);
-				_lastExecutedCommand = ServerCommands.StartGameCommand;
-				return gameSession;
-			}
-			else if (GameRound <= _rounds.Length)
-			{
-				GameRound++;
-				var newSession = GetOrCreateGameSession(GameRound);
-				newSession.StartGame(callingPlayerId, otherPlayerId);
-				_lastExecutedCommand = ServerCommands.StartGameCommand;
-				return newSession;
-			}
-			else
-			{
-				throw new InvalidOperationException($"Cannot start game for round {GameRound}, no more rounds available.");
-			}
-		}
-
-		// <inheritdoc />
-		[ServerCommand(ServerCommands.RollCommand)]
+        // <inheritdoc />
+        [ServerCommand(ServerCommands.RollCommand)]
 		public void RollDices(Guid callingPlayerId)
 		{
 			var valid = IsCommandCallValid(callingPlayerId, ServerCommands.RollCommand);
@@ -204,8 +196,11 @@ namespace GammonX.Server.Models
 
 			if (GameOver(callingPlayerId, out var result))
 			{
-				var activePlayer = GetPlayer(callingPlayerId);
-				activePlayer.Points += result.Points;
+				if (!activeSession.Result.IsDraw)
+				{
+                    var activePlayer = GetPlayer(callingPlayerId);
+                    activePlayer.Points += result.Points;
+                }
 				Player1.ActiveGameOver();
 				Player2.ActiveGameOver();
 				return true;
@@ -580,11 +575,38 @@ namespace GammonX.Server.Models
 			throw new InvalidOperationException("Player is not part of this match session.");
 		}
 
-		#endregion
+        #endregion
 
-		#region Private Methods
+        #region Private Methods
 
-		private IGameSessionModel GetOrCreateGameSession(int round)
+        private IGameSessionModel StartGame(Guid callingPlayerId)
+        {
+            var gameSession = GetOrCreateGameSession(GameRound);
+            var otherPlayerId = GetOtherPlayerId(callingPlayerId);
+
+            if (gameSession.Phase != GamePhase.GameOver)
+            {
+                if (GameRound == 1)
+                {
+                    StartedAt = DateTime.UtcNow;
+                }
+                gameSession.StartGame(callingPlayerId, otherPlayerId);
+                return gameSession;
+            }
+            else if (GameRound <= _rounds.Length)
+            {
+                GameRound++;
+                var newSession = GetOrCreateGameSession(GameRound);
+                newSession.StartGame(callingPlayerId, otherPlayerId);
+                return newSession;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Cannot start game for round {GameRound}, no more rounds available.");
+            }
+        }
+
+        private IGameSessionModel GetOrCreateGameSession(int round)
 		{
 			var existingSession = GetGameSession(round);
 			if (existingSession == null)

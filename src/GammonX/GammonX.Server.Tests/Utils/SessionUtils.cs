@@ -31,9 +31,9 @@ namespace GammonX.Server.Tests.Utils
 			return session;
 		}
 
-		public static IMatchSessionModel CreateMatchSessionWithBot(MatchVariant variant, IMatchSessionFactory factory)
+		public static IMatchSessionModel CreateMatchSessionWithBot(MatchVariant variant, MatchType type, IMatchSessionFactory factory)
 		{
-			var result = CreateHeadToBotMatchSession(variant, factory);
+			var result = CreateHeadToBotMatchSession(variant, type, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
 			var player1 = CreateLobbyEntry();
@@ -44,9 +44,9 @@ namespace GammonX.Server.Tests.Utils
 			return session;
 		}
 
-		public static IMatchSessionModel CreateMatchSessionWithTwoBots(MatchVariant variant, IMatchSessionFactory factory)
+		public static IMatchSessionModel CreateMatchSessionWithTwoBots(MatchVariant variant, MatchType type, IMatchSessionFactory factory)
 		{
-			var result = CreateHeadToBotMatchSession(variant, factory);
+			var result = CreateHeadToBotMatchSession(variant, type, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
 			var botPlayer2 = new LobbyEntry(Guid.NewGuid());
@@ -66,10 +66,10 @@ namespace GammonX.Server.Tests.Utils
 			return ( matchId, session );
 		}
 
-		public static (Guid, IMatchSessionModel) CreateHeadToBotMatchSession(MatchVariant variant, IMatchSessionFactory factory)
+		public static (Guid, IMatchSessionModel) CreateHeadToBotMatchSession(MatchVariant variant, MatchType type, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Bot, MatchType.CashGame);
+			var queueKey = new QueueKey(variant, MatchModus.Bot, type);
 			var session = factory.Create(matchId, queueKey);
 			return (matchId, session);
 		}
