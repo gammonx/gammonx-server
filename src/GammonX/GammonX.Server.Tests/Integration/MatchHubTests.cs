@@ -22,29 +22,29 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Integration
 {
-	public class MatchHubTests
-	{
-		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
-		private readonly MatchSessionRepository _matchRepo;
-		private readonly IDiceServiceFactory _diceFactory;
-		private readonly IBotService _botService;
-		private readonly MatchLobbyHub _hub;
-		private readonly NormalMatchmakingService _normalService;
-		private readonly RankedMatchmakingService _rankedService;
-		private readonly BotMatchmakingService _botMatchService;
-		private readonly Guid _player1Id = Guid.NewGuid();
-		private readonly Guid _player2Id = Guid.NewGuid();
-		private readonly Mock<IWorkQueueService> _workQueueService;
+    public class MatchHubTests
+    {
+        private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
+        private readonly MatchSessionRepository _matchRepo;
+        private readonly IDiceServiceFactory _diceFactory;
+        private readonly IBotService _botService;
+        private readonly MatchLobbyHub _hub;
+        private readonly NormalMatchmakingService _normalService;
+        private readonly RankedMatchmakingService _rankedService;
+        private readonly BotMatchmakingService _botMatchService;
+        private readonly Guid _player1Id = Guid.NewGuid();
+        private readonly Guid _player2Id = Guid.NewGuid();
+        private readonly Mock<IWorkQueueService> _workQueueService;
 
 
         public MatchHubTests()
-		{
-			_diceFactory = new DiceServiceFactory();
-			var gameSessionFactory = new GameSessionFactory(_diceFactory);
-			var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
-			_normalService = new NormalMatchmakingService();
+        {
+            _diceFactory = new DiceServiceFactory();
+            var gameSessionFactory = new GameSessionFactory(_diceFactory);
+            var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
+            _normalService = new NormalMatchmakingService();
 
-			var mockScopeFactory = new Mock<IServiceScopeFactory>();
+            var mockScopeFactory = new Mock<IServiceScopeFactory>();
 
             _workQueueService = new();
             _workQueueService.Setup(x => x.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -52,114 +52,135 @@ namespace GammonX.Server.Tests.Integration
             _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-			var stubRepoClient = new SimpleRepositoryClient();
+            var stubRepoClient = new SimpleRepositoryClient();
 
             _rankedService = new RankedMatchmakingService(stubRepoClient);
-			_botMatchService = new BotMatchmakingService();
-			var compositeService = new CompositeMatchmakingService();
-			compositeService.SetServices(_normalService, _rankedService, _botMatchService);
-			_matchRepo = new MatchSessionRepository(matchSessionFactory);
-			_botService = new WildbgBotService(_wildBgClient);
-			_hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService);
-		}
+            _botMatchService = new BotMatchmakingService();
+            var compositeService = new CompositeMatchmakingService();
+            compositeService.SetServices(_normalService, _rankedService, _botMatchService);
+            _matchRepo = new MatchSessionRepository(matchSessionFactory);
+            _botService = new WildbgBotService(_wildBgClient);
+            _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService);
+        }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubReturnsEndTurnCommandIfNoLegalMovesReturned(MatchVariant variant, MatchModus modus, MatchType type)
-		{
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var matchIdStr = matchSession.Id.ToString();
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubReturnsEndTurnCommandIfNoLegalMovesReturned(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var matchIdStr = matchSession.Id.ToString();
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
 
-			if (gameSession.ActivePlayer == _player1Id)
-			{
-				// player 1 plays with white checkers
-				gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
-				await hub1.RollAsync(matchIdStr);
-				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
-				var gameState = matchSession.GetGameState(_player1Id);
-				Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
-			}
-			else if (gameSession.ActivePlayer == _player2Id)
-			{
-				// player 2 plays with black checkers
-				gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
-				await hub2.RollAsync(matchIdStr);
-				Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
-				var gameState = matchSession.GetGameState(_player2Id);
-				Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
-			}			
-		}
+            if (gameSession.ActivePlayer == _player1Id)
+            {
+                // player 1 plays with white checkers
+                gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
+                // we need to clear the dice rolls from the match hub start and its initial roll
+                gameSession.DiceRolls.Clear();
+                await hub1.RollAsync(matchIdStr);
+                Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+                var gameState = matchSession.GetGameState(_player1Id);
+                Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
+            }
+            else if (gameSession.ActivePlayer == _player2Id)
+            {
+                // player 2 plays with black checkers
+                gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
+                // we need to clear the dice rolls from the match hub start and its initial roll
+                gameSession.DiceRolls.Clear();
+                await hub2.RollAsync(matchIdStr);
+                Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+                var gameState = matchSession.GetGameState(_player2Id);
+                Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
+            }
+        }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerCanOfferAndAcceptDoublingCube(MatchVariant variant, MatchModus modus, MatchType type)
-		{		
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var mockClients = result.Item4;
-			var matchIdStr = matchSession.Id.ToString();
-			var player1ConnectionId = matchSession.Player1.ConnectionId;
-			var player2ConnectionId = matchSession.Player2.ConnectionId;
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsPlayerCanOfferAndAcceptDoublingCube(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var mockClients = result.Item4;
+            var matchIdStr = matchSession.Id.ToString();
+            var player1ConnectionId = matchSession.Player1.ConnectionId;
+            var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-			var cubeSession = matchSession as IDoubleCubeMatchSession;
-			Assert.NotNull(cubeSession);
+            var cubeSession = matchSession as IDoubleCubeMatchSession;
+            Assert.NotNull(cubeSession);
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+            // the game setup with the hub already includes an initial roll, so we need to move it first
+            var firstMs = gameSession.MoveSequences.First();
 
-			if (gameSession.ActivePlayer == _player1Id)
-			{
-				Assert.False(cubeSession.IsDoubleOfferPending);
-				Assert.True(cubeSession.CanOfferDouble(_player1Id));
-				await hub1.OfferDoubleAsync(matchIdStr);
-				mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
-				Assert.True(cubeSession.IsDoubleOfferPending);
-				await hub2.AcceptDoubleAsync(matchIdStr);
-				Assert.False(cubeSession.IsDoubleOfferPending);
-			}
-			else if (gameSession.ActivePlayer == _player2Id)
-			{
-				Assert.False(cubeSession.IsDoubleOfferPending);
-				Assert.True(cubeSession.CanOfferDouble(_player2Id));
-				await hub2.OfferDoubleAsync(matchIdStr);
-				mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
-				Assert.True(cubeSession.IsDoubleOfferPending);
-				await hub1.AcceptDoubleAsync(matchIdStr);
-				Assert.False(cubeSession.IsDoubleOfferPending);
-			}
+            if (gameSession.ActivePlayer == _player1Id)
+            {
+                // we need to player the opening dices first
+                foreach (var move in firstMs.Moves)
+                {
+                    await hub1.MoveAsync(matchIdStr, move.From, move.To);
+                }
+                await hub1.EndTurnAsync(matchIdStr);
 
-			Assert.Equal(2, cubeSession.GetDoublingCubeValue());
-		}
+                Assert.False(cubeSession.IsDoubleOfferPending);
+                Assert.True(cubeSession.CanOfferDouble(_player2Id));
+                await hub2.OfferDoubleAsync(matchIdStr);
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                Assert.True(cubeSession.IsDoubleOfferPending);
+                await hub1.AcceptDoubleAsync(matchIdStr);
+                Assert.False(cubeSession.IsDoubleOfferPending);
+            }
+            else if (gameSession.ActivePlayer == _player2Id)
+            {
+                // we need to player the opening dices first
+                foreach (var move in firstMs.Moves)
+                {
+                    var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                    await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                }
+                await hub2.EndTurnAsync(matchIdStr);
+
+                Assert.False(cubeSession.IsDoubleOfferPending);
+                Assert.True(cubeSession.CanOfferDouble(_player1Id));
+                await hub1.OfferDoubleAsync(matchIdStr);
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                Assert.True(cubeSession.IsDoubleOfferPending);
+                await hub2.AcceptDoubleAsync(matchIdStr);
+                Assert.False(cubeSession.IsDoubleOfferPending);
+            }
+
+            Assert.Equal(2, cubeSession.GetDoublingCubeValue());
+        }
 
         [Theory]
         [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
@@ -185,308 +206,326 @@ namespace GammonX.Server.Tests.Integration
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
+            // the game setup with the hub already includes an initial roll, so we need to move it first
+            var firstMs = gameSession.MoveSequences.First();
+
             if (gameSession.ActivePlayer == _player1Id)
             {
-                Assert.False(cubeSession.IsDoubleOfferPending);
-                Assert.True(cubeSession.CanOfferDouble(_player1Id));
-                await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
-                Assert.True(cubeSession.IsDoubleOfferPending);
-                await hub2.DeclineDoubleAsync(matchIdStr);
-                Assert.False(cubeSession.IsDoubleOfferPending);
-            }
-            else if (gameSession.ActivePlayer == _player2Id)
-            {
+                // we need to player the opening dices first
+                foreach (var move in firstMs.Moves)
+                {
+                    await hub1.MoveAsync(matchIdStr, move.From, move.To);
+                }
+                await hub1.EndTurnAsync(matchIdStr);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
             }
+            else if (gameSession.ActivePlayer == _player2Id)
+            {
+                // we need to player the opening dices first
+                foreach (var move in firstMs.Moves)
+                {
+                    var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                    await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                }
+                await hub2.EndTurnAsync(matchIdStr);
+
+                Assert.False(cubeSession.IsDoubleOfferPending);
+                Assert.True(cubeSession.CanOfferDouble(_player1Id));
+                await hub1.OfferDoubleAsync(matchIdStr);
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                Assert.True(cubeSession.IsDoubleOfferPending);
+                await hub2.DeclineDoubleAsync(matchIdStr);
+                Assert.False(cubeSession.IsDoubleOfferPending);
+            }
 
             Assert.Equal(1, cubeSession.GetDoublingCubeValue());
-			var declinedGameSession = matchSession.GetGameSession(1);
-			Assert.NotNull(declinedGameSession);
-			Assert.Equal(GameResult.DoubleDeclined, declinedGameSession.Result.WinnerResult);
+            var declinedGameSession = matchSession.GetGameSession(1);
+            Assert.NotNull(declinedGameSession);
+            Assert.Equal(GameResult.DoubleDeclined, declinedGameSession.Result.WinnerResult);
             Assert.Equal(GameResult.LostDoubleDeclined, declinedGameSession.Result.LoserResult);
-			Assert.Equal(1, declinedGameSession.Result.Points);
-			var winnerResult = declinedGameSession.Result.GetResult(gameSession.ActivePlayer);
-			Assert.Equal(GameResult.DoubleDeclined, winnerResult);
-			var loserResult = declinedGameSession.Result.GetResult(gameSession.OtherPlayer);
-			Assert.Equal(GameResult.LostDoubleDeclined, loserResult);
+            Assert.Equal(1, declinedGameSession.Result.Points);
+            var winnerResult = declinedGameSession.Result.GetResult(gameSession.ActivePlayer);
+            Assert.Equal(GameResult.DoubleDeclined, winnerResult);
+            var loserResult = declinedGameSession.Result.GetResult(gameSession.OtherPlayer);
+            Assert.Equal(GameResult.LostDoubleDeclined, loserResult);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(MatchVariant variant, MatchModus modus, MatchType type)
-		{
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var mockClients = result.Item4;
-			var groupName = result.groupName;
-			var matchIdStr = matchSession.Id.ToString();
-			var player1ConnectionId = matchSession.Player1.ConnectionId;
-			var player2ConnectionId = matchSession.Player2.ConnectionId;
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsPlayerResignMatch(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var mockClients = result.Item4;
+            var groupName = result.groupName;
+            var matchIdStr = matchSession.Id.ToString();
+            var player1ConnectionId = matchSession.Player1.ConnectionId;
+            var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
 
-			do
-			{
-				if (gameSession.Phase == GamePhase.GameOver)
-				{
-					Assert.NotNull(matchSession);
-					gameSession = matchSession.GetGameSession(matchSession.GameRound);
-					Assert.NotNull(gameSession);
-				}
+            do
+            {
+                if (gameSession.Phase == GamePhase.GameOver)
+                {
+                    Assert.NotNull(matchSession);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                    Assert.NotNull(gameSession);
+                }
 
-				if (gameSession.ActivePlayer == _player1Id)
-				{
-					await hub1.ResignMatchAsync(matchIdStr);
-				}
-				else if (gameSession.ActivePlayer == _player2Id)
-				{
-					await hub2.ResignMatchAsync(matchIdStr);
-				}
-			}
-			while (!matchSession.IsMatchOver());
+                if (gameSession.ActivePlayer == _player1Id)
+                {
+                    await hub1.ResignMatchAsync(matchIdStr);
+                }
+                else if (gameSession.ActivePlayer == _player2Id)
+                {
+                    await hub2.ResignMatchAsync(matchIdStr);
+                }
+            }
+            while (!matchSession.IsMatchOver());
 
-			Assert.True(matchSession.IsMatchOver());
-			Assert.False(matchSession.CanStartNextGame());
-			Assert.True(matchSession.GetGameSessions().All(gs => gs.Result.WinnerResult == GameResult.Resign));
+            Assert.True(matchSession.IsMatchOver());
+            Assert.False(matchSession.CanStartNextGame());
+            Assert.True(matchSession.GetGameSessions().All(gs => gs.Result.WinnerResult == GameResult.Resign));
             Assert.True(matchSession.GetGameSessions().All(gs => gs.Result.LoserResult == GameResult.LostResign));
             var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			if (type == MatchType.CashGame)
-			{
-				if (variant == MatchVariant.Tavli)
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
-				}
-				else
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
-				}
-			}
-			else
-			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
-			}
+            if (type == MatchType.CashGame)
+            {
+                if (variant == MatchVariant.Tavli)
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                }
+                else
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                }
+            }
+            else
+            {
+                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+            }
 
-			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
-			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
+            Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
-			if (modus == MatchModus.Ranked)
-			{
+            if (modus == MatchModus.Ranked)
+            {
                 _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             }
         }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(MatchVariant variant, MatchModus modus, MatchType type)
-		{
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var mockClients = result.Item4;
-			var groupName = result.groupName;
-			var matchIdStr = matchSession.Id.ToString();
-			var player1ConnectionId = matchSession.Player1.ConnectionId;
-			var player2ConnectionId = matchSession.Player2.ConnectionId;
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsPlayerResignGameMatch(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var mockClients = result.Item4;
+            var groupName = result.groupName;
+            var matchIdStr = matchSession.Id.ToString();
+            var player1ConnectionId = matchSession.Player1.ConnectionId;
+            var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
 
-			do
-			{
-				if (gameSession.Phase == GamePhase.GameOver)
-				{
-					Assert.NotNull(matchSession);
-					gameSession = matchSession.GetGameSession(matchSession.GameRound);
-					Assert.NotNull(gameSession);
-				}
+            do
+            {
+                if (gameSession.Phase == GamePhase.GameOver)
+                {
+                    Assert.NotNull(matchSession);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                    Assert.NotNull(gameSession);
+                }
 
-				if (gameSession.ActivePlayer == _player1Id)
-				{
-					await hub1.ResignGameAsync(matchIdStr);
-				}
-				else if (gameSession.ActivePlayer == _player2Id)
-				{
-					await hub2.ResignGameAsync(matchIdStr);
-				}
+                if (gameSession.ActivePlayer == _player1Id)
+                {
+                    await hub1.ResignGameAsync(matchIdStr);
+                }
+                else if (gameSession.ActivePlayer == _player2Id)
+                {
+                    await hub2.ResignGameAsync(matchIdStr);
+                }
 
-				if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
-				{
-					await hub1.StartGameAsync(matchIdStr);
-					await hub2.StartGameAsync(matchIdStr);
-				}
-			}
-			while (!matchSession.IsMatchOver());
+                if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
+                {
+                    await hub1.StartGameAsync(matchIdStr);
+                    await hub2.StartGameAsync(matchIdStr);
+                }
+            }
+            while (!matchSession.IsMatchOver());
 
-			Assert.True(matchSession.IsMatchOver());
-			Assert.False(matchSession.CanStartNextGame());
+            Assert.True(matchSession.IsMatchOver());
+            Assert.False(matchSession.CanStartNextGame());
             Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs.Result.WinnerResult == GameResult.Resign));
             Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs.Result.LoserResult == GameResult.LostResign));
             var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			var multiplier = 1;
-			if (type == MatchType.CashGame)
-			{
-				if (variant == MatchVariant.Tavli)
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
-				}
-				else
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
-				}
-			}
-			else
-			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
-				multiplier = 2;
-			}
+            var multiplier = 1;
+            if (type == MatchType.CashGame)
+            {
+                if (variant == MatchVariant.Tavli)
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                }
+                else
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                }
+            }
+            else
+            {
+                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                multiplier = 2;
+            }
 
-			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
-			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			var gameEndedCount = playedSessions.Count - 1 * multiplier;
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
+            Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
+            var gameEndedCount = (playedSessions.Count - 1) * multiplier;
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerMatch(MatchVariant variant, MatchModus modus, MatchType type)
-		{
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var mockClients = result.Item4;
-			var groupName = result.groupName;
-			var matchIdStr = matchSession.Id.ToString();
-			var player1ConnectionId = matchSession.Player1.ConnectionId;
-			var player2ConnectionId = matchSession.Player2.ConnectionId;
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsPlayerMatch(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var mockClients = result.Item4;
+            var groupName = result.groupName;
+            var matchIdStr = matchSession.Id.ToString();
+            var player1ConnectionId = matchSession.Player1.ConnectionId;
+            var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
 
-			do
-			{
-				if (gameSession.Phase == GamePhase.GameOver)
-				{
-					Assert.NotNull(matchSession);
-					gameSession = matchSession.GetGameSession(matchSession.GameRound);
-					Assert.NotNull(gameSession);
-				}
+            do
+            {
+                if (gameSession.Phase == GamePhase.GameOver)
+                {
+                    Assert.NotNull(matchSession);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                    Assert.NotNull(gameSession);
+                }
 
-				if (gameSession.ActivePlayer == _player1Id)
-				{
-					await ExecutePlayerTurnAsync(matchSession, gameSession, hub1, hub2);
-				}
-				else if (gameSession.ActivePlayer == _player2Id)
-				{
-					await ExecutePlayerTurnAsync(matchSession, gameSession, hub2, hub1);
-				}
-			}
-			while (!matchSession.IsMatchOver());
+                if (gameSession.ActivePlayer == _player1Id)
+                {
+                    await ExecutePlayerTurnAsync(matchSession, gameSession, hub1, hub2);
+                }
+                else if (gameSession.ActivePlayer == _player2Id)
+                {
+                    await ExecutePlayerTurnAsync(matchSession, gameSession, hub2, hub1);
+                }
+            }
+            while (!matchSession.IsMatchOver());
 
-			Assert.True(matchSession.IsMatchOver());
-			Assert.False(matchSession.CanStartNextGame());
-			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			var multiplier = 1;
-			if (type == MatchType.CashGame)
-			{
-				if (variant == MatchVariant.Tavli)
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
-				}
-				else
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
-				}
-			}
-			else
-			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
-				multiplier = 2;
-			}
+            Assert.True(matchSession.IsMatchOver());
+            Assert.False(matchSession.CanStartNextGame());
+            var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
+            var multiplier = 1;
+            if (type == MatchType.CashGame)
+            {
+                if (variant == MatchVariant.Tavli)
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                }
+                else
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                }
+            }
+            else
+            {
+                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                multiplier = 2;
+            }
 
-			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
-			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			var gameEndedCount = playedSessions.Count - 1 * multiplier;
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
+            Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
+            Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
+            var gameEndedCount = playedSessions.Count - 1 * multiplier;
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -496,422 +535,489 @@ namespace GammonX.Server.Tests.Integration
             }
         }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsBotMatch(MatchVariant variant, MatchType type)
-		{
-			var queueKey = new QueueKey(variant, MatchModus.Bot, type);
-			var playerId = Guid.NewGuid();
-			var matchId = await CreatePlayerVsBotMatchLobbyAsync(queueKey, playerId);
-			var matchIdStr = matchId.ToString();
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsBotMatch(MatchVariant variant, MatchType type)
+        {
+            var queueKey = new QueueKey(variant, MatchModus.Bot, type);
+            var playerId = Guid.NewGuid();
+            var matchId = await CreatePlayerVsBotMatchLobbyAsync(queueKey, playerId);
+            var matchIdStr = matchId.ToString();
 
-			var matchService = GetService(MatchModus.Bot);
-			Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
-			Assert.NotNull(lobby);
-			var groupName = lobby.GroupName;
+            var matchService = GetService(MatchModus.Bot);
+            Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
+            Assert.NotNull(lobby);
+            var groupName = lobby.GroupName;
 
-			var mockClients = new Mock<IHubCallerClients>();
-			var mockGroup = new Mock<IClientProxy>();
-			_hub.Clients = mockClients.Object;
-			_hub.Context = new HubCallerContextStub(Guid.NewGuid().ToString());
-			_hub.Groups = new Mock<IGroupManager>().Object;
-			mockClients.Setup(c => c.Group(groupName)).Returns(mockGroup.Object);
-			mockClients.Setup(mc => mc.Client(It.IsAny<string>())).Returns(new Mock<ISingleClientProxy>().Object);
-			mockClients.Setup(mc => mc.Caller).Returns(new Mock<ISingleClientProxy>().Object);
+            var mockClients = new Mock<IHubCallerClients>();
+            var mockGroup = new Mock<IClientProxy>();
+            _hub.Clients = mockClients.Object;
+            _hub.Context = new HubCallerContextStub(Guid.NewGuid().ToString());
+            _hub.Groups = new Mock<IGroupManager>().Object;
+            mockClients.Setup(c => c.Group(groupName)).Returns(mockGroup.Object);
+            mockClients.Setup(mc => mc.Client(It.IsAny<string>())).Returns(new Mock<ISingleClientProxy>().Object);
+            mockClients.Setup(mc => mc.Caller).Returns(new Mock<ISingleClientProxy>().Object);
 
-			await _hub.JoinMatchAsync(matchId.ToString(), playerId.ToString());
+            await _hub.JoinMatchAsync(matchId.ToString(), playerId.ToString());
 
-			var matchSession = _matchRepo.Get(matchId);
-			Assert.NotNull(matchSession);
+            var matchSession = _matchRepo.Get(matchId);
+            Assert.NotNull(matchSession);
 
-			var playerConnectionId = matchSession.Player1.ConnectionId;
-			var botConnectionId = matchSession.Player2.ConnectionId;
+            var playerConnectionId = matchSession.Player1.ConnectionId;
+            var botConnectionId = matchSession.Player2.ConnectionId;
 
-			// bot lobby was found
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
-			// player receives event with roll command
-			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Once);
-			// bot player does not receive start game event
-			mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
-			// bot lobby is always instantly ready
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.GameWaitingEvent, It.IsAny<object[]>(), default), Times.Never);
+            // bot lobby was found
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
+            // player receives event with roll command
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Once);
+            // bot player does not receive start game event
+            mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Never);
+            // bot lobby is always instantly ready
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Never);
 
-			await _hub.StartGameAsync(matchIdStr);
+            do
+            {
+                await _hub.StartMatchAsync(matchIdStr);
+            }
+            while (matchSession.Player1.StartDiceRoll == matchSession.Player2.StartDiceRoll);
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
-			var cubeSession = matchSession as IDoubleCubeMatchSession;
+            // if player won starting roll
+            if (matchSession.Player1.StartDiceRoll > matchSession.Player2.StartDiceRoll)
+            {
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+            }
+            // if bot won starting roll
+            else
+            {
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStateEvent, It.IsAny<object[]>(), default), Times.Exactly(3));
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+            }
 
-			// bot offered a double
-			if (cubeSession != null && cubeSession.IsDoubleOfferPending)
-			{
-				await _hub.AcceptDoubleAsync(matchIdStr);
-			}
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+            var cubeSession = matchSession as IDoubleCubeMatchSession;
 
-			do
-			{
-				if (gameSession.Phase == GamePhase.GameOver)
-				{
-					gameSession = matchSession.GetGameSession(matchSession.GameRound);
-					Assert.NotNull(gameSession);
-				}
+            // bot offered a double
+            if (cubeSession != null && cubeSession.IsDoubleOfferPending)
+            {
+                await _hub.AcceptDoubleAsync(matchIdStr);
+            }
 
-				// bot offered a double
-				if (cubeSession != null && cubeSession.IsDoubleOfferPending)
-				{
-					await _hub.AcceptDoubleAsync(matchIdStr);
-				}
+            do
+            {
+                if (gameSession.Phase == GamePhase.GameOver)
+                {
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                    Assert.NotNull(gameSession);
+                }
 
-				if (gameSession.ActivePlayer == playerId)
-				{
-					await _hub.RollAsync(matchIdStr);
+                // bot offered a double
+                if (cubeSession != null && cubeSession.IsDoubleOfferPending)
+                {
+                    await _hub.AcceptDoubleAsync(matchIdStr);
+                }
 
-					var ms = gameSession.MoveSequences.FirstOrDefault();
-					if (ms != null)
-					{
-						var moves = ms.Moves.ToList();
-						foreach (var move in moves)
-						{
-							var isWhite = matchSession.Player1.Id == playerId;
-							if (isWhite)
-							{
-								await _hub.MoveAsync(matchIdStr, move.From, move.To);
-							}
-							else
-							{
-								var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-								await _hub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-							}							
-						}
-					}
+                if (gameSession.ActivePlayer == playerId)
+                {
+                    await _hub.RollAsync(matchIdStr);
 
-					if (gameSession.Phase != GamePhase.GameOver)
-					{
-						// end turn and bot executes its turn
-						await _hub.EndTurnAsync(matchIdStr);
-						if (gameSession.Phase == GamePhase.GameOver && !matchSession.IsMatchOver())
-						{
-							await _hub.StartGameAsync(matchIdStr);
-						}
-					}
-					else
-					{
-						await _hub.StartGameAsync(matchIdStr);
-					}
-				}
-			}
-			while (!matchSession.IsMatchOver());
+                    var ms = gameSession.MoveSequences.FirstOrDefault();
+                    if (ms != null)
+                    {
+                        var moves = ms.Moves.ToList();
+                        foreach (var move in moves)
+                        {
+                            var isWhite = matchSession.Player1.Id == playerId;
+                            if (isWhite)
+                            {
+                                await _hub.MoveAsync(matchIdStr, move.From, move.To);
+                            }
+                            else
+                            {
+                                var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                                await _hub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                            }
+                        }
+                    }
 
-			Assert.True(matchSession.IsMatchOver());
-			Assert.False(matchSession.CanStartNextGame());
-			var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
-			if (type == MatchType.CashGame)
-			{
-				if (variant == MatchVariant.Tavli)
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
-				}
-				else
-				{
-					Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
-				}
-			}
-			else
-			{
-				Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
-			}
-			// bot will win every time :: wow the dumb human can win also
-			Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
-			Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-			var gameEndedCount = playedSessions.Count - 1;
-			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-			mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+                    if (gameSession.Phase != GamePhase.GameOver)
+                    {
+                        // end turn and bot executes its turn
+                        await _hub.EndTurnAsync(matchIdStr);
+                        if (gameSession.Phase == GamePhase.GameOver && !matchSession.IsMatchOver())
+                        {
+                            await _hub.StartGameAsync(matchIdStr);
+                        }
+                    }
+                    else
+                    {
+                        await _hub.StartGameAsync(matchIdStr);
+                    }
+                }
+            }
+            while (!matchSession.IsMatchOver());
+
+            Assert.True(matchSession.IsMatchOver());
+            Assert.False(matchSession.CanStartNextGame());
+            var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
+            if (type == MatchType.CashGame)
+            {
+                if (variant == MatchVariant.Tavli)
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                }
+                else
+                {
+                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                }
+            }
+            else
+            {
+                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+            }
+            // bot will win every time :: wow the dumb human can win also
+            Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
+            Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
+            var gameEndedCount = playedSessions.Count - 1;
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never());
         }
 
-		[Theory]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
-		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
-		public async Task MatchHubCanPlayPlayerVsPlayerCanUndoMoves(MatchVariant variant, MatchModus modus, MatchType type)
-		{
-			var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
-			var matchSession = result.Item1;
-			var hub1 = result.Item2;
-			var hub2 = result.Item3;
-			var matchIdStr = matchSession.Id.ToString();
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavla, MatchModus.Ranked, MatchType.SevenPointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
+        public async Task MatchHubCanPlayPlayerVsPlayerCanUndoMoves(MatchVariant variant, MatchModus modus, MatchType type)
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(variant, modus, type, _player1Id, _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var hub2 = result.Item3;
+            var matchIdStr = matchSession.Id.ToString();
 
-			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-			Assert.NotNull(gameSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
 
-			if (gameSession.ActivePlayer == _player1Id)
-			{
-				await hub1.RollAsync(matchIdStr);
-				var ms = gameSession.MoveSequences.FirstOrDefault();
-				if (ms != null)
-				{
-					var moves = ms.Moves.ToList();
-					foreach (var move in moves)
-					{
-						var isWhite = matchSession.Player1.Id == _player1Id;
-						if (isWhite)
-						{
-							await hub1.MoveAsync(matchIdStr, move.From, move.To);
-						}
-						else
-						{
-							var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-							await hub1.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-						}
-					}
-					foreach (var _ in moves)
-					{
-						await hub1.UndoMoveAsync(matchIdStr);
-					}
-				}
-			}
-			else if (gameSession.ActivePlayer == _player2Id)
-			{
-				await hub2.RollAsync(matchIdStr);
-				var ms = gameSession.MoveSequences.FirstOrDefault();
-				if (ms != null)
-				{
-					var moves = ms.Moves.ToList();
-					foreach (var move in moves)
-					{
-						var isWhite = matchSession.Player1.Id == _player2Id;
-						if (isWhite)
-						{
-							await hub2.MoveAsync(matchIdStr, move.From, move.To);
-						}
-						else
-						{
-							var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-							await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-						}
-					}
-					foreach (var _ in moves)
-					{
-						await hub2.UndoMoveAsync(matchIdStr);
-					}
-				}
-			}
-		}
+            if (gameSession.ActivePlayer == _player1Id)
+            {
+                await hub1.RollAsync(matchIdStr);
+                var ms = gameSession.MoveSequences.FirstOrDefault();
+                if (ms != null)
+                {
+                    var moves = ms.Moves.ToList();
+                    foreach (var move in moves)
+                    {
+                        var isWhite = matchSession.Player1.Id == _player1Id;
+                        if (isWhite)
+                        {
+                            await hub1.MoveAsync(matchIdStr, move.From, move.To);
+                        }
+                        else
+                        {
+                            var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                            await hub1.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                        }
+                    }
+                    foreach (var _ in moves)
+                    {
+                        await hub1.UndoMoveAsync(matchIdStr);
+                    }
+                }
+            }
+            else if (gameSession.ActivePlayer == _player2Id)
+            {
+                await hub2.RollAsync(matchIdStr);
+                var ms = gameSession.MoveSequences.FirstOrDefault();
+                if (ms != null)
+                {
+                    var moves = ms.Moves.ToList();
+                    foreach (var move in moves)
+                    {
+                        var isWhite = matchSession.Player1.Id == _player2Id;
+                        if (isWhite)
+                        {
+                            await hub2.MoveAsync(matchIdStr, move.From, move.To);
+                        }
+                        else
+                        {
+                            var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                            await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                        }
+                    }
+                    foreach (var _ in moves)
+                    {
+                        await hub2.UndoMoveAsync(matchIdStr);
+                    }
+                }
+            }
+        }
 
-		private static async Task ExecutePlayerTurnAsync(IMatchSessionModel matchSession, IGameSessionModel gameSession, MatchLobbyHub activeHub, MatchLobbyHub otherHub)
-		{
-			var matchIdStr = matchSession.Id.ToString();
+        private static async Task ExecutePlayerTurnAsync(IMatchSessionModel matchSession, IGameSessionModel gameSession, MatchLobbyHub activeHub, MatchLobbyHub otherHub)
+        {
+            var matchIdStr = matchSession.Id.ToString();
 
-			if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.IsDoubleOfferPending)
-			{
-				await activeHub.AcceptDoubleAsync(matchIdStr);
-			}
+            if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.IsDoubleOfferPending)
+            {
+                await activeHub.AcceptDoubleAsync(matchIdStr);
+            }
 
-			await activeHub.RollAsync(matchIdStr);
+            if (gameSession.Phase == GamePhase.WaitingForRoll)
+            {
+                await activeHub.RollAsync(matchIdStr);
+            }
 
-			var ms = gameSession.MoveSequences.FirstOrDefault();
-			if (ms != null)
-			{
-				var moves = ms.Moves.ToList();
-				foreach (var move in moves)
-				{
-					var isWhite = matchSession.Player1.Id == gameSession.ActivePlayer;
-					if (isWhite)
-					{
-						await activeHub.MoveAsync(matchIdStr, move.From, move.To);
-					}
-					else
-					{
-						var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-						await activeHub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-					}
-				}
-			}
+            var ms = gameSession.MoveSequences.FirstOrDefault();
+            if (ms != null)
+            {
+                var moves = ms.Moves.ToList();
+                foreach (var move in moves)
+                {
+                    var isWhite = matchSession.Player1.Id == gameSession.ActivePlayer;
 
-			if (gameSession.Phase != GamePhase.GameOver)
-			{
-				await activeHub.EndTurnAsync(matchIdStr);
-				if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
-				{
-					await activeHub.StartGameAsync(matchIdStr);
-					await otherHub.StartGameAsync(matchIdStr);
-				}
-			}
-			else if (!matchSession.IsMatchOver())
-			{
-				await otherHub.StartGameAsync(matchIdStr);
-				await activeHub.StartGameAsync(matchIdStr);
-			}
-		}
+                    if (gameSession.GameOver(isWhite))
+                    {
+                        break;
+                    }
 
-		private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(
-			MatchVariant variant,
-			MatchModus modus,
-			MatchType type,
-			Guid player1Id,
-			Guid player2Id)
-		{
+                    if (isWhite)
+                    {
+                        await activeHub.MoveAsync(matchIdStr, move.From, move.To);
+                    }
+                    else
+                    {
+                        var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                        await activeHub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                    }
+                }
+            }
+
+            if (gameSession.Phase != GamePhase.GameOver)
+            {
+                await activeHub.EndTurnAsync(matchIdStr);
+                if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
+                {
+                    await activeHub.StartGameAsync(matchIdStr);
+                    await otherHub.StartGameAsync(matchIdStr);
+                }
+            }
+            else if (!matchSession.IsMatchOver())
+            {
+                if (gameSession.Result.Equals(GameResultModel.Draw()))
+                {
+                    Assert.Null(gameSession.Result.WinnerId);
+                    Assert.True(gameSession.Result.IsConcluded);
+                    Assert.Equal(GameResult.Draw, gameSession.Result.WinnerResult);
+                    Assert.Equal(GameResult.Draw, gameSession.Result.LoserResult);
+                    Assert.Equal(0, gameSession.Result.Points);
+                    Assert.True(gameSession.Result.IsDraw);
+                }
+
+                await otherHub.StartGameAsync(matchIdStr);
+                await activeHub.StartGameAsync(matchIdStr);
+            }
+        }
+
+        private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(
+            MatchVariant variant,
+            MatchModus modus,
+            MatchType type,
+            Guid player1Id,
+            Guid player2Id)
+        {
             var queueKey = new QueueKey(variant, modus, type);
-			var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);
-			var matchIdStr = matchId.ToString();
-			var matchService = GetService(modus);
+            var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);
+            var matchIdStr = matchId.ToString();
+            var matchService = GetService(modus);
 
-			Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
-			Assert.NotNull(lobby);
-			var groupName = lobby.GroupName;
+            Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
+            Assert.NotNull(lobby);
+            var groupName = lobby.GroupName;
 
-			var mockClients = new Mock<IHubCallerClients>();
-			var mockGroups = new Mock<IGroupManager>();
-			var mockGroup = new Mock<IClientProxy>();
+            var mockClients = new Mock<IHubCallerClients>();
+            var mockGroups = new Mock<IGroupManager>();
+            var mockGroup = new Mock<IClientProxy>();
 
-			// client 1
-			var player1ConnectionId = Guid.NewGuid().ToString();
-			var context1 = new HubCallerContextStub(player1ConnectionId);
-			var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
-			{
-				Clients = mockClients.Object,
-				Groups = mockGroups.Object,
-				Context = context1
-			};
+            // client 1
+            var player1ConnectionId = Guid.NewGuid().ToString();
+            var context1 = new HubCallerContextStub(player1ConnectionId);
+            var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            {
+                Clients = mockClients.Object,
+                Groups = mockGroups.Object,
+                Context = context1
+            };
 
-			// client 2
-			var player2ConnectionId = Guid.NewGuid().ToString();
-			var context2 = new HubCallerContextStub(player2ConnectionId);
-			var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
-			{
-				Clients = mockClients.Object,
-				Groups = mockGroups.Object,
-				Context = context2
-			};
+            // client 2
+            var player2ConnectionId = Guid.NewGuid().ToString();
+            var context2 = new HubCallerContextStub(player2ConnectionId);
+            var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            {
+                Clients = mockClients.Object,
+                Groups = mockGroups.Object,
+                Context = context2
+            };
 
-			mockClients.Setup(c => c.Group(groupName)).Returns(mockGroup.Object);
-			mockClients.Setup(mc => mc.Client(It.IsAny<string>())).Returns(new Mock<ISingleClientProxy>().Object);
-			mockClients.Setup(mc => mc.Caller).Returns(new Mock<ISingleClientProxy>().Object);
+            mockClients.Setup(c => c.Group(groupName)).Returns(mockGroup.Object);
+            mockClients.Setup(mc => mc.Client(It.IsAny<string>())).Returns(new Mock<ISingleClientProxy>().Object);
+            mockClients.Setup(mc => mc.Caller).Returns(new Mock<ISingleClientProxy>().Object);
 
-			await hub1.JoinMatchAsync(matchId.ToString(), player1Id.ToString());
-			await hub2.JoinMatchAsync(matchId.ToString(), player2Id.ToString());
+            await hub1.JoinMatchAsync(matchId.ToString(), player1Id.ToString());
+            await hub2.JoinMatchAsync(matchId.ToString(), player2Id.ToString());
 
-			var matchSession = _matchRepo.Get(matchId);
-			Assert.NotNull(matchSession);
+            var matchSession = _matchRepo.Get(matchId);
+            Assert.NotNull(matchSession);
 
-			Assert.Equal(player1ConnectionId, matchSession.Player1.ConnectionId);
-			Assert.Equal(player2ConnectionId, matchSession.Player2.ConnectionId);
+            Assert.Equal(player1ConnectionId, matchSession.Player1.ConnectionId);
+            Assert.Equal(player2ConnectionId, matchSession.Player2.ConnectionId);
 
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
-			mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
 
-			await hub1.StartGameAsync(matchIdStr);
-			await hub2.StartGameAsync(matchIdStr);
+            var startCount = 0;
+            do
+            {
+                startCount += 1;
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.AtLeast(startCount * 2));
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.AtLeast(startCount * 2));
+                await hub1.StartMatchAsync(matchIdStr);
+                await hub2.StartMatchAsync(matchIdStr);
+            }
+            while (matchSession.Player1.StartDiceRoll == matchSession.Player2.StartDiceRoll);
 
-			mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-			mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            // only called once for the first start match command call for the second player
+            mockClients.Verify(c => c.Caller.SendCoreAsync(ServerEventTypes.MatchWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
+            // the start match command exposes a match start event for the current match state
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            // and simulatenously a game started event for the initial board state including the starting rolls
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
 
-			return (matchSession, hub1, hub2, mockClients, groupName);
-		}
+            // we ensure that one player has a higher starting roll than the other
+            Assert.NotEqual(matchSession.Player1.StartDiceRoll, matchSession.Player2.StartDiceRoll);
+            Assert.NotNull(matchSession.Player1.StartDiceRoll);
+            Assert.NotNull(matchSession.Player2.StartDiceRoll);
+            Assert.True(matchSession.Player1.StartDiceRoll > matchSession.Player2.StartDiceRoll || matchSession.Player2.StartDiceRoll > matchSession.Player1.StartDiceRoll);
 
-		private async Task<Guid> CreatePlayerVsBotMatchLobbyAsync(QueueKey queueKey, Guid playerId)
-		{
-			var matchService = GetService(queueKey.MatchModus);
-			var queueEntry = await matchService.JoinQueueAsync(playerId, queueKey);
-			var payload = queueEntry.ToPayload();
-			Assert.Equal(QueueEntryStatus.WaitingForOpponent, payload.Status);
-			matchService.TryFindQueueEntry(queueEntry.Id, out var entry);
-			Assert.Null(entry);
-			matchService.TryFindMatchLobby(queueEntry.Id, out var lobby);
-			Assert.NotNull(lobby);
-			return lobby.MatchId;
-		}
+            // the match start command should clean up the match lobby
+            var matchmakingService = GetService(modus);
+            var found = matchmakingService.TryFindMatchLobby(matchId, out var startedLobby);
+            Assert.False(found);
+            Assert.Null(startedLobby);
 
-		private async Task<Guid> CreatePlayerVsPlayerMatchLobbyAsync(QueueKey queueKey, Guid player1Id, Guid player2Id)
-		{
-			var matchService = GetService(queueKey.MatchModus);
-			var queueEntry1 = await matchService.JoinQueueAsync(player1Id, queueKey);
-			var queueContract1 = queueEntry1.ToPayload();
-			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract1.Status);
-			var queueEntry2 = await matchService.JoinQueueAsync(player2Id, queueKey);
-			var queueContract2 = queueEntry2.ToPayload();
-			Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract2.Status);
+            return (matchSession, hub1, hub2, mockClients, groupName);
+        }
 
-			await matchService.MatchQueuedPlayersAsync();
-			matchService.TryFindMatchLobby(queueEntry1.Id, out var lobby1);
-			Assert.NotNull(lobby1);
-			matchService.TryFindMatchLobby(queueEntry2.Id, out var lobby2);
-			Assert.NotNull(lobby2);
-			Assert.Equal(lobby1.MatchId, lobby1.MatchId);
-			return lobby1.MatchId;
-		}
+        private async Task<Guid> CreatePlayerVsBotMatchLobbyAsync(QueueKey queueKey, Guid playerId)
+        {
+            var matchService = GetService(queueKey.MatchModus);
+            var queueEntry = await matchService.JoinQueueAsync(playerId, queueKey);
+            var payload = queueEntry.ToPayload();
+            Assert.Equal(QueueEntryStatus.WaitingForOpponent, payload.Status);
+            matchService.TryFindQueueEntry(queueEntry.Id, out var entry);
+            Assert.Null(entry);
+            matchService.TryFindMatchLobby(queueEntry.Id, out var lobby);
+            Assert.NotNull(lobby);
+            return lobby.MatchId;
+        }
 
-		private IMatchmakingService GetService(MatchModus modus)
-		{
-			if (modus == MatchModus.Normal)
-			{
-				return _normalService;
-			}
-			else if (modus == MatchModus.Ranked)
-			{
-				return _rankedService;
-			}
-			else if (modus == MatchModus.Bot)
-			{
-				return _botMatchService;
-			}
-			throw new InvalidOperationException("not good");
-		}
+        private async Task<Guid> CreatePlayerVsPlayerMatchLobbyAsync(QueueKey queueKey, Guid player1Id, Guid player2Id)
+        {
+            var matchService = GetService(queueKey.MatchModus);
+            var queueEntry1 = await matchService.JoinQueueAsync(player1Id, queueKey);
+            var queueContract1 = queueEntry1.ToPayload();
+            Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract1.Status);
+            var queueEntry2 = await matchService.JoinQueueAsync(player2Id, queueKey);
+            var queueContract2 = queueEntry2.ToPayload();
+            Assert.Equal(QueueEntryStatus.WaitingForOpponent, queueContract2.Status);
 
-		public class HubCallerContextStub : HubCallerContext
-		{
-			private readonly string _connectionId;
+            await matchService.MatchQueuedPlayersAsync();
+            matchService.TryFindMatchLobby(queueEntry1.Id, out var lobby1);
+            Assert.NotNull(lobby1);
+            matchService.TryFindMatchLobby(queueEntry2.Id, out var lobby2);
+            Assert.NotNull(lobby2);
+            Assert.Equal(lobby1.MatchId, lobby1.MatchId);
+            return lobby1.MatchId;
+        }
 
-			public HubCallerContextStub(string connectionId)
-			{
-				_connectionId = connectionId;
-			}
+        private IMatchmakingService GetService(MatchModus modus)
+        {
+            if (modus == MatchModus.Normal)
+            {
+                return _normalService;
+            }
+            else if (modus == MatchModus.Ranked)
+            {
+                return _rankedService;
+            }
+            else if (modus == MatchModus.Bot)
+            {
+                return _botMatchService;
+            }
+            throw new InvalidOperationException("not good");
+        }
 
-			public override string ConnectionId => _connectionId;
+        public class HubCallerContextStub : HubCallerContext
+        {
+            private readonly string _connectionId;
 
-			public override string? UserIdentifier => default;
+            public HubCallerContextStub(string connectionId)
+            {
+                _connectionId = connectionId;
+            }
 
-			public override ClaimsPrincipal? User => default;
+            public override string ConnectionId => _connectionId;
 
-			public override IDictionary<object, object?> Items => new Dictionary<object, object?>();
+            public override string? UserIdentifier => default;
 
-			public override IFeatureCollection Features => new FeatureCollection();
+            public override ClaimsPrincipal? User => default;
 
-			public override CancellationToken ConnectionAborted => CancellationToken.None;
+            public override IDictionary<object, object?> Items => new Dictionary<object, object?>();
 
-			public override void Abort()
-			{
-				// pass
-			}
-		}
-	}
+            public override IFeatureCollection Features => new FeatureCollection();
+
+            public override CancellationToken ConnectionAborted => CancellationToken.None;
+
+            public override void Abort()
+            {
+                // pass
+            }
+        }
+    }
 }

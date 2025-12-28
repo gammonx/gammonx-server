@@ -10,7 +10,10 @@ namespace GammonX.Server.Models
         /// <summary>
         /// Gets the player id of the winner.
         /// </summary>
-        public Guid WinnerId { get; private set; }
+        /// <remarks>
+        /// Returns <c>null</c> if game results in a <see cref="GameResult.Draw"/>.
+        /// </remarks>
+        public Guid? WinnerId { get; private set; }
 
         /// <summary>
         /// Gets the game result of the winning player.
@@ -37,7 +40,7 @@ namespace GammonX.Server.Models
         /// </summary>
         public readonly bool IsDraw => Equals(Draw());
 
-        public GameResultModel(Guid winnerId, GameResult winner, GameResult loser, int points)
+        public GameResultModel(Guid? winnerId, GameResult winner, GameResult loser, int points)
         {
             WinnerId = winnerId;
             LoserResult = loser;
@@ -59,7 +62,7 @@ namespace GammonX.Server.Models
 
         public static GameResultModel Draw()
         {
-            return new GameResultModel(Guid.Empty, GameResult.Draw, GameResult.Draw, 0);
+            return new GameResultModel(null, GameResult.Draw, GameResult.Draw, 0);
         }
 
         public static GameResultModel Empty()

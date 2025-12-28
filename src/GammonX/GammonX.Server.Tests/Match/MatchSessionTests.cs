@@ -43,6 +43,8 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
 			Assert.IsAssignableFrom<MatchSession>(session);
+			Assert.Equal(DateTime.MinValue, session.StartedAt);
+			Assert.Equal(DateTime.MaxValue, session.EndedAt);
 		}
 
 		[Theory]
@@ -151,7 +153,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.False(session.CanStartNextGame());
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.NotNull(gameSession);
 			Assert.Equal(session.Id, gameSession.MatchId);
 			Assert.Equal(1, session.GameRound);
@@ -170,7 +172,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			var player1Id = session.Player1.Id;
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			session.RollDices(player1Id);
@@ -190,7 +192,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			var player2Id = session.Player2.Id;
 			Assert.Throws<InvalidOperationException>(() => session.RollDices(player2Id));
 		}
@@ -233,7 +235,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			session.StartNextGame(session.Player1.Id);
+			session.StartMatch(session.Player1.Id);
 			Assert.Throws<InvalidOperationException>(() => session.MoveCheckers(session.Player2.Id, 0, 1));
 		}
 
@@ -248,7 +250,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -278,7 +280,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -319,7 +321,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
 			gameSession.InjectDiceServiceMock(mock.Object);
@@ -402,7 +404,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			session.StartNextGame(session.Player1.Id);
+			session.StartMatch(session.Player1.Id);
 			var gameState = session.GetGameState(session.Player1.Id);
 			Assert.NotNull(gameState);
 			Assert.Equal(allowedCommandsAfterRollActivePlayer, gameState.AllowedCommands);
@@ -429,7 +431,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			session.StartNextGame(session.Player1.Id);
+			session.StartMatch(session.Player1.Id);
 			var gameState = session.GetGameState(session.Player1.Id);
 			Assert.NotNull(gameState);
 			Assert.Equal(allowedCommandsAfterRollActivePlayer, gameState.AllowedCommands);
@@ -450,7 +452,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignGame(session.Player1.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -505,7 +507,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignGame(session.Player2.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -560,7 +562,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignMatch(session.Player1.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -613,7 +615,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(modusToExpect, session.GetGameModus());
 			session.ResignMatch(session.Player2.Id);
 			Assert.False(session.Player1.NextGameAccepted);
@@ -712,7 +714,14 @@ namespace GammonX.Server.Tests.Match
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();
 				var startPlayerId = matchSession.Player1.Id;
-				while (matchSession.CanStartNextGame())
+
+                matchSession.StartMatch(startPlayerId);
+                matchSession.ResignGame(startPlayerId);
+                startPlayerId = startPlayerId == matchSession.Player1.Id ? matchSession.Player2.Id : matchSession.Player1.Id;
+                matchSession.Player1.AcceptNextGame();
+                matchSession.Player2.AcceptNextGame();
+
+                while (matchSession.CanStartNextGame())
 				{
 					matchSession.StartNextGame(startPlayerId);
 					matchSession.ResignGame(startPlayerId);
@@ -783,7 +792,7 @@ namespace GammonX.Server.Tests.Match
 
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
-			matchSession.StartNextGame(player1Id);
+			matchSession.StartMatch(player1Id);
 
 			var gameSession = matchSession.GetGameSession(matchSession.GameRound);
 			Assert.NotNull(gameSession);
@@ -822,10 +831,7 @@ namespace GammonX.Server.Tests.Match
 
 		private static void ExecutePlayerTurn(IMatchSessionModel matchSession, IGameSessionModel gameSession)
 		{
-			var matchIdStr = matchSession.Id.ToString();
-
 			matchSession.RollDices(gameSession.ActivePlayer);
-
 			var ms = gameSession.MoveSequences.FirstOrDefault();
 			if (ms != null)
 			{
@@ -852,7 +858,14 @@ namespace GammonX.Server.Tests.Match
 			{
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();
-				matchSession.StartNextGame(gameSession.ActivePlayer);
+				if (matchSession.CanStartNextGame())
+				{
+                    matchSession.StartNextGame(gameSession.ActivePlayer);
+                }
+				else
+				{
+					throw new InvalidOperationException("Cannot start next game although match is not over.");
+                }
 			}
 		}
 	}

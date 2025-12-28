@@ -104,6 +104,13 @@ namespace GammonX.Engine.Services
         /// <returns>Boolean indicating if all pieces are within the home range</returns>
         public static bool AllPiecesInHomeRange(this IBoardModel model, bool isWhite)
         {
+            if (model is IHomeBarModel homeBarModel)
+            {
+                var homebarCount = isWhite ? homeBarModel.HomeBarCountWhite : homeBarModel.HomeBarCountBlack;
+                if (homebarCount > 0)
+                    return false;
+            }
+
             var homeRange = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
             for (int i = 0; i < model.Fields.Length; i++)
             {

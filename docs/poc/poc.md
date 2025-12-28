@@ -84,10 +84,16 @@ The backend server hosts a background worker which tries to create proper match 
 
 `wss://example.com/matchhub?matchId={GUID}&playerId={playerId2}`
 
+### Start Match Workflow
+The first game within a match is started with the `StartMatch` command. This command is expected after exposing the `match-waiting-for-start` event.
+The `StartMatch` command does roll the opening dices for both players. These dice rolls can be fetched from the user contract in [MatchState Payload](#matchState-payload). If both players rolled the same dice, the `match-waiting-for-start` event is published once again and the `StartMatch` command has to be re-executed. When both players called `StartMatch` successfully the player with the higher initial roll starts the first game. The next allowed command is auomatically `Move`. Both opening dices will be used for the first turn of the starting player. The server exposes a `match-started` and `game-started` event simulatenously in order to fetch the opening dices from the `MatchState` payload and the initial board from the `GameState` payload. The next game in a match is started with `GameStart` command.
+
 ## Server Commands [Link](../../src/GammonX/GammonX.Server/ServerCommands.cs)
 #### `JoinMatch`
 - matchId: string
 - playerId: string 
+#### `StartMatch`
+- matchId: string
 #### `StartGame`
 - matchId: string
 #### `Roll`
@@ -114,6 +120,8 @@ The backend server hosts a background worker which tries to create proper match 
 ## Server Events [Link](../../src/GammonX/GammonX.Server/ServerEventTypes.cs)
 #### `match-lobby-waiting`
 #### `match-lobby-found`
+#### `match-waiting-for-start`
+#### `match-waiting`
 #### `match-started`
 #### `match-ended`
 #### `game-waiting`
@@ -129,7 +137,7 @@ The backend server hosts a background worker which tries to create proper match 
 ## Wellknown Enums/Strings
 #### `GameModus` [Link](../../src/GammonX/GammonX.Models/Enums/GameModus.cs.cs)
 #### `GameResult` [Link](../../src/GammonX/GammonX.Models/Enums/GameResult.cs)
-#### `WellKnownBoardPositions` [Link](../../src/GammonX/GammonX.Engine/Models/WellKnownBoardPositions.cs)
+#### `BoardPositions` [Link](../../src/GammonX/GammonX.Models/Enums/BoardPositions.cs)
 #### `MatchVariant` [Link](../../src/GammonX/GammonX.Models/Enums/MatchVariant.cs)
 #### `MatchModus` [Link](../../src/GammonX/GammonX.Models/Enums/MatchModus.cs)
 #### `MatchType` [Link](../../src/GammonX/GammonX.Models/Enums/MatchType.cs)
@@ -312,6 +320,10 @@ public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequenc
    "type":"match-ended",
    "payload":{
       "id":"f1017bd8-2ceb-44ed-94be-36feb814103c",
+      "winner": "<playerId>",
+      "winnerPoints": 8,
+      "loser": "<playerId>",
+      "loserPoints": 5,
       "groupName":"match_f1017bd8-2ceb-44ed-94be-36feb814103c",
       "gameRound":3,
       "gameRounds":[
@@ -342,11 +354,15 @@ public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequenc
       "type": 2,
       "player1":{
          "id":"fdd907ca-794a-43f4-83e6-cadfabc57c45",
-         "score":6
+         "points":6,
+         "userName": "mein",
+         "startDiceRoll": "6"
       },
       "player2":{
          "id":"f6f9bb06-cbf6-4f42-80bf-5d62be34cff6",
-         "score":0
+         "points":0,
+         "userName": "akh",
+         "startDiceRoll": "3"
       },
       "allowedCommands":[
          

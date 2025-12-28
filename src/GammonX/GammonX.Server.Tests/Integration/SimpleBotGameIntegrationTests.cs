@@ -90,23 +90,103 @@ namespace GammonX.Server.Tests.Integration
 
 			player1Connection.On<object>(ServerEventTypes.MatchLobbyWaitingEvent, response =>
 			{
-				Assert.Fail();
+                // we must not wait if opponent is a bot
+                Assert.Fail();
 			});
 
 			player1Connection.On<object>(ServerEventTypes.GameWaitingEvent, response =>
 			{
+				// we must not wait if opponent is a bot
 				Assert.Fail();
 			});
 
-			MoveModel? nextMove = null;
-			player1Connection.On<object>(ServerEventTypes.GameStateEvent, response =>
+            player1Connection.On<object>(ServerEventTypes.MatchWaitingEvent, response =>
+            {
+                // we must not wait if opponent is a bot
+                Assert.Fail();
+            });
+
+            player1Connection.On<object>(ServerEventTypes.MatchLobbyFoundEvent, response =>
+            {
+                Assert.NotNull(response);
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchLobbyPayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventMatchLobbyPayload payload)
+                {
+					Assert.True(payload.MatchFound);
+					Assert.Equal(matchId, payload.Id);
+					// we expect the static bot player id as opponent
+					Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2);
+					Assert.Empty(payload.AllowedCommands);
+                }
+            });
+
+            player1Connection.On<object>(ServerEventTypes.MatchWaitingForStartEvent, response =>
+            {
+				Assert.NotNull(response);
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchStatePayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventMatchStatePayload payload)
+                {
+					Assert.Equal(3, payload.AllowedCommands.Length);
+					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+                    Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+                    Assert.Contains(ServerCommands.StartMatchCommand, payload.AllowedCommands);
+					Assert.Equal(matchId, payload.Id);
+					Assert.Equal($"match_{matchId}", payload.GroupName);
+                    Assert.Equal(1, payload.GameRound);
+					Assert.Null(payload.Winner);
+					Assert.Null(payload.WinnerPoints);
+					Assert.Null(payload.Loser);
+					Assert.Null(payload.LoserPoints);
+					Assert.Equal(MatchModus.Bot, payload.Modus);
+					Assert.NotNull(payload.Player1);
+					Assert.NotNull(payload.Player2);
+                    Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2.Id);
+                    Assert.Null(payload.Player1.UserName);
+                    Assert.Null(payload.Player2.UserName);
+                    // we should not have opening dices before the match is started
+                    Assert.Null(payload.Player1.StartDiceRoll);
+                    Assert.Null(payload.Player2.StartDiceRoll);
+                }
+            });
+
+            player1Connection.On<object>(ServerEventTypes.MatchStartedEvent, response =>
+            {
+                Assert.NotNull(response);
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchStatePayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventMatchStatePayload payload)
+                {
+                    Assert.Equal(3, payload.AllowedCommands.Length);
+                    Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+                    Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+					// starting player can directly move with the opening dices
+                    Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
+                    Assert.Equal(matchId, payload.Id);
+                    Assert.Equal(1, payload.GameRound);
+                    Assert.Null(payload.Winner);
+                    Assert.Null(payload.WinnerPoints);
+                    Assert.Null(payload.Loser);
+                    Assert.Null(payload.LoserPoints);
+                    Assert.Equal(MatchModus.Bot, payload.Modus);
+                    Assert.NotNull(payload.Player1);
+                    Assert.NotNull(payload.Player2);
+                    Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2.Id);
+                    Assert.Null(payload.Player1.UserName);
+                    Assert.Null(payload.Player2.UserName);
+                    // we should now have opening dices for both players
+                    Assert.NotNull(payload.Player1.StartDiceRoll);
+                    Assert.NotNull(payload.Player2.StartDiceRoll);
+                }
+            });
+
+            MoveModel? nextMove = null;
+			player1Connection.On<object>(ServerEventTypes.GameStartedEvent, response =>
 			{
 				Assert.NotNull(response);
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
 				if (contract?.Payload is EventGameStatePayload payload)
 				{
 					nextMove = payload.MoveSequences.SelectMany(ms => ms.Moves)?.FirstOrDefault();
-
+					Assert.Equal(matchId, payload.MatchId);
 					if (payload.Phase == GamePhase.WaitingForOpponent)
 					{
 						Assert.Equal(2, payload.TurnNumber);
@@ -126,10 +206,10 @@ namespace GammonX.Server.Tests.Integration
 			await player1Connection.SendAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString());
 
 			// start the game
-			await player1Connection.SendAsync(ServerCommands.StartGameCommand, matchId);
+			await player1Connection.SendAsync(ServerCommands.StartMatchCommand, matchId);
 
-			// player 1 rolls the dice
-			await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
+			// player 1 can directly move with the initial rolled dices
+			// await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
 
 			while (nextMove == null)
 			{

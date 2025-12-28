@@ -3,6 +3,7 @@
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+using Serilog;
 
 namespace GammonX.Server.Models
 {	
@@ -25,8 +26,8 @@ namespace GammonX.Server.Models
 				usedDices.ForEach(dice => dice.Use());
 				return result;
 			}
-
-			throw new InvalidOperationException($"An error occurred while determining the used dices for move '{from}' > '{to}'");
+			Log.Error($"An error occurred while determining the used dices for move '{from}' > '{to}'");
+			return false;
 		}
 
 		public void UndoDiceRoll(int roll)
@@ -73,7 +74,7 @@ namespace GammonX.Server.Models
 			bool bearOffMove,
 			out List<DiceRollContract> result)
 		{
-			// Algorithmus (Subset-Sum auf Dices)
+			// base case: distance fully covered
 			if (distance <= 0)
 			{
 				result = new List<DiceRollContract>(current);
@@ -84,17 +85,34 @@ namespace GammonX.Server.Models
 			{
 				if (bearOffMove)
 				{
-					if (dices[i].Roll >= distance)
+					// enforce exact die usage first
+					var exact = dices.FirstOrDefault(d => !current.Contains(d) && d.Roll == distance);
+					if (exact != null)
 					{
-						current.Add(dices[i]);
-						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
-							return true;
-						current.RemoveAt(current.Count - 1);
+						result = new List<DiceRollContract> { exact };
+						return true;
 					}
+
+					// if no exact, use smallest die >= distance
+					var higher = dices.FirstOrDefault(d => !current.Contains(d) && d.Roll > distance);
+					if (higher != null)
+					{
+						result = new List<DiceRollContract> { higher };
+						return true;
+					}
+
+					// fallback: try using this dice in combination
+					current.Add(dices[i]);
+					if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))
+					{
+						result.AddRange(current);
+                        return true;
+                    }
+					current.RemoveAt(current.Count - 1);
 				}
 				else
 				{
-					if (dices[i].Roll <= distance)
+					if (dices[i].Roll <= distance && !current.Contains(dices[i]))
 					{
 						current.Add(dices[i]);
 						if (Backtrack(dices.Where((_, idx) => idx != i).ToArray(), distance - dices[i].Roll, 0, current, bearOffMove, out result))

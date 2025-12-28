@@ -34,10 +34,13 @@ namespace GammonX.Server.Models
 		/// </summary>
 		public int Points { get; }
 
-		/// <summary>
-		/// Gets the player id of the winner.
-		/// </summary>
-		public Guid WinnerPlayerId { get; }
+        /// <summary>
+        /// Gets the player id of the winner.
+        /// </summary>
+        /// <remarks>
+        /// Returns <c>null</c> if the game ended in a draw.
+        /// </remarks>
+        public Guid? WinnerPlayerId { get; }
 
 		/// <summary>
 		/// Gets the start time of the game.

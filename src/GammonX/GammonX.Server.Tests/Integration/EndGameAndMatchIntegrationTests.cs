@@ -1,4 +1,3 @@
-using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
@@ -90,14 +89,14 @@ namespace GammonX.Server.Tests.Integration
 			RequestQueueEntryPayload? result2 = null;
 			do
 			{
-				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
-			}
+                result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
+            }
 			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			do
 			{
-				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
-			}
+                result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
+            }
 			while (result2?.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
@@ -131,7 +130,8 @@ namespace GammonX.Server.Tests.Integration
 				{
 					if (payload.Modus == GameModus.Portes)
 					{
-						Assert.Equal(GamePhase.WaitingForRoll, payload.Phase);
+						// the dices are already rolled for the first game
+						Assert.Equal(GamePhase.Rolling, payload.Phase);
 					}
 					if (payload.Modus == GameModus.Plakoto)
 					{
@@ -144,7 +144,14 @@ namespace GammonX.Server.Tests.Integration
 					if (payload.ActiveTurn == _player1Id)
 					{
 						Assert.Equal(3, payload.AllowedCommands.Length);
-						Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+						if (payload.Modus == GameModus.Portes)
+						{
+                            Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
+                        }
+						else
+						{
+                            Assert.Contains(ServerCommands.RollCommand, payload.AllowedCommands);
+                        }
 						Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
 						Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
 					}
@@ -460,16 +467,13 @@ namespace GammonX.Server.Tests.Integration
 
 			await Task.Delay(500);
 
-			// start the game
-			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
-			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
+			// start the match and first game
+			await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
+			await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
 
 			await Task.Delay(500);
 
-			// player 1 rolls the dice
-			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId);
-
-			await Task.Delay(1500);
+			// player 1 does not have to roll his dices on the first game
 
 			// player 1 moves first checker and wins the first game
 			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);

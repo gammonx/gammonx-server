@@ -24,7 +24,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -80,7 +80,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -121,7 +121,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -162,7 +162,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -201,7 +201,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var board = gameSession.BoardModel;
 			var doubleCubeBoard = board as IDoublingCubeModel;
@@ -250,7 +250,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
@@ -302,7 +302,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
@@ -356,7 +356,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([1, 2]);
@@ -409,7 +409,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			var player1GameState = session.GetGameState(session.Player1.Id);
 			Assert.Contains(ServerCommands.OfferDoubleCommand, player1GameState.AllowedCommands);
@@ -449,7 +449,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			doublingCubeSession.OfferDouble(session.Player1.Id);
@@ -471,7 +471,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.OfferDouble(session.Player2.Id));
 			doublingCubeSession.OfferDouble(session.Player1.Id);
@@ -493,7 +493,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			// avoid rolling pasch
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
@@ -576,7 +576,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
-			var gameSession = session.StartNextGame(session.Player1.Id);
+			var gameSession = session.StartMatch(session.Player1.Id);
 			// avoid rolling pasch
 			var mock = new Mock<IDiceService>();
 			mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
