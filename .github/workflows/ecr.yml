@@ -9,11 +9,13 @@ on:
 env:
   AWS_REGION: eu-central-1
   COMPOSE_FILE: docker-compose.yml
-  ECR_REPOSITORY_PREFIX: ecr-dev
   IMAGE_PREFIX: gammonx
   GAME_SERVICE: game-service
   WILDBG_SERVICE: wildbg-service
   LAMBDA_SERVICE: lambda-service
+  ECR_GAME_REPO: gammonx-dev-gameservice-ecrrepo
+  ECR_WILDBG_REPO: gammonx-dev-wildbgservice-ecrrepo
+  ECR_LAMBDA_REPO: gammonx-dev-lambdaservice-ecrrepo
 
 jobs:
   build-and-push:
@@ -45,21 +47,21 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           echo "GAME SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY_PREFIX}-${GAME_SERVICE}:latest"
+          IMAGE_NAME="${ECR_REGISTRY}/${ECR_GAME_REPO}:latest"
           echo "Tagging and pushing $IMAGE_NAME"
           # Tag image
           docker tag "${IMAGE_PREFIX}/${GAME_SERVICE}:latest" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
           echo "WILDBG SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY_PREFIX}-${WILDBG_SERVICE}:latest"
+          IMAGE_NAME="${ECR_REGISTRY}/${ECR_WILDBG_REPO}:latest"
           echo "Tagging and pushing $IMAGE_NAME"
           # Tag image
           docker tag "${IMAGE_PREFIX}/${WILDBG_SERVICE}:latest" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
           echo "LAMBDA SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY_PREFIX}-${LAMBDA_SERVICE}:latest"
+          IMAGE_NAME="${ECR_REGISTRY}/${ECR_LAMBDA_REPO}:latest"
           echo "Tagging and pushing $IMAGE_NAME"
           # Tag image
           docker tag "${IMAGE_PREFIX}/${LAMBDA_SERVICE}:latest" "$IMAGE_NAME"
