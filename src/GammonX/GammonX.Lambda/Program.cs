@@ -71,7 +71,7 @@ namespace GammonX.Lambda
             try
             {
                 using var scope = services.CreateScope();
-                var handler = LambdaFunctionFactory.CreateApiHandler(apiRequest, scope.ServiceProvider);
+                var handler = LambdaFunctionFactory.CreateApiHandler(apiRequest, scope.ServiceProvider, context);
 
                 if (handler == null)
                 {
