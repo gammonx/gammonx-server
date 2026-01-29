@@ -57,7 +57,9 @@ namespace GammonX.Server.Tests.Integration
             _rankedService = new RankedMatchmakingService(stubRepoClient);
             _botMatchService = new BotMatchmakingService();
             var compositeService = new CompositeMatchmakingService();
-            compositeService.SetServices(_normalService, _rankedService, _botMatchService);
+            compositeService.AddService(MatchModus.Normal, _normalService);
+            compositeService.AddService(MatchModus.Ranked, _rankedService);
+            compositeService.AddService(MatchModus.Bot, _botMatchService);
             _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _botService = new WildbgBotService(_wildBgClient);
             _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService);

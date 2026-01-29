@@ -25,8 +25,34 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
-		// <inheritdoc />
-		public abstract Task MatchQueuedPlayersAsync();
+        // <inheritdoc />
+        public void TouchQueue(Guid queueId)
+        {
+            if (_queue.TryGetValue(queueId, out var entry))
+            {
+                entry.LastSeenUtc = DateTime.UtcNow;
+            }
+        }
+
+        // <inheritdoc />
+        public void CleanupExpiredQueueEntries(TimeSpan timeout)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var (queueId, entry) in _queue)
+            {
+                if (now - entry.LastSeenUtc <= timeout)
+                    continue;
+
+                // double-check at removal time
+                if (_queue.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
+                {
+                    _queue.TryRemove(queueId, out _);
+                }
+            }
+        }
+
+        // <inheritdoc />
+        public abstract Task MatchQueuedPlayersAsync();
 
 		// <inheritdoc />
 		public virtual bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry)
@@ -68,5 +94,24 @@ namespace GammonX.Server.Services
 
 			return found;
 		}
-	}
+
+        // <inheritdoc />
+        public virtual MatchLobby[] GetMatchLobbies()
+        {
+            return _matchLobbies.Values.ToArray();
+        }
+
+        // <inheritdoc />
+        public virtual QueueEntry[] GetQueueEntries()
+        {
+            return _queue.Values.ToArray();
+        }
+
+        protected virtual internal void Enqueue(QueueEntry entry)
+        {
+            _queue[entry.Id] = entry;
+            var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
+            modeQueue.Enqueue(entry.Id);
+        }
+    }
 }
