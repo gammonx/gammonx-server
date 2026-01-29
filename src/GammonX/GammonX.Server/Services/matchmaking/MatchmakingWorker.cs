@@ -43,7 +43,8 @@ namespace GammonX.Server.Services
 			{
 				try
 				{
-					await _matchmakingService.MatchQueuedPlayersAsync();
+					_matchmakingService.CleanupExpiredQueueEntries(TimeSpan.FromSeconds(30));
+                    await _matchmakingService.MatchQueuedPlayersAsync();
 				}
 				catch (Exception ex)
 				{
