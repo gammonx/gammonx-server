@@ -53,7 +53,8 @@ namespace GammonX.Server.Tests
 
             const int playerCount = 100;
 
-            var entries = Enumerable.Range(0, playerCount).Select(i => CreateQueueEntry(queueKey, 1500 + i));
+            // we only want a raating increase up to 50 (first search range)
+            var entries = Enumerable.Range(0, playerCount).Select(i => CreateQueueEntry(queueKey, 1500 + i / 2));
 
             foreach (var entry in entries)
             {
@@ -90,7 +91,7 @@ namespace GammonX.Server.Tests
 
             // no missing players
             var unmatched = matcher.GetQueueEntries().Select(e => e.PlayerId);
-            // TODO: ranked somehow fails
+
             Assert.Empty(matchedPlayers.Intersect(unmatched));
         }
 
@@ -189,7 +190,42 @@ namespace GammonX.Server.Tests
             await matcher.MatchQueuedPlayersAsync();
 
             var lobbies = matcher.GetMatchLobbies();
+            // we expect a single match lobby per player
             Assert.Equal(2, lobbies.Length);
+        }
+
+        [Fact]
+        public async Task LastSeenTimeStampIsUpdated()
+        {
+            var matcher = new RankedMatchmakingService(new SimpleRepositoryClient());
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var entry = CreateQueueEntry(queueKey, 1200);
+            var lastSeenUtc = entry.LastSeenUtc;
+            matcher.Enqueue(entry);
+
+            matcher.TouchQueueEntry(entry.Id);
+
+            Assert.NotEqual(lastSeenUtc, entry.LastSeenUtc);
+        }
+
+        [Fact]
+        public async Task QueueCleansUpExpiredEntries()
+        {
+            var matcher = new RankedMatchmakingService(new SimpleRepositoryClient());
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var entry = CreateQueueEntry(queueKey, 1200);
+            matcher.Enqueue(entry);
+
+            var entries= matcher.GetQueueEntries();
+            Assert.Single(entries);
+
+            matcher.CleanupExpiredQueueEntries(TimeSpan.FromSeconds(1));
+            entries = matcher.GetQueueEntries();
+            Assert.Single(entries);
+
+            matcher.CleanupExpiredQueueEntries(TimeSpan.FromTicks(1));
+            entries = matcher.GetQueueEntries();
+            Assert.Empty(entries);
         }
 
 

@@ -47,7 +47,7 @@ namespace GammonX.Server.Services
         /// <summary>
         /// Updates the <see cref="QueueEntry.LastSeenUtc"/> time stamp to the current time in utc.
         /// </summary>
-        void TouchQueue(Guid queueId);
+        void TouchQueueEntry(Guid queueId);
 
         /// <summary>
         /// Cleans up expired queue entries which have not been polled within the given <paramref name="timeout"/>.

@@ -154,7 +154,6 @@ namespace GammonX.Engine.Models
 				// if there does not exist a checker with a lower index/distance.
 				else if (to > HomeRangeBlack.End.Value)
 				{
-					// TODO: also check if something is on the homebar
 					// check if there are any checkers in the home range with above the current position
 					bool highestCheckerIndex = !Fields
 						.Skip(HomeRangeBlack.Start.Value)

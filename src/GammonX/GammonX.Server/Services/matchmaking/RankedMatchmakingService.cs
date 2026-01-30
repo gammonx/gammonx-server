@@ -55,13 +55,34 @@ namespace GammonX.Server.Services
                         break;
                     }
 
-                    // atomic claim
-                    if (!_queue.TryRemove(entryA.Id, out _) || !_queue.TryRemove(entryB.Id, out _))
+                    var claimedA = false;
+                    var claimedB = false;
+                    // atomic claims
+                    if (_queue.TryRemove(entryA.Id, out var removedEntryA))
                     {
-                        // rollback if needed
-                        _queue.TryAdd(entryA.Id, entryA);
+                        claimedA = true;
+                    }
+                    if (_queue.TryRemove(entryB.Id, out var removedEntryB))
+                    {
+                        claimedB = true;
+                    }
+
+                    // rollback if one couldn't be claimed
+                    if (!claimedA && !claimedB)
+                    {
+                        queue.Enqueue(idA);
+                    }
+                    else if (!claimedA)
+                    {
+                        // a could not be claimed > requeue b
                         _queue.TryAdd(entryB.Id, entryB);
-                        continue;
+                        queue.Enqueue(idA);
+                    }
+                    else if (!claimedB)
+                    {
+                        //b could not be claimed > requeue a
+                        _queue.TryAdd(entryA.Id, entryA);
+                        queue.Enqueue(idA);
                     }
 
                     // create lobby
@@ -79,21 +100,14 @@ namespace GammonX.Server.Services
 
         private bool TryFindRankedPartner(QueueKey key, QueueEntry entryA, out QueueEntry entryB)
         {
-            // TODO Two-pointer scan (O(n))
             entryB = null!;
 
             if (!_modeQueues.TryGetValue(key, out var queue))
                 return false;
 
-            var snapshot = queue
-                .Select(id => _queue.TryGetValue(id, out var e) ? e : null)
-                .Where(e => e != null)
-                .OrderBy(e => e?.CurrentRating ?? 0)
-                .ToList();
-
-            foreach (var entry in snapshot)
+            while (queue.TryDequeue(out var entryId))
             {
-                if (entry == null || !_queue.TryGetValue(entry.Id, out var candidate))
+                if (!_queue.TryGetValue(entryId, out var candidate))
                     continue;
 
                 var diff = Math.Abs(entryA.CurrentRating - candidate.CurrentRating);
@@ -103,6 +117,11 @@ namespace GammonX.Server.Services
                 {
                     entryB = candidate;
                     return true;
+                }
+                else
+                {
+                    // we put the entry back into the queue if the difference is to high
+                    queue.Enqueue(entryId);
                 }
             }
 
