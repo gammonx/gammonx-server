@@ -13,7 +13,7 @@ namespace GammonX.Server.Services
 		protected readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
 
 		/// <summary>
-		/// Gets queue id queue grouped by different queue keys.
+		/// Gets queue entry id queue grouped by different queue keys.
 		/// </summary>
 		protected readonly ConcurrentDictionary<QueueKey, ConcurrentQueue<Guid>> _modeQueues = new();
 
@@ -26,9 +26,9 @@ namespace GammonX.Server.Services
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
         // <inheritdoc />
-        public void TouchQueue(Guid queueId)
+        public void TouchQueueEntry(Guid queueEntryId)
         {
-            if (_queue.TryGetValue(queueId, out var entry))
+            if (_queue.TryGetValue(queueEntryId, out var entry))
             {
                 entry.LastSeenUtc = DateTime.UtcNow;
             }

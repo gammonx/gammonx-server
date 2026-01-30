@@ -59,7 +59,7 @@ namespace GammonX.Server.Controllers
                 else if (matchMakingService.TryFindQueueEntry(queueId, out var queueEntry) && queueEntry != null)
                 {
                     // renew TTL
-                    matchMakingService.TouchQueue(queueId);
+                    matchMakingService.TouchQueueEntry(queueId);
                     // match lobby was not yet created, return queue id
                     var payload = queueEntry.ToPayload();
                     var response = new RequestResponseContract<RequestQueueEntryPayload>("OK", payload);
