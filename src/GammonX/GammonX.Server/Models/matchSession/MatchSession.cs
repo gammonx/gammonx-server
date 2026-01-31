@@ -61,18 +61,20 @@ namespace GammonX.Server.Models
 			_rounds = GetGameModusList(queueKey.MatchType);
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
-			Player1 = new MatchPlayerModel(Guid.Empty, string.Empty);
-			Player2 = new MatchPlayerModel(Guid.Empty, string.Empty);
-			_isMatchOver = Type.GetMatchOverFunc();
+			var emptyPlayerConnection = new PlayerConnection(Guid.Empty);
+			emptyPlayerConnection.SetConnectionId(string.Empty);
+            Player1 = emptyPlayerConnection.ToMatchPlayer();
+            Player2 = emptyPlayerConnection.ToMatchPlayer();
+            _isMatchOver = Type.GetMatchOverFunc();
 		}
 
 		// <inheritdoc />
 		[ServerCommand(ServerCommands.JoinMatchCommand)]
-		public void JoinSession(LobbyEntry player)
+		public void JoinSession(PlayerConnection player)
 		{
 			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
 
-			var valid = IsCommandCallValid(player.PlayerId, ServerCommands.JoinMatchCommand);
+			var valid = IsCommandCallValid(player.Id, ServerCommands.JoinMatchCommand);
 			if (!valid)
 			{
 				throw new InvalidOperationException($"The given command '{ServerCommands.JoinMatchCommand}' is not in the list of allowed commands.");
@@ -80,17 +82,17 @@ namespace GammonX.Server.Models
 
 			if (Player1.Id == Guid.Empty)
 			{
-				Player1 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
+				Player1 = player.ToMatchPlayer();
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
-				if (player.PlayerId == Player1.Id)
+				if (player.Id == Player1.Id)
 				{
 					throw new InvalidOperationException("Player 1 cannot join as Player 2.");
 				}
 
-				Player2 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
-			}
+				Player2 = player.ToMatchPlayer();
+            }
 			else
 			{
 				throw new InvalidOperationException("Both players are already assigned to this match session.");

@@ -17,7 +17,8 @@ namespace GammonX.Server.Services
 
 			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.Now, 0);
 			var matchId = Guid.NewGuid();
-			var matchLobby = new MatchLobby(matchId, queueKey, new LobbyEntry(playerId));
+            // TODO: connection repo
+            var matchLobby = new MatchLobby(matchId, queueKey, new PlayerConnection(playerId));
 			if (_matchLobbies.TryAdd(queueEntry, matchLobby))
 			{
 				return Task.FromResult(queueEntry);

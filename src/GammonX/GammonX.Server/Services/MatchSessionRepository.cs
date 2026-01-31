@@ -7,7 +7,7 @@ namespace GammonX.Server.Services
 	/// <summary>
 	/// Single match session repository that manages match sessions by their IDs.
 	/// </summary>
-	public class MatchSessionRepository
+	public sealed class MatchSessionRepository
 	{
         private readonly ConcurrentDictionary<Guid, Lazy<IMatchSessionModel>> _sessions = new();
         private readonly IMatchSessionFactory _matchSessionFactory;

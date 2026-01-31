@@ -71,7 +71,7 @@ namespace GammonX.Server.Tests
             // assert
             var matchLobbies = matcher.GetMatchLobbies();
             var matchedPlayers = matchLobbies                
-                .SelectMany(l => new[] {l.Player1.PlayerId, l.Player2?.PlayerId ?? Guid.Empty})
+                .SelectMany(l => new[] {l.Player1.Id, l.Player2?.Id ?? Guid.Empty})
                 .Where(id => id != Guid.Empty)
                 .ToList();
 

@@ -24,8 +24,8 @@ namespace GammonX.Server.Tests.Utils
 			var result = CreateHeadToHeadMatchSession(variant, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
-			var player1 = CreateLobbyEntry();
-			var player2 = CreateLobbyEntry();
+			var player1 = CreatePlayerConnection();
+			var player2 = CreatePlayerConnection();
 			session.JoinSession(player1);
 			session.JoinSession(player2);
 			return session;
@@ -36,8 +36,8 @@ namespace GammonX.Server.Tests.Utils
 			var result = CreateHeadToBotMatchSession(variant, type, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
-			var player1 = CreateLobbyEntry();
-			var botPlayer = new LobbyEntry(Guid.NewGuid());
+			var player1 = CreatePlayerConnection();
+			var botPlayer = new PlayerConnection(Guid.NewGuid());
 			botPlayer.SetConnectionId(Guid.Empty.ToString());
 			session.JoinSession(player1);
 			session.JoinSession(botPlayer);
@@ -49,8 +49,8 @@ namespace GammonX.Server.Tests.Utils
 			var result = CreateHeadToBotMatchSession(variant, type, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
-			var botPlayer2 = new LobbyEntry(Guid.NewGuid());
-			var botPlayer1 = new LobbyEntry(Guid.NewGuid());
+			var botPlayer2 = new PlayerConnection(Guid.NewGuid());
+			var botPlayer1 = new PlayerConnection(Guid.NewGuid());
 			botPlayer1.SetConnectionId(Guid.Empty.ToString());
 			botPlayer2.SetConnectionId(Guid.Empty.ToString());
 			session.JoinSession(botPlayer2);
@@ -74,11 +74,11 @@ namespace GammonX.Server.Tests.Utils
 			return (matchId, session);
 		}
 
-		public static LobbyEntry CreateLobbyEntry()
+		public static PlayerConnection CreatePlayerConnection()
 		{
-			var entry = new LobbyEntry(Guid.NewGuid());
-			entry.SetConnectionId(Guid.NewGuid().ToString());
-			return entry;
+			var connection = new PlayerConnection(Guid.NewGuid());
+			connection.SetConnectionId(Guid.NewGuid().ToString());
+			return connection;
 		}
 	}
 }

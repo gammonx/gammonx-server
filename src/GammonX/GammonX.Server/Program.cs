@@ -66,6 +66,7 @@ builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>(
 builder.Services.AddHostedService<RankedMatchmakingWorker>();
 builder.Services.AddHostedService<NormalMatchmakingWorker>();
 builder.Services.AddSingleton<MatchSessionRepository>();
+builder.Services.AddSingleton<PlayerConnectionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();

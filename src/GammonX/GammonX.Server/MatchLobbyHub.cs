@@ -14,7 +14,7 @@ using Serilog;
 namespace GammonX.Server
 {
     /// <summary>
-    /// SignalR hub for managing match lobbies and handling the game flow.
+    /// SignalR hub for managing match lobbies/sessions and handling the game flow.
     /// </summary>
     internal class MatchLobbyHub : Hub
     {
@@ -45,12 +45,16 @@ namespace GammonX.Server
         // <inheritdoc />
         public override Task OnConnectedAsync()
         {
+            // TODO: update connection id in match model
+            // TODO: update socket groups
             return base.OnConnectedAsync();
         }
 
         // <inheritdoc />
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            // TODO: what happens after grace timer expires?
+            // TODO: one grace period per match (griefing prevention)
             await base.OnDisconnectedAsync(exception);
         }
 
@@ -89,7 +93,7 @@ namespace GammonX.Server
 
                     var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
                     _groupName = matchLobby.GroupName;
-                    if (matchLobby.Player1.PlayerId == playerIdGuid)
+                    if (matchLobby.Player1.Id == playerIdGuid)
                     {
                         matchLobby.Player1.SetConnectionId(Context.ConnectionId);
                         ArgumentNullException.ThrowIfNull(matchLobby.Player1.ConnectionId, nameof(matchLobby.Player1.ConnectionId));
@@ -100,13 +104,14 @@ namespace GammonX.Server
                         {
                             // in a bot game, the player 2 is always the "bot"
                             // we assign a fixed GUID to the bot player in order to track his stats and rating in the db
-                            var botPlayer = new LobbyEntry(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
+                            // TODO: connection repo
+                            var botPlayer = new PlayerConnection(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
                             botPlayer.SetConnectionId(Guid.Empty.ToString());
                             matchSession.JoinSession(botPlayer);
                         }
                     }
 
-                    if (matchLobby.Player2?.PlayerId == playerIdGuid)
+                    if (matchLobby.Player2?.Id == playerIdGuid)
                     {
                         matchLobby.Player2.SetConnectionId(Context.ConnectionId);
                         ArgumentNullException.ThrowIfNull(matchLobby.Player2.ConnectionId, nameof(matchLobby.Player2.ConnectionId));
@@ -123,7 +128,7 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchLobby.Player1.PlayerId, null);
+                        var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchLobby.Player1.Id, null);
                         var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyPayload);
                         await SendToGroup(_groupName, ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
                     }
