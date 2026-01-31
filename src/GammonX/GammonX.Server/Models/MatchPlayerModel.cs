@@ -2,26 +2,33 @@
 {
 	public class MatchPlayerModel
 	{
-		public MatchPlayerModel(Guid id, string connectionId)
+		private readonly PlayerConnection _playerConnection;
+
+		public MatchPlayerModel(PlayerConnection playerConnection)
 		{
-			Id = id;
-			ConnectionId = connectionId;
+            // TODO: connection repo
+            _playerConnection = playerConnection;
 		}
 
 		/// <summary>
 		/// Gets the web socket connection id of the player.
 		/// </summary>
-		public string ConnectionId { get; private set; }
+		public string ConnectionId => _playerConnection.ConnectionId!;
 
 		/// <summary>
 		/// Gets the player id.
 		/// </summary>
-		public Guid Id { get; private set; }
+		public Guid Id => _playerConnection.Id;
 
-		/// <summary>
-		/// Gets the starting dice roll value of the player.
-		/// </summary>
-		public int? StartDiceRoll { get; private set; } = null;
+        /// <summary>
+        /// Gets or sets the date time when this player connection was last seen (utc).
+        /// </summary>
+        public DateTime LastSeenUtc => _playerConnection.LastSeenUtc;
+
+        /// <summary>
+        /// Gets the starting dice roll value of the player.
+        /// </summary>
+        public int? StartDiceRoll { get; private set; } = null;
 
         /// <summary>
         /// Gets a boolean indicaitng if the the given player already accepted the next game.

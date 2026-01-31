@@ -4,7 +4,7 @@ namespace GammonX.Server.Models
 {
 	public class MatchLobby
 	{
-		public MatchLobby(Guid matchId, QueueKey queueKey, LobbyEntry player1)
+		public MatchLobby(Guid matchId, QueueKey queueKey, PlayerConnection player1)
 		{
 			MatchId = matchId;
 			Player1 = player1;
@@ -43,18 +43,18 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the first player to join the match lobby.
 		/// </summary>
-		public LobbyEntry Player1 { get; private set; }
+		public PlayerConnection Player1 { get; private set; }
 
 		/// <summary>
 		/// Gets the second player to join the match lobby, if any.
 		/// </summary>
-		public LobbyEntry? Player2 { get; private set; }
+		public PlayerConnection? Player2 { get; private set; }
 
 		/// <summary>
 		/// Joins a second player to the match lobby.
 		/// </summary>
 		/// <param name="player2">Second player.</param>
-		public void Join(LobbyEntry player2)
+		public void Join(PlayerConnection player2)
 		{
 			if (QueueKey.MatchModus == MatchModus.Bot)
 			{

@@ -1,11 +1,11 @@
 ## DONE
-- crypto dice roller
-- match/game start roll decision
+- 
 
 ## Active
 - time out // turn timer
 - disconnect/reconnect
     - queue disconnect
+    - matchhub disconnection
 
 ## TODO 
 - fevga/plakoto bot implementation
@@ -22,7 +22,6 @@
 ## Open Points
 - tournament mode
 - sns > sqs
-- enhance matchmaking?
 - Chat
 - Spectator mode
 - replay system
