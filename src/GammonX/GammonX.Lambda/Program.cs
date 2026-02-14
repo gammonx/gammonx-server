@@ -61,8 +61,11 @@ namespace GammonX.Lambda
         private static async Task<object> HandleSqsEventAsync(ILambdaContext context, IServiceProvider services, SQSEvent sqsEvent)
         {
             using var scope = services.CreateScope();
-            var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, context.FunctionName);
+
+            var eventType = sqsEvent.Records.First().MessageAttributes["EVENT_TYPE"].StringValue;
+            var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, eventType);
             await handler.HandleAsync(sqsEvent, context);
+
             return new object();
         }
 
@@ -108,21 +111,14 @@ namespace GammonX.Lambda
 
         private static object? DeserializeFunctionInput(string json, string functionName)
         {
-            switch (functionName)
-            {
-                case LambdaFunctions.GameCompletedFunc:
-                case LambdaFunctions.MatchCompletedFunc:
-                case LambdaFunctions.PlayerCreatedFunc:
-                case LambdaFunctions.PlayerRatingUpdatedFunc:
-                case LambdaFunctions.PlayerStatsUpdatedFunc:
-                    var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
-                    return sqsEvent;
-                case LambdaFunctions.ApiGatewayHandlerFunc:
-                    var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
-                    return apiEvent;
-                default:
-                    return null;
-            }
+            // Try SQS first — SQS events have a "Records" array
+            var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
+            if (sqsEvent?.Records != null && sqsEvent.Records.Count > 0)
+                return sqsEvent;
+
+            // Fall back to API Gateway
+            var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
+            return apiEvent;
         }
 
         private static async Task<string> ReadStreamAsStringAsync(Stream stream)
