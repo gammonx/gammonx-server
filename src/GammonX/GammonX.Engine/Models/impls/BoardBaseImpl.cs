@@ -47,7 +47,7 @@ namespace GammonX.Engine.Models
 		public int PipCountWhite => GetPipCount(true);
 
 		// <inheritdoc />
-		public int PipCountBlack => GetPipCount(true);
+		public int PipCountBlack => GetPipCount(false);
 
 		// <inheritdoc />
 		public virtual Func<bool, int, int, int> MoveOperator => new((isWhite, currentPosition, moveDistance) =>
@@ -184,7 +184,7 @@ namespace GammonX.Engine.Models
 			var pipCount = 0;
 			if (isWhite)
 			{
-				pipCount += GetPipeCountForBoard(fieldsCopy.ToArray(), HomeRangeWhite.End.Value, (i) => i < 0);
+				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeWhite.End.Value, (i) => i < 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountWhite * 24;
@@ -192,7 +192,7 @@ namespace GammonX.Engine.Models
 			}
 			else
 			{
-				pipCount += GetPipeCountForBoard(fieldsCopy.ToArray(), HomeRangeBlack.End.Value, (i) => i > 0);
+				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeBlack.End.Value, (i) => i > 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountBlack * 24;
@@ -201,7 +201,7 @@ namespace GammonX.Engine.Models
 			return pipCount;
 		}
 
-		protected static int GetPipeCountForBoard(int[] fields, int homeRangeEndIndex, Func<int, bool> valueChecker)
+		protected int GetPipeCountForBoard(bool isWhite, int[] fields, int homeRangeEndIndex, Func<int, bool> valueChecker)
 		{
 			var pipCount = 0;
 			for (int i = 0; i < fields.Length; i++)
@@ -209,8 +209,8 @@ namespace GammonX.Engine.Models
 				var checkers = fields[i];
 				if (valueChecker.Invoke(checkers))
 				{
-					int distance = homeRangeEndIndex + 1 - i;
-					pipCount += Math.Abs(checkers * distance);
+					int distance = RecoverRollOperator.Invoke(isWhite, i, homeRangeEndIndex);
+					pipCount += Math.Abs(checkers) * (1 + Math.Abs(distance));
 				}
 			}
 			return pipCount;

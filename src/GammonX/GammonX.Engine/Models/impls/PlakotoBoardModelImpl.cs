@@ -129,11 +129,11 @@ namespace GammonX.Engine.Models
             var fieldsCopy = PinnedFields.ToArray();
 			if (isWhite)
             {
-				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeWhite.End.Value, (i) => i < 0);
+				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy, HomeRangeWhite.End.Value, (i) => i < 0);
 			}
             else
             {
-				pipCount += GetPipeCountForBoard(fieldsCopy, HomeRangeBlack.End.Value, (i) => i > 0);
+				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy, HomeRangeBlack.End.Value, (i) => i > 0);
 			}
             return pipCount;
 		}
