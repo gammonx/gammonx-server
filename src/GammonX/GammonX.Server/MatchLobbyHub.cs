@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+
 using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
@@ -977,9 +978,10 @@ namespace GammonX.Server
             return match.GetGameSessions().ToList().IndexOf(lastConcludedGame) + 1;
         }
 
-        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
+        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? exception = null)
         {
-            var payload = new EventErrorPayload(errorCode, message);
+            var unWrappedException = UnWrapAggregateException(exception);
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException);
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             if (!string.IsNullOrEmpty(connectionId))
             {
@@ -990,15 +992,25 @@ namespace GammonX.Server
                 await SendToCaller(ServerEventTypes.ErrorEvent, contract);
             }
 
-            Log.Logger.Error(ex, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
+            Log.Logger.Error(unWrappedException, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
         }
 
-        private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? ex = null)
+        private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? exception = null)
         {
-            var payload = new EventErrorPayload(errorCode, message);
+            var unWrappedException = UnWrapAggregateException(exception);
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException);
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             await SendToGroup(groupName, ServerEventTypes.ErrorEvent, contract);
-            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
+            Log.Logger.Error(unWrappedException, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
+        }
+
+        private static Exception? UnWrapAggregateException(Exception? ex)
+        {
+            if (ex is AggregateException aggregateException)
+            {
+                return aggregateException.Flatten().InnerExceptions.FirstOrDefault() ?? aggregateException;
+            }
+            return ex;
         }
 
         private Guid GetCallingPlayerId(IMatchSessionModel matchSession)

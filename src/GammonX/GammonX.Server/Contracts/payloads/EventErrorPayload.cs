@@ -11,11 +11,15 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "message")]	
 		public string Message { get; set; }
 
-		public EventErrorPayload(string code, string message, params string[] allowedCommands)
+		[DataMember(Name = "stackTrace")]
+		public string StackTrace { get; set; } = string.Empty;
+
+        public EventErrorPayload(string code, string message, Exception? exception, params string[] allowedCommands)
 			: base(allowedCommands)
 		{
 			Code = code;
 			Message = message;
-		}
+			StackTrace = exception?.StackTrace ?? string.Empty;
+        }
 	}
 }

@@ -11,3 +11,6 @@ dotnet_style_prefer_collection_expression = never
 
 # IDE0130: Namespace does not match folder structure
 dotnet_style_namespace_match_folder = false
+
+# IDE0090: Use 'new(...)'
+dotnet_diagnostic.IDE0090.severity = none
