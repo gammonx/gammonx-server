@@ -1,10 +1,10 @@
 ﻿namespace GammonX.Engine.Tests.Data
 {
-	internal static class BoardMocks
-	{
-		public static int[] StandardCanBearOffBoard = new int[24]
-		{
-			 5, // 0 – Black Home
+    internal static class BoardMocks
+    {
+        public static int[] StandardCanBearOffBoard = new int[24]
+        {
+             5, // 0 – Black Home
              5, // 1 – Black Home
              3, // 2 – Black Home
              1, // 3 - Black Home
@@ -30,9 +30,9 @@
             -1  // 23 - White Home
         };
 
-		public static int[] StandardCanNotBearOffBoard = new int[24]
-		{
-			 4, // 0 – Black Home
+        public static int[] StandardCanNotBearOffBoard = new int[24]
+        {
+             4, // 0 – Black Home
              5, // 1 – Black Home
              3, // 2 – Black Home
              1, // 3 - Black Home
@@ -58,9 +58,9 @@
             -1  // 23 - White Home
         };
 
-		public static int[] FevgaCanBearOffBoard = new int[24]
-		{
-			 0, // 0
+        public static int[] FevgaCanBearOffBoard = new int[24]
+        {
+             0, // 0
              0, // 1
              0, // 2
              0, // 3
@@ -86,9 +86,9 @@
             -1  // 23 - White Home
         };
 
-		public static int[] FevgaCanNotBearOffBoard = new int[24]
-		{
-			 1, // 0
+        public static int[] FevgaCanNotBearOffBoard = new int[24]
+        {
+             1, // 0
             -1, // 1
              0, // 2
              0, // 3
@@ -114,9 +114,9 @@
             -1  // 23 - White Home
         };
 
-		public static int[] BothDicesMustBeUsedBoardStandardWhite = new int[24]
-		{
-			 -1, // 0 – Black Home
+        public static int[] BothDicesMustBeUsedBoardStandardWhite = new int[24]
+        {
+             -1, // 0 – Black Home
              2, // 1 – Black Home
              2, // 2 – Black Home
              2, // 3 - Black Home
@@ -142,9 +142,9 @@
              -1  // 23 - White Home
         };
 
-		public static int[] BothDicesMustBeUsedBoardStandardBlack = new int[24]
-		{
-			 1, // 0 – Black Home
+        public static int[] BothDicesMustBeUsedBoardStandardBlack = new int[24]
+        {
+             1, // 0 – Black Home
              0, // 1 – Black Home
              0, // 2 – Black Home
              0, // 3 - Black Home
@@ -170,9 +170,9 @@
              1  // 23 - White Home
         };
 
-		public static int[] HigherRollMustBeUsedBoardStandardWhite = new int[24]
-		{
-			 -1, // 0 – Black Home
+        public static int[] HigherRollMustBeUsedBoardStandardWhite = new int[24]
+        {
+             -1, // 0 – Black Home
              2, // 1 – Black Home
              2, // 2 – Black Home
              0, // 3 - Black Home
@@ -198,9 +198,9 @@
              -1  // 23 - White Home
         };
 
-		public static int[] HigherRollMustBeUsedBoardStandardBlack = new int[24]
-		{
-			 1, // 0 – Black Home
+        public static int[] HigherRollMustBeUsedBoardStandardBlack = new int[24]
+        {
+             1, // 0 – Black Home
              0, // 1 – Black Home
              0, // 2 – Black Home
              0, // 3 - Black Home
@@ -285,5 +285,61 @@
             0,
             -1
         };
-	}
+
+        public static int[] FevgaCannotBearOffBoard = new int[24]
+        {
+            -2,
+            -1,
+            -1,
+            0,
+            0,
+            -4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        };
+
+        public static int[] StandardHitBoard = new int[24]
+        {
+            -5, // 0 – Black Home
+            -5, // 1 – Black Home
+             0, // 2 – Black Home
+             0, // 3 - Black Home
+             0, // 4 - Black Home
+             0, // 5 - Black Home
+             0, // 6
+             0, // 7
+            -1, // 8
+            -1, // 9
+            -2, // 10
+            -1, // 11
+             1, // 12
+             2, // 13
+             1, // 14
+             1, // 15
+             0, // 16
+             0, // 17
+             0, // 18 – White Home
+             0, // 19 – White Home
+             0, // 20 – White Home
+             0, // 21 – White Home
+             5, // 22 – White Home
+             5  // 23 - White Home
+        };
+    }
 }

@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
 using GammonX.Models.Enums;
 
@@ -98,7 +99,7 @@ namespace GammonX.Engine.Tests
 
             var mock = new Mock<IBoardModel>();
 
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
+            mock.SetupGet(b => b.Fields).Returns(BoardMocks.StandardHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
             mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
             mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
@@ -144,7 +145,7 @@ namespace GammonX.Engine.Tests
 
             var mock = new Mock<IBoardModel>();
 
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
+            mock.SetupGet(b => b.Fields).Returns(BoardMocks.StandardHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
             mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
             mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
@@ -194,7 +195,7 @@ namespace GammonX.Engine.Tests
 
             var mock = new Mock<IBoardModel>();
 
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
+            mock.SetupGet(b => b.Fields).Returns(BoardMocks.StandardHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
             mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
             mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
@@ -250,7 +251,7 @@ namespace GammonX.Engine.Tests
 
             var mock = new Mock<IBoardModel>();
 
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
+            mock.SetupGet(b => b.Fields).Returns(BoardMocks.StandardHitBoard);
             mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
             mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
             mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
@@ -307,7 +308,7 @@ namespace GammonX.Engine.Tests
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            board.SetFields(FevgaCannotBearOffBoard);
+            board.SetFields(BoardMocks.FevgaCannotBearOffBoard);
             homeBarModel.AddToHomeBar(false, 13);
             homeBarModel.AddToHomeBar(true, 6);
             board.BearOffChecker(false, 2);
@@ -325,65 +326,5 @@ namespace GammonX.Engine.Tests
         }
 
         #endregion Bugs
-
-        #region Mock Data
-
-        private readonly int[] FevgaCannotBearOffBoard = new int[24]
-        {
-            -2,
-            -1,
-            -1,
-            0,
-            0,
-            -4,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            -1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        };
-
-        private readonly int[] BackgammonHitBoard = new int[24]
-        {
-            -5, // 0 – Black Home
-            -5, // 1 – Black Home
-             0, // 2 – Black Home
-             0, // 3 - Black Home
-             0, // 4 - Black Home
-             0, // 5 - Black Home
-             0, // 6
-             0, // 7
-            -1, // 8
-            -1, // 9
-            -2, // 10
-            -1, // 11
-             1, // 12
-             2, // 13
-             1, // 14
-             1, // 15
-             0, // 16
-             0, // 17
-             0, // 18 – White Home
-             0, // 19 – White Home
-             0, // 20 – White Home
-             0, // 21 – White Home
-             5, // 22 – White Home
-             5  // 23 - White Home
-        };
-
-        #endregion Mock Data
     }
 }

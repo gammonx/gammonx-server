@@ -917,6 +917,58 @@ namespace GammonX.Engine.Tests
             Assert.Equal(startBoard.Fields, board.Fields);
         }
 
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void CanUndoHitMoveBlack(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
+            var startBoard = board.DeepClone();
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+
+            // hit two white checkers
+            service.MoveChecker(board, 15, 7, false);
+            service.MoveChecker(board, 14, 5, false);
+
+            Assert.Equal(2, homebarModel.HomeBarCountWhite);
+
+            service.UndoMove(board, new MoveModel(14, 9), false);
+            service.UndoMove(board, new MoveModel(15, 8), false);
+
+            Assert.Equal(startBoard.Fields, board.Fields);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void CanUndoHitMoveWhite(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
+            var startBoard = board.DeepClone();
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+
+            // hit two black checkers
+            service.MoveChecker(board, 8, 7, true);
+            service.MoveChecker(board, 9, 5, true);
+
+            Assert.Equal(2, homebarModel.HomeBarCountBlack);
+
+            service.UndoMove(board, new MoveModel(9, 14), true);
+            service.UndoMove(board, new MoveModel(8, 15), true);
+
+            Assert.Equal(startBoard.Fields, board.Fields);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+        }
+
         #endregion Undo Move
     }
 }
