@@ -314,8 +314,8 @@ namespace GammonX.Server.Tests.Integration
 
             Assert.True(matchSession.IsMatchOver());
             Assert.False(matchSession.CanStartNextGame());
-            Assert.True(matchSession.GetGameSessions().All(gs => gs.Result.WinnerResult == GameResult.Resign));
-            Assert.True(matchSession.GetGameSessions().All(gs => gs.Result.LoserResult == GameResult.LostResign));
+            Assert.True(matchSession.GetGameSessions().All(gs => gs == null || gs.Result.WinnerResult == GameResult.Resign));
+            Assert.True(matchSession.GetGameSessions().All(gs => gs == null || gs.Result.LoserResult == GameResult.LostResign));
             var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
             if (type == MatchType.CashGame)
             {
@@ -330,7 +330,7 @@ namespace GammonX.Server.Tests.Integration
             }
             else
             {
-                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 1);
             }
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);

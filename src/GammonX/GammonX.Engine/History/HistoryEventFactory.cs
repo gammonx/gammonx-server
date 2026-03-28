@@ -16,6 +16,12 @@ namespace GammonX.Engine.History
 			var moveEventValue = new MoveEventValueImpl(tuples);
 			return new HistoryEventImpl(HistoryEventType.Move, moveEventValue, isWhite);
 		}
+
+		public static IHistoryEvent CreateHitEvent(bool isWhite, int from)
+		{
+			var hitEventValue = new HitEventValueImpl(from, isWhite);
+			return new HistoryEventImpl(HistoryEventType.Hit, hitEventValue, isWhite);
+        }
 	}
 
 	public static class BoardHistoryFactory

@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+
 using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
@@ -568,6 +569,60 @@ namespace GammonX.Server
             }
         }
 
+        [HubMethodName(ServerCommands.GameStateCommand)]
+        public async Task GameStateAsync(string matchId)
+        {
+            try
+            {
+                if (!Guid.TryParse(matchId, out var matchGuid))
+                {
+                    await SendErrorEventAsync("GET_GAME_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
+                }
+
+                var matchSession = _repository.Get(matchGuid);
+                if (matchSession != null)
+                {
+                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
+                }
+                else
+                {
+                    await SendErrorEventAsync("GET_GAME_STATE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
+                }
+            }
+            catch (Exception e)
+            {
+                await SendErrorEventAsync("GET_GAME_STATE_ERROR", $"An error occurred while retrieving the game state: '{e.Message}'", Context.ConnectionId, e);
+            }
+        }
+
+        [HubMethodName(ServerCommands.MatchStateCommand)]
+        public async Task MatchStateAsync(string matchId)
+        {
+            try
+            {
+                if (!Guid.TryParse(matchId, out var matchGuid))
+                {
+                    await SendErrorEventAsync("GET_MATCH_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
+                }
+
+                var matchSession = _repository.Get(matchGuid);
+                if (matchSession != null)
+                {
+                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    await SendMatchState(ServerEventTypes.MatchStateEvent, matchSession);
+                }
+                else
+                {
+                    await SendErrorEventAsync("GET_MATCH_STATE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
+                }
+            }
+            catch (Exception e)
+            {
+                await SendErrorEventAsync("GET_MATCH_STATE_ERROR", $"An error occurred while retrieving the match state: '{e.Message}'", Context.ConnectionId, e);
+            }
+        }
+
         #region Doubling Cube Commands
 
         /// <summary>
@@ -586,11 +641,20 @@ namespace GammonX.Server
                 }
 
                 var matchSession = _repository.Get(matchGuid);
-                if (matchSession != null)
+                if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
                     var otherPlayerId = GetOtherPlayerId(matchSession);
+                    var callingPlayerId = GetCallingPlayerId(matchSession);
+
+                    if (!doubleCubeSession.CanOfferDouble(callingPlayerId))
+                    {
+                        await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The player with the id '{callingPlayerId}' cannot offer a double at the moment.", Context.ConnectionId);
+                        return;
+                    }
+
                     if (IsBotTurn(matchSession, otherPlayerId))
                     {
+                        doubleCubeSession.OfferDouble(callingPlayerId);
                         var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, otherPlayerId);
                         if (shouldAccept)
                         {
@@ -603,13 +667,12 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        var callingPlayerId = GetCallingPlayerId(matchSession);
                         await PerformOfferDoubleAsync(matchSession, callingPlayerId);
                     }
                 }
                 else
                 {
-                    await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
+                    await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No double cube match seesion was found with the given matchId.", Context.ConnectionId);
                 }
             }
             catch (Exception e)
@@ -686,13 +749,15 @@ namespace GammonX.Server
         {
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
-                doubleCubeSession.OfferDouble(offeringPlayerId);
                 var otherPlayerId = GetOtherPlayerId(matchSession);
+                doubleCubeSession.OfferDouble(offeringPlayerId);
+                
                 // the player who is offering the double is waiting for a response
                 var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
                 var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
                 var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
                 await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
+               
                 // the player who got the double offered has to accept or decline it
                 var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId);
                 var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
@@ -755,11 +820,11 @@ namespace GammonX.Server
             }
         }
 
-        private async Task<bool> PerformShouldBotAcceptsDoubleAsync(IMatchSessionModel matchSession, Guid callingPlayerId)
+        private async Task<bool> PerformShouldBotAcceptsDoubleAsync(IMatchSessionModel matchSession, Guid botPlayerId)
         {
-            if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(callingPlayerId))
+            if (matchSession is IDoubleCubeMatchSession)
             {
-                var shouldAccept = await _botService.ShouldAcceptDouble(matchSession, callingPlayerId);
+                var shouldAccept = await _botService.ShouldAcceptDouble(matchSession, botPlayerId);
                 return shouldAccept;
             }
             else
@@ -977,9 +1042,10 @@ namespace GammonX.Server
             return match.GetGameSessions().ToList().IndexOf(lastConcludedGame) + 1;
         }
 
-        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? ex = null)
+        private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? exception = null)
         {
-            var payload = new EventErrorPayload(errorCode, message);
+            var unWrappedException = UnWrapAggregateException(exception);
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException, new string[] { ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand });
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             if (!string.IsNullOrEmpty(connectionId))
             {
@@ -990,15 +1056,25 @@ namespace GammonX.Server
                 await SendToCaller(ServerEventTypes.ErrorEvent, contract);
             }
 
-            Log.Logger.Error(ex, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
+            Log.Logger.Error(unWrappedException, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
         }
 
-        private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? ex = null)
+        private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? exception = null)
         {
-            var payload = new EventErrorPayload(errorCode, message);
+            var unWrappedException = UnWrapAggregateException(exception);
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException, new string[] { ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand });
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             await SendToGroup(groupName, ServerEventTypes.ErrorEvent, contract);
-            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
+            Log.Logger.Error(unWrappedException, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
+        }
+
+        private static Exception? UnWrapAggregateException(Exception? ex)
+        {
+            if (ex is AggregateException aggregateException)
+            {
+                return aggregateException.Flatten().InnerExceptions.FirstOrDefault() ?? aggregateException;
+            }
+            return ex;
         }
 
         private Guid GetCallingPlayerId(IMatchSessionModel matchSession)

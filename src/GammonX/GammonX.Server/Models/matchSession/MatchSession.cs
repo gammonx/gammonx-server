@@ -3,7 +3,7 @@
 using GammonX.Server.Contracts;
 using GammonX.Server.Extensions;
 using GammonX.Server.Services;
-
+using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
@@ -343,27 +343,42 @@ namespace GammonX.Server.Models
 
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
+			var activePlayer = GetPlayer(callingPlayerId);
 
-			// get the score for all unplayed/unfinished game rounds
-			var scoreToAdd = 0;
-			for (int i = 0; i < _gameSessions.Length; i++)
+            // we must ensure that in a cash game all remaining games are considered as over
+            if (Type == MatchType.CashGame)
 			{
-				var gameSession = _gameSessions[i];
-				if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
-				{
-					var points = CalculateResignGamePoints();
-					gameSession ??= GetOrCreateGameSession(i + 1);
-                    var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
-                    gameSession.StopGame(result);
-					scoreToAdd += points;
-				}
-			}
+                for (int i = 0; i < _gameSessions.Length; i++)
+                {
+                    var gameSession = _gameSessions[i];
+                    if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
+                    {
+                        gameSession ??= GetOrCreateGameSession(i + 1);
+						// we need to award the other player atleast 1 more point than the resigning player
+						var minDifference = activePlayer.Points + 1 - otherPlayer.Points;
+						var resignGamePoints = CalculateResignGamePoints();
+						var pointsToAward = Math.Max(resignGamePoints, minDifference);
+                        var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, pointsToAward);
+                        gameSession.StopGame(result);
+						otherPlayer.Points += pointsToAward;
+                    }
+                }
+				GameRound = _gameSessions.Length;
+            }
+			else
+			{
+                // we close the active game session
+                var pointsAway = PointsAway(otherPlayerId);
+                var activeGameSession = GetGameSession(GameRound);
+                var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, pointsAway);
+                activeGameSession?.StopGame(result);
+                // we award the other player with the missing points to win the match
+                otherPlayer.Points += pointsAway;
+            }
 
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
-			GameRound = _gameSessions.Length;
-			// Other player gets the points for his score
-			otherPlayer.Points += scoreToAdd;
+
 			_lastExecutedCommand = ServerCommands.ResignMatchCommand;
 		}
 

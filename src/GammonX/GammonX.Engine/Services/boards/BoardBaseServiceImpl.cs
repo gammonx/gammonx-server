@@ -71,6 +71,26 @@ namespace GammonX.Engine.Services
 		{
 			// we simply invert to move
 			PerformMoveCheckerTo(model, moveToUndo.To, moveToUndo.From, isWhite);
+
+			if (model.History.TryPeekLast(out var lastEvent) && lastEvent?.Type == HistoryEventType.Hit)
+			{
+				var hitEvent = lastEvent.Value.GetValue() as Tuple<int, int>;
+				var hitFieldIndex = hitEvent?.Item1;
+                // we undo the hit by moving the checker back to the field and removing it from the home bar
+                if (model is IHomeBarModel homeBarModel && hitFieldIndex != null)
+                {
+                    homeBarModel.RemoveFromHomeBar(lastEvent.IsWhite, 1);
+                    if (lastEvent.IsWhite)
+                    {
+                        model.Fields.SetValue(model.Fields[hitFieldIndex.Value] -= 1, hitFieldIndex.Value);
+                    }
+                    else
+                    {
+                        model.Fields.SetValue(model.Fields[hitFieldIndex.Value] += 1, hitFieldIndex.Value);
+                    }
+                }
+				model.History.TryRemoveLast();
+            }
 		}
 
 		// <inheritdoc />
@@ -161,16 +181,16 @@ namespace GammonX.Engine.Services
 				if (model.Fields[to] > 0)
 				{
 					HitChecker(model, to, isWhite);
-				}
-			}
+                }
+            }
 			else
 			{
 				// we detect a white checker on the target field
 				if (model.Fields[to] < 0)
 				{
 					HitChecker(model, to, isWhite);
-				}
-			}
+                }
+            }
 		}
 
 		/// <summary>
@@ -201,7 +221,10 @@ namespace GammonX.Engine.Services
 					// and move it to the white home bar
 					homeBarModel.AddToHomeBar(!isWhite, 1);
 				}
-			}
+
+                // we add a hit event to the game history in order to be able to undo the hit if necessary
+                model.History.Add(HistoryEventFactory.CreateHitEvent(!isWhite, fieldIndex));
+            }
 			else
 			{
 				throw new InvalidOperationException("Model does not support hitting checkers.");
@@ -261,7 +284,7 @@ namespace GammonX.Engine.Services
 				.ToArray();
 		}
 
-		private void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+		protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
 		{
 			// we check first if the given from to move bears the checker off
 			if (CheckerBearedOff(model, from, to, isWhite))
@@ -338,6 +361,15 @@ namespace GammonX.Engine.Services
 					model.BearOffChecker(isWhite, 1);
 					return true;
 				}
+				// we need to handle undone bear offs
+				else if (from == BoardPositions.BearOffWhite)
+				{
+					// we add a negative checker to the old position
+					model.Fields.SetValue(model.Fields[to] -= 1, to);
+					// and undo the bear off
+					model.BearOffChecker(isWhite, -1);
+					return true;
+				}
 			}
 			else
 			{
@@ -347,6 +379,15 @@ namespace GammonX.Engine.Services
 					model.Fields.SetValue(model.Fields[from] -= 1, from);
 					// and bear off the checker
 					model.BearOffChecker(isWhite, 1);
+					return true;
+				}
+				// we need to handle undone bear offs
+				else if (from == BoardPositions.BearOffBlack)
+				{
+					// we add a positive checker from the old position
+					model.Fields.SetValue(model.Fields[to] += 1, to);
+					// and undo the bear off
+					model.BearOffChecker(isWhite, -1);
 					return true;
 				}
 			}

@@ -434,7 +434,42 @@ namespace GammonX.Server.Tests
             gameSession.StartGame(player1Id, player2Id);
             gameSession.RollDices(player1Id, false);
             Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
+        }
 
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        public void GameSessionReturnsProperPipesLeftForEachPlayer(GameModus modus)
+        {
+            // white checkers
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var mock = new Mock<IDiceService>();
+            mock.Setup(x => x.Roll(2, 6)).Returns([2, 3]);
+            gameSession.InjectDiceServiceMock(mock.Object);
+            var player1Id = Guid.NewGuid();
+            var player2Id = Guid.NewGuid();
+
+            var player1PipCount = gameSession.BoardModel.PipCountWhite;
+            var player2PipCount = gameSession.BoardModel.PipCountBlack;
+
+            gameSession.StartGame(player1Id, player2Id);
+            gameSession.RollDices(player1Id, true);
+            var moveSeq = gameSession.MoveSequences.First();
+            foreach (var move in moveSeq.Moves)
+            {
+                gameSession.MoveCheckers(player1Id, move.From, move.To, true);
+            }
+
+            // we moved 5 fields
+            Assert.Equal(player1PipCount - 5, gameSession.BoardModel.PipCountWhite);
+            Assert.Equal(player2PipCount, gameSession.BoardModel.PipCountBlack);
+
+            var gameState = gameSession.ToPayload(player1Id, Array.Empty<string>(), false);
+            Assert.NotNull(gameState);
+            Assert.Equal(player1PipCount - 5, gameState.BoardState.PipCountWhite);
+            Assert.Equal(player2PipCount, gameState.BoardState.PipCountBlack);
         }
 
         [Theory]

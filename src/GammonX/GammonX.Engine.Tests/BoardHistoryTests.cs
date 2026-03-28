@@ -95,5 +95,19 @@ namespace GammonX.Engine.Tests
 			Assert.IsType<int[]>(rollEvent.Value.GetValue());
 			Assert.Equal($"1 1 1 1", rollEvent.Value.ToString());
 		}
+
+		[Fact]
+		public void CanCreateHitEvent()
+		{
+            var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = boardService.CreateBoard();
+            Assert.NotNull(board.History);
+            Assert.Empty(board.History.Events);
+			var hitEvent = HistoryEventFactory.CreateHitEvent(true, 5);
+			Assert.True(hitEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Hit, hitEvent.Type);
+			Assert.IsType<Tuple<int, int>>(hitEvent.Value.GetValue());
+            Assert.Equal($"5/bar", hitEvent.Value.ToString());
+        }
 	}
 }

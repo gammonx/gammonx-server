@@ -43,11 +43,17 @@ namespace GammonX.Server
 		/// </summary>
 		public static string MatchEndedEvent = "match-ended";
 
-		/// <summary>
-		/// Invoked when the first player started the game round and is waiting for the second player to join.
-		/// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
-		/// </summary>
-		public static string GameWaitingEvent = "game-waiting";
+        /// <summary>
+        /// Invoked when the active player requests an up to date match state.
+        /// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+        /// </summary>
+        public static string MatchStateEvent = "match-state";
+
+        /// <summary>
+        /// Invoked when the first player started the game round and is waiting for the second player to join.
+        /// Returns a <see cref="EventResponseContract{EventMatchStatePayload}"/>
+        /// </summary>
+        public static string GameWaitingEvent = "game-waiting";
 
 		/// <summary>
 		/// Invoked when both players started the game.

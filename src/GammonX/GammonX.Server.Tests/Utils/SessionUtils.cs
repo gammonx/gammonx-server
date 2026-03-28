@@ -19,9 +19,9 @@ namespace GammonX.Server.Tests.Utils
 			}
 		}
 
-		public static IMatchSessionModel CreateMatchSessionWithPlayers(MatchVariant variant, IMatchSessionFactory factory)
+		public static IMatchSessionModel CreateMatchSessionWithPlayers(MatchVariant variant, MatchType matchType, IMatchSessionFactory factory)
 		{
-			var result = CreateHeadToHeadMatchSession(variant, factory);
+			var result = CreateHeadToHeadMatchSession(variant, matchType, factory);
 			var session = result.Item2;
 			Assert.NotNull(session);
 			var player1 = CreateLobbyEntry();
@@ -58,10 +58,10 @@ namespace GammonX.Server.Tests.Utils
 			return session;
 		}
 
-		public static (Guid, IMatchSessionModel) CreateHeadToHeadMatchSession(MatchVariant variant, IMatchSessionFactory factory)
+		public static (Guid, IMatchSessionModel) CreateHeadToHeadMatchSession(MatchVariant variant, MatchType matchType, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Normal, MatchType.CashGame);
+			var queueKey = new QueueKey(variant, MatchModus.Normal, matchType);
 			var session = factory.Create(matchId, queueKey);
 			return ( matchId, session );
 		}

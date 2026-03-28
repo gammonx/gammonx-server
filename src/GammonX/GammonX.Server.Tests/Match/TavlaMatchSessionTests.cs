@@ -7,6 +7,8 @@ using GammonX.Server.Tests.Utils;
 
 using Moq;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Tests.Match
 {
 	public class TavlaMatchSessionTests
@@ -18,7 +20,7 @@ namespace GammonX.Server.Tests.Match
 		[Fact]
 		public void TavlaSingleGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -70,7 +72,7 @@ namespace GammonX.Server.Tests.Match
 		[Fact]
 		public void TavlaSingleGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -123,7 +125,7 @@ namespace GammonX.Server.Tests.Match
 		[Fact]
 		public void TavlaGammonGameScoreIsCalculatedWhite()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();
@@ -158,7 +160,7 @@ namespace GammonX.Server.Tests.Match
 		[Fact]
 		public void TavlaGammonGameScoreIsCalculatedBlack()
 		{
-			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, _matchSessionFactory);
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);
 			Assert.NotNull(session);
 			session.Player1.AcceptNextGame();
 			session.Player2.AcceptNextGame();

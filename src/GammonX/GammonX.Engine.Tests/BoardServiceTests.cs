@@ -402,7 +402,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(14, homebarModel.HomeBarCountBlack);
 			Assert.Equal(-1, homebarModel.StartIndexWhite);
 			Assert.Equal(24, homebarModel.StartIndexBlack);
-            homebarModel.AddToHomeBar(true, 1); homebarModel.AddToHomeBar(false, 1);
+            homebarModel.AddToHomeBar(true, 1); 
+            homebarModel.AddToHomeBar(false, 1);
 			Assert.Equal(15, homebarModel.HomeBarCountWhite);
 			Assert.Equal(15, homebarModel.HomeBarCountBlack);
 			var doublingCubeModel = boardModel as IDoublingCubeModel;
@@ -849,6 +850,178 @@ namespace GammonX.Engine.Tests
             Assert.Equal(startBoard.Fields, board.Fields);
 		}
 
-		#endregion Undo Move
-	}
+        [Theory]
+        [InlineData(GameModus.Backgammon, true)]
+        [InlineData(GameModus.Portes, true)]
+        [InlineData(GameModus.Tavla, true)]
+        [InlineData(GameModus.Plakoto, true)]
+        [InlineData(GameModus.Backgammon, false)]
+        [InlineData(GameModus.Portes, false)]
+        [InlineData(GameModus.Tavla, false)]
+        [InlineData(GameModus.Plakoto, false)]
+        public void CanUndoBearOffMove(GameModus modus, bool isWhite)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardCanBearOffBoard);
+            var startBoard = board.DeepClone();
+
+            var legalMoveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+            var legalMoveSeq = legalMoveSequences.First(lms => lms.Moves.All(m => m.To == 100 || m.To == -100));
+            Assert.NotNull(legalMoveSeq);
+            // make some bear off moves
+            foreach (var move in legalMoveSeq.Moves)
+            {
+                service.MoveCheckerTo(board, move.From, move.To, isWhite);
+            }
+            // undo all bear off moves
+            var undoStack = legalMoveSeq.Moves.ToList();
+            undoStack.Reverse();
+            foreach (var undo in undoStack)
+            {
+                service.UndoMove(board, undo, isWhite);
+            }
+            // initial game board should be recreated
+            Assert.Equal(startBoard.Fields, board.Fields);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Fevga, true)]
+        [InlineData(GameModus.Fevga, false)]
+        public void CanUndoBearOffMoveFevga(GameModus modus, bool isWhite)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+            homebarModel.RemoveFromHomeBar(isWhite, 14);
+            var startBoard = board.DeepClone();
+
+            var legalMoveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+            var legalMoveSeq = legalMoveSequences.First(lms => lms.Moves.All(m => m.To == 100 || m.To == -100));
+            Assert.NotNull(legalMoveSeq);
+            // make some bear off moves
+            foreach (var move in legalMoveSeq.Moves)
+            {
+                service.MoveCheckerTo(board, move.From, move.To, isWhite);
+            }
+            // undo all bear off moves
+            var undoStack = legalMoveSeq.Moves.ToList();
+            undoStack.Reverse();
+            foreach (var undo in undoStack)
+            {
+                service.UndoMove(board, undo, isWhite);
+            }
+            // initial game board should be recreated
+            Assert.Equal(startBoard.Fields, board.Fields);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void CanUndoHitMoveBlack(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
+            var startBoard = board.DeepClone();
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+
+            // hit two white checkers
+            service.MoveChecker(board, 15, 7, false);
+            service.MoveChecker(board, 14, 5, false);
+
+            Assert.Equal(2, homebarModel.HomeBarCountWhite);
+
+            service.UndoMove(board, new MoveModel(14, 9), false);
+            service.UndoMove(board, new MoveModel(15, 8), false);
+
+            Assert.Equal(startBoard.Fields, board.Fields);
+            Assert.Equal(0, homebarModel.HomeBarCountWhite);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void CanUndoHitMoveWhite(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
+            var startBoard = board.DeepClone();
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+
+            // hit two black checkers
+            service.MoveChecker(board, 8, 7, true);
+            service.MoveChecker(board, 9, 5, true);
+
+            Assert.Equal(2, homebarModel.HomeBarCountBlack);
+
+            service.UndoMove(board, new MoveModel(9, 14), true);
+            service.UndoMove(board, new MoveModel(8, 15), true);
+
+            Assert.Equal(startBoard.Fields, board.Fields);
+            Assert.Equal(0, homebarModel.HomeBarCountBlack);
+        }
+
+        [Fact]
+        public void CanUndoPinnedCheckerWhite()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+
+            // move black checker forwards
+            service.MoveCheckerTo(boardModel, 23, 17, false);
+            // pin black checker
+            service.MoveChecker(boardModel, 0, 17, true);
+
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+            Assert.Equal(1, pinModel.PinnedFields[17]);
+            Assert.Equal(-1, boardModel.Fields[17]);
+
+            service.UndoMove(boardModel, new MoveModel(0, 17), true);
+
+            Assert.Equal(0, pinModel.PinnedFields[17]);
+            Assert.Equal(1, boardModel.Fields[17]);
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-15, boardModel.Fields[0]);
+        }
+
+        [Fact]
+        public void CanUndoPinnedCheckerBlack()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+
+            // move white checker forwards
+            service.MoveChecker(boardModel, 0, 17, true);
+            // pin white checker
+            service.MoveCheckerTo(boardModel, 23, 17, false);
+            
+
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+            Assert.Equal(-1, pinModel.PinnedFields[17]);
+            Assert.Equal(1, boardModel.Fields[17]);
+
+            service.UndoMove(boardModel, new MoveModel(23, 17), false);
+
+            Assert.Equal(0, pinModel.PinnedFields[17]);
+            Assert.Equal(-1, boardModel.Fields[17]);
+            Assert.Equal(15, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+        }
+
+        #endregion Undo Move
+    }
 }

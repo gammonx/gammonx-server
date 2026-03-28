@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+using GammonX.Engine.Tests.Data;
 using GammonX.Engine.Tests.Utils;
 using GammonX.Models.Enums;
 
@@ -93,42 +94,26 @@ namespace GammonX.Engine.Tests
         {
             var service = BoardServiceFactory.Create(gameModus);
             var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            var mock = new Mock<IBoardModel>();
-
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
-            mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountBlack).Returns(() => homeBarModel.HomeBarCountBlack);
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.AddToHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.AddToHomeBar(isWhite, amount));
-
-            var mockBoard = mock.Object;
-
-            Assert.True(service.CanMoveChecker(mockBoard, 8, 7, true));
-            Assert.True(service.CanMoveChecker(mockBoard, 9, 5, true));
-            Assert.False(service.CanMoveChecker(mockBoard, 10, 3, true));
-            Assert.True(service.CanMoveChecker(mockBoard, 11, 1, true));
+            Assert.True(service.CanMoveChecker(board, 8, 7, true));
+            Assert.True(service.CanMoveChecker(board, 9, 5, true));
+            Assert.False(service.CanMoveChecker(board, 10, 3, true));
+            Assert.True(service.CanMoveChecker(board, 11, 1, true));
 
             // hit the black checkers and sent them to the home bar
-            service.MoveChecker(mockBoard, 8, 7, true);
-            service.MoveChecker(mockBoard, 9, 5, true);
-            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(mockBoard, 10, 3, true));
-            service.MoveChecker(mockBoard, 11, 1, true);
+            service.MoveChecker(board, 8, 7, true);
+            service.MoveChecker(board, 9, 5, true);
+            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 10, 3, true));
+            service.MoveChecker(board, 11, 1, true);
 
             Assert.Equal(3, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
-            Assert.Equal(-1, mockBoard.Fields[15]);
-            Assert.Equal(-1, mockBoard.Fields[14]);
-            Assert.Equal(-1, mockBoard.Fields[12]);
+            Assert.Equal(-1, board.Fields[15]);
+            Assert.Equal(-1, board.Fields[14]);
+            Assert.Equal(-1, board.Fields[12]);
         }
 
         [Theory]
@@ -139,42 +124,26 @@ namespace GammonX.Engine.Tests
         {
             var service = BoardServiceFactory.Create(gameModus);
             var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            var mock = new Mock<IBoardModel>();
-
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
-            mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountBlack).Returns(() => homeBarModel.HomeBarCountBlack);
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.AddToHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.AddToHomeBar(isWhite, amount));
-
-            var mockBoard = mock.Object;
-
-            Assert.True(service.CanMoveChecker(mockBoard, 15, 7, false));
-            Assert.True(service.CanMoveChecker(mockBoard, 14, 5, false));
-            Assert.False(service.CanMoveChecker(mockBoard, 13, 3, false));
-            Assert.True(service.CanMoveChecker(mockBoard, 12, 1, false));
+            Assert.True(service.CanMoveChecker(board, 15, 7, false));
+            Assert.True(service.CanMoveChecker(board, 14, 5, false));
+            Assert.False(service.CanMoveChecker(board, 13, 3, false));
+            Assert.True(service.CanMoveChecker(board, 12, 1, false));
 
             // hit the white checkers and sent them to the home bar
-            service.MoveChecker(mockBoard, 15, 7, false);
-            service.MoveChecker(mockBoard, 14, 5, false);
-            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(mockBoard, 13, 3, false));
-            service.MoveChecker(mockBoard, 12, 1, false);
+            service.MoveChecker(board, 15, 7, false);
+            service.MoveChecker(board, 14, 5, false);
+            Assert.Throws<InvalidOperationException>(() => service.MoveChecker(board, 13, 3, false));
+            service.MoveChecker(board, 12, 1, false);
 
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(3, homeBarModel.HomeBarCountWhite);
-            Assert.Equal(1, mockBoard.Fields[8]);
-            Assert.Equal(1, mockBoard.Fields[9]);
-            Assert.Equal(1, mockBoard.Fields[11]);
+            Assert.Equal(1, board.Fields[8]);
+            Assert.Equal(1, board.Fields[9]);
+            Assert.Equal(1, board.Fields[11]);
         }
 
         #endregion Simple Hit Testts
@@ -189,52 +158,33 @@ namespace GammonX.Engine.Tests
         {
             var service = BoardServiceFactory.Create(gameModus);
             var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            var mock = new Mock<IBoardModel>();
-
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
-            mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountBlack).Returns(() => homeBarModel.HomeBarCountBlack);
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.AddToHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.AddToHomeBar(isWhite, amount));
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.RemoveFromHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.RemoveFromHomeBar(isWhite, amount));
-
-            var mockBoard = mock.Object;
-
             // hit the black checkers and sent them to the home bar
-            service.MoveChecker(mockBoard, 8, 7, true);
+            service.MoveChecker(board, 8, 7, true);
             Assert.Equal(1, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
-            Assert.Equal(-1, mockBoard.Fields[15]);
+            Assert.Equal(-1, board.Fields[15]);
             // the hitted black checker should be removed from the field
-            Assert.Equal(14, mockBoard.Fields.Where(f => f > 0).Sum());
+            Assert.Equal(14, board.Fields.Where(f => f > 0).Sum());
             // cannot move all other checkers to empty field 7
-            Assert.False(service.CanMoveChecker(mockBoard, 14, 7, false));
-            Assert.False(service.CanMoveChecker(mockBoard, 13, 8, false));
-            Assert.False(service.CanMoveChecker(mockBoard, 12, 9, false));
-            Assert.False(service.CanMoveChecker(mockBoard, 11, 10, false));
-            Assert.False(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, false));
-            Assert.True(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, false));
+            Assert.False(service.CanMoveChecker(board, 14, 7, false));
+            Assert.False(service.CanMoveChecker(board, 13, 8, false));
+            Assert.False(service.CanMoveChecker(board, 12, 9, false));
+            Assert.False(service.CanMoveChecker(board, 11, 10, false));
+            Assert.False(service.CanMoveChecker(board, homeBarModel.StartIndexWhite, 1, false));
+            Assert.True(service.CanMoveChecker(board, homeBarModel.StartIndexBlack, 1, false));
             // move black checker from the homebar
-            service.MoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, false);
-            Assert.Equal(6, mockBoard.Fields[homeBarModel.StartIndexBlack - 1]);
+            service.MoveChecker(board, homeBarModel.StartIndexBlack, 1, false);
+            Assert.Equal(6, board.Fields[homeBarModel.StartIndexBlack - 1]);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
             // other black checkers can be played again
-            Assert.True(service.CanMoveChecker(mockBoard, 14, 7, false));
-            Assert.True(service.CanMoveChecker(mockBoard, 13, 8, false));
-            Assert.True(service.CanMoveChecker(mockBoard, 12, 9, false));
+            Assert.True(service.CanMoveChecker(board, 14, 7, false));
+            Assert.True(service.CanMoveChecker(board, 13, 8, false));
+            Assert.True(service.CanMoveChecker(board, 12, 9, false));
         }
 
         [Theory]
@@ -245,52 +195,33 @@ namespace GammonX.Engine.Tests
         {
             var service = BoardServiceFactory.Create(gameModus);
             var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardHitBoard);
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            var mock = new Mock<IBoardModel>();
-
-            mock.SetupGet(b => b.Fields).Returns(BackgammonHitBoard);
-            mock.SetupGet(b => b.MoveOperator).Returns(board.MoveOperator);
-            mock.SetupGet(b => b.RecoverRollOperator).Returns(board.RecoverRollOperator);
-            mock.SetupGet(b => b.IsInHomeOperator).Returns(board.IsInHomeOperator);
-            mock.SetupGet(b => b.BlockAmount).Returns(board.BlockAmount);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexWhite).Returns(homeBarModel.StartIndexWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.StartIndexBlack).Returns(homeBarModel.StartIndexBlack);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountWhite).Returns(() => homeBarModel.HomeBarCountWhite);
-            mock.As<IHomeBarModel>().SetupGet(b => b.HomeBarCountBlack).Returns(() => homeBarModel.HomeBarCountBlack);
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.AddToHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.AddToHomeBar(isWhite, amount));
-            mock.As<IHomeBarModel>()
-                .Setup(x => x.RemoveFromHomeBar(It.IsAny<bool>(), It.IsAny<int>()))
-                .Callback<bool, int>((isWhite, amount) => homeBarModel.RemoveFromHomeBar(isWhite, amount));
-
-            var mockBoard = mock.Object;
-
             // hit the white checkers and sent them to the home bar
-            service.MoveChecker(mockBoard, 15, 7, false);
+            service.MoveChecker(board, 15, 7, false);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(1, homeBarModel.HomeBarCountWhite);
-            Assert.Equal(1, mockBoard.Fields[8]);
+            Assert.Equal(1, board.Fields[8]);
             // the hitted white checker should be removed from the field
-            Assert.Equal(-14, mockBoard.Fields.Where(f => f < 0).Sum());
+            Assert.Equal(-14, board.Fields.Where(f => f < 0).Sum());
             // cannot move all other checkers to empty field 7
-            Assert.False(service.CanMoveChecker(mockBoard, 9, 7, true));
-            Assert.False(service.CanMoveChecker(mockBoard, 10, 8, true));
-            Assert.False(service.CanMoveChecker(mockBoard, 11, 9, true));
-            Assert.False(service.CanMoveChecker(mockBoard, 12, 10, true));
-            Assert.True(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, true));
-            Assert.False(service.CanMoveChecker(mockBoard, homeBarModel.StartIndexBlack, 1, true));
+            Assert.False(service.CanMoveChecker(board, 9, 7, true));
+            Assert.False(service.CanMoveChecker(board, 10, 8, true));
+            Assert.False(service.CanMoveChecker(board, 11, 9, true));
+            Assert.False(service.CanMoveChecker(board, 12, 10, true));
+            Assert.True(service.CanMoveChecker(board, homeBarModel.StartIndexWhite, 1, true));
+            Assert.False(service.CanMoveChecker(board, homeBarModel.StartIndexBlack, 1, true));
             // move white checker from the homebar
-            service.MoveChecker(mockBoard, homeBarModel.StartIndexWhite, 1, true);
-            Assert.Equal(-6, mockBoard.Fields[homeBarModel.StartIndexWhite + 1]);
+            service.MoveChecker(board, homeBarModel.StartIndexWhite, 1, true);
+            Assert.Equal(-6, board.Fields[homeBarModel.StartIndexWhite + 1]);
             Assert.Equal(0, homeBarModel.HomeBarCountBlack);
             Assert.Equal(0, homeBarModel.HomeBarCountWhite);
             // other white checkers can be played again
-            Assert.True(service.CanMoveChecker(mockBoard, 9, 7, true));
-            Assert.True(service.CanMoveChecker(mockBoard, 10, 8, true));
-            Assert.True(service.CanMoveChecker(mockBoard, 11, 9, true));
+            Assert.True(service.CanMoveChecker(board, 9, 7, true));
+            Assert.True(service.CanMoveChecker(board, 10, 8, true));
+            Assert.True(service.CanMoveChecker(board, 11, 9, true));
         }
 
         #endregion CanMove OnHomeBarCount Tests
@@ -307,7 +238,7 @@ namespace GammonX.Engine.Tests
             var homeBarModel = board as IHomeBarModel;
             Assert.NotNull(homeBarModel);
 
-            board.SetFields(FevgaCannotBearOffBoard);
+            board.SetFields(BoardMocks.FevgaCannotBearOffBoard);
             homeBarModel.AddToHomeBar(false, 13);
             homeBarModel.AddToHomeBar(true, 6);
             board.BearOffChecker(false, 2);
@@ -325,65 +256,5 @@ namespace GammonX.Engine.Tests
         }
 
         #endregion Bugs
-
-        #region Mock Data
-
-        private readonly int[] FevgaCannotBearOffBoard = new int[24]
-        {
-            -2,
-            -1,
-            -1,
-            0,
-            0,
-            -4,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            -1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        };
-
-        private readonly int[] BackgammonHitBoard = new int[24]
-        {
-            -5, // 0 – Black Home
-            -5, // 1 – Black Home
-             0, // 2 – Black Home
-             0, // 3 - Black Home
-             0, // 4 - Black Home
-             0, // 5 - Black Home
-             0, // 6
-             0, // 7
-            -1, // 8
-            -1, // 9
-            -2, // 10
-            -1, // 11
-             1, // 12
-             2, // 13
-             1, // 14
-             1, // 15
-             0, // 16
-             0, // 17
-             0, // 18 – White Home
-             0, // 19 – White Home
-             0, // 20 – White Home
-             0, // 21 – White Home
-             5, // 22 – White Home
-             5  // 23 - White Home
-        };
-
-        #endregion Mock Data
     }
 }
