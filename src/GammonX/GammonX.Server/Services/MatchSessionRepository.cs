@@ -41,6 +41,16 @@ namespace GammonX.Server.Services
 			}
 		}
 
+		public IMatchSessionModel? GetPlayersMatch(Guid playerId)
+		{
+			var playersMatch = _sessions.Values
+				.Select(lazy => lazy.Value)
+				.FirstOrDefault(matchSession =>
+					matchSession.Player1.Id == playerId ||
+					matchSession.Player2.Id == playerId);
+			return playersMatch;
+        }
+
 		public IMatchSessionModel GetOrCreate(Guid matchId, QueueKey queueKey)
 		{
             var lazy = _sessions.GetOrAdd(

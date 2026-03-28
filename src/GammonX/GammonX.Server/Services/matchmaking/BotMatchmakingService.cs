@@ -5,8 +5,14 @@ using GammonX.Server.Models;
 namespace GammonX.Server.Services
 {
 	// <inheritdoc />
-	internal class BotMatchmakingService : MatchmakingServiceBaseImpl
+	internal sealed class BotMatchmakingService : MatchmakingServiceBaseImpl
 	{
+		public BotMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
+			: base(playerConnectionRepository) 
+		{
+			// pass
+		}
+
 		// <inheritdoc />
 		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
 		{
@@ -17,8 +23,10 @@ namespace GammonX.Server.Services
 
 			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.Now, 0);
 			var matchId = Guid.NewGuid();
-            // TODO: connection repo
-            var matchLobby = new MatchLobby(matchId, queueKey, new PlayerConnection(playerId));
+			var playerConnection = _playerConnectionRepository.Create(playerId);
+
+            var matchLobby = new MatchLobby(matchId, queueKey, playerConnection);
+
 			if (_matchLobbies.TryAdd(queueEntry, matchLobby))
 			{
 				return Task.FromResult(queueEntry);

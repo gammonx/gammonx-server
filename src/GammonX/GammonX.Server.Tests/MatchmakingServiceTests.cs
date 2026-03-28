@@ -41,10 +41,11 @@ namespace GammonX.Server.Tests
         public async Task ConcurrentMatchingDoesNotDoubleMatchPlayers(MatchVariant variant, MatchModus modus, MatchType type)
         {
             // setup services
-            var rankedMatcher = new RankedMatchmakingService(new SimpleRepositoryClient());
-            var normalMatcher = new NormalMatchmakingService();
-            var botMatcher = new BotMatchmakingService();
-            var matcher = new CompositeMatchmakingService();
+            var playerConnRepo = new PlayerConnectionRepository();
+            var rankedMatcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
+            var normalMatcher = new NormalMatchmakingService(playerConnRepo);
+            var botMatcher = new BotMatchmakingService(playerConnRepo);
+            var matcher = new CompositeMatchmakingService(playerConnRepo);
             matcher.AddService(MatchModus.Ranked, rankedMatcher);
             matcher.AddService(MatchModus.Normal, normalMatcher);
             matcher.AddService(MatchModus.Bot, botMatcher);
@@ -126,10 +127,11 @@ namespace GammonX.Server.Tests
         public async Task ConcurrentEnqueueDoesNotLosePlayers(MatchVariant variant, MatchModus modus, MatchType type)
         {
             // setup services
-            var rankedMatcher = new RankedMatchmakingService(new SimpleRepositoryClient());
-            var normalMatcher = new NormalMatchmakingService();
-            var botMatcher = new BotMatchmakingService();
-            var matcher = new CompositeMatchmakingService();
+            var playerConnRepo = new PlayerConnectionRepository();
+            var rankedMatcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
+            var normalMatcher = new NormalMatchmakingService(playerConnRepo);
+            var botMatcher = new BotMatchmakingService(playerConnRepo);
+            var matcher = new CompositeMatchmakingService(playerConnRepo);
             matcher.AddService(MatchModus.Ranked, rankedMatcher);
             matcher.AddService(MatchModus.Normal, normalMatcher);
             matcher.AddService(MatchModus.Bot, botMatcher);
@@ -175,7 +177,8 @@ namespace GammonX.Server.Tests
         [Fact]
         public async Task LongWaitingPlayerEventuallyMatches()
         {
-            var matcher = new RankedMatchmakingService(new SimpleRepositoryClient());
+            var playerConnRepo = new PlayerConnectionRepository();
+            var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
             var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
 
             var oldPlayer = CreateQueueEntry(queueKey, 1200);
@@ -197,7 +200,8 @@ namespace GammonX.Server.Tests
         [Fact]
         public async Task LastSeenTimeStampIsUpdated()
         {
-            var matcher = new RankedMatchmakingService(new SimpleRepositoryClient());
+            var playerConnRepo = new PlayerConnectionRepository();
+            var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
             var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
             var entry = CreateQueueEntry(queueKey, 1200);
             var lastSeenUtc = entry.LastSeenUtc;
@@ -211,7 +215,8 @@ namespace GammonX.Server.Tests
         [Fact]
         public async Task QueueCleansUpExpiredEntries()
         {
-            var matcher = new RankedMatchmakingService(new SimpleRepositoryClient());
+            var playerConnRepo = new PlayerConnectionRepository();
+            var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
             var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
             var entry = CreateQueueEntry(queueKey, 1200);
             matcher.Enqueue(entry);

@@ -26,6 +26,7 @@ namespace GammonX.Server.Tests.Integration
     {
         private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
         private readonly MatchSessionRepository _matchRepo;
+        private readonly PlayerConnectionRepository _playerConnRepo;
         private readonly IDiceServiceFactory _diceFactory;
         private readonly IBotService _botService;
         private readonly MatchLobbyHub _hub;
@@ -39,10 +40,11 @@ namespace GammonX.Server.Tests.Integration
 
         public MatchHubTests()
         {
+            _playerConnRepo = new PlayerConnectionRepository();
             _diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(_diceFactory);
             var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
-            _normalService = new NormalMatchmakingService();
+            _normalService = new NormalMatchmakingService(_playerConnRepo);
 
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
 
@@ -54,15 +56,15 @@ namespace GammonX.Server.Tests.Integration
 
             var stubRepoClient = new SimpleRepositoryClient();
 
-            _rankedService = new RankedMatchmakingService(stubRepoClient);
-            _botMatchService = new BotMatchmakingService();
-            var compositeService = new CompositeMatchmakingService();
+            _rankedService = new RankedMatchmakingService(_playerConnRepo, stubRepoClient);
+            _botMatchService = new BotMatchmakingService(_playerConnRepo);
+            var compositeService = new CompositeMatchmakingService(_playerConnRepo);
             compositeService.AddService(MatchModus.Normal, _normalService);
             compositeService.AddService(MatchModus.Ranked, _rankedService);
             compositeService.AddService(MatchModus.Bot, _botMatchService);
             _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _botService = new WildbgBotService(_wildBgClient);
-            _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService);
+            _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService, _playerConnRepo);
         }
 
         [Theory]
@@ -876,7 +878,7 @@ namespace GammonX.Server.Tests.Integration
             // client 1
             var player1ConnectionId = Guid.NewGuid().ToString();
             var context1 = new HubCallerContextStub(player1ConnectionId);
-            var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -886,7 +888,7 @@ namespace GammonX.Server.Tests.Integration
             // client 2
             var player2ConnectionId = Guid.NewGuid().ToString();
             var context2 = new HubCallerContextStub(player2ConnectionId);
-            var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,

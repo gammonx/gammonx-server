@@ -10,7 +10,8 @@ namespace GammonX.Server.Services
 		private readonly Dictionary<MatchModus, IMatchmakingService> _services;
 		private readonly IServiceProvider? _serviceProvider;
 
-		public CompositeMatchmakingService(IServiceProvider serviceProvider)
+		public CompositeMatchmakingService(IServiceProvider serviceProvider, PlayerConnectionRepository playerConnectionRepository)
+			: base(playerConnectionRepository)
 		{
 			_serviceProvider = serviceProvider;
 			_services = new Dictionary<MatchModus, IMatchmakingService>();
@@ -21,7 +22,8 @@ namespace GammonX.Server.Services
 			}
 		}
 
-		internal CompositeMatchmakingService()
+		internal CompositeMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
+			: base(playerConnectionRepository)
 		{
 			_serviceProvider = null;
             _services = new Dictionary<MatchModus, IMatchmakingService>();

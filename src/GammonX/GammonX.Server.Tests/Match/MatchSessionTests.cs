@@ -15,7 +15,7 @@ namespace GammonX.Server.Tests.Match
 	{
 		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
-		private static readonly MatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
+		private static readonly MatchSessionFactory _matchSessionFactory = new(_gameSessionFactory);
 
 		[Theory]
 		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
@@ -863,6 +863,7 @@ namespace GammonX.Server.Tests.Match
 			foreach (var gameHistory in matchHistory.Games)
 			{
 				var gameHistoryStr = gameHistory.ToString();
+				Assert.NotNull(gameHistory);
 				Assert.NotNull(gameHistoryStr);
 			}
 			var historyStr = matchHistory.ToString();
