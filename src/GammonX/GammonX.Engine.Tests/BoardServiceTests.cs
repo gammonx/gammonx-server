@@ -969,6 +969,59 @@ namespace GammonX.Engine.Tests
             Assert.Equal(0, homebarModel.HomeBarCountBlack);
         }
 
+        [Fact]
+        public void CanUndoPinnedCheckerWhite()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+
+            // move black checker forwards
+            service.MoveCheckerTo(boardModel, 23, 17, false);
+            // pin black checker
+            service.MoveChecker(boardModel, 0, 17, true);
+
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+            Assert.Equal(1, pinModel.PinnedFields[17]);
+            Assert.Equal(-1, boardModel.Fields[17]);
+
+            service.UndoMove(boardModel, new MoveModel(0, 17), true);
+
+            Assert.Equal(0, pinModel.PinnedFields[17]);
+            Assert.Equal(1, boardModel.Fields[17]);
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-15, boardModel.Fields[0]);
+        }
+
+        [Fact]
+        public void CanUndoPinnedCheckerBlack()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+
+            // move white checker forwards
+            service.MoveChecker(boardModel, 0, 17, true);
+            // pin white checker
+            service.MoveCheckerTo(boardModel, 23, 17, false);
+            
+
+            Assert.Equal(14, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+            Assert.Equal(-1, pinModel.PinnedFields[17]);
+            Assert.Equal(1, boardModel.Fields[17]);
+
+            service.UndoMove(boardModel, new MoveModel(23, 17), false);
+
+            Assert.Equal(0, pinModel.PinnedFields[17]);
+            Assert.Equal(-1, boardModel.Fields[17]);
+            Assert.Equal(15, boardModel.Fields[23]);
+            Assert.Equal(-14, boardModel.Fields[0]);
+        }
+
         #endregion Undo Move
     }
 }

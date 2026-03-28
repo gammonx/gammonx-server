@@ -31,12 +31,6 @@ namespace GammonX.Engine.Services
 			}
 
             base.MoveCheckerTo(model, from, to, isWhite);
-
-            if (pinModel != null)
-            {
-                // we check if we would unpin an opponents checker with this move
-                EvaluateUnPinnedCheckers(model, from, isWhite);
-            }
         }
 
 		// <inheritdoc />
@@ -64,6 +58,20 @@ namespace GammonX.Engine.Services
 
             return base.CanBearOffChecker(model, from, roll, isWhite);
 		}
+
+        // <inheritdoc />
+        protected override void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+        {
+            base.PerformMoveCheckerTo(model, from, to, isWhite);
+
+            // we need to check for unpinned checkers here so that the undo move method calls it
+            var pinModel = model as IPinModel;
+            if (pinModel != null && !IsBearOffMove(model, to, isWhite) && !IsBearOffMove(model, from, isWhite))
+            {
+                // we check if we would unpin an opponents checker with this move
+                EvaluateUnPinnedCheckers(model, from, isWhite);
+            }
+        }
 
         private static void EvaluatePinnedCheckers(IBoardModel model, int from, int to, bool isWhite)
         {

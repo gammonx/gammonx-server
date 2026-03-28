@@ -284,7 +284,7 @@ namespace GammonX.Engine.Services
 				.ToArray();
 		}
 
-		private void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+		protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
 		{
 			// we check first if the given from to move bears the checker off
 			if (CheckerBearedOff(model, from, to, isWhite))
