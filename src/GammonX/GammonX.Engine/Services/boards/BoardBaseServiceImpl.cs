@@ -338,6 +338,15 @@ namespace GammonX.Engine.Services
 					model.BearOffChecker(isWhite, 1);
 					return true;
 				}
+				// we need to handle undone bear offs
+				else if (from == BoardPositions.BearOffWhite)
+				{
+					// we add a negative checker to the old position
+					model.Fields.SetValue(model.Fields[to] -= 1, to);
+					// and undo the bear off
+					model.BearOffChecker(isWhite, -1);
+					return true;
+				}
 			}
 			else
 			{
@@ -347,6 +356,15 @@ namespace GammonX.Engine.Services
 					model.Fields.SetValue(model.Fields[from] -= 1, from);
 					// and bear off the checker
 					model.BearOffChecker(isWhite, 1);
+					return true;
+				}
+				// we need to handle undone bear offs
+				else if (from == BoardPositions.BearOffBlack)
+				{
+					// we add a positive checker from the old position
+					model.Fields.SetValue(model.Fields[to] += 1, to);
+					// and undo the bear off
+					model.BearOffChecker(isWhite, -1);
 					return true;
 				}
 			}

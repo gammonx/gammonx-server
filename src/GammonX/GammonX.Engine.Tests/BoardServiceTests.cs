@@ -850,6 +850,73 @@ namespace GammonX.Engine.Tests
             Assert.Equal(startBoard.Fields, board.Fields);
 		}
 
-		#endregion Undo Move
-	}
+        [Theory]
+        [InlineData(GameModus.Backgammon, true)]
+        [InlineData(GameModus.Portes, true)]
+        [InlineData(GameModus.Tavla, true)]
+        [InlineData(GameModus.Plakoto, true)]
+        [InlineData(GameModus.Backgammon, false)]
+        [InlineData(GameModus.Portes, false)]
+        [InlineData(GameModus.Tavla, false)]
+        [InlineData(GameModus.Plakoto, false)]
+        public void CanUndoBearOffMove(GameModus modus, bool isWhite)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.StandardCanBearOffBoard);
+            var startBoard = board.DeepClone();
+
+            var legalMoveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+            var legalMoveSeq = legalMoveSequences.First(lms => lms.Moves.All(m => m.To == 100 || m.To == -100));
+            Assert.NotNull(legalMoveSeq);
+            // make some bear off moves
+            foreach (var move in legalMoveSeq.Moves)
+            {
+                service.MoveCheckerTo(board, move.From, move.To, isWhite);
+            }
+            // undo all bear off moves
+            var undoStack = legalMoveSeq.Moves.ToList();
+            undoStack.Reverse();
+            foreach (var undo in undoStack)
+            {
+                service.UndoMove(board, undo, isWhite);
+            }
+            // initial game board should be recreated
+            Assert.Equal(startBoard.Fields, board.Fields);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Fevga, true)]
+        [InlineData(GameModus.Fevga, false)]
+        public void CanUndoBearOffMoveFevga(GameModus modus, bool isWhite)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            board.SetFields(BoardMocks.FevgaCanBearOffBoard);
+            var homebarModel = board as IHomeBarModel;
+            Assert.NotNull(homebarModel);
+            homebarModel.RemoveFromHomeBar(isWhite, 14);
+            var startBoard = board.DeepClone();
+
+            var legalMoveSequences = service.GetLegalMoveSequences(board, isWhite, 2, 3);
+            var legalMoveSeq = legalMoveSequences.First(lms => lms.Moves.All(m => m.To == 100 || m.To == -100));
+            Assert.NotNull(legalMoveSeq);
+            // make some bear off moves
+            foreach (var move in legalMoveSeq.Moves)
+            {
+                service.MoveCheckerTo(board, move.From, move.To, isWhite);
+            }
+            // undo all bear off moves
+            var undoStack = legalMoveSeq.Moves.ToList();
+            undoStack.Reverse();
+            foreach (var undo in undoStack)
+            {
+                service.UndoMove(board, undo, isWhite);
+            }
+            // initial game board should be recreated
+            Assert.Equal(startBoard.Fields, board.Fields);
+        }
+
+        #endregion Undo Move
+    }
 }
