@@ -7,6 +7,8 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal abstract class MatchmakingServiceBaseImpl : IMatchmakingService
 	{
+		protected readonly PlayerConnectionRepository _playerConnectionRepository;
+
 		/// <summary>
 		/// Gets queue entries grouped by the queue entry id.
 		/// </summary>
@@ -24,6 +26,12 @@ namespace GammonX.Server.Services
 
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
+
+		public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
+		{
+            _playerConnectionRepository = playerConnectionRepository;
+
+        }
 
         // <inheritdoc />
         public void TouchQueueEntry(Guid queueEntryId)

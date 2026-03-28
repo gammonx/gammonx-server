@@ -63,8 +63,8 @@ namespace GammonX.Server.Models
 			_gameSessionFactory = gameSessionFactory;
 			var emptyPlayerConnection = new PlayerConnection(Guid.Empty);
 			emptyPlayerConnection.SetConnectionId(string.Empty);
-            Player1 = emptyPlayerConnection.ToMatchPlayer();
-            Player2 = emptyPlayerConnection.ToMatchPlayer();
+			Player1 = new MatchPlayerModel(emptyPlayerConnection);
+			Player2 = new MatchPlayerModel(emptyPlayerConnection);
             _isMatchOver = Type.GetMatchOverFunc();
 		}
 
@@ -82,7 +82,7 @@ namespace GammonX.Server.Models
 
 			if (Player1.Id == Guid.Empty)
 			{
-				Player1 = player.ToMatchPlayer();
+				Player1 = new MatchPlayerModel(player);
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
@@ -91,7 +91,7 @@ namespace GammonX.Server.Models
 					throw new InvalidOperationException("Player 1 cannot join as Player 2.");
 				}
 
-				Player2 = player.ToMatchPlayer();
+				Player2 = new MatchPlayerModel(player);
             }
 			else
 			{

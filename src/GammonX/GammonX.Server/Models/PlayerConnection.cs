@@ -11,10 +11,17 @@
 			LastSeenUtc = DateTime.UtcNow;
         }
 
-		/// <summary>
-		/// Gets the web socket connection id of the player in the lobby.
-		/// </summary>
-		public string? ConnectionId { get; private set; }
+        public PlayerConnection(Guid playerId, string connectionId)
+        {
+            Id = playerId;
+			ConnectionId = connectionId;
+            LastSeenUtc = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Gets the web socket connection id of the player in the lobby.
+        /// </summary>
+        public string? ConnectionId { get; private set; }
 		
 		/// <summary>
 		/// Gets the player id of the connection.
@@ -33,12 +40,6 @@
 		public void SetConnectionId(string? connectionId) 
 		{
 			ConnectionId = connectionId;
-		}
-
-		public MatchPlayerModel ToMatchPlayer()
-		{
-			ArgumentNullException.ThrowIfNull(ConnectionId, nameof(ConnectionId));
-			return new MatchPlayerModel(this);
 		}
 	}
 }

@@ -6,7 +6,6 @@
 
 		public MatchPlayerModel(PlayerConnection playerConnection)
 		{
-            // TODO: connection repo
             _playerConnection = playerConnection;
 		}
 

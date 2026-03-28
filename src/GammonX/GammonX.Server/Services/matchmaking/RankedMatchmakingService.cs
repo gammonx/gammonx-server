@@ -10,7 +10,8 @@ namespace GammonX.Server.Services
     {
         private readonly IRepositoryClient _repoClient;
 
-        public RankedMatchmakingService(IRepositoryClient client)
+        public RankedMatchmakingService(PlayerConnectionRepository playerConnectionRepository, IRepositoryClient client)
+            : base(playerConnectionRepository)
         {
             _repoClient = client;
         }
@@ -58,11 +59,11 @@ namespace GammonX.Server.Services
                     var claimedA = false;
                     var claimedB = false;
                     // atomic claims
-                    if (_queue.TryRemove(entryA.Id, out var removedEntryA))
+                    if (_queue.TryRemove(entryA.Id, out var _))
                     {
                         claimedA = true;
                     }
-                    if (_queue.TryRemove(entryB.Id, out var removedEntryB))
+                    if (_queue.TryRemove(entryB.Id, out var _))
                     {
                         claimedB = true;
                     }
@@ -86,9 +87,8 @@ namespace GammonX.Server.Services
                     }
 
                     // create lobby
-                    // TODO: connection repo
-                    var playerConnectionA = new PlayerConnection(entryA.PlayerId);
-                    var playerConnectionB = new PlayerConnection(entryB.PlayerId);
+                    var playerConnectionA = _playerConnectionRepository.Create(entryA.PlayerId);
+                    var playerConnectionB = _playerConnectionRepository.Create(entryB.PlayerId);
                     var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
                     lobby.Join(playerConnectionB);
                     _matchLobbies[entryA] = lobby;

@@ -9,6 +9,12 @@ namespace GammonX.Server.Services
     /// </summary>
     internal class NormalMatchmakingService : MatchmakingServiceBaseImpl
     {
+        public NormalMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
+            : base(playerConnectionRepository)
+        {
+            // pass
+        }
+
         // <inheritdoc />
         public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
         {
@@ -60,9 +66,8 @@ namespace GammonX.Server.Services
                     }
 
                     // create lobby
-                    // TODO: connection repo
-                    var playerConnectionA = new PlayerConnection(entryA.PlayerId);
-                    var playerConnectionB = new PlayerConnection(entryB.PlayerId);
+                    var playerConnectionA = _playerConnectionRepository.Create(entryA.PlayerId);
+                    var playerConnectionB = _playerConnectionRepository.Create(entryB.PlayerId);
                     var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
                     lobby.Join(playerConnectionB);
                     _matchLobbies[entryA] = lobby;

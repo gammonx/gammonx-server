@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+
 using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
@@ -19,43 +20,125 @@ namespace GammonX.Server
     internal class MatchLobbyHub : Hub
     {
         private readonly IMatchmakingService _matchmakingService;
-        private readonly MatchSessionRepository _repository;
+        private readonly MatchSessionRepository _matchRepository;
+        private readonly PlayerConnectionRepository _playerConnectionRepository;
         private readonly IDiceService _diceService;
         private readonly IBotService _botService;
         private readonly IWorkQueueService _workQueue;
         private string _groupName;
 
+        private readonly TimeSpan ReconnectTimeout = TimeSpan.FromSeconds(30);
+
         public MatchLobbyHub(
             IWorkQueueService workQueue,
             IMatchmakingService matchmakingService,
-            MatchSessionRepository repository,
+            MatchSessionRepository matchRepository,
             IDiceServiceFactory diceServiceFactory,
-            IBotService botService)
+            IBotService botService,
+            PlayerConnectionRepository playerConnectionRepository)
         {
             _workQueue = workQueue;
             _matchmakingService = matchmakingService;
-            _repository = repository;
+            _matchRepository = matchRepository;
             _diceService = diceServiceFactory.Create(DiceServiceType.Crypto);
             _botService = botService;
+            _playerConnectionRepository = playerConnectionRepository;
             _groupName = string.Empty;
         }
 
         #region Overrides
 
         // <inheritdoc />
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
-            // TODO: update connection id in match model
-            // TODO: update socket groups
-            return base.OnConnectedAsync();
+            try
+            {
+                var playerId = Guid.Empty; // TODO how to obtain?
+                var connectionId = Context.ConnectionId;
+                // we update the socket connection id for the (re)-connected player
+                _playerConnectionRepository.AddOrUpdate(playerId, connectionId);
+                // we try to rejoin an existing match and resend the game state
+                await TryRejoinMatch(playerId, connectionId);
+                await base.OnConnectedAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "An error occurred while handling player reconnect.");
+            }
         }
 
         // <inheritdoc />
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // TODO: what happens after grace timer expires?
-            // TODO: one grace period per match (griefing prevention)
-            await base.OnDisconnectedAsync(exception);
+            try
+            {
+                // TODO: what happens after grace timer expires?
+                // TODO: one grace period per match (griefing prevention)
+                var playerId = Guid.Empty; // TODO how to obtain?
+
+                var playerConnection = _playerConnectionRepository.Get(playerId);
+                if (playerConnection != null)
+                {
+                    playerConnection.LastSeenUtc = DateTime.UtcNow;
+                    await StartDisconnectGraceTimerAsync(playerId);
+                }
+
+                // TODO: send game paused event to other player
+
+                await base.OnDisconnectedAsync(exception);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "An error occurred while handling player disconnect.");
+            }
+        }
+
+        private async Task TryRejoinMatch(Guid playerId, string connectionId)
+        {
+            var matchToRejoin = _matchRepository.GetPlayersMatch(playerId);
+            if (matchToRejoin != null)
+            {
+                await Groups.AddToGroupAsync(connectionId, _groupName);
+                await SendGameState(ServerEventTypes.GameStateEvent, matchToRejoin);
+            }
+            else
+            {
+                Log.Warning("No match found for player {PlayerId} to rejoin on reconnect.", playerId);
+            }
+        }
+
+        private async Task StartDisconnectGraceTimerAsync(Guid playerId)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(ReconnectTimeout);
+
+                    var playerConnection = _playerConnectionRepository.Get(playerId);
+                    if (playerConnection != null)
+                    {
+                        if (DateTime.UtcNow - playerConnection.LastSeenUtc >= ReconnectTimeout)
+                        {
+                            await HandlePermanentDisconnectAsync(playerId);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "An error occurred while handling permanent disconnect for player {PlayerId}", playerId);
+                }
+            });
+        }
+
+        private async Task HandlePermanentDisconnectAsync(Guid playerId)
+        {
+            var matchToResign = _matchRepository.GetPlayersMatch(playerId);
+            if (matchToResign != null)
+            {
+                matchToResign.ResignMatch(playerId);
+                await SendMatchState(ServerEventTypes.MatchEndedEvent, matchToResign);
+            }
         }
 
         #endregion Overrides
@@ -91,7 +174,7 @@ namespace GammonX.Server
                         throw new InvalidOperationException($"The match with given id '{matchId}' cannot be started. No opponent found yet.");
                     }
 
-                    var matchSession = _repository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
+                    var matchSession = _matchRepository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
                     _groupName = matchLobby.GroupName;
                     if (matchLobby.Player1.Id == playerIdGuid)
                     {
@@ -104,8 +187,8 @@ namespace GammonX.Server
                         {
                             // in a bot game, the player 2 is always the "bot"
                             // we assign a fixed GUID to the bot player in order to track his stats and rating in the db
-                            // TODO: connection repo
-                            var botPlayer = new PlayerConnection(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
+                            // we recycle the same "bot connection" for all bot matches
+                            var botPlayer = _playerConnectionRepository.GetOrCreate(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"));
                             botPlayer.SetConnectionId(Guid.Empty.ToString());
                             matchSession.JoinSession(botPlayer);
                         }
@@ -164,7 +247,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var player1 = matchSession.Player1;
@@ -264,7 +347,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     if (matchSession.Player1?.ConnectionId == Context.ConnectionId)
@@ -336,7 +419,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("ROLL_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
@@ -378,7 +461,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     // calling and active player must be the same
@@ -421,7 +504,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("UNDO_MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
@@ -463,7 +546,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("END_TURN_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
@@ -512,7 +595,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     // calling and active player must be the same
@@ -546,7 +629,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("RESIGN_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     // calling and active player must be the same
@@ -590,7 +673,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var otherPlayerId = GetOtherPlayerId(matchSession);
@@ -638,7 +721,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
@@ -670,7 +753,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
@@ -947,6 +1030,8 @@ namespace GammonX.Server
                 await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
                 await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
                 await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
+                _playerConnectionRepository.Remove(match.Player1.Id);
+                _playerConnectionRepository.Remove(match.Player2.Id);
             }
         }
 

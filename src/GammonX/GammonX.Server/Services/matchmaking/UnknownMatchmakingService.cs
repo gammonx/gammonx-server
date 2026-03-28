@@ -5,6 +5,8 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal class UnknownMatchmakingService : MatchmakingServiceBaseImpl
 	{
+		public UnknownMatchmakingService(PlayerConnectionRepository playerConnectionRepository) : base(playerConnectionRepository) { }
+
 		// <inheritdoc />
 		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)
 		{

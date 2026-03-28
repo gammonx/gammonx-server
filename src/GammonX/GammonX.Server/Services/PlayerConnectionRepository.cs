@@ -46,6 +46,19 @@ namespace GammonX.Server.Services
             return lazy.Value;
         }
 
+        public Lazy<PlayerConnection> AddOrUpdate(Guid playerId, string connectionId)
+        {
+            return _connections.AddOrUpdate(
+                playerId,
+                _ => new Lazy<PlayerConnection>(() => new PlayerConnection(playerId, connectionId)),
+                (_, existing) =>
+                {
+                    existing.Value.SetConnectionId(connectionId);
+                    existing.Value.LastSeenUtc = DateTime.UtcNow;
+                    return existing;
+                });
+        }
+
         public void Remove(Guid playerId)
         {
             if (!_connections.TryRemove(playerId, out var _))
