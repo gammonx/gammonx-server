@@ -68,6 +68,16 @@ namespace GammonX.Server
         public const string DeclineDoubleCommand = "DeclineDouble";
 
         /// <summary>
+        /// Represents the command name used to request the current game state.
+        /// </summary>
+        public const string GameStateCommand = "GameState";
+
+        /// <summary>
+        /// Represents the command name used to request the current match state from the server.
+        /// </summary>
+        public const string MatchStateCommand = "MatchState";
+
+        /// <summary>
         /// Gets a list of allowed commands that can follow up the given <paramref name="previousCommand"/>.
         /// </summary>
         /// <param name="match">Match to base on.</param>
