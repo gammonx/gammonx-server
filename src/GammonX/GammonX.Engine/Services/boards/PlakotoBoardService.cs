@@ -26,7 +26,7 @@ namespace GammonX.Engine.Services
 				if (pinModel != null)
 				{
 					// we check if we would pin an opponents checker with this move
-					EvaluatePinnedCheckers(model, from, to, isWhite);
+					EvaluatePinnedCheckers(model, to, isWhite);
 				}
 			}
 
@@ -66,14 +66,14 @@ namespace GammonX.Engine.Services
 
             // we need to check for unpinned checkers here so that the undo move method calls it
             var pinModel = model as IPinModel;
-            if (pinModel != null && !IsBearOffMove(model, to, isWhite) && !IsBearOffMove(model, from, isWhite))
+            if (pinModel != null)
             {
                 // we check if we would unpin an opponents checker with this move
                 EvaluateUnPinnedCheckers(model, from, isWhite);
             }
         }
 
-        private static void EvaluatePinnedCheckers(IBoardModel model, int from, int to, bool isWhite)
+        private static void EvaluatePinnedCheckers(IBoardModel model, int to, bool isWhite)
         {
             // we know that the checker can be pinned, otherwise the move could not have been made
             if (isWhite)
@@ -96,6 +96,12 @@ namespace GammonX.Engine.Services
 
         private static void EvaluateUnPinnedCheckers(IBoardModel model, int from, bool isWhite)
         {
+            // we must expect that undo bearoff moves
+            if (from == BoardPositions.BearOffWhite || from == BoardPositions.BearOffBlack)
+            {
+                return;
+            }
+
             // we check if we released a pinned checker
             if (model.Fields[from] == 0)
             {

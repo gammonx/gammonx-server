@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+using GammonX.Engine.Tests.Data;
+using GammonX.Engine.Tests.Utils;
 
 using GammonX.Models.Enums;
 
@@ -104,6 +106,23 @@ namespace GammonX.Engine.Tests
             Assert.Equal(0, pinModel.PinnedFields[6]);
             // released black checker is back on the field
             Assert.Equal(-1, boardModel.Fields[6]);
+        }
+
+        [Fact]
+        public void PlakotoBoardReleasesOnBearOffMove()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Plakoto);
+            var boardModel = service.CreateBoard();
+            boardModel.SetFields(BoardMocks.StandardCanBearOffBoard);
+            var pinModel = boardModel as IPinModel;
+            Assert.NotNull(pinModel);
+            // pin one black checker
+            pinModel.PinnedFields[23] = 1;
+            // bear off white and release black
+            Assert.True(service.CanBearOffChecker(boardModel, 23, 1, true));
+            service.MoveCheckerTo(boardModel, 23, BoardPositions.BearOffWhite, true);
+            Assert.Equal(1, boardModel.BearOffCountWhite);
+            Assert.Equal(0, pinModel.PinnedFields[23]);
         }
     }
 }
