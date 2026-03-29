@@ -222,8 +222,8 @@ namespace GammonX.Server.Models
 				{
 					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move && BoardModel.History.TryRemoveLast())
 					{
-						var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var _);
-						DiceRolls.UndoDiceRoll(roll);
+						var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
+						DiceRolls.UndoDiceRoll(roll, bearOffMove);
 						var remainingRolls = DiceRolls.GetRemainingRolls();
 						CalculateLegalMoveSequences(isWhite, remainingRolls);
 

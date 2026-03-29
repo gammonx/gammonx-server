@@ -213,7 +213,7 @@ namespace GammonX.Server.Tests
 
             dices[0].Used = true;
 
-            dices.UndoDiceRoll(4);
+            dices.UndoDiceRoll(4, false);
 
             Assert.False(dices[0].Used);
         }
@@ -226,7 +226,32 @@ namespace GammonX.Server.Tests
                 new TestDiceRoll(4)
             };
 
-            Assert.Throws<InvalidOperationException>(() => dices.UndoDiceRoll(4));
+            Assert.Throws<InvalidOperationException>(() => dices.UndoDiceRoll(4, false));
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        public void UndoDiceRollOnBearOffHigherThanRemainingFields(GameModus modus)
+        {
+            var boardService = BoardServiceFactory.Create(modus);
+            var board = boardService.CreateBoard();
+
+            var distance = DiceRollsModel.GetMoveDistance(board, 4, BoardPositions.BearOffBlack, out var bearOffMove);
+            Assert.Equal(5, distance);
+
+            var dices = new DiceRollsModel
+            {
+                new TestDiceRoll(5) { Used = false },
+                new TestDiceRoll(6) { Used = true}
+            };
+
+            dices.UndoDiceRoll(distance, bearOffMove);
+
+            Assert.False(dices[0].Used);
+            Assert.False(dices[1].Used);
         }
 
         [Fact]
@@ -343,7 +368,7 @@ namespace GammonX.Server.Tests
             Assert.True(dices.Single(d => d.Roll == 5).Used);
 
             // undo
-            dices.UndoDiceRoll(5);
+            dices.UndoDiceRoll(5, false);
             Assert.False(dices.Single(d => d.Roll == 5).Used);
         }
 
@@ -359,10 +384,10 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(2),
-            new TestDiceRoll(5)
-        };
+            {
+                new TestDiceRoll(2),
+                new TestDiceRoll(5)
+            };
 
             var result = dices.TryUseDice(board, from: 13, to: 18); // distance = 5
 
@@ -383,10 +408,10 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(2),
-            new TestDiceRoll(3)
-        };
+            {
+                new TestDiceRoll(2),
+                new TestDiceRoll(3)
+            };
 
             // distance = 5, requires both dice
             var result = dices.TryUseDice(board, from: 13, to: 18);
@@ -407,12 +432,12 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(2),
-            new TestDiceRoll(3),
-            new TestDiceRoll(4),
-            new TestDiceRoll(4) // pasch
-        };
+            {
+                new TestDiceRoll(2),
+                new TestDiceRoll(3),
+                new TestDiceRoll(4),
+                new TestDiceRoll(4) // pasch
+            };
 
             // distance = 6, should use 2 + 4 and leave other 4 unused
             var result = dices.TryUseDice(board, from: 12, to: 18);
@@ -436,12 +461,12 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(4),
-            new TestDiceRoll(4),
-            new TestDiceRoll(4),
-            new TestDiceRoll(4)
-        };
+            {
+                new TestDiceRoll(4),
+                new TestDiceRoll(4),
+                new TestDiceRoll(4),
+                new TestDiceRoll(4)
+            };
 
             // distance = 16, requires all four dice
             var result = dices.TryUseDice(board, from: 2, to: 18);
@@ -462,11 +487,11 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(3),
-            new TestDiceRoll(5),
-            new TestDiceRoll(6)
-        };
+            {
+                new TestDiceRoll(3),
+                new TestDiceRoll(5),
+                new TestDiceRoll(6)
+            };
 
             var bearOffPos = BoardPositions.BearOffWhite;
 
@@ -491,11 +516,11 @@ namespace GammonX.Server.Tests
             var board = boardService.CreateBoard();
 
             var dices = new DiceRollsModel
-        {
-            new TestDiceRoll(3),
-            new TestDiceRoll(5),
-            new TestDiceRoll(6)
-        };
+            {
+                new TestDiceRoll(3),
+                new TestDiceRoll(5),
+                new TestDiceRoll(6)
+            };
 
             var bearOffPos = BoardPositions.BearOffWhite;
             dices.TryUseDice(board, from: 18, to: bearOffPos);

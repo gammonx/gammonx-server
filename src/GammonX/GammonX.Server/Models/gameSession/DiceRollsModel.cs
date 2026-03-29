@@ -30,7 +30,7 @@ namespace GammonX.Server.Models
 			return false;
 		}
 
-		public void UndoDiceRoll(int roll)
+		public void UndoDiceRoll(int roll, bool bearOffMove)
 		{
 			var diceRoll = this.FirstOrDefault(dr => dr.Used && dr.Roll == roll);
 			if (diceRoll != null) 
@@ -38,6 +38,15 @@ namespace GammonX.Server.Models
 				diceRoll.Used = false;
 				return;
 			}
+			else if (bearOffMove)
+			{
+				var bearOffRoll = this.FirstOrDefault(dr => dr.Used && dr.Roll >= roll);
+                if (bearOffRoll != null)
+                {
+                    bearOffRoll.Used = false;
+                    return;
+                }
+            }
 			throw new InvalidOperationException("An error occurred while undoing a dice roll");
 		}
 
