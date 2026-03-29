@@ -155,7 +155,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -173,7 +173,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
