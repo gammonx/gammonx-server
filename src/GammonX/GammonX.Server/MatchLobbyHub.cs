@@ -644,7 +644,6 @@ namespace GammonX.Server
                 if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
-                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
 
                     if (!doubleCubeSession.CanOfferDouble(callingPlayerId))
                     {
@@ -652,24 +651,7 @@ namespace GammonX.Server
                         return;
                     }
 
-                    if (IsBotTurn(matchSession, callingPlayerId))
-                    {
-                        // bot is offering the player a double
-                        await PerformOfferDoubleAsync(matchSession, callingPlayerId);
-                    }
-                    else
-                    {
-                        doubleCubeSession.OfferDouble(callingPlayerId);
-                        var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, otherPlayerId);
-                        if (shouldAccept)
-                        {
-                            await PerformAcceptDoubleAsync(matchSession, otherPlayerId);
-                        }
-                        else
-                        {
-                            await PerformDeclineDoubleAsync(matchSession, otherPlayerId);
-                        }
-                    }
+                    await PerformOfferDoubleAsync(matchSession, callingPlayerId);
                 }
                 else
                 {
@@ -750,20 +732,36 @@ namespace GammonX.Server
         {
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
+                // active players changes here
                 doubleCubeSession.OfferDouble(offeringPlayerId);
                 var offeredPlayerId = GetOtherPlayerId(matchSession, offeringPlayerId);
 
-                // the player who is offering the double is waiting for a response
-                var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
-                var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
-                var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
-                await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
-               
-                // the player who got the double offered has to accept or decline it
-                var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
-                var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
-                var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
-                await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
+                if (IsBotTurn(matchSession, offeredPlayerId))
+                {
+                    var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, offeredPlayerId);
+                    if (shouldAccept)
+                    {
+                        await PerformAcceptDoubleAsync(matchSession, offeredPlayerId);
+                    }
+                    else
+                    {
+                        await PerformDeclineDoubleAsync(matchSession, offeredPlayerId);
+                    }
+                }
+                else
+                {
+                    // the player who is offering the double is waiting for a response
+                    var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
+                    var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
+                    var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
+                    await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
+
+                    // the player who got the double offered has to accept or decline it
+                    var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
+                    var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
+                    var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
+                    await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
+                }                
             }
             else
             {
