@@ -933,8 +933,14 @@ namespace GammonX.Server
         private static Guid GetStartingPlayerId(IMatchSessionModel matchSession)
         {
             var activeSession = matchSession.GetGameSession(matchSession.GameRound);
-            // if null, the active game session is the first
-            if (matchSession.GameRound == 1)
+            // if not null, the first game session was already played
+            // the winner of the previous game will start the next one
+            if (activeSession?.Phase == GamePhase.GameOver)
+            {
+                var contract = activeSession.ToContract(matchSession.GameRound);
+                return contract.Winner ?? matchSession.Player1.Id;
+            }
+            else if (matchSession.GameRound == 1)
             {
                 if (matchSession.Player1.StartDiceRoll == null || matchSession.Player2.StartDiceRoll == null)
                 {
@@ -953,13 +959,6 @@ namespace GammonX.Server
                 {
                     return matchSession.Player2.Id;
                 }
-            }
-            // if not null, the first game session was already played
-            // the winner of the previous game will start the next one
-            else if (activeSession?.Phase == GamePhase.GameOver)
-            {
-                var contract = activeSession.ToContract(matchSession.GameRound);
-                return contract.Winner ?? matchSession.Player1.Id;
             }
             else
             {
