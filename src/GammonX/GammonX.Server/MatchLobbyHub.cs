@@ -463,6 +463,7 @@ namespace GammonX.Server
                 if (matchSession != null)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
 
                     if (!matchSession.CanEndTurn(callingPlayerId))
                     {
@@ -472,7 +473,6 @@ namespace GammonX.Server
 
                     matchSession.EndTurn(callingPlayerId);
 
-                    var otherPlayerId = GetOtherPlayerId(matchSession);
                     if (IsBotTurn(matchSession, otherPlayerId))
                     {
                         await PerfromBotTurnAsync(matchSession, otherPlayerId);
@@ -643,8 +643,8 @@ namespace GammonX.Server
                 var matchSession = _repository.Get(matchGuid);
                 if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
-                    var otherPlayerId = GetOtherPlayerId(matchSession);
                     var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
 
                     if (!doubleCubeSession.CanOfferDouble(callingPlayerId))
                     {
@@ -776,7 +776,7 @@ namespace GammonX.Server
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
                 doubleCubeSession.AcceptDouble(offeredPlayerId);
-                var offeringPlayerId = GetCallingPlayerId(matchSession);
+                var offeringPlayerId = GetOtherPlayerId(matchSession, offeredPlayerId);
                 if (IsBotTurn(matchSession, offeringPlayerId))
                 {
                     // the bot offered the double and the human player accepted it
@@ -1086,19 +1086,6 @@ namespace GammonX.Server
             if (matchSession.Player2.ConnectionId == Context.ConnectionId)
             {
                 return matchSession.Player2.Id;
-            }
-            throw new InvalidOperationException("The calling player is not part of the match session.");
-        }
-
-        private Guid GetOtherPlayerId(IMatchSessionModel matchSession)
-        {
-            if (matchSession.Player1.ConnectionId == Context.ConnectionId)
-            {
-                return matchSession.Player2.Id;
-            }
-            if (matchSession.Player2.ConnectionId == Context.ConnectionId)
-            {
-                return matchSession.Player1.Id;
             }
             throw new InvalidOperationException("The calling player is not part of the match session.");
         }

@@ -216,13 +216,13 @@ namespace GammonX.Server.Models
 
 			if (_activeUndoStack.TryPop(out var lastMove))
 			{
-				// we reverse the move direction in order to undo the last move
-				_boardService.UndoMove(BoardModel, lastMove, isWhite);
 				if (BoardModel.History.TryPeekLast(out var lastEvent))
 				{
 					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move && BoardModel.History.TryRemoveLast())
 					{
-						var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
+                        // we reverse the move direction in order to undo the last move
+                        _boardService.UndoMove(BoardModel, lastMove, isWhite);
+                        var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
 						DiceRolls.UndoDiceRoll(roll, bearOffMove);
 						var remainingRolls = DiceRolls.GetRemainingRolls();
 						CalculateLegalMoveSequences(isWhite, remainingRolls);
