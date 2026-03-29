@@ -109,8 +109,21 @@ namespace GammonX.Engine.Models
 			return (DoublingCubeValue < 64 && owner) || DoublingCubeValue == 1;
         }
 
-		// <inheritdoc />
-		public void AddToHomeBar(bool isWhite, int amount)
+        public void DeclineDoublingCubeOffer(bool isWhite)
+        {
+            if (DoublingCubeValue < 64)
+            {
+                DoublingCubeValue *= 2;
+                DoublingCubeOwner = !DoublingCubeOwner;
+            }
+            else
+            {
+                throw new InvalidOperationException("The max doubling cube value of 64 is already reached");
+            }
+        }
+
+        // <inheritdoc />
+        public void AddToHomeBar(bool isWhite, int amount)
         {
             if (isWhite)
             {
@@ -170,5 +183,5 @@ namespace GammonX.Engine.Models
 				Fields = (int[])Fields.Clone(),
 			};
 		}
-	}
+    }
 }

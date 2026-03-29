@@ -652,7 +652,12 @@ namespace GammonX.Server
                         return;
                     }
 
-                    if (IsBotTurn(matchSession, otherPlayerId))
+                    if (IsBotTurn(matchSession, callingPlayerId))
+                    {
+                        // bot is offering the player a double
+                        await PerformOfferDoubleAsync(matchSession, callingPlayerId);
+                    }
+                    else
                     {
                         doubleCubeSession.OfferDouble(callingPlayerId);
                         var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, otherPlayerId);
@@ -664,10 +669,6 @@ namespace GammonX.Server
                         {
                             await PerformDeclineDoubleAsync(matchSession, otherPlayerId);
                         }
-                    }
-                    else
-                    {
-                        await PerformOfferDoubleAsync(matchSession, callingPlayerId);
                     }
                 }
                 else
@@ -749,9 +750,9 @@ namespace GammonX.Server
         {
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
-                var otherPlayerId = GetOtherPlayerId(matchSession);
                 doubleCubeSession.OfferDouble(offeringPlayerId);
-                
+                var offeredPlayerId = GetOtherPlayerId(matchSession, offeringPlayerId);
+
                 // the player who is offering the double is waiting for a response
                 var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
                 var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
@@ -759,9 +760,9 @@ namespace GammonX.Server
                 await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
                
                 // the player who got the double offered has to accept or decline it
-                var otherPlayerGameSession = matchSession.GetGameState(otherPlayerId);
+                var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
                 var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
-                var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, otherPlayerId);
+                var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
                 await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
             }
             else
@@ -775,8 +776,7 @@ namespace GammonX.Server
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
                 doubleCubeSession.AcceptDouble(offeredPlayerId);
-
-                var offeringPlayerId = GetOtherPlayerId(matchSession);
+                var offeringPlayerId = GetCallingPlayerId(matchSession);
                 if (IsBotTurn(matchSession, offeringPlayerId))
                 {
                     // the bot offered the double and the human player accepted it
@@ -1097,6 +1097,19 @@ namespace GammonX.Server
                 return matchSession.Player2.Id;
             }
             if (matchSession.Player2.ConnectionId == Context.ConnectionId)
+            {
+                return matchSession.Player1.Id;
+            }
+            throw new InvalidOperationException("The calling player is not part of the match session.");
+        }
+
+        private static Guid GetOtherPlayerId(IMatchSessionModel matchSession, Guid callingPlayerId)
+        {
+            if (matchSession.Player1.Id.Equals(callingPlayerId))
+            {
+                return matchSession.Player2.Id;
+            }
+            if (matchSession.Player2.Id.Equals(callingPlayerId))
             {
                 return matchSession.Player1.Id;
             }
