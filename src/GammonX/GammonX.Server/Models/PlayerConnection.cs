@@ -33,11 +33,16 @@
         /// </summary>
         public DateTime LastSeenUtc { get; set; }
 
-		/// <summary>
-		/// Sets the web socket connection id for this player connection.
-		/// </summary>
-		/// <param name="connectionId">The web socket connection id.</param>
-		public void SetConnectionId(string? connectionId) 
+        /// <summary>
+        /// Gets or sets the time span left on how long the player can be disconnected before he resigns the match.
+        /// </summary>
+		public TimeSpan DisconnectGracePeriod { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Sets the web socket connection id for this player connection.
+        /// </summary>
+        /// <param name="connectionId">The web socket connection id.</param>
+        public void SetConnectionId(string? connectionId) 
 		{
 			ConnectionId = connectionId;
 		}

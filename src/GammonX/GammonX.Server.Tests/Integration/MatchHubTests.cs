@@ -159,7 +159,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -177,7 +177,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -225,7 +225,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -243,7 +243,7 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -343,7 +343,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -443,7 +443,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
@@ -529,7 +529,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -699,7 +699,7 @@ namespace GammonX.Server.Tests.Integration
             var gameEndedCount = playedSessions.Count - 1;
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());

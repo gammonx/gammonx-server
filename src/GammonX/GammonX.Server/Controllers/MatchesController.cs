@@ -2,11 +2,13 @@
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GammonX.Server.Controllers
 {
     [ApiController]
+    [Authorize(Policy = "OptionalJwt")]
     [Route("api/[controller]")]
     public class MatchesController : Controller
     {

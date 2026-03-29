@@ -4,10 +4,12 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
+using GammonX.Server.Extensions;
 using GammonX.Server.Models;
 using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 using Serilog;
@@ -17,17 +19,16 @@ namespace GammonX.Server
     /// <summary>
     /// SignalR hub for managing match lobbies/sessions and handling the game flow.
     /// </summary>
+    [Authorize(Policy = "OptionalJwt")]
     internal class MatchLobbyHub : Hub
     {
+        private readonly Dictionary<Guid, CancellationTokenSource> _disconnectTimers = new();
         private readonly IMatchmakingService _matchmakingService;
         private readonly MatchSessionRepository _matchRepository;
         private readonly PlayerConnectionRepository _playerConnectionRepository;
         private readonly IDiceService _diceService;
         private readonly IBotService _botService;
         private readonly IWorkQueueService _workQueue;
-        private string _groupName;
-
-        private readonly TimeSpan ReconnectTimeout = TimeSpan.FromSeconds(30);
 
         public MatchLobbyHub(
             IWorkQueueService workQueue,
@@ -43,7 +44,6 @@ namespace GammonX.Server
             _diceService = diceServiceFactory.Create(DiceServiceType.Crypto);
             _botService = botService;
             _playerConnectionRepository = playerConnectionRepository;
-            _groupName = string.Empty;
         }
 
         #region Overrides
@@ -53,17 +53,63 @@ namespace GammonX.Server
         {
             try
             {
-                var playerId = Guid.Empty; // TODO how to obtain?
-                var connectionId = Context.ConnectionId;
-                // we update the socket connection id for the (re)-connected player
-                _playerConnectionRepository.AddOrUpdate(playerId, connectionId);
-                // we try to rejoin an existing match and resend the game state
-                await TryRejoinMatch(playerId, connectionId);
-                await base.OnConnectedAsync();
+                var playerId = Context.GetPlayerId();
+                var matchId = Context.GetMatchId();
+
+                if (playerId.HasValue)
+                {
+                    if (_disconnectTimers.TryGetValue(playerId.Value, out var cts))
+                    {
+                        cts.Cancel();
+                    }
+
+                    var connectionId = Context.ConnectionId;
+                    _playerConnectionRepository.AddOrUpdate(playerId.Value, connectionId);
+
+                    var match = _matchRepository.GetPlayersMatch(playerId.Value);
+                    if (match != null)
+                    {
+                        await Groups.AddToGroupAsync(connectionId, ConstructGroupName(match.Id));
+                        // we try reconnect to an existing match and resend the state
+                        var activeGameSession = match.GetGameSession(match.GameRound);
+                        if (activeGameSession != null)
+                        {
+                            var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.GameStateCommand);
+                            var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
+                            await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                        }
+                        else
+                        {
+                            var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.MatchStateCommand);
+                            var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
+                            await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                        }
+                    }
+                    else if (matchId.HasValue)
+                    {
+                        // we assume that the player disconnected before he joined a match
+                        var payload = new EventMatchLobbyPayload(matchId.Value, playerId.Value, null, ServerCommands.JoinMatchCommand);
+                        var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
+                        await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
+                        await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                    }
+                    else
+                    {
+                        // client hopefully knows how to join the match
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to obtain the disconnected player id from the token claims");
+                }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "An error occurred while handling player reconnect.");
+                Log.Error(ex, "An error occurred while handling player connect.");
+            }
+            finally
+            {
+                await base.OnConnectedAsync();
             }
         }
 
@@ -72,61 +118,71 @@ namespace GammonX.Server
         {
             try
             {
-                // TODO: what happens after grace timer expires?
-                // TODO: one grace period per match (griefing prevention)
-                var playerId = Guid.Empty; // TODO how to obtain?
+                var playerId = Context.GetPlayerId();
+                var matchId = Context.GetMatchId();
 
-                var playerConnection = _playerConnectionRepository.Get(playerId);
-                if (playerConnection != null)
+                if (playerId.HasValue && matchId.HasValue)
                 {
-                    playerConnection.LastSeenUtc = DateTime.UtcNow;
-                    await StartDisconnectGraceTimerAsync(playerId);
+                    var playerConnection = _playerConnectionRepository.Get(playerId.Value);
+                    if (playerConnection != null)
+                    {
+                        playerConnection.LastSeenUtc = DateTime.UtcNow;
+                        await StartDisconnectGraceTimerAsync(playerConnection);
+                        var payload = new EventDisconnectedPayload(playerConnection.DisconnectGracePeriod);
+                        var contract = new EventResponseContract<EventDisconnectedPayload>(ServerEventTypes.PlayerDisconnectedEvent, payload);
+                        await SendToGroup(ConstructGroupName(matchId.Value), ServerEventTypes.PlayerDisconnectedEvent, contract);
+                    }
                 }
-
-                // TODO: send game paused event to other player
-
-                await base.OnDisconnectedAsync(exception);
+                else
+                {
+                    throw new InvalidOperationException("Failed to obtain the disconnected player id from the token claims");
+                }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "An error occurred while handling player disconnect.");
             }
-        }
-
-        private async Task TryRejoinMatch(Guid playerId, string connectionId)
-        {
-            var matchToRejoin = _matchRepository.GetPlayersMatch(playerId);
-            if (matchToRejoin != null)
+            finally
             {
-                await Groups.AddToGroupAsync(connectionId, _groupName);
-                await SendGameState(ServerEventTypes.GameStateEvent, matchToRejoin);
-            }
-            else
-            {
-                Log.Warning("No match found for player {PlayerId} to rejoin on reconnect.", playerId);
+                await base.OnDisconnectedAsync(exception);
             }
         }
 
-        private async Task StartDisconnectGraceTimerAsync(Guid playerId)
+        private async Task StartDisconnectGraceTimerAsync(PlayerConnection playerConnection)
         {
+            if (_disconnectTimers.TryGetValue(playerConnection.Id, out var cts))
+            {
+                cts.Cancel();
+                _disconnectTimers.Remove(playerConnection.Id);
+            }
+
+            var newCts = new CancellationTokenSource();
+            _disconnectTimers[playerConnection.Id] = newCts;
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(ReconnectTimeout);
-
-                    var playerConnection = _playerConnectionRepository.Get(playerId);
-                    if (playerConnection != null)
+                    await Task.Delay(playerConnection.DisconnectGracePeriod, newCts.Token);
+                    if (!newCts.Token.IsCancellationRequested && playerConnection != null)
                     {
-                        if (DateTime.UtcNow - playerConnection.LastSeenUtc >= ReconnectTimeout)
+                        var disconnectDuration = DateTime.UtcNow - playerConnection.LastSeenUtc;
+                        if (disconnectDuration >= playerConnection.DisconnectGracePeriod)
                         {
-                            await HandlePermanentDisconnectAsync(playerId);
+                            await HandlePermanentDisconnectAsync(playerConnection.Id);
+                        }
+                        else
+                        {
+                            playerConnection.DisconnectGracePeriod -= disconnectDuration;
+                            _disconnectTimers.Remove(playerConnection.Id);
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    Log.Error(ex, "An error occurred while handling permanent disconnect for player {PlayerId}", playerId);
+                    var disconnectDuration = DateTime.UtcNow - playerConnection.LastSeenUtc;
+                    playerConnection.DisconnectGracePeriod -= disconnectDuration;
+                    _disconnectTimers.Remove(playerConnection.Id);
                 }
             });
         }
@@ -134,10 +190,14 @@ namespace GammonX.Server
         private async Task HandlePermanentDisconnectAsync(Guid playerId)
         {
             var matchToResign = _matchRepository.GetPlayersMatch(playerId);
-            if (matchToResign != null)
+            if (matchToResign != null && !matchToResign.IsMatchOver())
             {
                 matchToResign.ResignMatch(playerId);
                 await SendMatchState(ServerEventTypes.MatchEndedEvent, matchToResign);
+            }
+            else
+            {
+                await SendErrorEventAsync("DISCONNECT_ERROR", $"No match found for player {playerId} on permanent disconnect.", Context.ConnectionId);
             }
         }
 
@@ -175,13 +235,11 @@ namespace GammonX.Server
                     }
 
                     var matchSession = _matchRepository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
-                    _groupName = matchLobby.GroupName;
                     if (matchLobby.Player1.Id == playerIdGuid)
                     {
                         matchLobby.Player1.SetConnectionId(Context.ConnectionId);
                         ArgumentNullException.ThrowIfNull(matchLobby.Player1.ConnectionId, nameof(matchLobby.Player1.ConnectionId));
                         matchSession.JoinSession(matchLobby.Player1);
-                        await Groups.AddToGroupAsync(matchLobby.Player1.ConnectionId, _groupName);
 
                         if (matchLobby.QueueKey.MatchModus == MatchModus.Bot)
                         {
@@ -199,21 +257,20 @@ namespace GammonX.Server
                         matchLobby.Player2.SetConnectionId(Context.ConnectionId);
                         ArgumentNullException.ThrowIfNull(matchLobby.Player2.ConnectionId, nameof(matchLobby.Player2.ConnectionId));
                         matchSession.JoinSession(matchLobby.Player2);
-                        await Groups.AddToGroupAsync(matchLobby.Player2.ConnectionId, _groupName);
                     }
 
                     if (matchSession.Player1.Id != Guid.Empty && matchSession.Player2.Id != Guid.Empty)
                     {
                         var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchSession.Player1.Id, matchSession.Player2.Id);
                         var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyPayload);
-                        await SendToGroup(_groupName, ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
+                        await SendToGroup(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
                         await SendMatchState(ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                     }
                     else
                     {
                         var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchLobby.Player1.Id, null);
                         var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyPayload);
-                        await SendToGroup(_groupName, ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
+                        await SendToGroup(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
                     }
                 }
                 else
@@ -666,10 +723,9 @@ namespace GammonX.Server
                     await SendErrorEventAsync("GET_GAME_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
                     await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                 }
                 else
@@ -693,10 +749,9 @@ namespace GammonX.Server
                     await SendErrorEventAsync("GET_MATCH_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                var matchSession = _repository.Get(matchGuid);
+                var matchSession = _matchRepository.Get(matchGuid);
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
                     await SendMatchState(ServerEventTypes.MatchStateEvent, matchSession);
                 }
                 else
@@ -728,7 +783,7 @@ namespace GammonX.Server
                 }
 
                 var matchSession = _matchRepository.Get(matchGuid);
-                if (matchSession != null)
+                if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
 
@@ -845,10 +900,10 @@ namespace GammonX.Server
 
                     // the player who got the double offered has to accept or decline it
                     var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
-                    var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOffered, otherPlayerGameSession);
+                    var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, otherPlayerGameSession);
                     var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
-                    await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOffered, otherPlayerContract);
-                }                
+                    await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOfferedEvent, otherPlayerContract);
+                }
             }
             else
             {
@@ -1087,8 +1142,8 @@ namespace GammonX.Server
             if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
             {
                 // clients can now safely disconnect from socket
-                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnect, new EmptyEventPayload());
-                await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnect, emptyResponse);
+                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
+                await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
                 await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
                 await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
                 _playerConnectionRepository.Remove(match.Player1.Id);
@@ -1268,6 +1323,11 @@ namespace GammonX.Server
         private async Task SendToClient<T>(string connectionId, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
         {
             await Clients.Client(connectionId).SendAsync(serverEventName, response);
+        }
+
+        private static string ConstructGroupName(Guid matchId)
+        {
+            return $"match_{matchId}";
         }
 
         #endregion Private Members
