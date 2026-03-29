@@ -36,14 +36,5 @@ namespace GammonX.Engine.Models
 		/// <param name="isWhite">Boolean indicating if black or white checkers accepting the doubling cube.</param>
 		/// <returns>Boolean indicating if doubling cube can be offered.</returns>
 		bool CanOfferDoublingCube(bool isWhite);
-
-        /// <summary>
-        /// The doubling cube offer is declined by the opponent and the game ends with the current player as the winner.
-        /// </summary>
-        /// <remarks>
-        /// The doubling cube value is doubled.
-        /// </remarks>
-        /// <param name="isWhite">Boolean indicating if black or white checkers accepting the doubling cube.</param>
-        void DeclineDoublingCubeOffer(bool isWhite);
     }
 }

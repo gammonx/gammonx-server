@@ -328,9 +328,6 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("The calling player must not accept the double offer");
 			}
 
-            var isWhite = IsWhite(callingPlayerId);
-            doublingCubeModel.DeclineDoublingCubeOffer(isWhite);
-
             // Other player gets the points for his score
             var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
