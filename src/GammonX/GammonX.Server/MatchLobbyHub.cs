@@ -100,7 +100,7 @@ namespace GammonX.Server
                 }
                 else
                 {
-                    throw new InvalidOperationException("Failed to obtain the disconnected player id from the token claims");
+                    throw new InvalidOperationException("Failed to obtain the required claims from the authorization token");
                 }
             }
             catch (Exception ex)
@@ -135,7 +135,7 @@ namespace GammonX.Server
                 }
                 else
                 {
-                    throw new InvalidOperationException("Failed to obtain the disconnected player id from the token claims");
+                    throw new InvalidOperationException("Failed to obtain the required claims from the authorization token");
                 }
             }
             catch (Exception ex)
@@ -301,7 +301,7 @@ namespace GammonX.Server
             {
                 if (!Guid.TryParse(matchId, out var matchGuid))
                 {
-                    await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
+                    await SendErrorEventAsync("START_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
                 var matchSession = _matchRepository.Get(matchGuid);
@@ -376,12 +376,12 @@ namespace GammonX.Server
                 }
                 else
                 {
-                    await SendErrorEventAsync("MATCH_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
+                    await SendErrorEventAsync("START_MATCH_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
                 }
             }
             catch (Exception e)
             {
-                await SendErrorEventAsync("MATCH_ERROR", $"An error occurred while trying to start the match: '{e.Message}'", Context.ConnectionId, e);
+                await SendErrorEventAsync("START_MATCH_ERROR", $"An error occurred while trying to start the match: '{e.Message}'", Context.ConnectionId, e);
             }
         }
 
@@ -401,7 +401,7 @@ namespace GammonX.Server
             {
                 if (!Guid.TryParse(matchId, out var matchGuid))
                 {
-                    await SendErrorEventAsync("MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
+                    await SendErrorEventAsync("START_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
                 var matchSession = _matchRepository.Get(matchGuid);
@@ -446,12 +446,12 @@ namespace GammonX.Server
                 }
                 else
                 {
-                    await SendErrorEventAsync("MATCH_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
+                    await SendErrorEventAsync("START_GAME_ERROR", "No match seesion was found with the given matchId.", Context.ConnectionId);
                 }
             }
             catch (Exception e)
             {
-                await SendErrorEventAsync("MATCH_ERROR", $"An error occurred while trying to start the game: '{e.Message}'", Context.ConnectionId, e);
+                await SendErrorEventAsync("START_GAME_ERROR", $"An error occurred while trying to start the game: '{e.Message}'", Context.ConnectionId, e);
             }
         }
 
@@ -633,7 +633,7 @@ namespace GammonX.Server
             }
             catch (Exception e)
             {
-                await SendErrorEventAsync("ROLL_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'", Context.ConnectionId, e);
+                await SendErrorEventAsync("END_TURN_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'", Context.ConnectionId, e);
             }
         }
 
@@ -1125,7 +1125,6 @@ namespace GammonX.Server
         {
             // we put the results in the work queue if applicable
             await ProcessMatchResultsAsync(match, serverEventName);
-
             // TODO: game finished screen > stats
             // TODO match finished screen > stats/rating
 
@@ -1153,25 +1152,33 @@ namespace GammonX.Server
 
         private async Task ProcessMatchResultsAsync(IMatchSessionModel match, string serverEventName)
         {
-            if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+            try
             {
-                var gameRound = GetLastConcludedGameRoundIndex(match);
-                await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
-            }
-            else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
-            {
-                // we have to enqueue the last game of the match aswell
-                var gameRound = GetLastConcludedGameRoundIndex(match);
-                await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
-                // we process the match result
-                await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
-                // we update the player stats based on the match result
-                await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
-                // we update the player rating based on the match result if a ranked was played
-                if (match.Modus == MatchModus.Ranked)
+                if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
                 {
-                    await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                    var gameRound = GetLastConcludedGameRoundIndex(match);
+                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
                 }
+                else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+                {
+                    // we have to enqueue the last game of the match aswell
+                    var gameRound = GetLastConcludedGameRoundIndex(match);
+                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                    // we process the match result
+                    await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                    // we update the player stats based on the match result
+                    await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                    // we update the player rating based on the match result if a ranked was played
+                    if (match.Modus == MatchModus.Ranked)
+                    {
+                        await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                var groupName = ConstructGroupName(match.Id);
+                await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", $"An error occurred while processing the match result. Some match data may be lost.", groupName, e);
             }
         }
 
