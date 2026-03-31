@@ -97,5 +97,10 @@ namespace GammonX.Server
 		/// Event that signals that the double cube owner offered a double to his opponent.
 		/// </summary>
 		public static string DoubleOfferedEvent = "double-offered";
-	}
+
+        /// <summary>
+        /// Event that signals that the offered player accepted the double offer.
+        /// </summary>
+        public static string DoubleAcceptedEvent = "double-accepted";
+    }
 }

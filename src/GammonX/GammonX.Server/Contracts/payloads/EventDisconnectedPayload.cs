@@ -9,11 +9,12 @@ namespace GammonX.Server.Contracts
         public TimeSpan GracePeriod { get; set; }
 
         [DataMember(Name = "expiration")]
-        public DateTime Expiration => DateTime.UtcNow.Add(GracePeriod);
+        public DateTime Expiration { get; set; }
 
         public EventDisconnectedPayload(TimeSpan gracePeriod)
         {
             GracePeriod = gracePeriod;
+            Expiration = DateTime.UtcNow.Add(gracePeriod);
         }
     }
 }

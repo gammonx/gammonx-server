@@ -927,7 +927,7 @@ namespace GammonX.Server
                 {
                     // doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
                     // Therefore, the next command must be the roll command
-                    await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
+                    await SendGameState(ServerEventTypes.DoubleAcceptedEvent, matchSession);
                 }
             }
             else

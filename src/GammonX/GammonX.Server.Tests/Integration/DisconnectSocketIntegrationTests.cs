@@ -120,18 +120,53 @@ namespace GammonX.Server.Tests.Integration
 
             var player1Connected = false;
             var player1Disconnected = false;
+            var player1CanStartMatch = false;
 
             player2Connection.On<object>(ServerEventTypes.PlayerDisconnectedEvent, response =>
             {
                 Assert.NotNull(response);
-                player1Disconnected = true;
-                player1Connected = false;
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventDisconnectedPayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventDisconnectedPayload payload)
+                {
+                    Assert.Equal(TimeSpan.FromSeconds(30), payload.GracePeriod);
+                    Assert.True(payload.Expiration > DateTime.UtcNow);
+                    player1Disconnected = true;
+                    player1Connected = false;
+                }                
             });
 
             player1Connection.On<object>(ServerEventTypes.PlayerConnectedEvent, response =>
             {
                 Assert.NotNull(response);
-                player1Connected = true;
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchLobbyPayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventMatchLobbyPayload payload)
+                {
+                    if (payload.Player2 != null)
+                    {
+                        Assert.True(payload.MatchFound);
+                        Assert.Contains(ServerCommands.MatchStateCommand, payload.AllowedCommands);
+                        player1Connected = true;
+                        player1Disconnected = false;
+                    }
+                    else
+                    {
+                        Assert.False(payload.MatchFound);
+                        Assert.Contains(ServerCommands.JoinMatchCommand, payload.AllowedCommands);
+                        player1Connected = true;
+                        player1Disconnected = false;
+                    }
+                };
+            });
+
+            player1Connection.On<object>(ServerEventTypes.MatchStateEvent, response =>
+            {
+                Assert.NotNull(response);
+                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchStatePayload>>(response.ToString() ?? "");
+                if (contract?.Payload is EventMatchStatePayload payload)
+                {
+                    Assert.Contains(ServerCommands.StartMatchCommand, payload.AllowedCommands);
+                    player1CanStartMatch = true;
+                }
             });
 
             await player1Connection.StartAsync();
@@ -151,10 +186,21 @@ namespace GammonX.Server.Tests.Integration
 
             await player1Connection.StartAsync();
 
-            while(!player1Connected)
+            while (!player1Connected)
             {
                 await Task.Delay(100);
             }
+
+            await player1Connection.InvokeAsync(ServerCommands.MatchStateCommand, matchId);
+
+            while (!player1CanStartMatch)
+            {
+                await Task.Delay(100);
+            }
+
+            Assert.True(player1CanStartMatch);
+            Assert.True(player1Connected);
+            Assert.False(player1Disconnected);
         }
 
         private static string? GenerateJwtToken(Guid playerId, Guid matchId)
