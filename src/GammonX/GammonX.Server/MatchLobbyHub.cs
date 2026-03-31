@@ -107,10 +107,6 @@ namespace GammonX.Server
             {
                 Log.Error(ex, "An error occurred while handling player connect.");
             }
-            finally
-            {
-                await base.OnConnectedAsync();
-            }
         }
 
         // <inheritdoc />
@@ -118,14 +114,24 @@ namespace GammonX.Server
         {
             try
             {
+                // TODO: what if bot players disconnect?
                 var playerId = Context.GetPlayerId();
                 var matchId = Context.GetMatchId();
 
                 if (playerId.HasValue && matchId.HasValue)
                 {
+                    // TODO: regular disconnect on match finished?
                     var playerConnection = _playerConnectionRepository.Get(playerId.Value);
                     if (playerConnection != null)
                     {
+                        var match = _matchRepository.Get(matchId.Value);
+                        if (match != null && match.IsMatchOver())
+                        {
+                            // TODO: when to remove matches from repository?
+                            _matchRepository.Remove(matchId.Value);
+                            return;
+                        }
+
                         playerConnection.LastSeenUtc = DateTime.UtcNow;
                         await StartDisconnectGraceTimerAsync(playerConnection);
                         var payload = new EventDisconnectedPayload(playerConnection.DisconnectGracePeriod);
@@ -141,10 +147,6 @@ namespace GammonX.Server
             catch (Exception ex)
             {
                 Log.Error(ex, "An error occurred while handling player disconnect.");
-            }
-            finally
-            {
-                await base.OnDisconnectedAsync(exception);
             }
         }
 
@@ -1147,6 +1149,7 @@ namespace GammonX.Server
                 await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
                 _playerConnectionRepository.Remove(match.Player1.Id);
                 _playerConnectionRepository.Remove(match.Player2.Id);
+                _matchRepository.Remove(match.Id);
             }
         }
 

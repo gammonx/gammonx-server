@@ -97,7 +97,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-at-least-32-characters-long-for-hs256";
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "";
     var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "";
     var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "";
 
@@ -105,8 +105,8 @@ builder.Services.AddAuthentication(options =>
     {
         ValidateIssuer = !string.IsNullOrEmpty(jwtIssuer),
         ValidateAudience = !string.IsNullOrEmpty(jwtAudience),
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+        ValidateLifetime = !string.IsNullOrEmpty(jwtSecret),
+        ValidateIssuerSigningKey = !string.IsNullOrEmpty(jwtSecret),
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
