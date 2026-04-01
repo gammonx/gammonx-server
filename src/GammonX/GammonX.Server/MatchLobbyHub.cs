@@ -114,29 +114,23 @@ namespace GammonX.Server
         {
             try
             {
-                // TODO: what if bot players disconnect?
                 var playerId = Context.GetPlayerId();
                 var matchId = Context.GetMatchId();
 
                 if (playerId.HasValue && matchId.HasValue)
                 {
-                    // TODO: regular disconnect on match finished?
                     var playerConnection = _playerConnectionRepository.Get(playerId.Value);
                     if (playerConnection != null)
                     {
-                        var match = _matchRepository.Get(matchId.Value);
-                        if (match != null && match.IsMatchOver())
-                        {
-                            // TODO: when to remove matches from repository?
-                            _matchRepository.Remove(matchId.Value);
-                            return;
-                        }
-
                         playerConnection.LastSeenUtc = DateTime.UtcNow;
-                        await StartDisconnectGraceTimerAsync(playerConnection);
+                        await StartDisconnectGraceTimerAsync(playerConnection, matchId.Value);
                         var payload = new EventDisconnectedPayload(playerConnection.DisconnectGracePeriod);
                         var contract = new EventResponseContract<EventDisconnectedPayload>(ServerEventTypes.PlayerDisconnectedEvent, payload);
                         await SendToGroup(ConstructGroupName(matchId.Value), ServerEventTypes.PlayerDisconnectedEvent, contract);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("A player has disconnection without any known connection");
                     }
                 }
                 else
@@ -150,7 +144,7 @@ namespace GammonX.Server
             }
         }
 
-        private async Task StartDisconnectGraceTimerAsync(PlayerConnection playerConnection)
+        private async Task StartDisconnectGraceTimerAsync(PlayerConnection playerConnection, Guid matchId)
         {
             if (_disconnectTimers.TryGetValue(playerConnection.Id, out var cts))
             {
@@ -166,18 +160,11 @@ namespace GammonX.Server
                 try
                 {
                     await Task.Delay(playerConnection.DisconnectGracePeriod, newCts.Token);
-                    if (!newCts.Token.IsCancellationRequested && playerConnection != null)
+                    if (!newCts.Token.IsCancellationRequested)
                     {
-                        var disconnectDuration = DateTime.UtcNow - playerConnection.LastSeenUtc;
-                        if (disconnectDuration >= playerConnection.DisconnectGracePeriod)
-                        {
-                            await HandlePermanentDisconnectAsync(playerConnection.Id);
-                        }
-                        else
-                        {
-                            playerConnection.DisconnectGracePeriod -= disconnectDuration;
-                            _disconnectTimers.Remove(playerConnection.Id);
-                        }
+                        playerConnection.DisconnectGracePeriod = TimeSpan.Zero;
+                        _disconnectTimers.Remove(playerConnection.Id);
+                        await HandlePermanentDisconnectAsync(playerConnection.Id, matchId);
                     }
                 }
                 catch (OperationCanceledException)
@@ -189,17 +176,22 @@ namespace GammonX.Server
             });
         }
 
-        private async Task HandlePermanentDisconnectAsync(Guid playerId)
+        private async Task HandlePermanentDisconnectAsync(Guid playerId, Guid matchId)
         {
+            _playerConnectionRepository.TryRemove(playerId);
             var matchToResign = _matchRepository.GetPlayersMatch(playerId);
             if (matchToResign != null && !matchToResign.IsMatchOver())
             {
+                // first player to expire the grace period loses the match
                 matchToResign.ResignMatch(playerId);
+                _matchRepository.TryRemove(matchToResign.Id);
                 await SendMatchState(ServerEventTypes.MatchEndedEvent, matchToResign);
             }
             else
             {
-                await SendErrorEventAsync("DISCONNECT_ERROR", $"No match found for player {playerId} on permanent disconnect.", Context.ConnectionId);
+                // no match was started, we simply close the connections in this case
+                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
+                await SendToGroup(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
             }
         }
 
@@ -234,6 +226,13 @@ namespace GammonX.Server
                     if (matchLobby.Status != QueueEntryStatus.OpponentFound)
                     {
                         throw new InvalidOperationException($"The match with given id '{matchId}' cannot be started. No opponent found yet.");
+                    }
+
+                    // we need to preserve this for compatibility reason when no bearer token with claims exist
+                    var matchIdClaim = Context.GetMatchId();
+                    if (!matchIdClaim.HasValue)
+                    {
+                        await Groups.AddToGroupAsync(Context.ConnectionId, ConstructGroupName(matchLobby.MatchId));
                     }
 
                     var matchSession = _matchRepository.GetOrCreate(matchLobby.MatchId, matchLobby.QueueKey);
@@ -1147,9 +1146,13 @@ namespace GammonX.Server
                 await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
                 await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
                 await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
-                _playerConnectionRepository.Remove(match.Player1.Id);
-                _playerConnectionRepository.Remove(match.Player2.Id);
-                _matchRepository.Remove(match.Id);
+                // we clean up the repositories
+                _matchRepository.TryRemove(match.Id);
+                _playerConnectionRepository.TryRemove(match.Player1.Id);
+                if (match.Modus != MatchModus.Bot)
+                {
+                    _playerConnectionRepository.TryRemove(match.Player2.Id);
+                }
             }
         }
 

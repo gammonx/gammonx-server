@@ -97,7 +97,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "";
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-at-least-32-characters-long-for-hs256";
     var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "";
     var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "";
 

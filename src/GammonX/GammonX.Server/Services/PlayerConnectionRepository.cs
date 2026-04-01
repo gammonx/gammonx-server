@@ -59,6 +59,11 @@ namespace GammonX.Server.Services
                 });
         }
 
+        public bool TryRemove(Guid playerId)
+        {
+            return _connections.TryRemove(playerId, out var _);
+        }
+
         public void Remove(Guid playerId)
         {
             if (!_connections.TryRemove(playerId, out var _))

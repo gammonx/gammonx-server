@@ -1,11 +1,9 @@
 ## DONE
-- 
+- see changelog 
 
 ## Active
-- time out // turn timer
-- disconnect/reconnect
-    - queue disconnect
-    - matchhub disconnection
+- turn timer
+- cancel queue endpoint
 
 ## TODO 
 - fevga/plakoto bot implementation

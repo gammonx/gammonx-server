@@ -62,6 +62,11 @@ namespace GammonX.Server.Services
             return lazy.Value;
         }
 
+		public bool TryRemove(Guid matchId)
+		{
+			return _sessions.TryRemove(matchId, out var _);
+        }
+
 		public void Remove(Guid matchId)
 		{
 			if (!_sessions.TryRemove(matchId, out var _))
