@@ -2,8 +2,7 @@
 - see changelog 
 
 ## Active
-- turn timer
-- cancel queue endpoint
+- none
 
 ## TODO 
 - fevga/plakoto bot implementation

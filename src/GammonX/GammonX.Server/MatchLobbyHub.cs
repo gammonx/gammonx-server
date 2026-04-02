@@ -64,16 +64,6 @@ namespace GammonX.Server
 
         #region Overrides
 
-        private static CancellationTokenKey ConstructTokenKey(Guid playerId, Guid matchId, CancellationTokenCategory category)
-        {
-            return new CancellationTokenKey
-            {
-                PlayerId = playerId,
-                MatchId = matchId,
-                Category = category
-            };
-        }
-
         // <inheritdoc />
         public override async Task OnConnectedAsync()
         {
@@ -1504,6 +1494,16 @@ namespace GammonX.Server
         private static string ConstructGroupName(Guid matchId)
         {
             return $"match_{matchId}";
+        }
+
+        private static CancellationTokenKey ConstructTokenKey(Guid playerId, Guid matchId, CancellationTokenCategory category)
+        {
+            return new CancellationTokenKey
+            {
+                PlayerId = playerId,
+                MatchId = matchId,
+                Category = category
+            };
         }
 
         #endregion Private Members

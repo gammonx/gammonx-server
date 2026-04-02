@@ -27,7 +27,14 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
-		public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
+        // <inheritdoc />
+        public Task LeaveQueueAsync(QueueEntry entry)
+        {
+            LeaveQueue(entry);
+			return Task.FromResult(0);
+        }
+
+        public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
 		{
             _playerConnectionRepository = playerConnectionRepository;
 
@@ -120,6 +127,12 @@ namespace GammonX.Server.Services
             _queue[entry.Id] = entry;
             var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
             modeQueue.Enqueue(entry.Id);
+        }
+
+		protected virtual internal void LeaveQueue(QueueEntry entry)
+		{
+			_queue.TryRemove(entry.Id, out _);
+			// the mode queue is automatically cleanup while matching opponents for match lobbies
         }
     }
 }

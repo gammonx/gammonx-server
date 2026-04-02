@@ -45,6 +45,7 @@ namespace GammonX.Server.Services
             {
                 while (queue.TryDequeue(out var idA))
                 {
+                    // we dequeue entry ids from the mode queue and do not readd them if no related entry is found
                     if (!_queue.TryGetValue(idA, out var entryA))
                         continue;
 

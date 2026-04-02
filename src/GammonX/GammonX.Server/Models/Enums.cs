@@ -12,6 +12,10 @@
 		/// <summary>
 		/// The queue entry left the queue. A match lobby was created and is waiting to be used.
 		/// </summary>
-		OpponentFound = 1
+		OpponentFound = 1,
+		/// <summary>
+		/// The queue entry left the queue without starting any match lobby.
+		/// </summary>
+		Discarded = 2
 	}
 }

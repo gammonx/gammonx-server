@@ -45,6 +45,13 @@ namespace GammonX.Server.Services
 		Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
         /// <summary>
+        /// The given <paramref name="entry"/> leaves the matchmaking queue.
+        /// </summary>
+        /// <param name="entry">Queue entry who wants to leave.</param>
+        /// <returns>A task to be awaited.</returns>
+        Task LeaveQueueAsync(QueueEntry entry);
+
+        /// <summary>
         /// Updates the <see cref="QueueEntry.LastSeenUtc"/> time stamp to the current time in utc.
         /// </summary>
         void TouchQueueEntry(Guid queueId);

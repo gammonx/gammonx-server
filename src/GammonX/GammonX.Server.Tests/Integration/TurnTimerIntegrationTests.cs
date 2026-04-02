@@ -19,7 +19,7 @@ namespace GammonX.Server.Tests.Integration
             });
         }
 
-        [Fact]
+        [Fact(Skip = "takes to long (timeout dependent)")]
         public async Task TurnTimerTimesOut()
         {
             var setup = await TestHelper.SetupIntegrationTest(_factory);

@@ -15,7 +15,7 @@
 	    - case GameLive > GameState command
 		- case NoActiveGame > MatchState command
 		- case NoMatch > JoinMatch command
-- onDisconnected
+- onDisconnected behavior
 	- sends `player-disconnected` with `EventDisconnectedPayload` (contains grace period + expiration)
 	- single grace period per match and per player
 	- grace period exceeded > resignMatch
@@ -23,7 +23,12 @@
 - turn timers for players
     - new event `turn-timer` with `EventTurnTimerPayload`
     - `EventTurnTimerPayload` contains expiration date until the next expected command must be called
+	- affects both players simultenously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
     - event is sent halfway through the full timeout. Full timeout 60s, event sent at 30s
-    - if expiration date is exceeded the game is resigned
+    - if expiration date is exceeded the game/match is resigned
+- the matches controller offers new endpont `queues/{queueId}/cancel`
+	- removes the queue entry from the matchmaking service
+	- allows to cancel and directly re-enter a match search
+	- same payload as poll request `queues/{queueId}`
 ### FIXES
-- none
+- improved game flow. On socket connected event, client receives allowed command to join the match

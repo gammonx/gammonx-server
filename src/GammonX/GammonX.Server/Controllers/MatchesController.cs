@@ -45,6 +45,43 @@ namespace GammonX.Server.Controllers
             }
         }
 
+        [HttpPost("queues/{queueId}/cancel")]
+        public async Task<IActionResult> CancelAsync([FromRoute] Guid queueId, [FromBody] StatusRequest req)
+        {
+            try
+            {
+                var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(req.MatchModus);
+                if (matchMakingService.TryFindMatchLobby(queueId, out var matchLobby) && matchLobby != null)
+                {
+                    // match lobby was created, return match id
+                    var payload = matchLobby.ToPayload();
+                    var payloadError = new RequestErrorPayload("QUEUE_ERROR", "Unable to cancel the queue entry. Matchlobby was already created");
+                    var responseError = new RequestResponseContract<RequestErrorPayload>("ERROR", payloadError);
+                    return BadRequest(responseError);
+                }
+                else if (matchMakingService.TryFindQueueEntry(queueId, out var queueEntry) && queueEntry != null)
+                {
+                    await matchMakingService.LeaveQueueAsync(queueEntry);
+                    var payload = queueEntry.ToPayload();
+                    payload.Status = QueueEntryStatus.Discarded;
+                    var response = new RequestResponseContract<RequestQueueEntryPayload>("OK", payload);
+                    return Ok(response);
+                }
+                else
+                {
+                    var payloadError = new RequestErrorPayload("QUEUE_ERROR", "No queue entry found with the given queue id");
+                    var responseError = new RequestResponseContract<RequestErrorPayload>("ERROR", payloadError);
+                    return BadRequest(responseError);
+                }                
+            }
+            catch (Exception e)
+            {
+                var payload = new RequestErrorPayload("QUEUE_ERROR", e.Message);
+                var response = new RequestResponseContract<RequestErrorPayload>("ERROR", payload);
+                return BadRequest(response);
+            }
+        }
+
         [HttpPost("queues/{queueId}")]
         public IActionResult GetStatusAsync([FromRoute] Guid queueId, [FromBody] StatusRequest req)
         {
