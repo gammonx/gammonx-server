@@ -75,6 +75,7 @@ builder.Services.AddSingleton<PlayerConnectionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
+builder.Services.AddSingleton<ICancellationTokenService, CancellationTokenServiceImpl>();
 // -------------------------------------------------------------------------------
 // BOT SERVICE SETUP
 // -------------------------------------------------------------------------------

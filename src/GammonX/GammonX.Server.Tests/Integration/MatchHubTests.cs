@@ -36,6 +36,7 @@ namespace GammonX.Server.Tests.Integration
         private readonly Guid _player1Id = Guid.NewGuid();
         private readonly Guid _player2Id = Guid.NewGuid();
         private readonly Mock<IWorkQueueService> _workQueueService;
+        private readonly ICancellationTokenService _cancellationTokenService;
 
 
         public MatchHubTests()
@@ -64,7 +65,9 @@ namespace GammonX.Server.Tests.Integration
             compositeService.AddService(MatchModus.Bot, _botMatchService);
             _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _botService = new WildbgBotService(_wildBgClient);
-            _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService, _playerConnRepo);
+            _cancellationTokenService = new CancellationTokenServiceImpl();
+            _hub = new MatchLobbyHub(
+                _workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null);
         }
 
         [Theory]
@@ -878,7 +881,8 @@ namespace GammonX.Server.Tests.Integration
             // client 1
             var player1ConnectionId = Guid.NewGuid().ToString();
             var context1 = new HubCallerContextStub(player1ConnectionId);
-            var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo)
+            var hub1 = new MatchLobbyHub(
+                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -888,7 +892,8 @@ namespace GammonX.Server.Tests.Integration
             // client 2
             var player2ConnectionId = Guid.NewGuid().ToString();
             var context2 = new HubCallerContextStub(player2ConnectionId);
-            var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo)
+            var hub2 = new MatchLobbyHub(
+                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,

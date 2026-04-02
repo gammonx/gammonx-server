@@ -102,5 +102,10 @@ namespace GammonX.Server
         /// Event that signals that the offered player accepted the double offer.
         /// </summary>
         public static string DoubleAcceptedEvent = "double-accepted";
+
+        /// <summary>
+        /// Event that signals that the active player has a turn timer running and the remaining time is updated.
+        /// </summary>
+        public static string TurnTimerEvent = "turn-timer";
     }
 }

@@ -20,7 +20,10 @@
 	- single grace period per match and per player
 	- grace period exceeded > resignMatch
     - [See disconnect handling](docs/poc/disconnect.md)
-- game state contains `turnExpiration` date time (utc)
-    - active game ends if the expiration date time is exceeded
+- turn timers for players
+    - new event `turn-timer` with `EventTurnTimerPayload`
+    - `EventTurnTimerPayload` contains expiration date until the next expected command must be called
+    - event is sent halfway through the full timeout. Full timeout 60s, event sent at 30s
+    - if expiration date is exceeded the game is resigned
 ### FIXES
 - none

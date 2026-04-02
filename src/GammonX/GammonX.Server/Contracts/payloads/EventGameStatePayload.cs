@@ -42,12 +42,6 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "boardState")]
 		public BoardStateContract BoardState { get; set; }
 
-        /// <summary>
-        /// Gets or sets the date time when the current turn expires (utc).
-        /// </summary>
-		[DataMember(Name = "turnExpiration")]
-        public DateTime TurnExpiration { get; set; }
-
 		public EventGameStatePayload(params string[] allowedCommands) : base(allowedCommands)
 		{
 			DiceRolls = Array.Empty<DiceRollContract>();
@@ -68,7 +62,6 @@ namespace GammonX.Server.Contracts
 				DiceRolls = model.DiceRolls.ToArray(),
 				MoveSequences = model.MoveSequences.ToContract(inverted, model.Modus),
 				BoardState = model.BoardModel.ToContract(inverted),
-				TurnExpiration = DateTime.UtcNow.AddSeconds(60) // TODO: enforce expiration server-side?
 			};
 		}
 	}
