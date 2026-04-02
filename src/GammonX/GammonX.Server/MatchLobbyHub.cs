@@ -285,7 +285,10 @@ namespace GammonX.Server
                         await SendMatchState(ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                         // we set a timeout for the players to start the match
                         await StartTurnTimerAsync(matchSession.Id, matchSession.Player1.Id);
-                        await StartTurnTimerAsync(matchSession.Id, matchSession.Player2.Id);
+                        if (!IsBotTurn(matchSession, matchSession.Player2.Id))
+                        {
+                            await StartTurnTimerAsync(matchSession.Id, matchSession.Player2.Id);
+                        }
                     }
                     else
                     {
@@ -826,7 +829,10 @@ namespace GammonX.Server
                     CancelTurnTimer(matchSession.Id, callingPlayerId);
                     await PerformOfferDoubleAsync(matchSession, callingPlayerId);
                     var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
-                    await StartTurnTimerAsync(matchSession.Id, otherPlayerId);
+                    if (!IsBotTurn(matchSession, otherPlayerId))
+                    {
+                        await StartTurnTimerAsync(matchSession.Id, otherPlayerId);
+                    }    
                 }
                 else
                 {
@@ -1141,8 +1147,8 @@ namespace GammonX.Server
                         await Task.Delay(halfTimeLimit, turnCts.Token);
                         if (!turnCts.Token.IsCancellationRequested)
                         {
-                            await HandleTurnTimeoutAsync(matchId, playerId);
                             _cancellationTokenService.Cancel(tokenkey);
+                            await HandleTurnTimeoutAsync(matchId, playerId);
                         }
                     }
                 }
@@ -1167,10 +1173,18 @@ namespace GammonX.Server
                 if (gameSession != null && !gameSession.Result.IsConcluded)
                 {
                     matchSession.ResignGame(playerId);
-                    await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession);
+                    if (matchSession.IsMatchOver())
+                    {
+                        await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
+                    }
+                    else
+                    {
+                        await SendMatchState(ServerEventTypes.GameEndedEvent, matchSession);
+                    }
                 }
                 else
                 {
+                    // we resign the complete match if no game has started yet
                     matchSession.ResignMatch(playerId);
                     await SendMatchState(ServerEventTypes.MatchEndedEvent, matchSession);
                 }

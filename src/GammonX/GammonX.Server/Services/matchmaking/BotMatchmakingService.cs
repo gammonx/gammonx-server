@@ -23,7 +23,7 @@ namespace GammonX.Server.Services
 
 			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.Now, 0);
 			var matchId = Guid.NewGuid();
-			var playerConnection = _playerConnectionRepository.Create(playerId);
+			var playerConnection = _playerConnectionRepository.GetOrCreate(playerId);
 
             var matchLobby = new MatchLobby(matchId, queueKey, playerConnection);
 
