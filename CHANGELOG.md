@@ -34,3 +34,5 @@
 - improved game flow. On socket connected event, client receives allowed command to join the match
 - fixed an issue where `StartMatch` event is not sent if bot wins opening roll
 	- https://github.com/gammonx/gammonx-server/issues/22
+- fixed an issue where `game-waiting` event was missused when waiting for a pending double offer
+	- https://github.com/gammonx/gammonx-server/issues/21

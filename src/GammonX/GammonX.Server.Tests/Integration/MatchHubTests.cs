@@ -162,7 +162,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2)); ;
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -180,7 +183,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -228,7 +234,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -246,7 +255,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);

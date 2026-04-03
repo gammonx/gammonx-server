@@ -938,9 +938,9 @@ namespace GammonX.Server
                 {
                     // the player who is offering the double is waiting for a response
                     var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
-                    var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameWaitingEvent, callingPlayerGameSession);
+                    var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, callingPlayerGameSession);
                     var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
-                    await SendToClient(callingConnectionId, ServerEventTypes.GameWaitingEvent, callingPlayerContract);
+                    await SendToClient(callingConnectionId, ServerEventTypes.DoubleOfferedEvent, callingPlayerContract);
 
                     // the player who got the double offered has to accept or decline it
                     var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
