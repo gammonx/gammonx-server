@@ -377,14 +377,15 @@ namespace GammonX.Server
                                 // we set the opening dice rolls for the starting player
                                 gameSession.SetDiceRolls(new[] { player1.StartDiceRoll.Value, player2.StartDiceRoll.Value }, isWhite);
 
+                                await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession);
+                                await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
+
                                 if (IsBotTurn(matchSession, startingPlayerId))
                                 {
                                     await PerfromBotTurnAsync(matchSession, startingPlayerId);
                                 }
                                 else
-                                {
-                                    await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession);
-                                    await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
+                                {                                    
                                     // we set a timeout for the starting player to end his turn
                                     await StartTurnTimerAsync(matchSession.Id, startingPlayerId);
                                 }
@@ -1265,6 +1266,7 @@ namespace GammonX.Server
         {
             // we put the results in the work queue if applicable
             await ProcessMatchResultsAsync(match, serverEventName);
+
             // TODO: game finished screen > stats
             // TODO match finished screen > stats/rating
 
