@@ -46,7 +46,7 @@
         }
 
         // <inheritdoc />
-        public void CancelForPlayer(Guid playerId)
+        public void CancelForPlayer(Guid playerId, CancellationTokenCategory category)
         {
             lock (_lock)
             {
@@ -61,7 +61,7 @@
         }
 
         // <inheritdoc />
-        public void CancelForMatch(Guid matchid)
+        public void CancelForMatch(Guid matchid, CancellationTokenCategory category)
         {
             lock (_lock)
             {

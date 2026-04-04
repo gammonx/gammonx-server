@@ -32,14 +32,16 @@
         /// <summary>
         /// Cancels all token sources associated with the given player id.
         /// </summary>
-        /// <param name="playerId"></param>
-        void CancelForPlayer(Guid playerId);
+        /// <param name="playerId">Player id to search for.</param>
+        /// <param name="category">Cancel token category to search for.</param>
+        void CancelForPlayer(Guid playerId, CancellationTokenCategory category);
 
         /// <summary>
         /// Cancels all token sources associated with the given match id.
         /// </summary>
-        /// <param name="matchid"></param>
-        void CancelForMatch(Guid matchid);
+        /// <param name="matchid">Match id to search for.</param>
+        /// <param name="category">Cancel token category to search for.</param>
+        void CancelForMatch(Guid matchid, CancellationTokenCategory category);
     }
 
     public readonly struct CancellationTokenKey

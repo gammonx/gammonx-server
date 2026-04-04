@@ -108,7 +108,8 @@ namespace GammonX.Server.Tests
             _service.Store(key1, cts1);
             _service.Store(key2, cts2);
 
-            _service.CancelForPlayer(playerId);
+            _service.CancelForPlayer(playerId, CancellationTokenCategory.Turn);
+            _service.CancelForPlayer(playerId, CancellationTokenCategory.Disconnect);
 
             Assert.True(cts1.IsCancellationRequested);
             Assert.True(cts2.IsCancellationRequested);
@@ -131,7 +132,7 @@ namespace GammonX.Server.Tests
             _service.Store(key1, cts1);
             _service.Store(key2, cts2);
 
-            _service.CancelForPlayer(playerId1);
+            _service.CancelForPlayer(playerId1, CancellationTokenCategory.Turn);
 
             Assert.True(cts1.IsCancellationRequested);
             Assert.False(cts2.IsCancellationRequested);
@@ -154,7 +155,8 @@ namespace GammonX.Server.Tests
             _service.Store(key1, cts1);
             _service.Store(key2, cts2);
 
-            _service.CancelForMatch(matchId);
+            _service.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+            _service.CancelForMatch(matchId, CancellationTokenCategory.Disconnect);
 
             Assert.True(cts1.IsCancellationRequested);
             Assert.True(cts2.IsCancellationRequested);
@@ -177,7 +179,7 @@ namespace GammonX.Server.Tests
             _service.Store(key1, cts1);
             _service.Store(key2, cts2);
 
-            _service.CancelForMatch(matchId1);
+            _service.CancelForMatch(matchId1, CancellationTokenCategory.Turn);
 
             Assert.True(cts1.IsCancellationRequested);
             Assert.False(cts2.IsCancellationRequested);
@@ -281,7 +283,7 @@ namespace GammonX.Server.Tests
             // we cancel from multiple threads concurrently
             for (int i = 0; i < 50; i++)
             {
-                tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId)));
+                tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId, CancellationTokenCategory.Turn)));
             }
 
             // we should complete without deadlock
@@ -307,7 +309,7 @@ namespace GammonX.Server.Tests
             // we cancel from multiple threads concurrently
             for (int i = 0; i < 50; i++)
             {
-                tasks.Add(Task.Run(() => _service.CancelForMatch(matchId)));
+                tasks.Add(Task.Run(() => _service.CancelForMatch(matchId, CancellationTokenCategory.Turn)));
             }
 
             // we should complete without deadlock
@@ -354,8 +356,8 @@ namespace GammonX.Server.Tests
                 // batch operations
                 if (index % 10 == 0)
                 {
-                    tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId1)));
-                    tasks.Add(Task.Run(() => _service.CancelForMatch(matchId2)));
+                    tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId1, CancellationTokenCategory.Turn)));
+                    tasks.Add(Task.Run(() => _service.CancelForMatch(matchId2, CancellationTokenCategory.Disconnect)));
                 }
             }
 
@@ -384,7 +386,7 @@ namespace GammonX.Server.Tests
         {
             var playerId = Guid.NewGuid();
 
-            _service.CancelForPlayer(playerId);
+            _service.CancelForPlayer(playerId, CancellationTokenCategory.Turn);
         }
 
         [Fact]
@@ -392,7 +394,7 @@ namespace GammonX.Server.Tests
         {
             var matchId = Guid.NewGuid();
 
-            _service.CancelForMatch(matchId);
+            _service.CancelForMatch(matchId, CancellationTokenCategory.Turn);
         }
 
         [Fact]

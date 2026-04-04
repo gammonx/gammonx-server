@@ -1206,7 +1206,7 @@ namespace GammonX.Server
 
         private void CancelTurnTimers(Guid matchId)
         {
-            _cancellationTokenService.CancelForMatch(matchId);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
         }
 
         #endregion Turn Timers
