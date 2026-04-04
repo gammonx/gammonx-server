@@ -106,7 +106,7 @@ namespace GammonX.Server
                             {
                                 // we start a turn timer for each player and expect both players to start the next game
                                 await StartTurnTimerAsync(match.Id, match.Player1.Id);
-                                if (!IsBotTurn(match, match.Player2.Id))
+                                if (!IsBotPlayer(match, match.Player2.Id))
                                 {
                                     await StartTurnTimerAsync(match.Id, match.Player2.Id);
                                 }
@@ -304,7 +304,7 @@ namespace GammonX.Server
                         await SendMatchState(ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                         // we set a timeout for the players to start the match
                         await StartTurnTimerAsync(matchSession.Id, matchSession.Player1.Id);
-                        if (!IsBotTurn(matchSession, matchSession.Player2.Id))
+                        if (!IsBotPlayer(matchSession, matchSession.Player2.Id))
                         {
                             await StartTurnTimerAsync(matchSession.Id, matchSession.Player2.Id);
                         }
@@ -399,7 +399,7 @@ namespace GammonX.Server
                                 await SendMatchState(ServerEventTypes.MatchStartedEvent, matchSession);
                                 await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
 
-                                if (IsBotTurn(matchSession, startingPlayerId))
+                                if (IsBotPlayer(matchSession, startingPlayerId))
                                 {
                                     await PerfromBotTurnAsync(matchSession, startingPlayerId);
                                 }
@@ -477,7 +477,7 @@ namespace GammonX.Server
                     {
                         var startingPlayerId = GetStartingPlayerId(matchSession);
                         var gameSession = matchSession.StartNextGame(startingPlayerId);
-                        if (IsBotTurn(matchSession, startingPlayerId))
+                        if (IsBotPlayer(matchSession, startingPlayerId))
                         {
                             await PerfromBotTurnAsync(matchSession, startingPlayerId);
                         }
@@ -671,7 +671,7 @@ namespace GammonX.Server
                     CancelTurnTimer(matchSession.Id, callingPlayerId);
                     matchSession.EndTurn(callingPlayerId);
 
-                    if (IsBotTurn(matchSession, otherPlayerId))
+                    if (IsBotPlayer(matchSession, otherPlayerId))
                     {
                         await PerfromBotTurnAsync(matchSession, otherPlayerId);
                     }
@@ -849,7 +849,7 @@ namespace GammonX.Server
                     CancelTurnTimer(matchSession.Id, callingPlayerId);
                     await PerformOfferDoubleAsync(matchSession, callingPlayerId);
                     var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
-                    if (!IsBotTurn(matchSession, otherPlayerId))
+                    if (!IsBotPlayer(matchSession, otherPlayerId))
                     {
                         await StartTurnTimerAsync(matchSession.Id, otherPlayerId);
                     }    
@@ -885,9 +885,14 @@ namespace GammonX.Server
                 {
                     var callingPlayerId = GetCallingPlayerId(matchSession);
                     CancelTurnTimer(matchSession.Id, callingPlayerId);
+
                     await PerformAcceptDoubleAsync(matchSession, callingPlayerId);
+
                     var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
-                    await StartTurnTimerAsync(matchSession.Id, otherPlayerId);
+                    if (!IsBotPlayer(matchSession, otherPlayerId))
+                    {
+                        await StartTurnTimerAsync(matchSession.Id, otherPlayerId);
+                    }
                 }
                 else
                 {
@@ -941,7 +946,7 @@ namespace GammonX.Server
                 doubleCubeSession.OfferDouble(offeringPlayerId);
                 var offeredPlayerId = GetOtherPlayerId(matchSession, offeringPlayerId);
 
-                if (IsBotTurn(matchSession, offeredPlayerId))
+                if (IsBotPlayer(matchSession, offeredPlayerId))
                 {
                     var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, offeredPlayerId);
                     if (shouldAccept)
@@ -980,7 +985,7 @@ namespace GammonX.Server
             {
                 doubleCubeSession.AcceptDouble(offeredPlayerId);
                 var offeringPlayerId = GetOtherPlayerId(matchSession, offeredPlayerId);
-                if (IsBotTurn(matchSession, offeringPlayerId))
+                if (IsBotPlayer(matchSession, offeringPlayerId))
                 {
                     // the bot offered the double and the human player accepted it
                     // bot executes the next turn
@@ -1321,7 +1326,7 @@ namespace GammonX.Server
                 CancelTurnTimers(match.Id);
                 // we set a timeout for the players to start the next game
                 await StartTurnTimerAsync(match.Id, match.Player1.Id);
-                if (match.Modus != MatchModus.Bot)
+                if (!IsBotPlayer(match, match.Player2.Id))
                 {
                     await StartTurnTimerAsync(match.Id, match.Player2.Id);
                 }
@@ -1466,7 +1471,7 @@ namespace GammonX.Server
             return BoardBroker.InvertFromToMove(gameModus, from, to);
         }
 
-        private static bool IsBotTurn(IMatchSessionModel matchSession, Guid playerId)
+        private static bool IsBotPlayer(IMatchSessionModel matchSession, Guid playerId)
         {
             if (matchSession.Modus == MatchModus.Bot)
             {
