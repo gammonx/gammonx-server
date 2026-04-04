@@ -93,13 +93,13 @@ namespace GammonX.Server
                         {
                             var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.GameStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
-                            await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                            await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
                         }
                         else
                         {
                             var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.MatchStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
-                            await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                            await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
                         }
                     }
                     else
@@ -108,7 +108,7 @@ namespace GammonX.Server
                         var payload = new EventMatchLobbyPayload(matchId.Value, playerId.Value, null, ServerCommands.JoinMatchCommand);
                         var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                         await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
-                        await SendToClient(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                        await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
                         // we set a timeout for the player to join the match
                         await StartTurnTimerAsync(matchId.Value, playerId.Value);
                     }
@@ -144,7 +144,7 @@ namespace GammonX.Server
                         await StartDisconnectGraceTimerAsync(playerConnection, matchId.Value);
                         var payload = new EventDisconnectedPayload(playerConnection.DisconnectGracePeriod);
                         var contract = new EventResponseContract<EventDisconnectedPayload>(ServerEventTypes.PlayerDisconnectedEvent, payload);
-                        await SendToGroup(ConstructGroupName(matchId.Value), ServerEventTypes.PlayerDisconnectedEvent, contract);
+                        await SendToGroupAsync(ConstructGroupName(matchId.Value), ServerEventTypes.PlayerDisconnectedEvent, contract);
                     }
                     else
                     {
@@ -206,7 +206,7 @@ namespace GammonX.Server
             {
                 // no match was started, we simply close the connections in this case
                 var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await SendToGroup(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
+                await SendToGroupAsync(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
             }
         }
 
@@ -281,7 +281,7 @@ namespace GammonX.Server
                     {
                         var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchSession.Player1.Id, matchSession.Player2.Id);
                         var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyFoundEvent, matchLobbyPayload);
-                        await SendToGroup(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
+                        await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
                         await SendMatchState(ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                         // we set a timeout for the players to start the match
                         await StartTurnTimerAsync(matchSession.Id, matchSession.Player1.Id);
@@ -294,7 +294,7 @@ namespace GammonX.Server
                     {
                         var matchLobbyPayload = new EventMatchLobbyPayload(matchLobby.MatchId, matchLobby.Player1.Id, null);
                         var matchLobbyContract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyPayload);
-                        await SendToGroup(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
+                        await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyWaitingEvent, matchLobbyContract);
                     }
                 }
                 else
@@ -400,7 +400,7 @@ namespace GammonX.Server
                         // we wait for other player to roll his starting dice
                         var matchPayload = matchSession.ToPayload(callingPlayerId);
                         var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.MatchWaitingEvent, matchPayload);
-                        await SendToCaller(ServerEventTypes.MatchWaitingEvent, matchContract);
+                        await SendToCallerAsync(ServerEventTypes.MatchWaitingEvent, matchContract);
                     }
                 }
                 else
@@ -474,7 +474,7 @@ namespace GammonX.Server
                         var callingPlayerId = GetCallingPlayerId(matchSession);
                         var matchPayload = matchSession.ToPayload(callingPlayerId);
                         var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
-                        await SendToCaller(ServerEventTypes.GameWaitingEvent, matchContract);
+                        await SendToCallerAsync(ServerEventTypes.GameWaitingEvent, matchContract);
                     }
                 }
                 else
@@ -940,13 +940,13 @@ namespace GammonX.Server
                     var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
                     var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, callingPlayerGameSession);
                     var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
-                    await SendToClient(callingConnectionId, ServerEventTypes.DoubleOfferedEvent, callingPlayerContract);
+                    await SendToClientAsync(callingConnectionId, ServerEventTypes.DoubleOfferedEvent, callingPlayerContract);
 
                     // the player who got the double offered has to accept or decline it
                     var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
                     var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, otherPlayerGameSession);
                     var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
-                    await SendToClient(otherPlayerConnectionId, ServerEventTypes.DoubleOfferedEvent, otherPlayerContract);
+                    await SendToClientAsync(otherPlayerConnectionId, ServerEventTypes.DoubleOfferedEvent, otherPlayerContract);
                 }
             }
             else
@@ -1143,7 +1143,7 @@ namespace GammonX.Server
                         var playerConnection = _playerConnectionRepository.Get(playerId);
                         if (!string.IsNullOrEmpty(playerConnection?.ConnectionId))
                         {
-                            await SendToClient(playerConnection.ConnectionId, ServerEventTypes.TurnTimerEvent, responseContract);
+                            await SendToClientAsync(playerConnection.ConnectionId, ServerEventTypes.TurnTimerEvent, responseContract);
                         }
                         await Task.Delay(halfTimeLimit, turnCts.Token);
                         if (!turnCts.Token.IsCancellationRequested)
@@ -1194,7 +1194,7 @@ namespace GammonX.Server
             {
                 // no match was started, we simply close the connections in this case
                 var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await SendToGroup(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
+                await SendToGroupAsync(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
             }
         }
 
@@ -1253,12 +1253,12 @@ namespace GammonX.Server
         {
             var gameSessionPlayer1 = matchSession.GetGameState(matchSession.Player1.Id);
             var player1Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer1);
-            await SendToClient(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
+            await SendToClientAsync(matchSession.Player1.ConnectionId, serverEventName, player1Contract);
             if (matchSession.Modus != MatchModus.Bot)
             {
                 var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id);
                 var player2Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer2);
-                await SendToClient(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
+                await SendToClientAsync(matchSession.Player2.ConnectionId, serverEventName, player2Contract);
             }
         }
 
@@ -1272,21 +1272,21 @@ namespace GammonX.Server
 
             var payloadPlayer1 = match.ToPayload(match.Player1.Id);
             var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
-            await SendToClient(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+            await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
             if (match.Modus != MatchModus.Bot)
             {
                 var payloadPlayer2 = match.ToPayload(match.Player2.Id);
                 var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
-                await SendToClient(match.Player2.ConnectionId, serverEventName, contractPlayer2);
+                await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
             }
 
             if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
             {
                 // clients can now safely disconnect from socket
                 var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await SendToGroup(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
-                await Groups.RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
-                await Groups.RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
+                await SendToGroupAsync(payloadPlayer1.GroupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
+                await RemoveFromGroupAsync(match.Player1.ConnectionId, payloadPlayer1.GroupName);
+                await RemoveFromGroupAsync(match.Player2.ConnectionId, payloadPlayer1.GroupName);
                 // we clean up the repositories
                 _matchRepository.TryRemove(match.Id);
                 _playerConnectionRepository.TryRemove(match.Player1.Id);
@@ -1356,11 +1356,11 @@ namespace GammonX.Server
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             if (!string.IsNullOrEmpty(connectionId))
             {
-                await SendToClient(connectionId, ServerEventTypes.ErrorEvent, contract);
+                await SendToClientAsync(connectionId, ServerEventTypes.ErrorEvent, contract);
             }
             else
             {
-                await SendToCaller(ServerEventTypes.ErrorEvent, contract);
+                await SendToCallerAsync(ServerEventTypes.ErrorEvent, contract);
             }
 
             Log.Logger.Error(unWrappedException, "ConnectionId {connId} :: Code {errorCode} :: Message {errorMessage}", connectionId, errorCode, message);
@@ -1371,7 +1371,7 @@ namespace GammonX.Server
             var unWrappedException = UnWrapAggregateException(exception);
             var payload = new EventErrorPayload(errorCode, message, unWrappedException, new string[] { ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand });
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
-            await SendToGroup(groupName, ServerEventTypes.ErrorEvent, contract);
+            await SendToGroupAsync(groupName, ServerEventTypes.ErrorEvent, contract);
             Log.Logger.Error(unWrappedException, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
         }
 
@@ -1476,12 +1476,25 @@ namespace GammonX.Server
             throw new InvalidOperationException("The calling player is not part of the match session.");
         }
 
-        private async Task SendToCaller<T>(string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+        private async Task SendToCallerAsync<T>(string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
         {
             await Clients.Caller.SendAsync(serverEventName, response);
         }
 
-        private async Task SendToGroup<T>(string groupName, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+        private async Task SendToClientAsync<T>(string connectionId, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+        {
+            try
+            {
+                await Clients.Client(connectionId).SendAsync(serverEventName, response);
+            }
+            catch (ObjectDisposedException)
+            {
+                // if the hub instance already got disposed, we must use the hub context
+                await _hubContext.Clients.Client(connectionId).SendAsync(serverEventName, response);
+            }
+        }
+
+        private async Task SendToGroupAsync<T>(string groupName, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
         {
             try
             {
@@ -1494,16 +1507,15 @@ namespace GammonX.Server
             }
         }
 
-        private async Task SendToClient<T>(string connectionId, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+        private async Task RemoveFromGroupAsync(string groupName, string connectionId)
         {
             try
             {
-                await Clients.Client(connectionId).SendAsync(serverEventName, response);
+                await Groups.RemoveFromGroupAsync(connectionId, groupName);
             }
             catch (ObjectDisposedException)
             {
-                // if the hub instance already got disposed, we must use the hub context
-                await _hubContext.Clients.Client(connectionId).SendAsync(serverEventName, response);
+                await _hubContext.Groups.RemoveFromGroupAsync(connectionId, groupName);
             }
         }
 
