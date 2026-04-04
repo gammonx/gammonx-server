@@ -93,18 +93,37 @@ namespace GammonX.Server
                         {
                             var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.GameStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
-                            await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                            await SendToGroupAsync(ConstructGroupName(match.Id), ServerEventTypes.PlayerConnectedEvent, contract);
+                            // we start a turn timer for the active player and expect him to execute his turn
+                            await StartTurnTimerAsync(match.Id, activeGameSession.ActivePlayer);
                         }
                         else
                         {
                             var payload = new EventMatchLobbyPayload(match.Id, match.Player1.Id, match.Player2.Id, ServerCommands.MatchStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
-                            await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                            await SendToGroupAsync(ConstructGroupName(match.Id), ServerEventTypes.PlayerConnectedEvent, contract);
+                            if (match.CanStartNextGame())
+                            {
+                                // we start a turn timer for each player and expect both players to start the next game
+                                await StartTurnTimerAsync(match.Id, match.Player1.Id);
+                                if (!IsBotTurn(match, match.Player2.Id))
+                                {
+                                    await StartTurnTimerAsync(match.Id, match.Player2.Id);
+                                }
+                            }
+                            else if (match.IsMatchOver())
+                            {
+                                // if no game is active and no next game can be started, we expect the match to be finished
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("A player reconnected to a match but no active game session or possibility to start a next game was found. This match state was not expected.");
+                            }
                         }
                     }
                     else
                     {
-                        // we assume that the player disconnected before he joined a match
+                        // we assume that the player initially connected to the hub or disconnected before he joined a match
                         var payload = new EventMatchLobbyPayload(matchId.Value, playerId.Value, null, ServerCommands.JoinMatchCommand);
                         var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                         await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
