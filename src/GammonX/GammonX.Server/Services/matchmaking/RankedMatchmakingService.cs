@@ -21,10 +21,10 @@ namespace GammonX.Server.Services
         {
             if (queueKey.MatchModus != MatchModus.Ranked)
             {
-                throw new InvalidOperationException("Match modus must be of type normal in order to join this queue");
+                throw new InvalidOperationException("Match modus must be of type ranked in order to join this queue");
             }
 
-            if (_queue.Any(ml => ml.Value.PlayerId == playerId || ml.Value.PlayerId == playerId))
+            if (_queue.Any(ml => ml.Value.PlayerId == playerId))
             {
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
@@ -87,13 +87,16 @@ namespace GammonX.Server.Services
                         queue.Enqueue(idA);
                     }
 
-                    // create lobby
-                    var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                    var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
-                    var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
-                    lobby.Join(playerConnectionB);
-                    _matchLobbies[entryA] = lobby;
-                    _matchLobbies[entryB] = lobby;
+                    if (claimedA && claimedB)
+                    {
+                        // create lobby
+                        var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
+                        var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
+                        var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
+                        lobby.Join(playerConnectionB);
+                        _matchLobbies[entryA] = lobby;
+                        _matchLobbies[entryB] = lobby;
+                    }
                 }
             }
 
@@ -122,8 +125,7 @@ namespace GammonX.Server.Services
                 }
                 else
                 {
-                    // we put the entry back into the queue if the difference is to high
-                    queue.Enqueue(entryId);
+                    // we skip the potential opponent if the diff is to high
                 }
             }
 

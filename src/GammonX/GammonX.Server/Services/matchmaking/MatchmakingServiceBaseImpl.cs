@@ -22,6 +22,9 @@ namespace GammonX.Server.Services
 		/// <summary>
 		/// Gets match lobbies grouped by queue entries. A match lobby is created as soon as two players were matched
 		/// </summary>
+		/// <remarks>
+		/// Each match lobby occurrs twice in the dictionary keyed by the queue entry of each player.
+		/// </remarks>
 		protected readonly ConcurrentDictionary<QueueEntry, MatchLobby> _matchLobbies = new();
 
 		// <inheritdoc />

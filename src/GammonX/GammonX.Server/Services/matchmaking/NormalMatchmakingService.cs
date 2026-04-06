@@ -23,7 +23,7 @@ namespace GammonX.Server.Services
                 throw new InvalidOperationException("match modus must be of type normal in order to join this queue");
             }
 
-            if (_queue.Any(ml => ml.Value.PlayerId == playerId || ml.Value.PlayerId == playerId))
+            if (_queue.Any(ml => ml.Value.PlayerId == playerId))
             {
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
@@ -47,32 +47,58 @@ namespace GammonX.Server.Services
 
                     if (!queue.TryDequeue(out var idB))
                     {
+                        // we requeue a and cancel the active search iteration if no other player is queued up
                         queue.Enqueue(idA);
                         break;
                     }
 
                     if (!_queue.TryGetValue(idB, out var entryB))
                     {
+                        // we requeue entry a if no entry b is found
                         queue.Enqueue(idA);
                         continue;
                     }
 
-                    // atomic claim
-                    if (!_queue.TryRemove(entryA.Id, out _) ||
-                        !_queue.TryRemove(entryB.Id, out _))
+                    var claimedA = false;
+                    var claimedB = false;
+                    // atomic claims
+                    if (_queue.TryRemove(entryA.Id, out var _))
                     {
-                        _queue.TryAdd(entryA.Id, entryA);
-                        _queue.TryAdd(entryB.Id, entryB);
-                        continue;
+                        claimedA = true;
+                    }
+                    if (_queue.TryRemove(entryB.Id, out var _))
+                    {
+                        claimedB = true;
                     }
 
-                    // create lobby
-                    var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                    var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
-                    var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
-                    lobby.Join(playerConnectionB);
-                    _matchLobbies[entryA] = lobby;
-                    _matchLobbies[entryB] = lobby;
+                    // rollback if one couldn't be claimed
+                    if (!claimedA && !claimedB)
+                    {
+                        queue.Enqueue(idA);
+                    }
+                    else if (!claimedA)
+                    {
+                        // a could not be claimed > requeue b
+                        _queue.TryAdd(entryB.Id, entryB);
+                        queue.Enqueue(idA);
+                    }
+                    else if (!claimedB)
+                    {
+                        //b could not be claimed > requeue a
+                        _queue.TryAdd(entryA.Id, entryA);
+                        queue.Enqueue(idA);
+                    }
+
+                    if (claimedA && claimedB)
+                    {
+                        // create lobby
+                        var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
+                        var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
+                        var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
+                        lobby.Join(playerConnectionB);
+                        _matchLobbies[entryA] = lobby;
+                        _matchLobbies[entryB] = lobby;
+                    }
                 }
             }
 
