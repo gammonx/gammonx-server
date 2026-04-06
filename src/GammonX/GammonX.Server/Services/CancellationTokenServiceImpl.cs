@@ -50,7 +50,7 @@
         {
             lock (_lock)
             {
-                var playerTokens = _tokenSources.Where(kvp => kvp.Key.PlayerId == playerId).ToList();
+                var playerTokens = _tokenSources.Where(kvp => kvp.Key.PlayerId == playerId && kvp.Key.Category == category).ToList();
                 foreach (var kvp in playerTokens)
                 {
                     _tokenSources.Remove(kvp.Key);
@@ -65,7 +65,7 @@
         {
             lock (_lock)
             {
-                var matchTokens = _tokenSources.Where(kvp => kvp.Key.MatchId == matchid).ToList();
+                var matchTokens = _tokenSources.Where(kvp => kvp.Key.MatchId == matchid && kvp.Key.Category == category).ToList();
                 foreach (var kvp in matchTokens)
                 {
                     _tokenSources.Remove(kvp.Key);
