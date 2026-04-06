@@ -7,8 +7,8 @@ namespace GammonX.Server.Models
 	/// <summary>
 	/// Represents a match session model that contains all information about a match session.
 	/// </summary>
-	public interface IMatchSessionModel
-	{
+	public interface IMatchSessionModel : IAsyncStateMutex
+    {
 		/// <summary>
 		/// Gets the match id of this match session.
 		/// </summary>

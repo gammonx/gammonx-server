@@ -3,15 +3,17 @@
 using GammonX.Server.Contracts;
 using GammonX.Server.Extensions;
 using GammonX.Server.Services;
-using Microsoft.AspNetCore.Mvc.ActionConstraints;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public abstract class MatchSession : IMatchSessionModel
-	{
-		private readonly Func<IMatchSessionModel, bool> _isMatchOver;
+	public abstract class MatchSession : IMatchSessionModel, IAsyncStateMutex
+    {
+        private readonly SemaphoreSlim _stateMutex = new(1, 1);
+
+        private readonly Func<IMatchSessionModel, bool> _isMatchOver;
 		private readonly GameModus[] _rounds;
 		private readonly IGameSessionModel[] _gameSessions;
 		private readonly IGameSessionFactory _gameSessionFactory;
@@ -652,6 +654,35 @@ namespace GammonX.Server.Models
 			return gameRoundContracts.ToArray();
 		}
 
-		#endregion Private Methods
-	}
+        #endregion Private Methods
+
+        #region State Mutex Impl
+
+        // <inheritdoc />
+        public async Task<IAsyncDisposable> AcquireStateAsync()
+        {
+            await _stateMutex.WaitAsync();
+            return new LockReleaser(_stateMutex);
+        }
+
+        // <inheritdoc />
+        private sealed class LockReleaser : IAsyncDisposable
+        {
+            private readonly SemaphoreSlim _stateMutex;
+
+            public LockReleaser(SemaphoreSlim stateMutex)
+			{
+                _stateMutex = stateMutex;
+            }
+
+            // <inheritdoc />
+            ValueTask IAsyncDisposable.DisposeAsync()
+            {
+                _stateMutex.Release();
+				return ValueTask.CompletedTask;
+            }
+        }
+
+        #endregion State Mutex Impl
+    }
 }
