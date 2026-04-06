@@ -1531,7 +1531,7 @@ namespace GammonX.Server
             }
         }
 
-        private async Task RemoveFromGroupAsync(string groupName, string connectionId)
+        private async Task RemoveFromGroupAsync(string connectionId, string groupName)
         {
             try
             {
