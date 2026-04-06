@@ -88,8 +88,8 @@ namespace GammonX.Server.Services
                     }
 
                     // create lobby
-                    var playerConnectionA = _playerConnectionRepository.Create(entryA.PlayerId);
-                    var playerConnectionB = _playerConnectionRepository.Create(entryB.PlayerId);
+                    var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
+                    var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
                     var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
                     lobby.Join(playerConnectionB);
                     _matchLobbies[entryA] = lobby;
