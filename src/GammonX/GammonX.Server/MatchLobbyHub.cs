@@ -204,7 +204,7 @@ namespace GammonX.Server
                 catch (OperationCanceledException)
                 {
                     var disconnectDuration = DateTime.UtcNow - playerConnection.LastSeenUtc;
-                    playerConnection.DisconnectGracePeriod -= disconnectDuration;
+                    playerConnection.DisconnectGracePeriod = (playerConnection.DisconnectGracePeriod - disconnectDuration).Max(TimeSpan.Zero);
                     _cancellationTokenService.Cancel(tokenKey);
                 }
             });
