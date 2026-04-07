@@ -78,14 +78,34 @@ namespace GammonX.Server
 		/// </summary>
 		public static string ErrorEvent = "error";
 
-		/// <summary>
-		/// Event that signals the clients that they must disconnect the socket connection.
-		/// </summary>
-		public static string ForceDisconnect = "force-disconnect";
+        /// <summary>
+        /// Event that signals the clients that their opponent has disconnected from the match.
+        /// </summary>
+        public static string PlayerDisconnectedEvent = "player-disconnected";
+
+        /// <summary>
+        /// Event that signals the clients that their opponent has reconnected to the match.
+        /// </summary>
+        public static string PlayerConnectedEvent = "player-connected";
+
+        /// <summary>
+        /// Event that signals the clients that they must disconnect the socket connection.
+        /// </summary>
+        public static string ForceDisconnectEvent = "force-disconnect";
 
 		/// <summary>
 		/// Event that signals that the double cube owner offered a double to his opponent.
 		/// </summary>
-		public static string DoubleOffered = "double-offered";
-	}
+		public static string DoubleOfferedEvent = "double-offered";
+
+        /// <summary>
+        /// Event that signals that the offered player accepted the double offer.
+        /// </summary>
+        public static string DoubleAcceptedEvent = "double-accepted";
+
+        /// <summary>
+        /// Event that signals that the active player has a turn timer running and the remaining time is updated.
+        /// </summary>
+        public static string TurnTimerEvent = "turn-timer";
+    }
 }

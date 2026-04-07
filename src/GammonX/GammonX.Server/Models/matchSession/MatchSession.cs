@@ -3,15 +3,17 @@
 using GammonX.Server.Contracts;
 using GammonX.Server.Extensions;
 using GammonX.Server.Services;
-using Microsoft.AspNetCore.Mvc.ActionConstraints;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public abstract class MatchSession : IMatchSessionModel
-	{
-		private readonly Func<IMatchSessionModel, bool> _isMatchOver;
+	public abstract class MatchSession : IMatchSessionModel, IAsyncStateMutex
+    {
+        private readonly SemaphoreSlim _stateMutex = new(1, 1);
+
+        private readonly Func<IMatchSessionModel, bool> _isMatchOver;
 		private readonly GameModus[] _rounds;
 		private readonly IGameSessionModel[] _gameSessions;
 		private readonly IGameSessionFactory _gameSessionFactory;
@@ -61,18 +63,20 @@ namespace GammonX.Server.Models
 			_rounds = GetGameModusList(queueKey.MatchType);
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
-			Player1 = new MatchPlayerModel(Guid.Empty, string.Empty);
-			Player2 = new MatchPlayerModel(Guid.Empty, string.Empty);
-			_isMatchOver = Type.GetMatchOverFunc();
+			var emptyPlayerConnection = new PlayerConnection(Guid.Empty);
+			emptyPlayerConnection.SetConnectionId(string.Empty);
+			Player1 = new MatchPlayerModel(emptyPlayerConnection);
+			Player2 = new MatchPlayerModel(emptyPlayerConnection);
+            _isMatchOver = Type.GetMatchOverFunc();
 		}
 
 		// <inheritdoc />
 		[ServerCommand(ServerCommands.JoinMatchCommand)]
-		public void JoinSession(LobbyEntry player)
+		public void JoinSession(PlayerConnection player)
 		{
 			ArgumentNullException.ThrowIfNull(player.ConnectionId, nameof(player.ConnectionId));
 
-			var valid = IsCommandCallValid(player.PlayerId, ServerCommands.JoinMatchCommand);
+			var valid = IsCommandCallValid(player.Id, ServerCommands.JoinMatchCommand);
 			if (!valid)
 			{
 				throw new InvalidOperationException($"The given command '{ServerCommands.JoinMatchCommand}' is not in the list of allowed commands.");
@@ -80,17 +84,17 @@ namespace GammonX.Server.Models
 
 			if (Player1.Id == Guid.Empty)
 			{
-				Player1 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
+				Player1 = new MatchPlayerModel(player);
 			}
 			else if (Player2.Id == Guid.Empty)
 			{
-				if (player.PlayerId == Player1.Id)
+				if (player.Id == Player1.Id)
 				{
 					throw new InvalidOperationException("Player 1 cannot join as Player 2.");
 				}
 
-				Player2 = new MatchPlayerModel(player.PlayerId, player.ConnectionId);
-			}
+				Player2 = new MatchPlayerModel(player);
+            }
 			else
 			{
 				throw new InvalidOperationException("Both players are already assigned to this match session.");
@@ -650,6 +654,35 @@ namespace GammonX.Server.Models
 			return gameRoundContracts.ToArray();
 		}
 
-		#endregion Private Methods
-	}
+        #endregion Private Methods
+
+        #region State Mutex Impl
+
+        // <inheritdoc />
+        public async Task<IAsyncDisposable> AcquireStateAsync()
+        {
+            await _stateMutex.WaitAsync();
+            return new LockReleaser(_stateMutex);
+        }
+
+        // <inheritdoc />
+        private sealed class LockReleaser : IAsyncDisposable
+        {
+            private readonly SemaphoreSlim _stateMutex;
+
+            public LockReleaser(SemaphoreSlim stateMutex)
+			{
+                _stateMutex = stateMutex;
+            }
+
+            // <inheritdoc />
+            ValueTask IAsyncDisposable.DisposeAsync()
+            {
+                _stateMutex.Release();
+				return ValueTask.CompletedTask;
+            }
+        }
+
+        #endregion State Mutex Impl
+    }
 }

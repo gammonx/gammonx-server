@@ -1,0 +1,38 @@
+# Changelog
+
+## 02.04.2026
+
+### NEW
+- `double-accepted` event with game state if a double offer is accepted
+- matchmkaing queue entry ttl if no touch from poll (30s)
+- REST Controller and SignalR accepts jwt bearer token
+	- processes claims `playerId` + `matchId`
+    - required for disconnect handling
+    - no "real" token validation in place
+- onConnected behavior
+	- sends `player-connected` with `EventMatchLobbyPayload` contains allowed command `JoinMatch`
+	- connect cases:
+	    - case GameLive > `GameState` command
+		- case NoActiveGame > `MatchState` command
+		- case NoMatch > `JoinMatch` command
+- onDisconnected behavior
+	- sends `player-disconnected` with `EventDisconnectedPayload` (contains grace period + expiration)
+	- single grace period per match and per player
+	- grace period exceeded > resignMatch
+    - [See disconnect handling](docs/poc/disconnect.md)
+- turn timers for players
+    - new event `turn-timer` with `EventTurnTimerPayload`
+    - `EventTurnTimerPayload` contains expiration date until the next expected command must be called
+	- affects both players simultenously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
+    - event is sent halfway through the full timeout. Full timeout 60s, event sent at 30s
+    - if expiration date is exceeded the game/match is resigned
+- the matches controller offers new endpoint `queues/{queueId}/cancel`
+	- removes the queue entry from the matchmaking service
+	- allows to cancel and directly re-enter a match search
+	- same payload as poll request `queues/{queueId}`
+### FIXES
+- improved game flow. On socket connected event, client receives allowed command to join the match
+- fixed an issue where `StartMatch` event is not sent if bot wins opening roll
+	- https://github.com/gammonx/gammonx-server/issues/22
+- fixed an issue where `game-waiting` event was missused when waiting for a pending double offer
+	- https://github.com/gammonx/gammonx-server/issues/21

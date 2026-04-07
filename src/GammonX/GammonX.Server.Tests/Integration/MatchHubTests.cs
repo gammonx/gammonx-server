@@ -26,6 +26,7 @@ namespace GammonX.Server.Tests.Integration
     {
         private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
         private readonly MatchSessionRepository _matchRepo;
+        private readonly PlayerConnectionRepository _playerConnRepo;
         private readonly IDiceServiceFactory _diceFactory;
         private readonly IBotService _botService;
         private readonly MatchLobbyHub _hub;
@@ -35,14 +36,16 @@ namespace GammonX.Server.Tests.Integration
         private readonly Guid _player1Id = Guid.NewGuid();
         private readonly Guid _player2Id = Guid.NewGuid();
         private readonly Mock<IWorkQueueService> _workQueueService;
+        private readonly ICancellationTokenService _cancellationTokenService;
 
 
         public MatchHubTests()
         {
+            _playerConnRepo = new PlayerConnectionRepository();
             _diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(_diceFactory);
             var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
-            _normalService = new NormalMatchmakingService();
+            _normalService = new NormalMatchmakingService(_playerConnRepo);
 
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
 
@@ -54,13 +57,17 @@ namespace GammonX.Server.Tests.Integration
 
             var stubRepoClient = new SimpleRepositoryClient();
 
-            _rankedService = new RankedMatchmakingService(stubRepoClient);
-            _botMatchService = new BotMatchmakingService();
-            var compositeService = new CompositeMatchmakingService();
-            compositeService.SetServices(_normalService, _rankedService, _botMatchService);
+            _rankedService = new RankedMatchmakingService(_playerConnRepo, stubRepoClient);
+            _botMatchService = new BotMatchmakingService(_playerConnRepo);
+            var compositeService = new CompositeMatchmakingService(_playerConnRepo);
+            compositeService.AddService(MatchModus.Normal, _normalService);
+            compositeService.AddService(MatchModus.Ranked, _rankedService);
+            compositeService.AddService(MatchModus.Bot, _botMatchService);
             _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _botService = new WildbgBotService(_wildBgClient);
-            _hub = new MatchLobbyHub(_workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService);
+            _cancellationTokenService = new CancellationTokenServiceImpl();
+            _hub = new MatchLobbyHub(
+                _workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null);
         }
 
         [Theory]
@@ -155,7 +162,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2)); ;
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -173,7 +183,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.AcceptDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -221,7 +234,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -239,7 +255,10 @@ namespace GammonX.Server.Tests.Integration
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOffered, It.IsAny<object[]>(), default), Times.Once);
+                // player1 gets double offered event without allowed commands
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                // player2 gets double offered event with accept/decline as allowed commands
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.DeclineDoubleAsync(matchIdStr);
                 Assert.False(cubeSession.IsDoubleOfferPending);
@@ -339,7 +358,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -439,7 +458,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
@@ -525,7 +544,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.AtLeastOnce());
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -601,9 +620,9 @@ namespace GammonX.Server.Tests.Integration
             else
             {
                 mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStateEvent, It.IsAny<object[]>(), default), Times.Exactly(3));
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Once);
                 mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Once);
                 mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
             }
 
@@ -695,7 +714,7 @@ namespace GammonX.Server.Tests.Integration
             var gameEndedCount = playedSessions.Count - 1;
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnect, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -874,7 +893,8 @@ namespace GammonX.Server.Tests.Integration
             // client 1
             var player1ConnectionId = Guid.NewGuid().ToString();
             var context1 = new HubCallerContextStub(player1ConnectionId);
-            var hub1 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            var hub1 = new MatchLobbyHub(
+                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -884,7 +904,8 @@ namespace GammonX.Server.Tests.Integration
             // client 2
             var player2ConnectionId = Guid.NewGuid().ToString();
             var context2 = new HubCallerContextStub(player2ConnectionId);
-            var hub2 = new MatchLobbyHub(_workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService)
+            var hub2 = new MatchLobbyHub(
+                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,

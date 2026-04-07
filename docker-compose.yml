@@ -19,6 +19,9 @@ services:
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
+      - JWT_SECRET=super-secret-key-that-is-at-least-32-characters-long-for-hs256
+      - JWT_ISSUER=
+      - JWT_AUDIENCE=
       # - WORK_QUEUE__SERVICEURL=http://aws-stack-local:4566
       # - WORK_QUEUE__AWS_ACCESS_KEY_ID=local
       # - WORK_QUEUE__AWS_SECRET_ACCESS_KEY=local

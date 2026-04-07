@@ -109,10 +109,10 @@ namespace GammonX.Server.Tests.Queue
             var match = factory.Create(Guid.NewGuid(), queueKey);
 
             var player1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");
-            var player1 = new LobbyEntry(player1Id);
+            var player1 = new PlayerConnection(player1Id);
             player1.SetConnectionId(Guid.NewGuid().ToString());
             var player2Id = Guid.Parse("d8e1f3b4-6120-4c16-acf2-b2b8d03f14aa");
-            var player2 = new LobbyEntry(player2Id);
+            var player2 = new PlayerConnection(player2Id);
             player2.SetConnectionId(Guid.NewGuid().ToString());
 
             match.JoinSession(player1);

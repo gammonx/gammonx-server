@@ -15,7 +15,7 @@ namespace GammonX.Server.Tests.Match
 	{
 		private static readonly IDiceServiceFactory _diceServiceFactory = new DiceServiceFactory();
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
-		private static readonly MatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
+		private static readonly MatchSessionFactory _matchSessionFactory = new(_gameSessionFactory);
 
 		[Theory]
 		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
@@ -101,14 +101,14 @@ namespace GammonX.Server.Tests.Match
 			var session = result.Item2;
 			Assert.NotNull(session);
 
-			var player1 = SessionUtils.CreateLobbyEntry();
-			var player2 = SessionUtils.CreateLobbyEntry();
-			var player3 = SessionUtils.CreateLobbyEntry();
+			var player1 = SessionUtils.CreatePlayerConnection();
+			var player2 = SessionUtils.CreatePlayerConnection();
+			var player3 = SessionUtils.CreatePlayerConnection();
 			session.JoinSession(player1);
-			Assert.Equal(player1.PlayerId, session.Player1.Id);
+			Assert.Equal(player1.Id, session.Player1.Id);
 			Assert.NotEqual(Guid.Empty, session.Player1.Id);
 			session.JoinSession(player2);
-			Assert.Equal(player2.PlayerId, session.Player2.Id);
+			Assert.Equal(player2.Id, session.Player2.Id);
 			Assert.NotEqual(Guid.Empty, session.Player2.Id);
 			Assert.Throws<InvalidOperationException>(() => session.JoinSession(player3));
 		}
@@ -122,8 +122,8 @@ namespace GammonX.Server.Tests.Match
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, MatchType.CashGame, _matchSessionFactory);
 			var session = result.Item2;
 			Assert.NotNull(session);
-			var entry = new LobbyEntry(Guid.NewGuid());
-			Assert.Throws<ArgumentNullException>(() => session.JoinSession(entry));
+			var connection = new PlayerConnection(Guid.NewGuid());
+			Assert.Throws<ArgumentNullException>(() => session.JoinSession(connection));
 		}
 
 		[Theory]
@@ -135,7 +135,7 @@ namespace GammonX.Server.Tests.Match
 			var result = SessionUtils.CreateHeadToHeadMatchSession(variant, MatchType.CashGame, _matchSessionFactory);
 			var session = result.Item2;
 			Assert.NotNull(session);
-			var entry = SessionUtils.CreateLobbyEntry();
+			var entry = SessionUtils.CreatePlayerConnection();
 			session.JoinSession(entry);
 			Assert.Throws<InvalidOperationException>(() => session.JoinSession(entry));
 		}
@@ -745,12 +745,12 @@ namespace GammonX.Server.Tests.Match
 			if (type == MatchType.CashGame)
 			{
 				var gameSessions = matchSession.GetGameSessions();
-				var lobby1 = new LobbyEntry(Guid.NewGuid());
-				lobby1.SetConnectionId(Guid.NewGuid().ToString());
-				matchSession.JoinSession(lobby1);
-				var lobby2 = new LobbyEntry(Guid.NewGuid());
-				lobby2.SetConnectionId(Guid.NewGuid().ToString());
-				matchSession.JoinSession(lobby2);
+				var connection1 = new PlayerConnection(Guid.NewGuid());
+				connection1.SetConnectionId(Guid.NewGuid().ToString());
+				matchSession.JoinSession(connection1);
+				var connection2 = new PlayerConnection(Guid.NewGuid());
+				connection2.SetConnectionId(Guid.NewGuid().ToString());
+				matchSession.JoinSession(connection2);
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();
 				var startPlayerId = matchSession.Player1.Id;
@@ -821,14 +821,14 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotNull(matchSession);
 
 			var player1Id = Guid.NewGuid();
-			var lobbyEntry1 = new LobbyEntry(player1Id);
-			lobbyEntry1.SetConnectionId("none1");
+			var connection1 = new PlayerConnection(player1Id);
+			connection1.SetConnectionId("none1");
 			var player2Id = Guid.NewGuid();
-			var lobbyEntry2 = new LobbyEntry(player2Id);
-			lobbyEntry2.SetConnectionId("none2");
+			var connection2 = new PlayerConnection(player2Id);
+			connection2.SetConnectionId("none2");
 
-			matchSession.JoinSession(lobbyEntry1);
-			matchSession.JoinSession(lobbyEntry2);
+			matchSession.JoinSession(connection1);
+			matchSession.JoinSession(connection2);
 
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
@@ -863,6 +863,7 @@ namespace GammonX.Server.Tests.Match
 			foreach (var gameHistory in matchHistory.Games)
 			{
 				var gameHistoryStr = gameHistory.ToString();
+				Assert.NotNull(gameHistory);
 				Assert.NotNull(gameHistoryStr);
 			}
 			var historyStr = matchHistory.ToString();

@@ -427,7 +427,7 @@ namespace GammonX.Server.Tests.Integration
 			// ##################################################
 
 			var player1MustDisconnect = false;
-			player1Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
+			player1Connection.On<object>(ServerEventTypes.ForceDisconnectEvent, response =>
 			{
 				Assert.NotNull(response);
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EmptyEventPayload>>(response.ToString() ?? "");
@@ -443,7 +443,7 @@ namespace GammonX.Server.Tests.Integration
 			});
 
 			var player2MustDisconnect = false;
-			player2Connection.On<object>(ServerEventTypes.ForceDisconnect, response =>
+			player2Connection.On<object>(ServerEventTypes.ForceDisconnectEvent, response =>
 			{
 				Assert.NotNull(response);
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EmptyEventPayload>>(response.ToString() ?? "");

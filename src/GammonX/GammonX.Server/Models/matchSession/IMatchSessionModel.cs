@@ -7,8 +7,8 @@ namespace GammonX.Server.Models
 	/// <summary>
 	/// Represents a match session model that contains all information about a match session.
 	/// </summary>
-	public interface IMatchSessionModel
-	{
+	public interface IMatchSessionModel : IAsyncStateMutex
+    {
 		/// <summary>
 		/// Gets the match id of this match session.
 		/// </summary>
@@ -63,7 +63,7 @@ namespace GammonX.Server.Models
 		/// Joins a player to the match session.
 		/// </summary>
 		/// <param name="player">Play to join the match session.</param>
-		void JoinSession(LobbyEntry player);
+		void JoinSession(PlayerConnection player);
 
         /// <summary>
         /// Gets a boolean indicating if the game can be started or the next round can be player.

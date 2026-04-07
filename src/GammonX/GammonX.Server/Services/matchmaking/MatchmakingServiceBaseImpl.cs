@@ -7,26 +7,70 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal abstract class MatchmakingServiceBaseImpl : IMatchmakingService
 	{
+		protected readonly PlayerConnectionRepository _playerConnectionRepository;
+
 		/// <summary>
 		/// Gets queue entries grouped by the queue entry id.
 		/// </summary>
 		protected readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
 
 		/// <summary>
-		/// Gets queue id queue grouped by different queue keys.
+		/// Gets queue entry id queue grouped by different queue keys.
 		/// </summary>
 		protected readonly ConcurrentDictionary<QueueKey, ConcurrentQueue<Guid>> _modeQueues = new();
 
 		/// <summary>
 		/// Gets match lobbies grouped by queue entries. A match lobby is created as soon as two players were matched
 		/// </summary>
+		/// <remarks>
+		/// Each match lobby occurrs twice in the dictionary keyed by the queue entry of each player.
+		/// </remarks>
 		protected readonly ConcurrentDictionary<QueueEntry, MatchLobby> _matchLobbies = new();
 
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
-		// <inheritdoc />
-		public abstract Task MatchQueuedPlayersAsync();
+        // <inheritdoc />
+        public Task LeaveQueueAsync(QueueEntry entry)
+        {
+            LeaveQueue(entry);
+			return Task.FromResult(0);
+        }
+
+        public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
+		{
+            _playerConnectionRepository = playerConnectionRepository;
+
+        }
+
+        // <inheritdoc />
+        public void TouchQueueEntry(Guid queueEntryId)
+        {
+            if (_queue.TryGetValue(queueEntryId, out var entry))
+            {
+                entry.LastSeenUtc = DateTime.UtcNow;
+            }
+        }
+
+        // <inheritdoc />
+        public void CleanupExpiredQueueEntries(TimeSpan timeout)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var (queueId, entry) in _queue)
+            {
+                if (now - entry.LastSeenUtc <= timeout)
+                    continue;
+
+                // double-check at removal time
+                if (_queue.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
+                {
+                    _queue.TryRemove(queueId, out _);
+                }
+            }
+        }
+
+        // <inheritdoc />
+        public abstract Task MatchQueuedPlayersAsync();
 
 		// <inheritdoc />
 		public virtual bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry)
@@ -68,5 +112,30 @@ namespace GammonX.Server.Services
 
 			return found;
 		}
-	}
+
+        // <inheritdoc />
+        public virtual MatchLobby[] GetMatchLobbies()
+        {
+            return _matchLobbies.Values.ToArray();
+        }
+
+        // <inheritdoc />
+        public virtual QueueEntry[] GetQueueEntries()
+        {
+            return _queue.Values.ToArray();
+        }
+
+        protected virtual internal void Enqueue(QueueEntry entry)
+        {
+            _queue[entry.Id] = entry;
+            var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
+            modeQueue.Enqueue(entry.Id);
+        }
+
+		protected virtual internal void LeaveQueue(QueueEntry entry)
+		{
+			_queue.TryRemove(entry.Id, out _);
+			// the mode queue is automatically cleanup while matching opponents for match lobbies
+        }
+    }
 }
