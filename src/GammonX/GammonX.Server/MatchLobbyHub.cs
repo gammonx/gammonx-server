@@ -126,13 +126,21 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        // we assume that the player initially connected to the hub or disconnected before he joined a match
-                        var payload = new EventMatchLobbyPayload(matchId.Value, playerId.Value, null, ServerCommands.JoinMatchCommand);
-                        var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
-                        await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
-                        await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
-                        // we set a timeout for the player to join the match
-                        await StartTurnTimerAsync(matchId.Value, playerId.Value);
+                        if (_matchmakingService.TryFindMatchLobby(matchId.Value, out var matchLobby) && matchLobby != null)
+                        {
+                            // Lobby exists — player disconnected before joining. Give them a deadline.
+                            var payload = new EventMatchLobbyPayload(matchId.Value, playerId.Value, null, ServerCommands.JoinMatchCommand);
+                            var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
+                            await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
+                            await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
+                            await StartTurnTimerAsync(matchId.Value, playerId.Value);
+                        }
+                        else
+                        {
+                            // Match is gone (forfeited, cleaned up). Nothing to join.
+                            var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
+                            await SendToClientAsync(connectionId, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
+                        }
                     }
                 }
                 else
