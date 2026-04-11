@@ -1,5 +1,12 @@
 # Changelog
 
+## 11.04.2026
+
+### NEW
+- Fevga + Plakoto Bot Service
+	- TODO
+	- TODO
+
 ## 02.04.2026
 
 ### NEW

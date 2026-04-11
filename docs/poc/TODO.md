@@ -2,14 +2,13 @@
 - see changelog 
 
 ## Active
-- none
-
-## TODO 
 - fevga/plakoto bot implementation
 - palamedes schreiben
+- bot dificulty levels
+
+## TODO 
 - doubling cube to history/stats
 - export matches to sgf/.mat format
-- bot dificulty levels
 - subscription service (clientside?)
 - match equity/stats afer match :: win percentage to user
 - auth/user account > how to identify premium accounts?

@@ -3,13 +3,18 @@
 	public class BotServiceOptions
 	{
 		/// <summary>
-		/// Gets or sets the base url of the configured bot service.
+		/// Gets or sets the base url of the wildbg bot service.
 		/// </summary>
-		public string BaseUrl { get; set; } = string.Empty;
+		public string WildBg { get; set; } = string.Empty;
 
 		/// <summary>
-		/// Gets or sets the timeout in seconds
+		/// Gets or sets the base url of the mars bot service.
 		/// </summary>
-		public int TimeoutSeconds { get; set; } = 10;
+		public string Mars { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the timeout in seconds
+        /// </summary>
+        public int TimeoutSeconds { get; set; } = 10;
 	}
 }

@@ -85,7 +85,13 @@ builder.Services.Configure<BotServiceOptions>(
 builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-    client.BaseAddress = new Uri(options.BaseUrl);
+    client.BaseAddress = new Uri(options.WildBg);
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
+builder.Services.AddHttpClient<IBotService, MarsBotService>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+    client.BaseAddress = new Uri(options.Mars);
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 // -------------------------------------------------------------------------------
@@ -165,11 +171,12 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-
+// -------------------------------------------------------------------------------
+// CORE SETUP
+// -------------------------------------------------------------------------------
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
-
 var app = builder.Build();
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
@@ -196,7 +203,8 @@ app.MapControllers();
 
 Log.Information("SERILOG LOGLEVEL: {SerilogLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__DEFAULT"));
 Log.Information("ASPNETCORE LOGLEVEL: {AspNetCoreLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__MICROSOFTASPNETCORE"));
-Log.Information("BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__BASEURL"));
+Log.Information("WILDBG BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__WILDBG"));
+Log.Information("MARS BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__MARS"));
 Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUTSECONDS"));
 Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetEnvironmentVariable("GAME_SERVICE__BASEPATH"));
 
