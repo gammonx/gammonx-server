@@ -118,5 +118,5 @@ namespace GammonX.Engine.Models
 				return new MoveModel(inverted.Item1, inverted.Item2);
 			}
 		}
-	}
+    }
 }

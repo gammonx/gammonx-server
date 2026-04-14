@@ -38,28 +38,20 @@ namespace GammonX.Server
         private readonly MatchSessionRepository _matchRepository;
         private readonly PlayerConnectionRepository _playerConnectionRepository;
         private readonly IDiceService _diceService;
-        private readonly IBotService _botService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IWorkQueueService _workQueue;
         private readonly IHubContext<MatchLobbyHub> _hubContext;
 
-        public MatchLobbyHub(
-            IWorkQueueService workQueue,
-            IMatchmakingService matchmakingService,
-            MatchSessionRepository matchRepository,
-            IDiceServiceFactory diceServiceFactory,
-            IBotService botService,
-            PlayerConnectionRepository playerConnectionRepository,
-            ICancellationTokenService cancellationTokenService,
-            IHubContext<MatchLobbyHub> hubContext)
+        public MatchLobbyHub(IServiceProvider serviceProvider)
         {
-            _workQueue = workQueue;
-            _matchmakingService = matchmakingService;
-            _matchRepository = matchRepository;
-            _diceService = diceServiceFactory.Create(DiceServiceType.Crypto);
-            _botService = botService;
-            _playerConnectionRepository = playerConnectionRepository;
-            _cancellationTokenService = cancellationTokenService;
-            _hubContext = hubContext;
+            _serviceProvider = serviceProvider;
+            _workQueue = serviceProvider.GetRequiredService<IWorkQueueService>();
+            _matchmakingService = serviceProvider.GetRequiredService<IMatchmakingService>();
+            _matchRepository = serviceProvider.GetRequiredService<MatchSessionRepository>();
+            _diceService = serviceProvider.GetRequiredService<IDiceServiceFactory>().Create(DiceServiceType.Crypto);
+            _playerConnectionRepository = serviceProvider.GetRequiredService<PlayerConnectionRepository>();
+            _cancellationTokenService = serviceProvider.GetRequiredService<ICancellationTokenService>();
+            _hubContext = serviceProvider.GetRequiredService<IHubContext<MatchLobbyHub>>();
         }
 
         #region Overrides
@@ -1088,7 +1080,8 @@ namespace GammonX.Server
         {
             if (matchSession is IDoubleCubeMatchSession)
             {
-                var shouldAccept = await _botService.ShouldAcceptDouble(matchSession, botPlayerId);
+                var botService = GetBotService(matchSession);
+                var shouldAccept = await botService.ShouldAcceptDouble(matchSession, botPlayerId);
                 return shouldAccept;
             }
             else
@@ -1145,7 +1138,8 @@ namespace GammonX.Server
             {
                 if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
                 {
-                    var shouldOffer = await _botService.ShouldOfferDouble(matchSession, botPlayerId);
+                    var botService = GetBotService(matchSession);
+                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, botPlayerId);
                     if (shouldOffer)
                     {
                         await PerformOfferDoubleAsync(matchSession, botPlayerId);
@@ -1163,7 +1157,8 @@ namespace GammonX.Server
                 bool canMove = false;
                 do
                 {
-                    var nextMoves = await _botService.GetNextMovesAsync(matchSession, botPlayerId);
+                    var botService = GetBotService(matchSession);
+                    var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId);
 
                     if (nextMoves == null)
                     {
@@ -1544,6 +1539,13 @@ namespace GammonX.Server
                 }
             }
             return false;
+        }
+
+        private IBotService GetBotService(IMatchSessionModel matchSession)
+        {
+            // TODO
+            var key = matchSession.GetGameModus() == GameModus.Plakoto ? "mars" : "wildbg";
+            return _serviceProvider.GetRequiredKeyedService<IBotService>(key);
         }
 
         private static string GetPlayerConnectionId(IMatchSessionModel matchSession, Guid playerId)

@@ -59,7 +59,7 @@ services:
     build:
       context: .
       dockerfile: ./src/GammonX/Dockerfile
-      target: server-10-final
+      target: mars-server-final
       args:
         BUILD_CONFIGURATION: debug
     container_name: mars-bot

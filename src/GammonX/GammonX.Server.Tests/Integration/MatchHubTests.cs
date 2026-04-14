@@ -25,10 +25,12 @@ namespace GammonX.Server.Tests.Integration
     public class MatchHubTests
     {
         private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
+        private readonly HttpClient _marsClient = new() { BaseAddress = new Uri("http://localhost:8083/bot/mars/") };
         private readonly MatchSessionRepository _matchRepo;
         private readonly PlayerConnectionRepository _playerConnRepo;
         private readonly IDiceServiceFactory _diceFactory;
-        private readonly IBotService _botService;
+        private readonly IBotService _wildBgBot;
+        private readonly IBotService _marsBot;
         private readonly MatchLobbyHub _hub;
         private readonly NormalMatchmakingService _normalService;
         private readonly RankedMatchmakingService _rankedService;
@@ -64,10 +66,10 @@ namespace GammonX.Server.Tests.Integration
             compositeService.AddService(MatchModus.Ranked, _rankedService);
             compositeService.AddService(MatchModus.Bot, _botMatchService);
             _matchRepo = new MatchSessionRepository(matchSessionFactory);
-            _botService = new WildbgBotService(_wildBgClient);
+            _wildBgBot = new WildbgBotService(_wildBgClient);
+            _marsBot = new MarsBotService(_marsClient);
             _cancellationTokenService = new CancellationTokenServiceImpl();
-            _hub = new MatchLobbyHub(
-                _workQueueService.Object, compositeService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null);
+            _hub = new MatchLobbyHub(BuildServiceProvider(compositeService));
         }
 
         [Theory]
@@ -893,8 +895,7 @@ namespace GammonX.Server.Tests.Integration
             // client 1
             var player1ConnectionId = Guid.NewGuid().ToString();
             var context1 = new HubCallerContextStub(player1ConnectionId);
-            var hub1 = new MatchLobbyHub(
-                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
+            var hub1 = new MatchLobbyHub(BuildServiceProvider(matchService))
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -904,8 +905,7 @@ namespace GammonX.Server.Tests.Integration
             // client 2
             var player2ConnectionId = Guid.NewGuid().ToString();
             var context2 = new HubCallerContextStub(player2ConnectionId);
-            var hub2 = new MatchLobbyHub(
-                _workQueueService.Object, matchService, _matchRepo, _diceFactory, _botService, _playerConnRepo, _cancellationTokenService, null)
+            var hub2 = new MatchLobbyHub(BuildServiceProvider(matchService))
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -995,6 +995,21 @@ namespace GammonX.Server.Tests.Integration
             Assert.NotNull(lobby2);
             Assert.Equal(lobby1.MatchId, lobby1.MatchId);
             return lobby1.MatchId;
+        }
+
+        private ServiceProvider BuildServiceProvider(IMatchmakingService matchmakingService)
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton(_workQueueService.Object);
+            services.AddSingleton(matchmakingService);
+            services.AddSingleton(_matchRepo);
+            services.AddSingleton(_diceFactory);
+            services.AddKeyedSingleton(WellKnownBotServices.WildBg, _wildBgBot);
+            services.AddKeyedSingleton(WellKnownBotServices.Mars, _wildBgBot);
+            services.AddSingleton(_playerConnRepo);
+            services.AddSingleton(_cancellationTokenService);
+            services.AddSingleton(new Mock<IHubContext<MatchLobbyHub>>().Object);
+            return services.BuildServiceProvider();
         }
 
         private IMatchmakingService GetService(MatchModus modus)

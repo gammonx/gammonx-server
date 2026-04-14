@@ -15,7 +15,6 @@ namespace GammonX.Server.Bot
 	public class WildbgBotService : IBotService
 	{
 		private readonly HttpClient _httpClient;
-		private readonly SimplePlakotoBotService _simplePlakotoBot = new();
 		private readonly SimpleFevgaBotService _simpleFevgaBot = new();
 
 		public WildbgBotService(HttpClient httpClient)
@@ -34,8 +33,7 @@ namespace GammonX.Server.Bot
 
 				if (gameSession.Modus == GameModus.Plakoto)
 				{
-					// plakoto is not supported by wildbg bot
-					return await _simplePlakotoBot.GetNextMovesAsync(matchSession, playerId);
+					throw new InvalidOperationException("use mars bot service instead");
 				}
 				else if (gameSession.Modus == GameModus.Fevga)
 				{
@@ -281,7 +279,7 @@ namespace GammonX.Server.Bot
 			else
 			{
 				// we convert back to a null based board index array
-				play.From = play.From - 1;
+				play.From--;
 			}
 			// 0 is bear off index
 			if (play.To == 0)
@@ -298,7 +296,7 @@ namespace GammonX.Server.Bot
 			else
 			{
                 // we convert back to a null based board index array
-                play.To = play.To - 1;
+                play.To--;
 			}
 
 			var maxFieldIndex = gameSession.BoardModel.Fields.Length - 1;

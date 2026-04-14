@@ -45,12 +45,12 @@ namespace GammonX.Server.Bot
 			resp.EnsureSuccessStatusCode();
 
 			var response = await resp.Content.ReadAsStringAsync();
-			var moveResponse = JsonConvert.DeserializeObject<GetEvalResponse>(response);
+			var evalResponse = JsonConvert.DeserializeObject<GetEvalResponse>(response);
 
-			if (moveResponse == null)
+			if (evalResponse == null)
 				throw new BadHttpRequestException(response);
 
-			return moveResponse;
+			return evalResponse;
 		}
 
 		/// <summary>

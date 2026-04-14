@@ -4,7 +4,7 @@ using GammonX.Models.Enums;
 
 using System.Runtime.Serialization;
 
-namespace GammonX.Mars.Server.Contracts
+namespace GammonX.Models.Contracts
 {
     [DataContract]
     public class EvalMoveRequestContract

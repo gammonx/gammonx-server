@@ -1,12 +1,10 @@
-﻿using GammonX.Models.Contracts;
-
-using GammonX.Engine.Models;
+﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.Server.Contracts;
 using GammonX.Mars.Server.Features;
 using GammonX.Mars.Server.Models;
 
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Server.Services

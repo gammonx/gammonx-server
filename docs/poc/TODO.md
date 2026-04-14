@@ -3,10 +3,10 @@
 
 ## Active
 - fevga/plakoto bot implementation
-- palamedes schreiben
-- bot dificulty levels
 
 ## TODO 
+- bot dificulty levels
+- mars bot eval match equity (points away)
 - doubling cube to history/stats
 - export matches to sgf/.mat format
 - subscription service (clientside?)

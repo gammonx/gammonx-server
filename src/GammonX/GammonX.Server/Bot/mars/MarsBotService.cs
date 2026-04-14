@@ -1,5 +1,9 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Models;
+using GammonX.Engine.Services;
+using GammonX.Models.Contracts;
 
+using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 
 namespace GammonX.Server.Bot
@@ -15,9 +19,57 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                if (gameSession == null)
+                    throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+                var gameModus = gameSession.Modus;
+
+                if (gameModus != GammonX.Models.Enums.GameModus.Plakoto)
+                {
+                    throw new InvalidOperationException("Use wildbg bot service instead");
+                }
+
+                // bot plays with black checkers
+                var isWhite = IsWhite(matchSession, playerId);
+                var boardContract = gameSession.BoardModel.ToContract(isWhite);
+                var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
+
+                EvalMoveRequestContract parameters = new EvalMoveRequestContract
+                {
+                    Modus = gameModus,
+                    Board = boardContract,
+                    Rolls = rolls
+                };
+
+                var client = new MarsClient(_httpClient);
+                ResponseContract<MoveEvalPayload>? result = null;
+                try
+                {
+                    result = await client.GetMoveEvalAsync(parameters);
+                    var moveSeq = result.Payload.MoveSequence;
+                    if (isWhite)
+                    {
+                        // we need to invert it back
+                        return moveSeq.Invert(gameModus);
+                    }
+                    return moveSeq;
+                }
+                catch (Exception)
+                {
+                    // debugging purposes only
+                    throw;
+                }
+            }
+            catch (Exception)
+            {
+                // debugging purposes only
+                throw;
+            }
         }
 
         // <inheritdoc />
@@ -30,6 +82,19 @@ namespace GammonX.Server.Bot
         public Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
         {
             throw new InvalidOperationException("Mars bot does not support accepting doubles.");
+        }
+
+        private static bool IsWhite(IMatchSessionModel matchSession, Guid playerId)
+        {
+            if (matchSession.Player1.Id.Equals(playerId))
+            {
+                return true;
+            }
+            else if (matchSession.Player2.Id.Equals(playerId))
+            {
+                return false;
+            }
+            throw new InvalidOperationException("Player is not part of this match session.");
         }
     }
 }

@@ -82,18 +82,22 @@ builder.Services.AddSingleton<ICancellationTokenService, CancellationTokenServic
 builder.Services.Configure<BotServiceOptions>(
     builder.Configuration.GetSection("BOT_SERVICE"));
 
-builder.Services.AddHttpClient<IBotService, WildbgBotService>((sp, client) =>
+builder.Services.AddHttpClient(WellKnownBotServices.WildBg, (sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
     client.BaseAddress = new Uri(options.WildBg);
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
-builder.Services.AddHttpClient<IBotService, MarsBotService>((sp, client) =>
+builder.Services.AddHttpClient(WellKnownBotServices.Mars, (sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
     client.BaseAddress = new Uri(options.Mars);
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
+builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.WildBg, (sp, _) =>
+    new WildbgBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.WildBg)));
+builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, (sp, _) =>
+    new MarsBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.Mars)));
 // -------------------------------------------------------------------------------
 // AUTHENTICATION + AUTHORIZATION SETUP
 // -------------------------------------------------------------------------------

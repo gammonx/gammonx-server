@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
-using GammonX.Mars.Server.Contracts;
+
 using GammonX.Mars.Server.Models;
+
+using GammonX.Models.Contracts;
 
 namespace GammonX.Mars.Server.Services
 {
