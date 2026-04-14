@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.Contracts;
+using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
 
@@ -14,6 +15,12 @@ namespace GammonX.Engine.Services
         public override IBoardModel CreateBoard()
         {
             return new PlakotoBoardModelImpl();
+        }
+
+        // <inheritdoc />
+        public override IBoardModel CreateBoard(BoardModelContract contract)
+        {
+            return new PlakotoBoardModelImpl(contract);
         }
 
         // <inheritdoc />

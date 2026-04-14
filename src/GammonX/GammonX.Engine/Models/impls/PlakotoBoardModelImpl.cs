@@ -1,4 +1,6 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.Contracts;
+
+using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
 
@@ -11,6 +13,14 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal sealed class PlakotoBoardModelImpl : BoardBaseImpl, IPinModel
     {
+        internal PlakotoBoardModelImpl(BoardModelContract contract)
+        {
+            Fields = contract.Fields;
+            BearOffCountWhite = contract.BearOffCountWhite;
+            BearOffCountBlack = contract.BearOffCountBlack;
+            PinnedFields = contract.PinnedFields ?? new int[24];
+        }
+
         public PlakotoBoardModelImpl()
         {
             Fields = new int[24]

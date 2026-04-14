@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.History;
+﻿using GammonX.Engine.Contracts;
+using GammonX.Engine.History;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
@@ -18,8 +19,14 @@ namespace GammonX.Engine.Services
 		// <inheritdoc />
 		public abstract IBoardModel CreateBoard();
 
-		// <inheritdoc />
-		public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
+        // <inheritdoc />
+        public virtual IBoardModel CreateBoard(BoardModelContract contract)
+		{
+			throw new NotImplementedException();
+        }
+
+        // <inheritdoc />
+        public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
 		{
 			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
 			var allowed = FilterSequencesByDiceRules(sequences, rolls);
@@ -470,20 +477,19 @@ namespace GammonX.Engine.Services
 
 		private List<MoveModel> GetMovesForDiceRoll(IBoardModel board, bool isWhite, int diceRoll)
 		{
-			var shadowBoard = board.DeepClone();
 			var moves = new List<MoveModel>();
-			var moveable = GetMoveableCheckerFields(shadowBoard, isWhite);
+			var moveable = GetMoveableCheckerFields(board, isWhite);
 
 			foreach (var from in moveable)
 			{
-				if (CanBearOffChecker(shadowBoard, from, diceRoll, isWhite))
+				if (CanBearOffChecker(board, from, diceRoll, isWhite))
 				{
 					int to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
 					moves.Add(new MoveModel(from, to));
 				}
-				else if (CanMoveChecker(shadowBoard, from, diceRoll, isWhite))
+				else if (CanMoveChecker(board, from, diceRoll, isWhite))
 				{
-					int to = shadowBoard.MoveOperator(isWhite, from, diceRoll);
+					int to = board.MoveOperator(isWhite, from, diceRoll);
 					moves.Add(new MoveModel(from, to));
 				}
 			}

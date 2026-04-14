@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.Contracts;
+using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
 
@@ -23,6 +24,13 @@ namespace GammonX.Engine.Services
         /// </remarks>
         /// <returns>An instance of <see cref="IBoardModel"/>.</returns>
         IBoardModel CreateBoard();
+
+        /// <summary>
+        /// Creates a board based on the given <paramref name="contract"/>.
+        /// </summary>
+        /// <param name="contract">Contract to parse from.</param>
+        /// <returns>An intance of <see cref="IBoardModel"/>.s</returns>
+        IBoardModel CreateBoard(BoardModelContract contract);
 
         /// <summary>
         /// Moves a piece from one position to another on the board.
