@@ -349,7 +349,7 @@ namespace GammonX.Server.Tests.Integration
             }
             else
             {
-                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 1);
+                Assert.Contains(playedSessions, gs => gs.Phase == GamePhase.GameOver);
             }
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);

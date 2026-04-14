@@ -1,9 +1,9 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Models.Contracts
 {
 	[DataContract]
-	public class RequestErrorPayload : RequestPayload
+	public class RequestErrorPayload : ResponsePayload
 	{
 		[DataMember(Name = "code")]
 		public string Code { get; private set; }

@@ -2,14 +2,25 @@
 using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
 
+using GammonX.Models.Contracts;
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace GammonX.Mars.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PlakotoController : ControllerBase
+    public class EvalController : ControllerBase
     {
+        private readonly IServiceProvider _serviceProvider;
+
+        public EvalController(IServiceProvider serviceProvider)
+        {
+            _serviceProvider = serviceProvider;
+        }
+
+        // TODO: get weighting from config
+
         private readonly RaceWeightModel _raceWeights = new RaceWeightModel()
         {
             PipToBearOffOppWeight = 0.45,
@@ -49,29 +60,50 @@ namespace GammonX.Mars.Server.Controllers
             return Ok();
         }
 
-        [HttpPost("eval")]
-        public IActionResult Eval([FromBody] MoveRequestContract request)
+        [HttpPost("board")]
+        public IActionResult Board([FromBody] MoveRequestContract request)
         {
-            var evalService = new PlakotoFeatureEvalService();
+            try
+            {
+                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-            _raceWeights.Validate();
-            _contactWeights.Validate();
+                _raceWeights.Validate();
+                _contactWeights.Validate();
 
-            var boardScore = evalService.EvalBoardState(request, _contactWeights, _raceWeights);
-
-            return Ok(boardScore);
+                var boardScore = evalService.EvalBoardState(request, _contactWeights, _raceWeights);
+                var payload = new BoardEvalPayload() { EvalScore = boardScore };
+                var response = new ResponseContract<BoardEvalPayload>("OK", payload);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var payload = new RequestErrorPayload("BOARD_EVAL_ERROR", ex.Message);
+                var response = new ResponseContract<RequestErrorPayload>("ERROR", payload);
+                return BadRequest(response);
+            }
         }
 
         [HttpPost("move")]
         public IActionResult Move([FromBody] MoveRequestContract request)
         {
-            var evalService = new PlakotoFeatureEvalService();
+            try
+            {
+                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-            _raceWeights.Validate();
-            _contactWeights.Validate();
+                _raceWeights.Validate();
+                _contactWeights.Validate();
 
-            var bestMove = evalService.EvalMoveSequence(request, _contactWeights, _raceWeights);
-            return Ok(bestMove);
+                var bestMove = evalService.EvalMoveSequence(request, _contactWeights, _raceWeights);
+                var payload = new MoveEvalPayload() { MoveSequence = bestMove };
+                var response = new ResponseContract<MoveEvalPayload>("OK", payload);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                var payload = new RequestErrorPayload("MOVE_EVAL_ERROR", ex.Message);
+                var response = new ResponseContract<RequestErrorPayload>("ERROR", payload);
+                return BadRequest(response);
+            }
         }
     }
 }

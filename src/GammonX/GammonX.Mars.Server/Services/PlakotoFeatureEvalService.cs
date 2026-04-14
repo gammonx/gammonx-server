@@ -9,7 +9,8 @@ using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Server.Services
 {
-    public class PlakotoFeatureEvalService
+    // <inheritdoc />
+    public sealed class PlakotoFeatureEvalService : IFeatureEvalService
     {
         private readonly IBoardService _boardService = BoardServiceFactory.Create(GameModus.Plakoto);
 
@@ -25,6 +26,7 @@ namespace GammonX.Mars.Server.Services
             _contactFeatures = new ContactProbabilityFeature(_boardService);
         }
 
+        // <inheritdoc />
         public double EvalBoardState(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var boardContract = contract.Board;
@@ -39,6 +41,7 @@ namespace GammonX.Mars.Server.Services
             return score;
         }
 
+        // <inheritdoc />
         public MoveSequenceModel EvalMoveSequence(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var rolls = contract.Rolls;
@@ -67,7 +70,7 @@ namespace GammonX.Mars.Server.Services
                 evals.TryAdd(score, moveSeq);
             }
 
-            if (evals.Any())
+            if (evals.Count != 0)
             {
                 var bestMove = evals.OrderByDescending(kvp => kvp.Key).FirstOrDefault();
                 return bestMove.Value;

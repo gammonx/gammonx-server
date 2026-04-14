@@ -1,6 +1,9 @@
 using DotNetEnv;
 
 using GammonX.Mars.Server;
+using GammonX.Mars.Server.Services;
+
+using GammonX.Models.Enums;
 
 using Microsoft.Extensions.Options;
 
@@ -31,6 +34,11 @@ builder.Configuration.AddEnvironmentVariables();
 // -------------------------------------------------------------------------------
 builder.Services.Configure<ServiceOptions>(
     builder.Configuration.GetSection("SERVICE"));
+// -------------------------------------------------------------------------------
+// DEPENDENCY INJECTION
+// -------------------------------------------------------------------------------
+builder.Services.AddKeyedSingleton<IFeatureEvalService, PlakotoFeatureEvalService>(GameModus.Plakoto);
+builder.Services.AddKeyedSingleton<IFeatureEvalService, FevgaFeatureEvalService>(GameModus.Fevga);
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------

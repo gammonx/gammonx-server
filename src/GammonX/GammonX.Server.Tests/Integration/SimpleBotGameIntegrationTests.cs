@@ -1,7 +1,9 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
+
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -62,7 +64,7 @@ namespace GammonX.Server.Tests.Integration
 			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame);
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
-			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
+			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
 			var player1Connection = new HubConnectionBuilder()

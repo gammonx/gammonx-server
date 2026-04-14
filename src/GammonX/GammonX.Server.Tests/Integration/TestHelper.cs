@@ -1,4 +1,6 @@
-﻿using GammonX.Models.Enums;
+﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
+
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Tests.Utils;
@@ -20,8 +22,8 @@ namespace GammonX.Server.Tests.Integration
 {
     internal static class TestHelper
     {
-        private static Guid _player1Id = Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45");
-        private static Guid _player2Id = Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6");
+        private static readonly Guid _player1Id = Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45");
+        private static readonly Guid _player2Id = Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6");
         private const string JwtSecret = "super-secret-key-that-is-at-least-32-characters-long-for-hs256";
 
         internal static async Task<MatchHubIntegrationTest> SetupIntegrationTest(WebApplicationFactory<Program> factory)
@@ -32,7 +34,7 @@ namespace GammonX.Server.Tests.Integration
             var player1 = new JoinRequest(_player1Id, MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame);
             var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
             var resultJson1 = await response1.Content.ReadAsStringAsync();
-            var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
+            var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
             var joinPayload1 = joinResponse1?.Payload;
             Assert.NotNull(joinPayload1);
             Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload1.Status);
@@ -40,7 +42,7 @@ namespace GammonX.Server.Tests.Integration
             var player2 = new JoinRequest(_player2Id, MatchVariant.Tavli, MatchModus.Normal, MatchType.CashGame);
             var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
             var resultJson2 = await response2.Content.ReadAsStringAsync();
-            var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);
+            var joinResponse2 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson2);
             var joinPayload2 = joinResponse2?.Payload;
             Assert.NotNull(joinPayload2);
             Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload2.Status);

@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Contracts;
 
+using GammonX.Models.Enums;
+
 using System.Runtime.Serialization;
 
 namespace GammonX.Mars.Server.Contracts
@@ -7,6 +9,9 @@ namespace GammonX.Mars.Server.Contracts
     [DataContract]
     public class MoveRequestContract
     {
+        [DataMember(Name = "modus", IsRequired = true)]
+        public GameModus Modus { get; set; }
+
         [DataMember(Name = "rolls", IsRequired = true )]
         public int[] Rolls { get; set; } = Array.Empty<int>();
 

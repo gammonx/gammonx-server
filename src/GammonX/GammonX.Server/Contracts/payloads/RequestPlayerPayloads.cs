@@ -1,9 +1,11 @@
-﻿using System.Runtime.Serialization;
+﻿using GammonX.Models.Contracts;
+
+using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public class RequestPlayerIdPayload : RequestPayload
+	public class RequestPlayerIdPayload : ResponsePayload
 	{
 		[DataMember(Name = "playerId", IsRequired = true)]
 		public Guid PlayerId { get; set; }
@@ -15,7 +17,7 @@ namespace GammonX.Server.Contracts
 	}
 
 	[DataContract]
-	public class RequestPlayerPayload : RequestPayload
+	public class RequestPlayerPayload : ResponsePayload
 	{
 		[DataMember(Name = "player", IsRequired = true)]
 		public PlayerContract Player { get; set; }
