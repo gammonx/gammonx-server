@@ -11,13 +11,13 @@ namespace GammonX.Mars.Server.Services
     public sealed class FevgaFeatureEvalService : IFeatureEvalService
     {
         // <inheritdoc />
-        public double EvalBoardState(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             throw new NotImplementedException();
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequence(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             throw new NotImplementedException();
         }

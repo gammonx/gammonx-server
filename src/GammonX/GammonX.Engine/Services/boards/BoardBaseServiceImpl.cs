@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Contracts;
+﻿using GammonX.Models.Contracts;
+
 using GammonX.Engine.History;
 using GammonX.Engine.Models;
 

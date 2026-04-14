@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Engine.Contracts
+namespace GammonX.Models.Contracts
 {
 	[DataContract]
 	public sealed class BoardModelContract

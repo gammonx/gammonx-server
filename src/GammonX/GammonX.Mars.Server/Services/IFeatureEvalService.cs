@@ -17,7 +17,7 @@ namespace GammonX.Mars.Server.Services
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="raceWeights">Raace position weights.</param>
         /// <returns>Score rating of the given board for a given player.</returns>
-        double EvalBoardState(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights);
+        double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights);
 
         /// <summary>
         /// Calculates the best rated move sequence for the board and roll in <paramref name="contract"/> based on
@@ -27,6 +27,6 @@ namespace GammonX.Mars.Server.Services
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="raceWeights">Raace position weights.</param>
         /// <returns>Best rated move sequence.</returns>
-        MoveSequenceModel EvalMoveSequence(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights);
+        MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights);
     }
 }

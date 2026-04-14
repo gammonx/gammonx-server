@@ -1,4 +1,6 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Contracts;
+
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.Server.Contracts;
@@ -27,7 +29,7 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public double EvalBoardState(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var boardContract = contract.Board;
             var board = _boardService.CreateBoard(boardContract);
@@ -42,7 +44,7 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequence(MoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;

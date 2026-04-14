@@ -61,7 +61,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("board")]
-        public IActionResult Board([FromBody] MoveRequestContract request)
+        public IActionResult Board([FromBody] EvalBoardRequestContract request)
         {
             try
             {
@@ -84,7 +84,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("move")]
-        public IActionResult Move([FromBody] MoveRequestContract request)
+        public IActionResult Move([FromBody] EvalMoveRequestContract request)
         {
             try
             {
