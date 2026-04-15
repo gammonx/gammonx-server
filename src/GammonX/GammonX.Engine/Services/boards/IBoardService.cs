@@ -54,11 +54,6 @@ namespace GammonX.Engine.Services
         /// <param name="from">Position to move from.</param>
         /// <param name="roll">Value of the used dice roll.</param>
         /// <param name="isWhite">Indicates if white or black pieces move.</param>
-        /// <remarks>
-        /// This method does not validate the move according to the game rules.
-        /// All move done are validated beforehand by the game logic.
-        /// Use <see cref="CanMoveChecker"/> for validation.
-        /// </remarks>
         /// <returns>Indicates success of the move.</returns>
         internal bool MoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
@@ -74,13 +69,13 @@ namespace GammonX.Engine.Services
 		/// <param name="isWhite">Indicates if white or black pieces move.</param>
 		void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite);
 
-		/// <summary>
-		/// Adds the given <paramref name="eventValues"/> to the board history for player <paramref name="isWhite"/>.
-		/// </summary>
-		/// <param name="model">Provides the history to add on.</param>
-		/// <param name="isWhite">Indicates if white or black pieces move.</param>
-		/// <param name="eventValues">Event values to add.</param>
-		void AddEventToHistory(IBoardModel model, bool isWhite, object eventValues);
+        /// <summary>
+        /// Adds the given <paramref name="rolls"/> to the board history for player <paramref name="isWhite"/>.
+        /// </summary>
+        /// <param name="model">Provides the history to add on.</param>
+        /// <param name="isWhite">Indicates if white or black pieces move.</param>
+        /// <param name="rolls">Roll Event values to add.</param>
+        void AddRollEventToHistory(IBoardModel model, bool isWhite, int[] rolls);
 
 		/// <summary>
 		/// Checks if the given checker can be moved from to a given position based
@@ -129,5 +124,17 @@ namespace GammonX.Engine.Services
 		/// <param name="rolls">1:n Dice roll values</param>
 		/// <returns>An array of move sequences.</returns>
 		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
+
+		/// <summary>
+		/// Explores legal move sequences and invokes the <paramref name="callback"/> for each one.
+		/// Stops exploration early when the callback returns <c>true</c>, indicating satisfaction.
+		/// Respects dice rules: sequences using fewer dice than the maximum possible are skipped.
+		/// </summary>
+		/// <param name="model">Board model to operate on.</param>
+		/// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
+		/// <param name="rolls">1:n Dice roll values.</param>
+		/// <param name="callback">Invoked for each legal leaf sequence. Return <c>true</c> to signal early termination.</param>
+		/// <returns><c>true</c> if the callback returned <c>true</c> for any legal sequence.</returns>
+		bool ExploreSequencesUntil(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback);
 	}
 }

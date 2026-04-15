@@ -1,4 +1,5 @@
-﻿using GammonX.Mars.Server.Contracts;
+﻿using GammonX.Engine.Models;
+using GammonX.Mars.Server.Contracts;
 using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
 
@@ -94,9 +95,18 @@ namespace GammonX.Mars.Server.Controllers
                 _contactWeights.Validate();
 
                 var bestMove = evalService.EvalMoveSequence(request, _contactWeights, _raceWeights);
-                var payload = new MoveEvalPayload() { MoveSequence = bestMove };
-                var response = new ResponseContract<MoveEvalPayload>("OK", payload);
-                return Ok(response);
+                if (bestMove != null)
+                {
+                    var payload = new MoveEvalPayload() { MoveSequence = bestMove };
+                    var response = new ResponseContract<MoveEvalPayload>("OK", payload);
+                    return Ok(response);
+                }
+                else
+                {
+                    var payload = new MoveEvalPayload() { MoveSequence = new MoveSequenceModel() };
+                    var response = new ResponseContract<MoveEvalPayload>("OK", payload);
+                    return Ok(response);
+                }
             }
             catch (Exception ex)
             {

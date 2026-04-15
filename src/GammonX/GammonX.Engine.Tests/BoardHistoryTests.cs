@@ -23,7 +23,9 @@ namespace GammonX.Engine.Tests
 		{
 			var boardService = BoardServiceFactory.Create(modus);
 			var board = boardService.CreateBoard();
-			Assert.NotNull(board.History);
+			var edtiableHistory = board.History as IEditableBoardHistory;
+			Assert.NotNull(edtiableHistory);
+            Assert.NotNull(board.History);
 			Assert.Empty(board.History.Events);
 
 			var playerStr = isWhite ? "White" : "Black";
@@ -33,7 +35,7 @@ namespace GammonX.Engine.Tests
 			Assert.Equal("1 2 3 4", rollEventValue.ToString());
 			var rollEvent = new HistoryEventImpl(HistoryEventType.Roll, rollEventValue, isWhite);
 			Assert.Equal($"{playerStr} Roll 1 2 3 4", rollEvent.ToString());
-			board.History.Add(rollEvent);
+            edtiableHistory.Add(rollEvent);
 			Assert.Single(board.History.Events);
 
 			Assert.Equal(isWhite, rollEvent.IsWhite);
@@ -45,24 +47,24 @@ namespace GammonX.Engine.Tests
 			Assert.Equal("5/2", moveEventValue.ToString());
 			var moveEvent = new HistoryEventImpl(HistoryEventType.Move, moveEventValue, isWhite);
 			Assert.Equal($"{playerStr} Move 5/2", moveEvent.ToString());
-			board.History.Add(moveEvent);
-			Assert.Equal(2, board.History.Events.Count());
+            edtiableHistory.Add(moveEvent);
+			Assert.Equal(2, board.History.Events.Count);
 
 			Assert.Equal(isWhite, moveEvent.IsWhite);
 			Assert.Equal(HistoryEventType.Move, moveEvent.Type);
 			Assert.Equal(moveEventValue, moveEvent.Value);
 
-			var removed = board.History.TryRemoveLast();
+			var removed = edtiableHistory.TryRemoveLast();
 			Assert.True(removed);
 			Assert.Single(board.History.Events);
 			Assert.Contains(rollEvent, board.History.Events);
 			Assert.DoesNotContain(moveEvent, board.History.Events);
 
-			board.History.Remove(rollEvent);
+            edtiableHistory.Remove(rollEvent);
 			Assert.Empty(board.History.Events);
 			Assert.DoesNotContain(rollEvent, board.History.Events);
 
-			removed = board.History.TryRemoveLast();
+			removed = edtiableHistory.TryRemoveLast();
 			Assert.False(removed);
 		}
 

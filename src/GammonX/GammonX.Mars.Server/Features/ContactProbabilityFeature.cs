@@ -40,18 +40,47 @@ namespace GammonX.Mars.Server.Features
                         ? [die1, die1, die1, die1]
                         : [die1, die2];
 
-                    // opponents sequences — shared between hit detection and opponent escape
+                    // opponents sequences — early termination once both hit-1 and hit-2 are confirmed
                     if (hasExposed)
                     {
-                        var oppSequences = _boardService.GetLegalMoveSequences(playersBoard, true, rolls);
-                        EvalHitFromSequences(oppSequences, exposedSet, weight, ref hitRolls1, ref hitRolls2);
+                        bool canHitOne = false, canHitTwo = false;
+                        _boardService.ExploreSequencesUntil(playersBoard, true, rolls, moves =>
+                        {
+                            int hitCount = 0;
+                            foreach (var move in moves)
+                            {
+                                if (exposedSet.Contains(move.To))
+                                    hitCount++;
+                            }
+                            if (hitCount >= 1) canHitOne = true;
+                            if (hitCount >= 2) canHitTwo = true;
+                            return canHitOne && canHitTwo;
+                        });
+                        if (canHitOne) hitRolls1 += weight;
+                        if (canHitTwo) hitRolls2 += weight;
                     }
 
-                    // players sequences — for player escape
+                    // players sequences — early termination once both esc-1 and esc-2 are confirmed
                     if (hasCheckersInOppHome)
                     {
-                        var playerSequences = _boardService.GetLegalMoveSequences(playersBoard, false, rolls);
-                        EvalEscapeFromSequences(playerSequences, oppHomeStart, oppHomeEnd, weight, ref escRolls1, ref escRolls2);
+                        bool canEscapeOne = false, canEscapeTwo = false;
+                        _boardService.ExploreSequencesUntil(playersBoard, false, rolls, moves =>
+                        {
+                            int escCount = 0;
+                            foreach (var move in moves)
+                            {
+                                if (move.From >= oppHomeStart && move.From <= oppHomeEnd &&
+                                    move.To < oppHomeStart)
+                                {
+                                    escCount++;
+                                }
+                            }
+                            if (escCount >= 1) canEscapeOne = true;
+                            if (escCount >= 2) canEscapeTwo = true;
+                            return canEscapeOne && canEscapeTwo;
+                        });
+                        if (canEscapeOne) escRolls1 += weight;
+                        if (canEscapeTwo) escRolls2 += weight;
                     }
                 }
             }
@@ -59,59 +88,6 @@ namespace GammonX.Mars.Server.Features
             return new ContactProbabilityResult(
                 hitRolls1 / 36.0, hitRolls2 / 36.0,
                 escRolls1 / 36.0, escRolls2 / 36.0);
-        }
-
-        private static void EvalHitFromSequences(
-            MoveSequenceModel[] sequences, HashSet<int> exposedSet, int weight,
-            ref int hitRolls1, ref int hitRolls2)
-        {
-            var canHitOne = false;
-            var canHitTwo = false;
-
-            foreach (var seq in sequences)
-            {
-                var hitExposed = new HashSet<int>();
-                foreach (var move in seq.Moves)
-                {
-                    if (exposedSet.Contains(move.To))
-                        hitExposed.Add(move.To);
-                }
-
-                if (hitExposed.Count >= 1) canHitOne = true;
-                if (hitExposed.Count >= 2) canHitTwo = true;
-                if (canHitOne && canHitTwo) break;
-            }
-
-            if (canHitOne) hitRolls1 += weight;
-            if (canHitTwo) hitRolls2 += weight;
-        }
-
-        private static void EvalEscapeFromSequences(
-            MoveSequenceModel[] sequences, int oppHomeStart, int oppHomeEnd, int weight,
-            ref int escRolls1, ref int escRolls2)
-        {
-            var canEscapeOne = false;
-            var canEscapeTwo = false;
-
-            foreach (var seq in sequences)
-            {
-                var escaped = new HashSet<int>();
-                foreach (var move in seq.Moves)
-                {
-                    if (move.From >= oppHomeStart && move.From <= oppHomeEnd &&
-                        move.To < oppHomeStart)
-                    {
-                        escaped.Add(move.From);
-                    }
-                }
-
-                if (escaped.Count >= 1) canEscapeOne = true;
-                if (escaped.Count >= 2) canEscapeTwo = true;
-                if (canEscapeOne && canEscapeTwo) break;
-            }
-
-            if (canEscapeOne) escRolls1 += weight;
-            if (canEscapeTwo) escRolls2 += weight;
         }
 
         private static bool HasCheckersInOpponentHome(IBoardModel board, int start, int end)
