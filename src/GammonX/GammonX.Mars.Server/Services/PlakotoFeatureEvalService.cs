@@ -31,8 +31,7 @@ namespace GammonX.Mars.Server.Services
         {
             var boardContract = contract.Board;
             var board = _boardService.CreateBoard(boardContract);
-            // bot always plays as black
-            var isWhite = false;
+            var isWhite = contract.IsWhite;
 
             var isRace = _raceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
@@ -46,8 +45,7 @@ namespace GammonX.Mars.Server.Services
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
-            // bot always plays as black
-            var isWhite = false;
+            var isWhite = contract.IsWhite;
 
             var board = _boardService.CreateBoard(boardContract);
             var legalMovesSeq = _boardService.GetLegalMoveSequences(board, isWhite, rolls);
@@ -94,11 +92,8 @@ namespace GammonX.Mars.Server.Services
             }
             else
             {
-                // pre compute the inverted board once in order to avoid unnecessary invocations
-                var oppBoard = board.InvertBoard();
-
                 var contactEvalPlayer = _contactFeatures.Eval(board, isWhite);
-                var contactEvalOpp = _contactFeatures.Eval(oppBoard, isWhite);
+                var contactEvalOpp = _contactFeatures.Eval(board, !isWhite);
                 var pinEval = _pinEvalFeature.Eval(board, isWhite);
 
                 eval = new EvalResultModel()
@@ -109,10 +104,10 @@ namespace GammonX.Mars.Server.Services
                     HitOpponentProbability1 = contactEvalOpp.HitProbability1,
                     HitOpponentProbability2 = contactEvalOpp.HitProbability2,
                     PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
-                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(oppBoard, isWhite),
+                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
                     PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
                     NumChFrontLastPin = _numChFronLastPinFeature.Eval(board, isWhite),
-                    NumChFrontLastPinOpp = _numChFronLastPinFeature.Eval(oppBoard, isWhite),
+                    NumChFrontLastPinOpp = _numChFronLastPinFeature.Eval(board, !isWhite),
                     EscapeProbability1 = contactEvalPlayer.EscapeProbability1,
                     EscapeProbability2 = contactEvalPlayer.EscapeProbability2,
                     EscapeProbability1Opp = contactEvalOpp.EscapeProbability1,

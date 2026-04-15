@@ -3,46 +3,51 @@
 namespace GammonX.Mars.Server.Features
 {
     /// <summary>
-    /// Calculates the number of checkers of the player that are in front of the last pinned opponent checker which resides
-    /// in the players home board. This is an important feature for the plakoto variant, as the player can only bear off checkers
-    /// if all of his checkers are in his home board and there is no pinned opponent checker in front of them. 
-    /// The more checkers the player has in front of the last pinned opponent checker, the better his chances to bear off checkers 
-    /// and win the game with a gammon (2pts).
+    /// Finds the pinned opponent checker in the players home board that is nearest to the home range end (bear-off side)
+    /// and counts all of the player's own checkers that still need to pass through that pin (i.e. could stack on it).
+    /// This is an important feature for the plakoto variant, as stacking more checkers on a pin strengthens the
+    /// player's position and increases the chance to bear off checkers and win with a gammon (2pts).
     /// </summary>
     public sealed class NumbersOfCheckersInFronOfLastPinFeature : IFeature<int>
     {
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            IBoardModel playersBoard = GetBoard(board, isWhite);
-            IPinModel pinModel = (IPinModel)playersBoard;
-            // scan black's home range ascending (0>5): count black checkers until the first
-            // pinned white is found — that is the last pin black encounters on its path to bear-off
-            var number = 0;
-            var hasPinnedWhite = false;
-            for (int i = playersBoard.HomeRangeBlack.End.Value; i <= playersBoard.HomeRangeBlack.Start.Value; i++)
-            {
-                if (pinModel.PinnedFields[i] < 0)
-                {
-                    hasPinnedWhite = true;
-                    break;
-                }
-                if (playersBoard.Fields[i] > 0)
-                {
-                    number += playersBoard.Fields[i];
-                }
-            }
-            return hasPinnedWhite ? number : 0;
-        }
+            IPinModel pinModel = (IPinModel)board;
 
-        private static IBoardModel GetBoard(IBoardModel board, bool isWhite)
-        {
             if (isWhite)
             {
-                return board.InvertBoard();
-            }
+                // find pinned black checkers nearest to the white home range end
+                var pinIndexTuple = pinModel.PinnedFields.Index().Where(i => i.Item != 0);
+                var pinBlackIndicesInWhiteHome = pinIndexTuple.Where(pit => pit.Item > 0 && board.IsInHomeOperator(isWhite, pit.Index));
+                if (pinBlackIndicesInWhiteHome.Any())
+                {
+                    var nearestBlackPin = pinBlackIndicesInWhiteHome.OrderByDescending(
+                        pit => board.RecoverRollOperator(isWhite, pit.Index, board.HomeRangeBlack.End.Value)).First();
 
-            return board;
+                    // we count all white checkers which could stack on the pin
+                    var fieldIndexTuple = board.Fields.Index().Where(i => i.Item < 0);
+                    var whiteCheckersInFront = fieldIndexTuple.Where(pit => pit.Index < nearestBlackPin.Index).Select(pit => pit.Item);
+                    return Math.Abs(whiteCheckersInFront.Sum());
+                }
+            }
+            else
+            {
+                // find pinned white checkers nearest to the black home range end
+                var pinIndexTuple = pinModel.PinnedFields.Index().Where(i => i.Item != 0);
+                var pinWhiteIndicesInWhiteHome = pinIndexTuple.Where(pit => pit.Item < 0 && board.IsInHomeOperator(isWhite, pit.Index));
+                if (pinWhiteIndicesInWhiteHome.Any())
+                {
+                    var nearestWhitePin = pinWhiteIndicesInWhiteHome.OrderByDescending(
+                        pit => board.RecoverRollOperator(isWhite, pit.Index, board.HomeRangeWhite.End.Value)).First();
+
+                    // we count all black checkers which could stack on the pin
+                    var fieldIndexTuple = board.Fields.Index().Where(i => i.Item > 0);
+                    var blackCheckersInFront = fieldIndexTuple.Where(pit => pit.Index > nearestWhitePin.Index).Select(pit => pit.Item);
+                    return Math.Abs(blackCheckersInFront.Sum());
+                }
+            }
+            return 0;
         }
     }
 }

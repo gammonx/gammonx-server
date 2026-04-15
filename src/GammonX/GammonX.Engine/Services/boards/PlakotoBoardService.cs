@@ -78,6 +78,10 @@ namespace GammonX.Engine.Services
             {
                 // we check if we would unpin an opponents checker with this move
                 EvaluateUnPinnedCheckers(model, from, isWhite);
+
+                // when a checker returns to a field during undo, it may need to re-pin
+                // an opponents checker that was released during the original forward move
+                EvaluateRePinnedCheckers(model, to, isWhite);
             }
         }
 
@@ -114,6 +118,23 @@ namespace GammonX.Engine.Services
             if (model.Fields[from] == 0)
             {
                 UnPinChecker(model, from, isWhite);
+            }
+        }
+
+        private static void EvaluateRePinnedCheckers(IBoardModel model, int to, bool isWhite)
+        {
+            // skip bear-off positions
+            if (to == BoardPositions.BearOffWhite || to == BoardPositions.BearOffBlack)
+            {
+                return;
+            }
+
+            // when a checker arrives at a field where an opponent's checker was previously
+            // unpinned (during a forward move), the field value will be 0 (one white + one black
+            // cancel out). In that case we must re-pin the opponent's checker.
+            if (model.Fields[to] == 0 && model is IPinModel pinModel)
+            {
+                PinChecker(model, to, isWhite);
             }
         }
 

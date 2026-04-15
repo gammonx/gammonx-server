@@ -11,36 +11,33 @@ namespace GammonX.Mars.Server.Features
         // <inheritdoc />
         public bool Eval(IBoardModel board, bool isWhite)
         {
-            // positive values = black checkers (move 23>0)
-            // negative values = white checkers (move 0>23)
             var maxBlackIndex = -1;
             var minWhiteIndex = board.Fields.Length;
 
-            for (int i = 0; i < board.Fields.Length; i++)
-            {
-                if (board.Fields[i] > 0)
-                {
-                    maxBlackIndex = i;
-                }
-                else if (board.Fields[i] < 0)
-                {
-                    minWhiteIndex = Math.Min(minWhiteIndex, i);
-                }
-            }
+            var fieldTuples = board.Fields.Index();
 
-            // in Plakoto, a pinned checker is hidden from Fields[]: the pinner's checker occupies
-            // the field while the pinned checker is recorded only in PinnedFields[]. A pinned
+            var whiteIndices = fieldTuples.Where(t => t.Item < 0).Select(t => t.Index);
+            var blackIndices = fieldTuples.Where(t => t.Item > 0).Select(t => t.Index);
+
+            minWhiteIndex = whiteIndices.Any() ? whiteIndices.Min() : int.MaxValue;
+            maxBlackIndex = blackIndices.Any() ? blackIndices.Max() : int.MinValue;
+
+            // in Plakoto, a pinned checker is hidden from fields array: the pinners checker occupies
+            // the field while the pinned checker is recorded only in pinned fields. A pinned
             // checker is still on the board and must be included in the contact check — omitting
-            // it causes a false race when e.g. a white checker is pinned deep in black's home.
+            // it causes a false race when e.g. a white checker is pinned deep in blacks home.
             if (board is IPinModel pinModel)
             {
-                for (int i = 0; i < pinModel.PinnedFields.Length; i++)
-                {
-                    if (pinModel.PinnedFields[i] < 0) // white checker pinned by black at i
-                        minWhiteIndex = Math.Min(minWhiteIndex, i);
-                    else if (pinModel.PinnedFields[i] > 0) // black checker pinned by white at i
-                        maxBlackIndex = Math.Max(maxBlackIndex, i);
-                }
+                var pinTuples = pinModel.PinnedFields.Index();
+
+                var whitePinIndices = pinTuples.Where(t => t.Item < 0).Select(t => t.Index);
+                var blackPinIndices = pinTuples.Where(t => t.Item > 0).Select(t => t.Index);
+
+                var minPinWhiteIndex = whitePinIndices.Any() ? whitePinIndices.Min() : int.MaxValue;
+                var maxPinBlackIndex = blackPinIndices.Any() ? blackPinIndices.Max() : int.MinValue;
+
+                minWhiteIndex = Math.Min(minWhiteIndex, minPinWhiteIndex);
+                maxBlackIndex = Math.Max(maxBlackIndex, maxPinBlackIndex);
             }
 
             // race: all black checkers are at lower indices than all white checkers

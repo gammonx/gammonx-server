@@ -11,9 +11,7 @@ namespace GammonX.Mars.Server.Features
         // <inheritdoc />
         public PinEvalResult Eval(IBoardModel board, bool isWhite)
         {
-            IBoardModel playersBoard = isWhite ? board.InvertBoard() : board;
-
-            if (playersBoard is not IPinModel pinModel)
+            if (board is not IPinModel pinModel)
                 return new PinEvalResult(0, 0, 0, 0);
 
             var pinnedOppCount = 0;
@@ -21,19 +19,45 @@ namespace GammonX.Mars.Server.Features
 
             for (var i = 0; i < pinModel.PinnedFields.Length; i++)
             {
-                // PinnedFields[i] < 0 = white (opponent) checker pinned by black (player)
-                // PinnedFields[i] > 0 = black (player) checker pinned by white (opponent)
-                if (pinModel.PinnedFields[i] < 0)
-                    pinnedOppCount += Math.Abs(pinModel.PinnedFields[i]);
-                else if (pinModel.PinnedFields[i] > 0)
-                    pinnedPlayerCount += pinModel.PinnedFields[i];
+                var val = pinModel.PinnedFields[i];
+                if (val == 0) continue;
+
+                if (isWhite)
+                {
+                    // PinnedFields[i] > 0 = black (opponent) checker pinned by white (player)
+                    // PinnedFields[i] < 0 = white (player) checker pinned by black (opponent)
+                    if (val > 0) pinnedOppCount += val;
+                    else pinnedPlayerCount += Math.Abs(val);
+                }
+                else
+                {
+                    // PinnedFields[i] < 0 = white (opponent) checker pinned by black (player)
+                    // PinnedFields[i] > 0 = black (player) checker pinned by white (opponent)
+                    if (val < 0) pinnedOppCount += Math.Abs(val);
+                    else pinnedPlayerCount += val;
+                }
             }
 
-            var oppMotherIdx = playersBoard.StartRangeWhite.Start.Value;
-            var playerMotherIdx = playersBoard.StartRangeBlack.Start.Value;
+            int oppMotherIdx;
+            int playerMotherIdx;
+            if (isWhite)
+            {
+                oppMotherIdx = board.StartRangeBlack.Start.Value;
+                playerMotherIdx = board.StartRangeWhite.Start.Value;
+            }
+            else
+            {
+                oppMotherIdx = board.StartRangeWhite.Start.Value;
+                playerMotherIdx = board.StartRangeBlack.Start.Value;
+            }
 
-            var oppMotherPinned = pinModel.PinnedFields[oppMotherIdx] < 0 ? 1 : 0;
-            var playerMotherPinned = pinModel.PinnedFields[playerMotherIdx] > 0 ? 1 : 0;
+            var oppMotherPinned = isWhite
+                ? (pinModel.PinnedFields[oppMotherIdx] > 0 ? 1 : 0)
+                : (pinModel.PinnedFields[oppMotherIdx] < 0 ? 1 : 0);
+
+            var playerMotherPinned = isWhite
+                ? (pinModel.PinnedFields[playerMotherIdx] < 0 ? 1 : 0)
+                : (pinModel.PinnedFields[playerMotherIdx] > 0 ? 1 : 0);
 
             return new PinEvalResult(pinnedOppCount, pinnedPlayerCount, oppMotherPinned, playerMotherPinned);
         }

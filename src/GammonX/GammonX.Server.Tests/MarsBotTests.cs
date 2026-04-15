@@ -16,7 +16,7 @@ namespace GammonX.Server.Tests
     public class MarsBotTests
     {
         private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
-        private readonly HttpClient _marsClient = new() { BaseAddress = new Uri("http://localhost:5058/bot/mars/") };
+        private readonly HttpClient _marsClient = new() { BaseAddress = new Uri("http://localhost:8083/bot/mars/") };
 
         [Theory]
         [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.CashGame)]

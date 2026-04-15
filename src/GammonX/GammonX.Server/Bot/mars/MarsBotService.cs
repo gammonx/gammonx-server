@@ -36,14 +36,15 @@ namespace GammonX.Server.Bot
 
                 // bot plays with black checkers
                 var isWhite = IsWhite(matchSession, playerId);
-                var boardContract = gameSession.BoardModel.ToContract(isWhite);
+                var boardContract = gameSession.BoardModel.ToContract(false);
                 var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
 
                 EvalMoveRequestContract parameters = new EvalMoveRequestContract
                 {
                     Modus = gameModus,
                     Board = boardContract,
-                    Rolls = rolls
+                    Rolls = rolls,
+                    IsWhite = isWhite
                 };
 
                 var client = new MarsClient(_httpClient);
@@ -52,11 +53,6 @@ namespace GammonX.Server.Bot
                 {
                     result = await client.GetMoveEvalAsync(parameters);
                     var moveSeq = result.Payload.MoveSequence;
-                    if (isWhite)
-                    {
-                        // we need to invert it back
-                        return moveSeq.Invert(gameModus);
-                    }
                     return moveSeq;
                 }
                 catch (Exception)

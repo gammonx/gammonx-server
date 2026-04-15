@@ -45,6 +45,25 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
+        public bool ExploreLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback)
+        {
+            var sortedRolls = rolls.ToList();
+            sortedRolls.Sort();
+            int maxDepthSeen = 0;
+            bool satisfied = false;
+            ExploreWithCallback(
+                model, 
+                isWhite, 
+                sortedRolls, 
+                new List<MoveModel>(), 
+                sortedRolls.Count, 
+                callback, 
+                ref maxDepthSeen, 
+                ref satisfied);
+            return satisfied;
+        }
+
+        // <inheritdoc />
         public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
         {
             if (CanBearOffChecker(model, from, roll, isWhite))
@@ -485,32 +504,22 @@ namespace GammonX.Engine.Services
             }
         }
 
-        // <inheritdoc />
-        public bool ExploreSequencesUntil(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback)
-        {
-            var sortedRolls = rolls.ToList();
-            sortedRolls.Sort();
-            int maxDepthSeen = 0;
-            bool satisfied = false;
-            ExploreWithCallback(model, isWhite, sortedRolls, new List<MoveModel>(), sortedRolls.Count, callback, ref maxDepthSeen, ref satisfied);
-            return satisfied;
-        }
-
         private void ExploreWithCallback(
             IBoardModel board,
             bool isWhite,
             List<int> remainingRolls,
             List<MoveModel> currentMoves,
-            int totalDice,
+            int totalDices,
             Func<IReadOnlyList<MoveModel>, bool> callback,
             ref int maxDepthSeen,
             ref bool satisfied)
         {
-            // we already found a satisfying sequence at full depth, stop immediately
-            if (satisfied && maxDepthSeen == totalDice)
+            // we already found a satisfying move sequence at full depth, stop immediately
+            if (satisfied && maxDepthSeen == totalDices)
                 return;
 
             bool anyMovePossible = false;
+
             for (int i = 0; i < remainingRolls.Count; i++)
             {
                 int die = remainingRolls[i];
@@ -525,19 +534,19 @@ namespace GammonX.Engine.Services
 
                 foreach (var move in possibleMoves)
                 {
+                    if (satisfied && maxDepthSeen == totalDices)
+                        return;
+
                     MoveCheckerTo(board, move.From, move.To, isWhite);
 
-                    currentMoves.Add(move);
                     var newRemaining = new List<int>(remainingRolls);
                     newRemaining.RemoveAt(i);
 
-                    ExploreWithCallback(board, isWhite, newRemaining, currentMoves, totalDice, callback, ref maxDepthSeen, ref satisfied);
+                    var newMoves = new List<MoveModel>(currentMoves) { move };
 
-                    currentMoves.RemoveAt(currentMoves.Count - 1);
+                    ExploreWithCallback(board, isWhite, newRemaining, newMoves, totalDices, callback, ref maxDepthSeen, ref satisfied);
+
                     UndoMove(board, move, isWhite);
-
-                    if (satisfied && maxDepthSeen == totalDice)
-                        return;
                 }
             }
 

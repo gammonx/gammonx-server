@@ -40,11 +40,6 @@ namespace GammonX.Engine.Services
         /// <param name="from">Position to move from.</param>
         /// <param name="to">Position to move to.</param>
         /// <param name="isWhite">Indicates if white or black pieces move.</param>
-        /// <remarks>
-        /// This method does not validate the move according to the game rules.
-        /// All move done are validated beforehand by the game logic.
-        /// Use <see cref="CanMoveChecker"/> for validation.
-        /// </remarks>
         void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite);
 
         /// <summary>
@@ -128,13 +123,12 @@ namespace GammonX.Engine.Services
 		/// <summary>
 		/// Explores legal move sequences and invokes the <paramref name="callback"/> for each one.
 		/// Stops exploration early when the callback returns <c>true</c>, indicating satisfaction.
-		/// Respects dice rules: sequences using fewer dice than the maximum possible are skipped.
 		/// </summary>
 		/// <param name="model">Board model to operate on.</param>
 		/// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
 		/// <param name="rolls">1:n Dice roll values.</param>
 		/// <param name="callback">Invoked for each legal leaf sequence. Return <c>true</c> to signal early termination.</param>
 		/// <returns><c>true</c> if the callback returned <c>true</c> for any legal sequence.</returns>
-		bool ExploreSequencesUntil(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback);
+		bool ExploreLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback);
 	}
 }

@@ -19,14 +19,9 @@ namespace GammonX.Mars.Server.Features
         // <inheritdoc />
         public ContactProbabilityResult Eval(IBoardModel board, bool isWhite)
         {
-            IBoardModel playersBoard = isWhite ? board.InvertBoard() : board;
+            var exposedCheckers = GetExposedCheckers(board, isWhite);
 
-            var exposedSet = GetExposedBlackCheckers(playersBoard);
-            var oppHomeStart = playersBoard.HomeRangeWhite.Start.Value;
-            var oppHomeEnd = playersBoard.HomeRangeWhite.End.Value;
-
-            var hasExposed = exposedSet.Count > 0;
-            var hasCheckersInOppHome = HasCheckersInOpponentHome(playersBoard, oppHomeStart, oppHomeEnd);
+            var hasCheckersInOppHome = HasCheckersInOpponentHome(board, !isWhite);
 
             int hitRolls1 = 0, hitRolls2 = 0;
             int escRolls1 = 0, escRolls2 = 0;
@@ -41,15 +36,16 @@ namespace GammonX.Mars.Server.Features
                         : [die1, die2];
 
                     // opponents sequences — early termination once both hit-1 and hit-2 are confirmed
-                    if (hasExposed)
+                    if (exposedCheckers.Count != 0)
                     {
-                        bool canHitOne = false, canHitTwo = false;
-                        _boardService.ExploreSequencesUntil(playersBoard, true, rolls, moves =>
+                        bool canHitOne = false;
+                        bool canHitTwo = false;
+                        _boardService.ExploreLegalMoveSequences(board, !isWhite, rolls, moves =>
                         {
                             int hitCount = 0;
                             foreach (var move in moves)
                             {
-                                if (exposedSet.Contains(move.To))
+                                if (exposedCheckers.Contains(move.To))
                                     hitCount++;
                             }
                             if (hitCount >= 1) canHitOne = true;
@@ -63,14 +59,18 @@ namespace GammonX.Mars.Server.Features
                     // players sequences — early termination once both esc-1 and esc-2 are confirmed
                     if (hasCheckersInOppHome)
                     {
-                        bool canEscapeOne = false, canEscapeTwo = false;
-                        _boardService.ExploreSequencesUntil(playersBoard, false, rolls, moves =>
+                        bool canEscapeOne = false;
+                        bool canEscapeTwo = false;
+                        _boardService.ExploreLegalMoveSequences(board, isWhite, rolls, moves =>
                         {
                             int escCount = 0;
                             foreach (var move in moves)
                             {
-                                if (move.From >= oppHomeStart && move.From <= oppHomeEnd &&
-                                    move.To < oppHomeStart)
+                                // we need to check if white is in black home range
+                                // and if black is in white home range (escape from opponents home)
+                                var fromInOppHomeRange = board.IsInHomeOperator(!isWhite, move.From);
+                                var toInOppHomeRange = board.IsInHomeOperator(!isWhite, move.To);
+                                if (fromInOppHomeRange && !toInOppHomeRange)
                                 {
                                     escCount++;
                                 }
@@ -90,21 +90,40 @@ namespace GammonX.Mars.Server.Features
                 escRolls1 / 36.0, escRolls2 / 36.0);
         }
 
-        private static bool HasCheckersInOpponentHome(IBoardModel board, int start, int end)
+        private static bool HasCheckersInOpponentHome(IBoardModel board, bool isWhite)
         {
-            for (int i = start; i <= end; i++)
+            var fieldTuples = board.Fields.Index();
+
+            if (!isWhite)
             {
-                if (board.Fields[i] > 0) return true;
+                // we want to check if white checkers are in black home
+                var whiteIndices = fieldTuples.Where(i => i.Item < 0).Select(i => i.Index);
+                return whiteIndices.Any(wi => board.IsInHomeOperator(isWhite, wi));
             }
-            return false;
+            else
+            {
+                // we want to check if black checkers are in white home
+                var blackIndices = fieldTuples.Where(i => i.Item > 0).Select(i => i.Index);
+                return blackIndices.Any(wi => board.IsInHomeOperator(isWhite, wi));
+            }
         }
 
-        private static HashSet<int> GetExposedBlackCheckers(IBoardModel board)
+        private static HashSet<int> GetExposedCheckers(IBoardModel board, bool isWhite)
         {
-            return board.Fields.Index()
+            if (isWhite)
+            {
+                return board.Fields.Index()
+                .Where(i => i.Item == -1)
+                .Select(i => i.Index)
+                .ToHashSet();
+            }
+            else
+            {
+                return board.Fields.Index()
                 .Where(i => i.Item == 1)
                 .Select(i => i.Index)
                 .ToHashSet();
+            }
         }
     }
 

@@ -11,28 +11,32 @@ namespace GammonX.Mars.Server.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            IBoardModel playersBoard = GetBoard(board, isWhite);
-            // iterate from just outside black home (home start + 1) up to black's farthest position
-            // and accumulate pips each checker needs to travel to reach the home entry point
-            var pipsToBearOff = 0;
-            for (int i = playersBoard.HomeRangeBlack.Start.Value + 1; i <= playersBoard.StartRangeBlack.Start.Value; i++)
-            {
-                if (playersBoard.Fields[i] > 0)
-                {
-                    pipsToBearOff += playersBoard.Fields[i] * (i - playersBoard.HomeRangeBlack.Start.Value);
-                }
-            }
-            return pipsToBearOff;
-        }
-
-        private static IBoardModel GetBoard(IBoardModel board, bool isWhite)
-        {
+            // iterate from just outside home (home start + 1) up to start range end
+            // and count pips each checker needs to travel to reach the home entry point
             if (isWhite)
             {
-                return board.InvertBoard();
+                var pipsToBearOff = 0;
+                for (int i = board.HomeRangeWhite.Start.Value - 1; i >= board.StartRangeWhite.Start.Value; i--)
+                {
+                    if (board.Fields[i] < 0)
+                    {
+                        pipsToBearOff += board.RecoverRollOperator(isWhite, i, board.HomeRangeWhite.Start.Value) * Math.Abs(board.Fields[i]);
+                    }
+                }
+                return pipsToBearOff;
             }
-
-            return board;
+            else
+            {
+                var pipsToBearOff = 0;
+                for (int i = board.HomeRangeBlack.Start.Value + 1; i <= board.StartRangeBlack.Start.Value; i++)
+                {
+                    if (board.Fields[i] > 0)
+                    {
+                        pipsToBearOff += board.RecoverRollOperator(isWhite, i, board.HomeRangeBlack.Start.Value) * Math.Abs(board.Fields[i]);
+                    }
+                }
+                return pipsToBearOff;
+            }
         }
     }
 }
