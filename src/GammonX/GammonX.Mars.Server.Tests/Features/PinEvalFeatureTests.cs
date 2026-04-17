@@ -23,13 +23,13 @@ namespace GammonX.Mars.Server.Tests.Features
 
             var feature = new PinEvalFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(2, whiteResult.PinnedPlayerCount);
-            Assert.Equal(3, whiteResult.PinnedOppCount);
+            Assert.Equal(3, whiteResult.PinnedPlayerCount);
+            Assert.Equal(4, whiteResult.PinnedOppCount);
             Assert.Equal(1, whiteResult.OppMotherPinned);
             Assert.Equal(1, whiteResult.PlayerMotherPinned);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(3, blackResult.PinnedPlayerCount);
-            Assert.Equal(2, blackResult.PinnedOppCount);
+            Assert.Equal(4, blackResult.PinnedPlayerCount);
+            Assert.Equal(3, blackResult.PinnedOppCount);
             Assert.Equal(1, blackResult.OppMotherPinned);
             Assert.Equal(1, blackResult.PlayerMotherPinned);
         }

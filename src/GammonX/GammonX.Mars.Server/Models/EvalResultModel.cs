@@ -33,34 +33,49 @@
         public double HitOpponentProbability2 { get; init; } = 0.0;
 
         /// <summary>
+        /// Gets the amount of blots for the player on the board.
+        /// </summary>
+        public double BlotCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of blots for the player in his own start range.
+        /// </summary>
+        public double BlotInStartRangeCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of anchors for the player on the board.
+        /// </summary>
+        public double AnchorCount { get; init; } = 0;
+
+        /// <summary>
         /// Gets the pipcount difference of the player.
         /// </summary>
         /// <remarks>
         /// Returns a positive value if the player is ahead and a negative value if the player is behind.
         /// </remarks>
-        public int PipDifference { get; init; } = 0;
+        public double PipDifference { get; init; } = 0;
 
         /// <summary>
         /// Gets the pipcount to bearoff for the player.
         /// </summary>
-        public int PipToBearOff { get; init; } = 0;
+        public double PipToBearOff { get; init; } = 0;
 
         /// <summary>
         /// Gets the pipcount to bearoff for opponent.
         /// </summary>
-        public int PipToBearOffOpp { get; init; } = 0;
+        public double PipToBearOffOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the number of player checkers in front of the last pinned opponent checker in
         /// the players home board.
         /// </summary>
-        public int NumChFrontLastPin { get; init; } = 0;
+        public double NumChFrontLastPin { get; init; } = 0;
 
         /// <summary>
         /// Gets the number of opponent checkers in front of the last pinned player checker in
         /// the opponents home board.
         /// </summary>
-        public int NumChFrontLastPinOpp { get; init; } = 0;
+        public double NumChFrontLastPinOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the probability of at least one player checker escaping from the opponents home board on the next roll.
@@ -85,21 +100,21 @@
         /// <summary>
         /// Gets the number of opponent checkers currently pinned by the player.
         /// </summary>
-        public int PinCountOpp { get; init; } = 0;
+        public double PinCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the number of player checkers currently pinned by the opponent.
         /// </summary>
-        public int PinCountPlayer { get; init; } = 0;
+        public double PinCountPlayer { get; init; } = 0;
 
         /// <summary>
         /// Gets a value indicating whether the opponent's mother checker is currently pinned by the player (0 or 1).
         /// </summary>
-        public int OppMotherPinned { get; init; } = 0;
+        public double OppMotherPinned { get; init; } = 0;
 
         /// <summary>
         /// Gets a value indicating whether the player's mother checker is currently pinned by the opponent (0 or 1).
         /// </summary>
-        public int PlayerMotherPinned { get; init; } = 0;
+        public double PlayerMotherPinned { get; init; } = 0;
     }
 }

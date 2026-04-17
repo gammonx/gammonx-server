@@ -173,8 +173,16 @@ namespace GammonX.Engine.Models
 			return true;
 		});
 
-		// <inheritdoc />
-		public int HomeBarCountWhite { get; private set; } = 14;
+        // <inheritdoc />
+        public override Func<bool, int, bool> IsInStartOperator => new((isWhite, position) =>
+        {
+            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value)) return false;
+            if (!isWhite && (position < StartRangeBlack.Start.Value || position > StartRangeBlack.End.Value)) return false;
+            return true;
+        });
+
+        // <inheritdoc />
+        public int HomeBarCountWhite { get; private set; } = 14;
 
 		// <inheritdoc />
 		public int HomeBarCountBlack { get; private set; } = 14;

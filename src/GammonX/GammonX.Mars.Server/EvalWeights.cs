@@ -15,28 +15,60 @@ namespace GammonX.Mars.Server
 
         public static readonly ContactWeightModel PlakotoContactWeights = new ContactWeightModel()
         {
-            // priority 1: existing pin strength (0.36)
-            OppMotherPinnedWeight = 0.05,        // binary but game-defining — highest single weight
-            PlayerMotherPinnedWeight = 0.05,     // symmetric: bot mother pinned = near-loss
-            NumChFrontLastPinWeight = 0.06,      // continuous, captures gammon potential
-            NumChFrontLastPinOppWeight = 0.06,   // fewer opp checkers past your pin = pin more effective
-            PinCountOppWeight = 0.07,            // raw count, less specific than positional features above
-            PinCountPlayerWeight = 0.07,
-            // priority 2: future pin opportunities (0.22)
-            HitOpponentProbability1Weight = 0.13, // most common path to creating a new pin
-            HitOpponentProbability2Weight = 0.09, // double pin is rarer but stronger
-            // priority 3: avoid getting pinned (0.18)
-            HitProbability1Weight = 0.11,
-            HitProbability2Weight = 0.07,
-            // priority 4: mobility / escape (0.16)
-            EscapeProbability1Weight = 0.05,
-            EscapeProbability2Weight = 0.03,
-            EscapeProbability1OppWeight = 0.05,
-            EscapeProbability2OppWeight = 0.03,
-            // priority 5: race (minor in contact, 0.08)
-            PipDifferenceWeight = 0.04,
-            PipToBearOffWeight = 0.02,
-            PipToBearOffOppWeight = 0.02,
+            // priority 1: existing pin strength
+            OppMotherPinnedWeight = 0.05,
+            PlayerMotherPinnedWeight = 0.06,
+            NumChFrontLastPinWeight = 0.04,
+            NumChFrontLastPinOppWeight = 0.04,
+            PinCountOppWeight = 0.08,
+            PinCountPlayerWeight = 0.08,
+            BlotCountWeight = 0.09,
+            BlotInStartRangeCountWeight = 0.08, 
+            AnchorCountWeight = 0.10,
+            // priority 2: future pin opportunities
+            HitOpponentProbability1Weight = 0.06,
+            HitOpponentProbability2Weight = 0.04,
+            // priority 3: avoid getting pinned
+            HitProbability1Weight = 0.07,
+            HitProbability2Weight = 0.04,
+            // priority 4: mobility / escape
+            EscapeProbability1Weight = 0.04,
+            EscapeProbability2Weight = 0.02,
+            EscapeProbability1OppWeight = 0.04,
+            EscapeProbability2OppWeight = 0.02,
+            // priority 5: race
+            PipDifferenceWeight = 0.03,
+            PipToBearOffWeight = 0.01,
+            PipToBearOffOppWeight = 0.01,
+        };
+
+        public static readonly ContactWeightModel PlakotoCheapContactWeights = new ContactWeightModel()
+        {
+            // priority 1: existing pin strength
+            OppMotherPinnedWeight = 0.00,
+            PlayerMotherPinnedWeight = 0.00,
+            NumChFrontLastPinWeight = 0.00,
+            NumChFrontLastPinOppWeight = 0.00,
+            PinCountOppWeight = 0.11,
+            PinCountPlayerWeight = 0.13,
+            BlotCountWeight = 0.20,
+            BlotInStartRangeCountWeight = 0.14,
+            AnchorCountWeight = 0.15,
+            // priority 2: future pin opportunities
+            HitOpponentProbability1Weight = 0.00,
+            HitOpponentProbability2Weight = 0.00,
+            // priority 3: avoid getting pinned
+            HitProbability1Weight = 0.00,
+            HitProbability2Weight = 0.00,
+            // priority 4: mobility / escape
+            EscapeProbability1Weight = 0.00,
+            EscapeProbability2Weight = 0.00,
+            EscapeProbability1OppWeight = 0.00,
+            EscapeProbability2OppWeight = 0.00,
+            // priority 5: race
+            PipDifferenceWeight = 0.12,
+            PipToBearOffWeight = 0.10,
+            PipToBearOffOppWeight = 0.05,
         };
     }
 }

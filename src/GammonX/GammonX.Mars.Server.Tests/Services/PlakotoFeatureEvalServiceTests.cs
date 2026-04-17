@@ -51,9 +51,10 @@ namespace GammonX.Mars.Server.Tests.Services
 
             EvalWeights.PlakotoContactWeights.Validate();
             EvalWeights.PlakotoRaceWeights.Validate();
+            EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService();
-            var result = evalService.EvalMoveSequence(request, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+            var result = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
 
             Assert.NotNull(result);
         }
@@ -89,6 +90,7 @@ namespace GammonX.Mars.Server.Tests.Services
 
             EvalWeights.PlakotoContactWeights.Validate();
             EvalWeights.PlakotoRaceWeights.Validate();
+            EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService();
 
@@ -99,7 +101,7 @@ namespace GammonX.Mars.Server.Tests.Services
                 Rolls = new int[] { roll1, roll2 },
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -109,7 +111,7 @@ namespace GammonX.Mars.Server.Tests.Services
                 Rolls = new int[] { roll1, roll2 },
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -125,6 +127,7 @@ namespace GammonX.Mars.Server.Tests.Services
 
             EvalWeights.PlakotoContactWeights.Validate();
             EvalWeights.PlakotoRaceWeights.Validate();
+            EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService();
 
@@ -135,7 +138,36 @@ namespace GammonX.Mars.Server.Tests.Services
                 Rolls = new int[] { roll1, roll2 },
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+            Assert.NotNull(resultWhite);
+        }
+
+        [Theory]
+        [InlineData(1, 1)]
+        [InlineData(2, 2)]
+        [InlineData(3, 3)]
+        [InlineData(4, 4)]
+        [InlineData(5, 5)]
+        [InlineData(6, 6)]
+        public void CanEvalPlakotoBoard4ForWhite(int roll1, int roll2)
+        {
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBoard4);
+            Assert.NotNull(boardContract);
+
+            EvalWeights.PlakotoContactWeights.Validate();
+            EvalWeights.PlakotoRaceWeights.Validate();
+            EvalWeights.PlakotoCheapContactWeights.Validate();
+
+            var evalService = new PlakotoFeatureEvalService();
+
+            EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
+            {
+                Board = boardContract,
+                Modus = GameModus.Plakoto,
+                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                IsWhite = true
+            };
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
             Assert.NotNull(resultWhite);
         }
     }

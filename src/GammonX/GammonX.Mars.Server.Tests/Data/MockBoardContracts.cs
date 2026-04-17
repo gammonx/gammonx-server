@@ -12,9 +12,11 @@
 
         public const string PlakotoBoard3 = "{\"fields\":[-13,0,0,-1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,12],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
 
-        public const string PinPlakotoBoard1 = "{\"fields\":[-10,1,1,0,-1,0,-1,0,0,0,0,0,0,0,0,0,0,1,0,1,0,-1,-1,10],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]}";
+        public const string PlakotoBoard4 = "{\"fields\":[-6,0,0,0,1,-2,2,0,0,0,-2,-1,0,0,0,0,0,-2,-1,3,0,0,0,8],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0]}";
 
-        public const string PinPlakotoBoard2 = "{\"fields\":[1,1,1,-7,-1,0,-1,0,0,0,0,0,0,0,0,0,0,1,-1,1,7,-1,-1,-1],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[-1,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1]}";
+        public const string PinPlakotoBoard1 = "{\"fields\":[-10,1,1,0,-1,0,-1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,-1,-1,9],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0]}";
+
+        public const string PinPlakotoBoard2 = "{\"fields\":[1,-1,1,-6,-1,0,-1,0,0,0,0,0,0,0,0,0,0,1,-1,1,6,-1,1,-1],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[-1,1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,-1,1]}";
 
         public const string PlakotoToBearOffBoard1 = "{\"fields\":[-13,0,0,0,-1,0,-1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,13],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
 

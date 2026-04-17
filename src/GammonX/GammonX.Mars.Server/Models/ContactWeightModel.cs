@@ -21,6 +21,15 @@ namespace GammonX.Mars.Server.Models
         public double HitOpponentProbability2Weight { get; set; }
 
         [DataMember]
+        public double BlotCountWeight { get; set; }
+
+        [DataMember]
+        public double BlotInStartRangeCountWeight { get; set; }
+
+        [DataMember]
+        public double AnchorCountWeight { get; set; }
+
+        [DataMember]
         public double PipDifferenceWeight { get; set; }
 
         [DataMember]
@@ -66,6 +75,9 @@ namespace GammonX.Mars.Server.Models
                 HitProbability2Weight +
                 HitOpponentProbability1Weight +
                 HitOpponentProbability2Weight +
+                BlotCountWeight +
+                BlotInStartRangeCountWeight +
+                AnchorCountWeight +
                 PipDifferenceWeight +
                 PipToBearOffWeight +
                 PipToBearOffOppWeight +

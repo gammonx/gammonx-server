@@ -35,8 +35,9 @@ namespace GammonX.Mars.Server.Controllers
 
                 EvalWeights.PlakotoRaceWeights.Validate();
                 EvalWeights.PlakotoContactWeights.Validate();
+                EvalWeights.PlakotoCheapContactWeights.Validate();
 
-                var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+                var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
                 var payload = new BoardEvalPayload() { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -58,8 +59,9 @@ namespace GammonX.Mars.Server.Controllers
 
                 EvalWeights.PlakotoRaceWeights.Validate();
                 EvalWeights.PlakotoContactWeights.Validate();
+                EvalWeights.PlakotoCheapContactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload() { MoveSequence = bestMove };

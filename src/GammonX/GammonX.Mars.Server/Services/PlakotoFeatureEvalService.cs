@@ -16,6 +16,9 @@ namespace GammonX.Mars.Server.Services
 
         private readonly RaceFeature _raceFeature = new RaceFeature();
         private readonly PipsToBearOffFeature _pipsToBearOffFeature = new PipsToBearOffFeature();
+        private readonly BlotCountFeature _blotCountFeature = new BlotCountFeature();
+        private readonly BlotInStartRangeCountFeature _blotStartRangeCountFeature = new BlotInStartRangeCountFeature();
+        private readonly AnchorCountFeature _anchorCountFeature = new AnchorCountFeature();
         private readonly PipDifferenceFeature _pipDifferenceFeature = new PipDifferenceFeature();
         private readonly NumbersOfCheckersInFronOfLastPinFeature _numChFronLastPinFeature = new NumbersOfCheckersInFronOfLastPinFeature();
         private readonly ContactProbabilityFeature _contactFeatures;
@@ -27,7 +30,11 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public double EvalBoardState(
+            EvalBoardRequestContract contract,
+            ContactWeightModel cheapContactWeight,
+            ContactWeightModel contactWeights, 
+            RaceWeightModel raceWeights)
         {
             var boardContract = contract.Board;
             var board = _boardService.CreateBoard(boardContract);
@@ -41,7 +48,11 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public MoveSequenceModel EvalMoveSequence(
+            EvalMoveRequestContract contract,
+            ContactWeightModel cheapContactWeights,
+            ContactWeightModel contactWeights, 
+            RaceWeightModel raceWeights)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -50,30 +61,73 @@ namespace GammonX.Mars.Server.Services
             var board = _boardService.CreateBoard(boardContract);
             var legalMovesSeq = _boardService.GetLegalMoveSequences(board, isWhite, rolls);
 
-            var evals = new Dictionary<double, MoveSequenceModel>();
+            if (legalMovesSeq.Length == 0)
+                return new MoveSequenceModel();
 
-            foreach (var moveSeq in legalMovesSeq)
+            // we first compute cheap features to rank candidates, avoiding the expensive
+            // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
+            var candidates = new (double cheapScore, int index, bool isRace)[legalMovesSeq.Length];
+            for (int i = 0; i < legalMovesSeq.Length; i++)
             {
                 var shadowBoard = board.DeepClone();
+                var moveSeq = legalMovesSeq[i];
                 foreach (var move in moveSeq.Moves)
                 {
                     _boardService.MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
                 }
 
                 var isRace = _raceFeature.Eval(shadowBoard, isWhite);
-
-                var eval = CalculateEvalModel(shadowBoard, isWhite, isRace);
-
-                var score = CalculateEvalScore(eval, contactWeights, raceWeights);
-                evals.TryAdd(score, moveSeq);
+                candidates[i].isRace = isRace;
+                candidates[i].index = i;
+                var eval = CalculateCheapEvalModel(shadowBoard, isWhite, isRace);
+                candidates[i].cheapScore = CalculateCheapEvalScore(eval, cheapContactWeights, raceWeights);
             }
 
-            if (evals.Count != 0)
+            // we sort by cheap score descending and only fully evaluate the top N contact candidates.
+            Array.Sort(candidates, (a, b) => b.cheapScore.CompareTo(a.cheapScore));
+
+            const int defaultMaxFullEvalCandidates = 20;
+            var identicalTopEvalCandidates = candidates.Count(c => c.cheapScore == candidates[0].cheapScore);
+
+            var evalCount = Math.Min(Math.Max(defaultMaxFullEvalCandidates, identicalTopEvalCandidates), candidates.Length);
+
+            double bestScore = double.MinValue;
+            MoveSequenceModel bestMoveSeq = legalMovesSeq[candidates[0].index];
+
+            for (int i = 0; i < evalCount; i++)
             {
-                var bestMove = evals.OrderByDescending(kvp => kvp.Key).FirstOrDefault();
-                return bestMove.Value;
+                var idx = candidates[i].index;
+                var moveSeq = legalMovesSeq[idx];
+
+                if (candidates[i].isRace)
+                {
+                    // race score are already calculated
+                    if (candidates[i].cheapScore > bestScore)
+                    {
+                        bestScore = candidates[i].cheapScore;
+                        bestMoveSeq = moveSeq;
+                    }
+                    continue;
+                }
+
+                var shadowBoard = board.DeepClone();
+                foreach (var move in moveSeq.Moves)
+                {
+                    _boardService.MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
+                }
+
+                // we now calculate the more expensive contact features
+                var eval = CalculateEvalModel(shadowBoard, isWhite, false);
+                var score = CalculateEvalScore(eval, contactWeights, raceWeights);
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestMoveSeq = moveSeq;
+                }
             }
-            return new MoveSequenceModel();
+
+            return bestMoveSeq;
         }
 
         private EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
@@ -116,6 +170,9 @@ namespace GammonX.Mars.Server.Services
                     PinCountPlayer = pinEval.PinnedPlayerCount,
                     OppMotherPinned = pinEval.OppMotherPinned,
                     PlayerMotherPinned = pinEval.PlayerMotherPinned,
+                    AnchorCount = _anchorCountFeature.Eval(board, isWhite),
+                    BlotCount = _blotCountFeature.Eval(board, isWhite),
+                    BlotInStartRangeCount = _blotStartRangeCountFeature.Eval(board, isWhite),
                 };
             }
 
@@ -148,7 +205,10 @@ namespace GammonX.Mars.Server.Services
                 score += normalizedResult.EscapeProbability2 * contactWeights.EscapeProbability2Weight;
                 score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
                 score += normalizedResult.OppMotherPinned * contactWeights.OppMotherPinnedWeight;
+                score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
                 // bad for the player
+                score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
+                score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
                 score -= normalizedResult.HitProbability1 * contactWeights.HitProbability1Weight;
                 score -= normalizedResult.HitProbability2 * contactWeights.HitProbability2Weight;
                 score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
@@ -157,6 +217,72 @@ namespace GammonX.Mars.Server.Services
                 score -= normalizedResult.EscapeProbability2Opp * contactWeights.EscapeProbability2OppWeight;
                 score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
                 score -= normalizedResult.PlayerMotherPinned * contactWeights.PlayerMotherPinnedWeight;
+            }
+
+            return score;
+        }
+
+        private EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace)
+        {
+            EvalResultModel eval;
+            if (isRace)
+            {
+                // skip expensive probability features in race positions
+                eval = new EvalResultModel()
+                {
+                    Race = true,
+                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
+                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
+                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
+                };
+            }
+            else
+            {
+                var pinEval = _pinEvalFeature.Eval(board, isWhite);
+
+                eval = new EvalResultModel()
+                {
+                    Race = false,
+                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
+                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
+                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
+                    PinCountOpp = pinEval.PinnedOppCount,
+                    PinCountPlayer = pinEval.PinnedPlayerCount,
+                    AnchorCount = _anchorCountFeature.Eval(board, isWhite),
+                    BlotCount = _blotCountFeature.Eval(board, isWhite),
+                    BlotInStartRangeCount = _blotStartRangeCountFeature.Eval(board, isWhite),
+                };
+            }
+
+            return eval;
+        }
+
+        private static double CalculateCheapEvalScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        {
+            var normalizedResult = NormalizedEvalResultModel.From(eval);
+            var score = 0.0;
+
+            // we exclude contact based features in race positions, as they are not relevant and can be misleading
+            if (eval.Race)
+            {
+                // good for the player
+                score += normalizedResult.PipDifference * raceWeights.PipDifferenceWeight;
+                score += normalizedResult.PipToBearOffOpp * raceWeights.PipToBearOffOppWeight;
+                // bad for the player
+                score -= normalizedResult.PipToBearOff * raceWeights.PipToBearOffWeight;
+            }
+            else
+            {
+                // good for the player
+                score += normalizedResult.PipDifference * contactWeights.PipDifferenceWeight;
+                score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
+                score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
+                score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
+                // bad for the player
+                score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
+                score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
+                score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
+                score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
             }
 
             return score;

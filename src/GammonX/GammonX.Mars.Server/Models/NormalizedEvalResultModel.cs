@@ -37,6 +37,24 @@
         public double HitOpponentProbability2 { get; init; } = 0.0;
 
         /// <summary>
+        /// Gets the amount of blots for the player on the board.
+        /// [Range: [0, 1], where 0 means no blots and 1 means all checkers are blots.
+        /// </summary>
+        public double BlotCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of blots for the player on the board.
+        /// [Range: [0, 1], where 0 means no blots in start range and 1 means 6 blots in start range.
+        /// </summary>
+        public double BlotInStartRangeCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of anchors for the player on the board.
+        /// [Range: [0, 1], where 0 means no anchors and 1 means all checkers are anchors.
+        /// </summary>
+        public double AnchorCount { get; init; } = 0;
+
+        /// <summary>
         /// Gets the normalized pipcount difference of the player.
         /// Range: [0, 1], where 0 is max disadvantage, 0 equal pip count and 1 is max advantage.
         /// </summary>
@@ -129,6 +147,9 @@
                 HitOpponentProbability1 = eval.HitOpponentProbability1,
                 HitOpponentProbability2 = eval.HitOpponentProbability2,
                 // we use a practical max pip difference than theoretical max and remap boundaries to 0-1
+                BlotCount = eval.BlotCount / 15,
+                BlotInStartRangeCount = eval.BlotInStartRangeCount / 6.0,
+                AnchorCount = eval.AnchorCount / 7,
                 PipDifference = (eval.PipDifference / 167.0 + 1.0) / 2.0,
                 PipToBearOff = eval.PipToBearOff / 167.0, // we use a practical max pip count than theoretical max
                 PipToBearOffOpp = eval.PipToBearOffOpp / 167.0, // we use a practical max pip count than theoretical max
