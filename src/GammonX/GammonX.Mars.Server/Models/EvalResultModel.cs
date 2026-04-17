@@ -116,5 +116,34 @@
         /// Gets a value indicating whether the player's mother checker is currently pinned by the opponent (0 or 1).
         /// </summary>
         public double PlayerMotherPinned { get; init; } = 0;
+
+        #region Fevga Features
+
+        /// <summary>
+        /// Gets the length of the longest prime of the player.
+        /// </summary>
+        public double MaxPrimeLengthPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the length of the longest prime of the opponent.
+        /// </summary>
+        public double MaxPrimeLengthOpp { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the number of checkers of the opponent on the homebar.
+        /// </summary>
+        public double HomebarCountPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the probability of the player to form a prime in his next turn.
+        /// </summary>
+        public double PrimeProbabilityPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the probability of the opponent to form a prime in his next turn.
+        /// </summary>
+        public double PrimeProbabilityOpp { get; init; } = 0.0;
+
+        #endregion Fevga Features
     }
 }

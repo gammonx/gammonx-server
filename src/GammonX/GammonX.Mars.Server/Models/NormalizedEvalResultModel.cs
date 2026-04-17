@@ -137,6 +137,40 @@
         /// </summary>
         public double PlayerMotherPinned { get; init; } = 0;
 
+        #region Fevga Features
+
+        /// <summary>
+        /// Gets the normalized length of the longest prime of the player.
+        /// Range: [0, 1], where 0 means no prime and 1 means the longest possible prime.
+        /// </summary>
+        public double MaxPrimeLengthPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the normalized length of the longest prime of the opponent.
+        /// Range: [0, 1], where 0 means no prime and 1 means the longest possible prime.
+        /// </summary>
+        public double MaxPrimeLengthOpp { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the normalized number of checkers of the opponent on the homebar.
+        /// Range: [0, 1], where 0 means no checkers and 1 means all checkers are on the homebar.
+        /// </summary>
+        public double HomebarCountPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the normalized probability of the player to form a prime in his next turn.
+        /// Range: [0, 1], where 0 means no probability and 1 means certain prime formation.
+        /// </summary>
+        public double PrimeProbabilityPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the normalized probability of the opponent to form a prime in his next turn.
+        /// Range: [0, 1], where 0 means no probability and 1 means certain prime formation.
+        /// </summary>
+        public double PrimeProbabilityOpp { get; init; } = 0.0;
+
+        #endregion Fevga Features
+
         public static NormalizedEvalResultModel From(EvalResultModel eval)
         {
             return new NormalizedEvalResultModel()
@@ -162,7 +196,13 @@
                 PinCountPlayer = eval.PinCountPlayer / 15.0,
                 PinCountOpp = eval.PinCountOpp / 15.0,
                 OppMotherPinned = eval.OppMotherPinned,
-                PlayerMotherPinned = eval.PlayerMotherPinned
+                PlayerMotherPinned = eval.PlayerMotherPinned,
+                // fevga features
+                MaxPrimeLengthPlayer = eval.MaxPrimeLengthPlayer / 6.0,
+                MaxPrimeLengthOpp = eval.MaxPrimeLengthOpp / 6.0,
+                HomebarCountPlayer = eval.HomebarCountPlayer / 15.0,
+                PrimeProbabilityPlayer = eval.PrimeProbabilityPlayer,
+                PrimeProbabilityOpp = eval.PrimeProbabilityOpp,
             };
         }
     }

@@ -14,10 +14,8 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests
 {
-	public class WildbgBotTests
+	public class BotServiceTests
 	{
-		private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
-
 		[Theory]
         [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.CashGame)]
         [InlineData(MatchVariant.Tavli, GameModus.Portes, MatchType.CashGame)]
@@ -34,9 +32,8 @@ namespace GammonX.Server.Tests
 			var gameSessionFactory = new GameSessionFactory(diceFactory);
 			var matchFactory = new MatchSessionFactory(gameSessionFactory);
 			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, type, matchFactory);
-			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
-
-			var botService = new WildbgBotService(_wildBgClient);
+            var botService = BotUtils.GetBotService(modus);
+            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
 			matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
@@ -92,8 +89,7 @@ namespace GammonX.Server.Tests
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 			Assert.True(matchSession.Player1.IsBot);
 			Assert.True(matchSession.Player2.IsBot);
-			var botService = new WildbgBotService(_wildBgClient);
-			var botPlayer1Id = matchSession.Player1.Id;
+            var botPlayer1Id = matchSession.Player1.Id;
 			var botPlayer2Id = matchSession.Player2.Id;
 			var activePlayerId = botPlayer1Id;
 			Assert.Equal(modus, matchSession.GetGameModus());
@@ -116,7 +112,8 @@ namespace GammonX.Server.Tests
 				{
                     matchSession.RollDices(activePlayerId);
                 }
-				var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+                var botService = BotUtils.GetBotService(gameSession.Modus);
+                var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
 				var hasWon = false;
 				foreach (var nextMove in nextMoves.Moves)
 				{
@@ -155,7 +152,7 @@ namespace GammonX.Server.Tests
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
 
-            var botService = new WildbgBotService(_wildBgClient);
+            var botService = BotUtils.GetBotService(GameModus.Backgammon);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
@@ -207,9 +204,9 @@ namespace GammonX.Server.Tests
 			Assert.True(matchSession.Player1.IsBot);
 			Assert.True(matchSession.Player2.IsBot);
 
-			var botService = new WildbgBotService(_wildBgClient);
+            var botService = BotUtils.GetBotService(modus);
 
-			matchSession.Player1.AcceptNextGame();
+            matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
 
 			var botPlayer1Id = matchSession.Player1.Id;
@@ -402,9 +399,9 @@ namespace GammonX.Server.Tests
 			var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, MatchType.CashGame, matchFactory);
 			Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
-			var botService = new WildbgBotService(_wildBgClient);
+            var botService = BotUtils.GetBotService(modus);
 
-			matchSession.Player1.AcceptNextGame();
+            matchSession.Player1.AcceptNextGame();
 			matchSession.Player2.AcceptNextGame();
 
 			var botPlayer1Id = matchSession.Player1.Id;

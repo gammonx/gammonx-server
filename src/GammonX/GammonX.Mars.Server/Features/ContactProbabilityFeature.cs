@@ -3,6 +3,13 @@ using GammonX.Engine.Services;
 
 namespace GammonX.Mars.Server.Features
 {
+    public readonly record struct ContactProbabilityResult(
+        double HitProbability1,
+        double HitProbability2,
+        double EscapeProbability1,
+        double EscapeProbability2
+    );
+
     /// <summary>
     /// Combined evaluator for hit and escape probabilities.
     /// Generates each dice combinations legal move sequences once and extracts both features.
@@ -126,11 +133,4 @@ namespace GammonX.Mars.Server.Features
             }
         }
     }
-
-    public readonly record struct ContactProbabilityResult(
-        double HitProbability1,
-        double HitProbability2,
-        double EscapeProbability1,
-        double EscapeProbability2
-    );
 }

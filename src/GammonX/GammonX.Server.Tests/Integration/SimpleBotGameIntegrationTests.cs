@@ -45,13 +45,17 @@ namespace GammonX.Server.Tests.Integration
 						services.Remove(descriptor);
 					}
 					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
-					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IBotService));
-					if (descriptor != null)
+					var botDescriptors = services.Where	(d => d.ServiceType == typeof(IBotService));
+					if (botDescriptors != null && botDescriptors.Any())
 					{
-						services.Remove(descriptor);
+						foreach (var botDescriptor in botDescriptors.ToList())
+						{
+							services.Remove(botDescriptor);
+						}
 					}
-					services.AddSingleton<IBotService>(new SimpleBotService());
-				});
+					services.AddKeyedSingleton(WellKnownBotServices.Mars, new SimpleBotService());
+                    services.AddKeyedSingleton(WellKnownBotServices.WildBg, new SimpleBotService());
+                });
 			});
 		}
 

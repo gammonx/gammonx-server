@@ -68,6 +68,21 @@ namespace GammonX.Mars.Server.Models
         [DataMember]
         public double PlayerMotherPinnedWeight { get; set; }
 
+        [DataMember]
+        public double MaxPrimeLengthPlayerWeight { get; set; }
+
+        [DataMember]
+        public double MaxPrimeLengthOppWeight { get; set; }
+
+        [DataMember]
+        public double HomebarCountPlayerWeight { get; set; }
+
+        [DataMember]
+        public double PrimeProbabilityPlayerWeight { get; set; }
+
+        [DataMember]
+        public double PrimeProbabilityOppWeight { get; set; }
+
         public void Validate()
         {
             if (Math.Abs(
@@ -90,7 +105,12 @@ namespace GammonX.Mars.Server.Models
                 PinCountOppWeight +
                 PinCountPlayerWeight +
                 OppMotherPinnedWeight +
-                PlayerMotherPinnedWeight
+                PlayerMotherPinnedWeight +
+                MaxPrimeLengthPlayerWeight +
+                MaxPrimeLengthOppWeight +
+                HomebarCountPlayerWeight +
+                PrimeProbabilityPlayerWeight +
+                PrimeProbabilityOppWeight
                 - 1.0)
                 > 1e-9)
             {

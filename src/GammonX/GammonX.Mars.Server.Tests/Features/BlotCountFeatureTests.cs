@@ -42,5 +42,20 @@ namespace GammonX.Mars.Server.Tests.Features
             var blackResult = feature.Eval(board, false);
             Assert.Equal(2, blackResult);
         }
+
+        [Fact]
+        public void CanEvalFevgaBoard1()
+        {
+            var boardService = BoardServiceFactory.Create(GameModus.Fevga);
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBoard1);
+            Assert.NotNull(boardContract);
+            var board = boardService.CreateBoard(boardContract);
+
+            var feature = new BlotCountFeature();
+            var result = feature.Eval(board, true);
+            Assert.Equal(2, result);
+            result = feature.Eval(board, false);
+            Assert.Equal(1, result);
+        }
     }
 }

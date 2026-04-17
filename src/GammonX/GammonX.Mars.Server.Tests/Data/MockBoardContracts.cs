@@ -28,6 +28,8 @@
 
         #region Test Fevga Boards
 
+        public const string FevgaBoard1 = "{\"fields\":[-1,-2,0,-2,-2,-2,0,-1,0,0,0,0,2,2,2,1,0,3,3,2,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":5,\"homebarCountBlack\":0}";
+
         #endregion Test Fevga Boards
     }
 }

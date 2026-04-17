@@ -31,6 +31,8 @@ namespace GammonX.Mars.Server.Services
                 score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
                 score += normalizedResult.OppMotherPinned * contactWeights.OppMotherPinnedWeight;
                 score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
+                score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
+                score += normalizedResult.PrimeProbabilityPlayer * contactWeights.PrimeProbabilityPlayerWeight;
                 // bad for the player
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
@@ -42,6 +44,9 @@ namespace GammonX.Mars.Server.Services
                 score -= normalizedResult.EscapeProbability2Opp * contactWeights.EscapeProbability2OppWeight;
                 score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
                 score -= normalizedResult.PlayerMotherPinned * contactWeights.PlayerMotherPinnedWeight;
+                score -= normalizedResult.MaxPrimeLengthOpp * contactWeights.MaxPrimeLengthOppWeight;
+                score -= normalizedResult.HomebarCountPlayer * contactWeights.HomebarCountPlayerWeight;
+                score -= normalizedResult.PrimeProbabilityOpp * contactWeights.PrimeProbabilityOppWeight;
             }
 
             return score;
@@ -68,11 +73,14 @@ namespace GammonX.Mars.Server.Services
                 score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
                 score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
                 score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
+                score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
                 // bad for the player
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
                 score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
                 score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
+                score -= normalizedResult.MaxPrimeLengthOpp * contactWeights.MaxPrimeLengthOppWeight;
+                score -= normalizedResult.HomebarCountPlayer * contactWeights.HomebarCountPlayerWeight;
             }
 
             return score;

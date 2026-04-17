@@ -1005,10 +1005,10 @@ namespace GammonX.Server.Tests.Integration
             services.AddSingleton(_matchRepo);
             services.AddSingleton(_diceFactory);
             services.AddKeyedSingleton(WellKnownBotServices.WildBg, _wildBgBot);
-            services.AddKeyedSingleton(WellKnownBotServices.Mars, _wildBgBot);
+            services.AddKeyedSingleton(WellKnownBotServices.Mars, _marsBot);
             services.AddSingleton(_playerConnRepo);
             services.AddSingleton(_cancellationTokenService);
-            services.AddSingleton(new Mock<IHubContext<MatchLobbyHub>>().Object);
+            _ = services.AddSingleton<IHubContext<MatchLobbyHub>>(new Mock<IHubContext<MatchLobbyHub>>().Object);
             return services.BuildServiceProvider();
         }
 
