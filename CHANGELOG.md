@@ -1,11 +1,16 @@
 # Changelog
 
-## 11.04.2026
+## 17.04.2026
 
 ### NEW
-- Fevga + Plakoto Bot Service
-	- TODO
-	- TODO
+- Mars Bot Project ALPHA
+	- Fevga bot implementation based on features and 1ply lookaheaad
+	- Plakoto bot implementation based on features and 1ply lookahead
+	- new container service
+### FIXES
+- fixed an issue where on undo move pinned checkers where not reset properly
+- encapsulated game history management into engine
+
 
 ## 02.04.2026
 

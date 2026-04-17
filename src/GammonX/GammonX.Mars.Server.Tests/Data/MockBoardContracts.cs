@@ -30,6 +30,8 @@
 
         public const string FevgaBoard1 = "{\"fields\":[-1,-2,0,-2,-2,-2,0,-1,0,0,0,0,2,2,2,1,0,3,3,2,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":5,\"homebarCountBlack\":0}";
 
+        public const string FevgaBoard2 = "{\"fields\":[-3,0,0,-2,-1,0,1,0,0,0,0,0,1,1,1,1,1,-1,0,0,0,0,0,1],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":333,\"pipCountBlack\":321,\"pinnedFields\":null,\"homeBarCountWhite\":8,\"homeBarCountBlack\":8,\"doublingCubeValue\":0,\"doublingCubeOwner\":false}";
+
         #endregion Test Fevga Boards
     }
 }
