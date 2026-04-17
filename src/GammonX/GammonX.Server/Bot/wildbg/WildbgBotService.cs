@@ -15,7 +15,6 @@ namespace GammonX.Server.Bot
 	public class WildbgBotService : IBotService
 	{
 		private readonly HttpClient _httpClient;
-		private readonly SimpleFevgaBotService _simpleFevgaBot = new();
 
 		public WildbgBotService(HttpClient httpClient)
 		{
@@ -37,9 +36,8 @@ namespace GammonX.Server.Bot
 				}
 				else if (gameSession.Modus == GameModus.Fevga)
 				{
-					// fevga is not supported by wildbg bot
-					return await _simpleFevgaBot.GetNextMovesAsync(matchSession, playerId);
-				}
+                    throw new InvalidOperationException("use mars bot service instead");
+                }
 
 				var isWhite = IsWhite(matchSession, playerId);
 				var requestParameters = GetMoveParameters(matchSession, isWhite);

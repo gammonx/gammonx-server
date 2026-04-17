@@ -1,7 +1,8 @@
 ﻿using GammonX.Engine.Extensions;
 using GammonX.Engine.Models;
-using GammonX.Engine.Services;
+
 using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -29,7 +30,7 @@ namespace GammonX.Server.Bot
 
                 var gameModus = gameSession.Modus;
 
-                if (gameModus != GammonX.Models.Enums.GameModus.Plakoto)
+                if (gameModus != GameModus.Plakoto && gameModus != GameModus.Fevga)
                 {
                     throw new InvalidOperationException("Use wildbg bot service instead");
                 }

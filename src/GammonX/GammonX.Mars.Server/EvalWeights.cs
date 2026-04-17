@@ -6,11 +6,11 @@ namespace GammonX.Mars.Server
     {
         // TODO: get weighting from config
 
-        public static readonly RaceWeightModel PlakotoRaceWeights = new RaceWeightModel()
+        public static readonly RaceWeightModel RaceWeights = new RaceWeightModel()
         {
-            PipToBearOffOppWeight = 0.45,
-            PipToBearOffWeight = 0.35,
-            PipDifferenceWeight = 0.20
+            PipDifferenceWeight = 0.45,
+            PipToBearOffWeight = 0.30,
+            PipToBearOffOppWeight = 0.25,
         };
 
         public static readonly ContactWeightModel PlakotoContactWeights = new ContactWeightModel()
@@ -69,6 +69,69 @@ namespace GammonX.Mars.Server
             PipDifferenceWeight = 0.12,
             PipToBearOffWeight = 0.10,
             PipToBearOffOppWeight = 0.05,
+        };
+
+        // TODO: invent prime creation probability feature
+        // prime length
+        // PrimeCompletionProbability
+        // OpponentPrimeThreatProbability
+
+        public static readonly ContactWeightModel FevgaContactWeights = new ContactWeightModel()
+        {
+            // priority 1: race (DOMINANT in Fevga)
+            PipDifferenceWeight = 0.45,
+            PipToBearOffWeight = 0.30,
+            PipToBearOffOppWeight = 0.25,
+            // priority 2: existing pin strength (not used)
+            OppMotherPinnedWeight = 0.00,
+            PlayerMotherPinnedWeight = 0.00,
+            NumChFrontLastPinWeight = 0.00,
+            NumChFrontLastPinOppWeight = 0.00,
+            PinCountOppWeight = 0.00,
+            PinCountPlayerWeight = 0.00,
+            BlotCountWeight = 0.00,
+            BlotInStartRangeCountWeight = 0.00,
+            AnchorCountWeight = 0.00,
+            // priority 3: mobility / escape (not used)
+            EscapeProbability1Weight = 0.00,
+            EscapeProbability2Weight = 0.00,
+            EscapeProbability1OppWeight = 0.00,
+            EscapeProbability2OppWeight = 0.00,
+            // priority 4: future pin opportunities (not used)
+            HitOpponentProbability1Weight = 0.00,
+            HitOpponentProbability2Weight = 0.00,
+            // priority 5: avoid getting pinned (not used)
+            HitProbability1Weight = 0.00,
+            HitProbability2Weight = 0.00,
+        };
+
+        public static readonly ContactWeightModel FevgaCheapContactWeights = new ContactWeightModel()
+        {
+            // priority 1: race (DOMINANT in Fevga)
+            PipDifferenceWeight = 0.45,
+            PipToBearOffWeight = 0.30,
+            PipToBearOffOppWeight = 0.25,
+            // priority 2: existing pin strength (not used)
+            OppMotherPinnedWeight = 0.00,
+            PlayerMotherPinnedWeight = 0.00,
+            NumChFrontLastPinWeight = 0.00,
+            NumChFrontLastPinOppWeight = 0.00,
+            PinCountOppWeight = 0.00,
+            PinCountPlayerWeight = 0.00,
+            BlotCountWeight = 0.00,
+            BlotInStartRangeCountWeight = 0.00,
+            AnchorCountWeight = 0.00,
+            // priority 3: mobility / escape (not used)
+            EscapeProbability1Weight = 0.00,
+            EscapeProbability2Weight = 0.00,
+            EscapeProbability1OppWeight = 0.00,
+            EscapeProbability2OppWeight = 0.00,
+            // priority 4: future pin opportunities (not used)
+            HitOpponentProbability1Weight = 0.00,
+            HitOpponentProbability2Weight = 0.00,
+            // priority 5: avoid getting pinned (not used)
+            HitProbability1Weight = 0.00,
+            HitProbability2Weight = 0.00,
         };
     }
 }

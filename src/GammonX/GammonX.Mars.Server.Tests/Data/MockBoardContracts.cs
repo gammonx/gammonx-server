@@ -25,5 +25,9 @@
         public const string PlakotoRacePinBoard1 = "{\"fields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,14,-14,0,0,0,0,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]}";
 
         #endregion Test Plakoto Boards
+
+        #region Test Fevga Boards
+
+        #endregion Test Fevga Boards
     }
 }

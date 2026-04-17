@@ -43,7 +43,7 @@ namespace GammonX.Mars.Server.Services
             var isRace = _raceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            var score = CalculateEvalScore(eval, contactWeights, raceWeights);
+            var score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             return score;
         }
 
@@ -80,7 +80,7 @@ namespace GammonX.Mars.Server.Services
                 candidates[i].isRace = isRace;
                 candidates[i].index = i;
                 var eval = CalculateCheapEvalModel(shadowBoard, isWhite, isRace);
-                candidates[i].cheapScore = CalculateCheapEvalScore(eval, cheapContactWeights, raceWeights);
+                candidates[i].cheapScore = EvalScoreCalculator.CalculateCheapScore(eval, cheapContactWeights, raceWeights);
             }
 
             // we sort by cheap score descending and only fully evaluate the top N contact candidates.
@@ -118,7 +118,7 @@ namespace GammonX.Mars.Server.Services
 
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(shadowBoard, isWhite, false);
-                var score = CalculateEvalScore(eval, contactWeights, raceWeights);
+                var score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
 
                 if (score > bestScore)
                 {
@@ -179,49 +179,6 @@ namespace GammonX.Mars.Server.Services
             return eval;
         }
 
-        private static double CalculateEvalScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
-        {
-            var normalizedResult = NormalizedEvalResultModel.From(eval);
-            var score = 0.0;
-
-            // we exclude contact based features in race positions, as they are not relevant and can be misleading
-            if (eval.Race)
-            {
-                // good for the player
-                score += normalizedResult.PipDifference * raceWeights.PipDifferenceWeight;
-                score += normalizedResult.PipToBearOffOpp * raceWeights.PipToBearOffOppWeight;
-                // bad for the player
-                score -= normalizedResult.PipToBearOff * raceWeights.PipToBearOffWeight;
-            }
-            else
-            {
-                // good for the player
-                score += normalizedResult.HitOpponentProbability1 * contactWeights.HitOpponentProbability1Weight;
-                score += normalizedResult.HitOpponentProbability2 * contactWeights.HitOpponentProbability2Weight;
-                score += normalizedResult.PipDifference * contactWeights.PipDifferenceWeight;
-                score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
-                score += normalizedResult.NumChFrontLastPin * contactWeights.NumChFrontLastPinWeight;
-                score += normalizedResult.EscapeProbability1 * contactWeights.EscapeProbability1Weight;
-                score += normalizedResult.EscapeProbability2 * contactWeights.EscapeProbability2Weight;
-                score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
-                score += normalizedResult.OppMotherPinned * contactWeights.OppMotherPinnedWeight;
-                score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
-                // bad for the player
-                score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
-                score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
-                score -= normalizedResult.HitProbability1 * contactWeights.HitProbability1Weight;
-                score -= normalizedResult.HitProbability2 * contactWeights.HitProbability2Weight;
-                score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
-                score -= normalizedResult.NumChFrontLastPinOpp * contactWeights.NumChFrontLastPinOppWeight;
-                score -= normalizedResult.EscapeProbability1Opp * contactWeights.EscapeProbability1OppWeight;
-                score -= normalizedResult.EscapeProbability2Opp * contactWeights.EscapeProbability2OppWeight;
-                score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
-                score -= normalizedResult.PlayerMotherPinned * contactWeights.PlayerMotherPinnedWeight;
-            }
-
-            return score;
-        }
-
         private EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
             EvalResultModel eval;
@@ -255,37 +212,6 @@ namespace GammonX.Mars.Server.Services
             }
 
             return eval;
-        }
-
-        private static double CalculateCheapEvalScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
-        {
-            var normalizedResult = NormalizedEvalResultModel.From(eval);
-            var score = 0.0;
-
-            // we exclude contact based features in race positions, as they are not relevant and can be misleading
-            if (eval.Race)
-            {
-                // good for the player
-                score += normalizedResult.PipDifference * raceWeights.PipDifferenceWeight;
-                score += normalizedResult.PipToBearOffOpp * raceWeights.PipToBearOffOppWeight;
-                // bad for the player
-                score -= normalizedResult.PipToBearOff * raceWeights.PipToBearOffWeight;
-            }
-            else
-            {
-                // good for the player
-                score += normalizedResult.PipDifference * contactWeights.PipDifferenceWeight;
-                score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
-                score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
-                score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
-                // bad for the player
-                score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
-                score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
-                score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
-                score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
-            }
-
-            return score;
         }
     }
 }

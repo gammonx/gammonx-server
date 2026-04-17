@@ -60,7 +60,7 @@ namespace GammonX.Server.Tests
                 }
 
                 MoveSequenceModel? nextMoves;
-                if (activeModus == GameModus.Plakoto)
+                if (activeModus == GameModus.Plakoto || activeModus == GameModus.Fevga)
                 {
                     nextMoves = await marsBotService.GetNextMovesAsync(matchSession, activePlayerId);
                 }

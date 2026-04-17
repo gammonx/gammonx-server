@@ -1543,8 +1543,8 @@ namespace GammonX.Server
 
         private IBotService GetBotService(IMatchSessionModel matchSession)
         {
-            // TODO
-            var key = matchSession.GetGameModus() == GameModus.Plakoto ? "mars" : "wildbg";
+            var activeModus = matchSession.GetGameModus();
+            var key = activeModus == GameModus.Plakoto || activeModus == GameModus.Fevga ? "mars" : "wildbg";
             return _serviceProvider.GetRequiredKeyedService<IBotService>(key);
         }
 

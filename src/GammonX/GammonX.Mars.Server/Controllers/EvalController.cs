@@ -33,11 +33,11 @@ namespace GammonX.Mars.Server.Controllers
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-                EvalWeights.PlakotoRaceWeights.Validate();
+                EvalWeights.RaceWeights.Validate();
                 EvalWeights.PlakotoContactWeights.Validate();
                 EvalWeights.PlakotoCheapContactWeights.Validate();
 
-                var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+                var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
                 var payload = new BoardEvalPayload() { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -57,11 +57,11 @@ namespace GammonX.Mars.Server.Controllers
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-                EvalWeights.PlakotoRaceWeights.Validate();
+                EvalWeights.RaceWeights.Validate();
                 EvalWeights.PlakotoContactWeights.Validate();
                 EvalWeights.PlakotoCheapContactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.PlakotoRaceWeights);
+                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload() { MoveSequence = bestMove };

@@ -1,4 +1,5 @@
-﻿using GammonX.Models.Enums;
+﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Models
 {
@@ -9,6 +10,15 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel, IFevgaBoardModel
     {
+        internal FevgaBoardModelImpl(BoardModelContract contract)
+        {
+            Fields = contract.Fields;
+            BearOffCountWhite = contract.BearOffCountWhite;
+            BearOffCountBlack = contract.BearOffCountBlack;
+			HomeBarCountWhite = contract.HomeBarCountWhite;
+			HomeBarCountBlack = contract.HomeBarCountBlack;
+        }
+
         public FevgaBoardModelImpl()
         {
             Fields = new int[24]
@@ -207,8 +217,10 @@ namespace GammonX.Engine.Models
 			{
 				// assign white values to black
 				BearOffCountBlack = BearOffCountWhite,
-				// assign black values to white
-				BearOffCountWhite = BearOffCountBlack,
+				HomeBarCountBlack = HomeBarCountBlack,
+                // assign black values to white
+                BearOffCountWhite = BearOffCountBlack,
+				HomeBarCountWhite = HomeBarCountWhite,
 				// inverted board fieds
 				Fields = invertedFields,
 			};
