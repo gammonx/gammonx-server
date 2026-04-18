@@ -24,7 +24,7 @@ namespace GammonX.Mars.Server
             PinCountPlayerWeight = 0.14,
             BlotCountWeight = 0.05,
             BlotInStartRangeCountWeight = 0.04, 
-            AnchorCountWeight = 0.6,
+            AnchorCountWeight = 0.06,
             // priority 2: future pin opportunities
             HitOpponentProbability1Weight = 0.06,
             HitOpponentProbability2Weight = 0.04,

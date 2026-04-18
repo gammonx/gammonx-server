@@ -42,9 +42,17 @@ namespace GammonX.Server.Bot
 			var uri = new Uri($"eval?{sb}", UriKind.Relative);
 
 			using var resp = await _httpClient.GetAsync(uri);
-			resp.EnsureSuccessStatusCode();
+            try
+            {
+                resp.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = await resp.Content.ReadAsStringAsync();
+                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+            }
 
-			var response = await resp.Content.ReadAsStringAsync();
+            var response = await resp.Content.ReadAsStringAsync();
 			var evalResponse = JsonConvert.DeserializeObject<GetEvalResponse>(response);
 
 			if (evalResponse == null)
@@ -83,17 +91,17 @@ namespace GammonX.Server.Bot
 			var uri = new Uri($"move?{sb}", UriKind.Relative);
 			using var resp = await _httpClient.GetAsync(uri);
 
-			try
-			{
-				resp.EnsureSuccessStatusCode();
-			}
-			catch (Exception)
-			{
-				// debugging purposes
-				throw;
-			}
+            try
+            {
+                resp.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = await resp.Content.ReadAsStringAsync();
+                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+            }
 
-			var response = await resp.Content.ReadAsStringAsync();
+            var response = await resp.Content.ReadAsStringAsync();
 			var moveResponse = JsonConvert.DeserializeObject<GetMoveResponse>(response);
 
 			if (moveResponse == null)

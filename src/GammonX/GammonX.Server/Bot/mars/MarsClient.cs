@@ -28,7 +28,15 @@ namespace GammonX.Server.Bot
             var uri = new Uri($"api/eval/move", UriKind.Relative);
 
             using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
-            resp.EnsureSuccessStatusCode();
+            try
+            {
+                resp.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = await resp.Content.ReadAsStringAsync();
+                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+            }
 
             var response = await resp.Content.ReadAsStringAsync();
             var moveEvalResponse = JsonConvert.DeserializeObject<ResponseContract<MoveEvalPayload>>(response);
@@ -48,7 +56,15 @@ namespace GammonX.Server.Bot
             var uri = new Uri($"api/eval/board", UriKind.Relative);
 
             using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
-            resp.EnsureSuccessStatusCode();
+            try
+            {
+                resp.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = await resp.Content.ReadAsStringAsync();
+                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+            }
 
             var response = await resp.Content.ReadAsStringAsync();
             var boardEvalResponse = JsonConvert.DeserializeObject<ResponseContract<BoardEvalPayload>>(response);
