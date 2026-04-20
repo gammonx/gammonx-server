@@ -1,4 +1,16 @@
 # Changelog
+## 20.04.2026
+
+### NEW
+- Mars Bot Project
+	- minor refactorings towards extensibility for future game modus support
+	- made mars server ready for neural net usage
+	- added training console application
+	- first batch of training data
+
+### FIXES
+- none
+
 
 ## 17.05.2026
 

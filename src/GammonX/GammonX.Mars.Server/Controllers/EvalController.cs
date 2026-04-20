@@ -61,7 +61,7 @@ namespace GammonX.Mars.Server.Controllers
                 EvalWeights.PlakotoContactWeights.Validate();
                 EvalWeights.PlakotoCheapContactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
+                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload() { MoveSequence = bestMove };

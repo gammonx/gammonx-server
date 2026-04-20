@@ -4,6 +4,17 @@ namespace GammonX.Mars.Server.Services
 {
     public static class EvalScoreCalculator
     {
+        /// <summary>
+        /// Calculates a weighted score based of mixed-direction features.
+        /// </summary>
+        /// <remarks>
+        /// The score acts as a relative ranking metric, not an absolute position quality. It is only meaningful
+        /// when compaing two positions against each other.
+        /// </remarks>
+        /// <param name="eval">Absolute feature eval scores.</param>
+        /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
+        /// <returns>A weighted score representing the relative quality of the position.</returns>
         public static double CalculateScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var normalizedResult = NormalizedEvalResultModel.From(eval);
@@ -52,6 +63,18 @@ namespace GammonX.Mars.Server.Services
             return score;
         }
 
+        /// <summary>
+        /// Calculates a (cheap) weighted score based of mixed-direction features. The cheap score only includes
+        /// a subset of features which are less expensive to calculate.
+        /// </summary>
+        /// <remarks>
+        /// The score acts as a relative ranking metric, not an absolute position quality. It is only meaningful
+        /// when compaing two positions against each other.
+        /// </remarks>
+        /// <param name="eval">Absolute feature eval scores.</param>
+        /// <param name="contactWeights">(Cheap) Contact position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
+        /// <returns>A (cheap) weighted score representing the relative quality of the position.</returns>
         public static double CalculateCheapScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var normalizedResult = NormalizedEvalResultModel.From(eval);

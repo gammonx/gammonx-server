@@ -39,6 +39,8 @@ builder.Services.Configure<ServiceOptions>(
 // -------------------------------------------------------------------------------
 builder.Services.AddKeyedSingleton<IFeatureEvalService, PlakotoFeatureEvalService>(GameModus.Plakoto);
 builder.Services.AddKeyedSingleton<IFeatureEvalService, FevgaFeatureEvalService>(GameModus.Fevga);
+builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, PlakotoFeatureVectorExtractor>(GameModus.Plakoto);
+builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorExtractor>(GameModus.Fevga);
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------
