@@ -1,81 +1,113 @@
-﻿using GammonX.Engine.History;
+﻿using GammonX.Models.Contracts;
+
+using GammonX.Engine.History;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Services
 {
-	/// <summary>
-	/// Provides base implementation for board services used in all variants.
-	/// </summary>
-	internal abstract class BoardBaseServiceImpl : IBoardService
-	{
-		private readonly MoveSequenceModelComparer _moveSequenceModelComparer = new();
+    /// <summary>
+    /// Provides base implementation for board services used in all variants.
+    /// </summary>
+    internal abstract class BoardBaseServiceImpl : IBoardService
+    {
+        private readonly MoveSequenceModelComparer _moveSequenceModelComparer = new();
 
-		// <inheritdoc />
-		public abstract GameModus Modus { get; }
+        // <inheritdoc />
+        public abstract GameModus Modus { get; }
 
-		// <inheritdoc />
-		public abstract IBoardModel CreateBoard();
+        // <inheritdoc />
+        public abstract IBoardModel CreateBoard();
 
-		// <inheritdoc />
-		public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
-		{
-			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
-			var allowed = FilterSequencesByDiceRules(sequences, rolls);
-			var moves = ConvertToFlattenedMoves(allowed, model, isWhite);
-			return moves.Select(m => new ValueTuple<int, int>(m.From, m.To)).ToArray();
-		}
+        // <inheritdoc />
+        public virtual IBoardModel CreateBoard(BoardModelContract contract)
+        {
+            throw new NotImplementedException();
+        }
 
-		// <inheritdoc />
-		public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
-		{
-			var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
-			var allowed = FilterSequencesByDiceRules(sequences, rolls);
-			var unique = allowed.ToHashSet(_moveSequenceModelComparer);
-			return unique.ToArray();
-		}
+        // <inheritdoc />
+        public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
+        {
+            var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var allowed = FilterSequencesByDiceRules(sequences, rolls);
+            var moves = ConvertToFlattenedMoves(allowed, model, isWhite);
+            return moves.Select(m => new ValueTuple<int, int>(m.From, m.To)).ToArray();
+        }
 
-		// <inheritdoc />
-		public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
-		{
-			if (CanBearOffChecker(model, from, roll, isWhite))
-			{
-				return true;
-			}
+        // <inheritdoc />
+        public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
+        {
+            var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var allowed = FilterSequencesByDiceRules(sequences, rolls);
+            var unique = allowed.ToHashSet(_moveSequenceModelComparer);
+            return unique.ToArray();
+        }
 
-			var newPosition = model.MoveOperator(isWhite, from, roll);
-			return model.CanMove(from, newPosition, isWhite);
-		}
+        // <inheritdoc />
+        public bool ExploreLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback)
+        {
+            var sortedRolls = rolls.ToList();
+            sortedRolls.Sort();
+            int maxDepthSeen = 0;
+            bool satisfied = false;
+            ExploreWithCallback(
+                model, 
+                isWhite, 
+                sortedRolls, 
+                new List<MoveModel>(), 
+                sortedRolls.Count, 
+                callback, 
+                ref maxDepthSeen, 
+                ref satisfied);
+            return satisfied;
+        }
 
-		// <inheritdoc />
-		public virtual bool CanBearOffChecker(IBoardModel model, int from, int roll, bool isWhite)
-		{
-			return model.CanBearOff(from, roll, isWhite);
-		}
+        // <inheritdoc />
+        public virtual bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite)
+        {
+            if (CanBearOffChecker(model, from, roll, isWhite))
+            {
+                return true;
+            }
 
-		// <inheritdoc />
-		public virtual void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
-		{
-			var roll = model.RecoverRollOperator(isWhite, from, to);
-			if (!CanMoveChecker(model, from, roll, isWhite))
-			{
-				throw new InvalidOperationException($"The given move from '{from}' to '{to}' is illegal for the current board state");
-			}
+            var newPosition = model.MoveOperator(isWhite, from, roll);
+            return model.CanMove(from, newPosition, isWhite);
+        }
 
-			PerformMoveCheckerTo(model, from, to, isWhite);
-		}
+        // <inheritdoc />
+        public virtual bool CanBearOffChecker(IBoardModel model, int from, int roll, bool isWhite)
+        {
+            return model.CanBearOff(from, roll, isWhite);
+        }
 
-		// <inheritdoc />
-		public void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite)
-		{
-			// we simply invert to move
-			PerformMoveCheckerTo(model, moveToUndo.To, moveToUndo.From, isWhite);
+        // <inheritdoc />
+        public virtual void MoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+        {
+            var roll = model.RecoverRollOperator(isWhite, from, to);
+            if (!CanMoveChecker(model, from, roll, isWhite))
+            {
+                throw new InvalidOperationException($"The given move from '{from}' to '{to}' is illegal for the current board state");
+            }
 
-			if (model.History.TryPeekLast(out var lastEvent) && lastEvent?.Type == HistoryEventType.Hit)
-			{
-				var hitEvent = lastEvent.Value.GetValue() as Tuple<int, int>;
-				var hitFieldIndex = hitEvent?.Item1;
+            var moveEvent = HistoryEventFactory.CreateMoveEvent(isWhite, new MoveModel(from, to));
+            var editableHistory = (IEditableBoardHistory)model.History;
+            editableHistory.Add(moveEvent);
+
+            PerformMoveCheckerTo(model, from, to, isWhite);
+        }
+
+        // <inheritdoc />
+        public void UndoMove(IBoardModel model, MoveModel moveToUndo, bool isWhite)
+        {
+            // we simply invert to move
+            PerformMoveCheckerTo(model, moveToUndo.To, moveToUndo.From, isWhite);
+
+            var editableHistory = (IEditableBoardHistory)model.History;
+            if (model.History.TryPeekLast(out var lastEvent) && lastEvent?.Type == HistoryEventType.Hit)
+            {
+                var hitEvent = lastEvent.Value.GetValue() as Tuple<int, int>;
+                var hitFieldIndex = hitEvent?.Item1;
                 // we undo the hit by moving the checker back to the field and removing it from the home bar
                 if (model is IHomeBarModel homeBarModel && hitFieldIndex != null)
                 {
@@ -89,510 +121,576 @@ namespace GammonX.Engine.Services
                         model.Fields.SetValue(model.Fields[hitFieldIndex.Value] += 1, hitFieldIndex.Value);
                     }
                 }
-				model.History.TryRemoveLast();
+                editableHistory.TryRemoveLast();
             }
-		}
 
-		// <inheritdoc />
-		bool IBoardService.MoveChecker(IBoardModel model, int from, int roll, bool isWhite)
-		{
-			if (!CanMoveChecker(model, from, roll, isWhite))
-				throw new InvalidOperationException($"The given move '{from}' with a roll of '{roll}' is illegal for the current board state");
+            // we remove the undone move from the history
+            editableHistory.TryRemoveLast();
+        }
 
-			try
-			{
-				var newPosition = model.MoveOperator(isWhite, from, roll);
-				MoveCheckerTo(model, from, newPosition, isWhite);
-				return true;
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Error moving checker: {ex.Message}");
-				return false;
-			}
-		}
+        // <inheritdoc />
+        bool IBoardService.MoveChecker(IBoardModel model, int from, int roll, bool isWhite)
+        {
+            if (!CanMoveChecker(model, from, roll, isWhite))
+                throw new InvalidOperationException($"The given move '{from}' with a roll of '{roll}' is illegal for the current board state");
 
-		// <inheritdoc />
-		public void AddEventToHistory(IBoardModel model, bool isWhite, object eventValues)
-		{
-			var boardHistory = model.History;
+            try
+            {
+                var newPosition = model.MoveOperator(isWhite, from, roll);
+                MoveCheckerTo(model, from, newPosition, isWhite);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error moving checker: {ex.Message}");
+                return false;
+            }
+        }
 
-			if (eventValues is int[] rolls)
-			{
-				var rollEvent = HistoryEventFactory.CreateRollEvent(isWhite, rolls);
-				boardHistory.Add(rollEvent);
-			}
-			else if (eventValues is MoveModel move)
-			{
-				var moveEvent = HistoryEventFactory.CreateMoveEvent(isWhite, move);
-				boardHistory.Add(moveEvent);
-			}
-		}
+        // <inheritdoc />
+        public void AddRollEventToHistory(IBoardModel model, bool isWhite, int[] rolls)
+        {
+            var rollEvent = HistoryEventFactory.CreateRollEvent(isWhite, rolls);
+            var editableHistory = (IEditableBoardHistory)model.History;
+            editableHistory.Add(rollEvent);
+        }
 
-		/// <summary>
-		/// Evaluates all proper <c>from</c> checker fields for the given player and board.
-		/// </summary>
-		/// <param name="model">Model to operate on.</param>
-		/// <param name="isWhite">Indicating if white or black is moving.</param>
-		/// <returns>A list of indexes of fields which are moveable.</returns>
-		protected virtual IEnumerable<int> GetMoveableCheckerFields(IBoardModel model, bool isWhite)
-		{
-			var moveableCheckers = new List<int>();
-			var homebarCount = GetHomeBarCount(model, isWhite);
-			if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
-			{
-				// if the player has checkers on the home bar, they can only move those checkers
-				int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
-				moveableCheckers.Add(startPoint);
+        /// <summary>
+        /// Evaluates all proper <c>from</c> checker fields for the given player and board.
+        /// </summary>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="isWhite">Indicating if white or black is moving.</param>
+        /// <returns>A list of indexes of fields which are moveable.</returns>
+        protected virtual IEnumerable<int> GetMoveableCheckerFields(IBoardModel model, bool isWhite)
+        {
+            var moveableCheckers = new List<int>();
+            var homebarCount = GetHomeBarCount(model, isWhite);
+            if (homebarCount > 0 && model is IHomeBarModel homeBarModel)
+            {
+                // if the player has checkers on the home bar, they can only move those checkers
+                int startPoint = isWhite ? homeBarModel.StartIndexWhite : homeBarModel.StartIndexBlack;
+                moveableCheckers.Add(startPoint);
 
-				if (!homeBarModel.MustEnterFromHomebar)
-				{
-					AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
-				}
-			}
-			else
-			{
-				AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
-			}
-
-			return moveableCheckers;
-		}
-
-		/// <summary>
-		/// Evaluates if a checker on the target field is hit by the current move.
-		/// </summary>
-		/// <remarks>
-		/// Can be overridden in derived classes to implement specific logic for determining a hit.
-		/// </remarks>
-		/// <param name="model">Model to operate on.</param>
-		/// <param name="from">From move position.</param>
-		/// <param name="to">To move position. Can contain an opponents checker.</param>
-		/// <param name="isWhite">Indicates if white or black checker.</param>
-		protected virtual void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
-		{
-			// ignore undo last moves here
-			if (to == BoardPositions.HomeBarWhite || to == BoardPositions.HomeBarBlack)
-				return;
-
-			// we know that the opponents checker can be hit, otherwise the move could not have been made
-			if (isWhite)
-			{
-				// we detect a black checker on the target field
-				if (model.Fields[to] > 0)
-				{
-					HitChecker(model, to, isWhite);
+                if (!homeBarModel.MustEnterFromHomebar)
+                {
+                    AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
                 }
             }
-			else
-			{
-				// we detect a white checker on the target field
-				if (model.Fields[to] < 0)
-				{
-					HitChecker(model, to, isWhite);
+            else
+            {
+                AddMoveableCheckersFromFields(model, isWhite, moveableCheckers);
+            }
+
+            return moveableCheckers;
+        }
+
+        /// <summary>
+        /// Evaluates if a checker on the target field is hit by the current move.
+        /// </summary>
+        /// <remarks>
+        /// Can be overridden in derived classes to implement specific logic for determining a hit.
+        /// </remarks>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="from">From move position.</param>
+        /// <param name="to">To move position. Can contain an opponents checker.</param>
+        /// <param name="isWhite">Indicates if white or black checker.</param>
+        protected virtual void EvaluateHittedCheckers(IBoardModel model, int from, int to, bool isWhite)
+        {
+            // ignore undo last moves here
+            if (to == BoardPositions.HomeBarWhite || to == BoardPositions.HomeBarBlack)
+                return;
+
+            // we know that the opponents checker can be hit, otherwise the move could not have been made
+            if (isWhite)
+            {
+                // we detect a black checker on the target field
+                if (model.Fields[to] > 0)
+                {
+                    HitChecker(model, to, isWhite);
                 }
             }
-		}
+            else
+            {
+                // we detect a white checker on the target field
+                if (model.Fields[to] < 0)
+                {
+                    HitChecker(model, to, isWhite);
+                }
+            }
+        }
 
-		/// <summary>
-		/// Is executed when a checker is hit by the current move.
-		/// </summary>
-		/// <remarks>
-		/// Can be overridden in derived classes to implement specific logic for hitting a checker.
-		/// </remarks>
-		/// <param name="model">Model to operate on.</param>
-		/// <param name="fieldIndex">Field index where the hit occurs.</param>
-		/// <param name="isWhite">Indicates if white or black checker.</param>
-		/// <exception cref="InvalidOperationException">Throws if given model does not support hitting.</exception>
-		protected virtual void HitChecker(IBoardModel model, int fieldIndex, bool isWhite)
-		{
-			if (model is IHomeBarModel homeBarModel)
-			{
-				if (isWhite)
-				{
-					// we remove the black checker from the moveable fields array
-					model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
-					// and move it to the black home bar
-					homeBarModel.AddToHomeBar(!isWhite, 1);
-				}
-				else
-				{
-					// we remove the white checker from the moveable fields array
-					model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
-					// and move it to the white home bar
-					homeBarModel.AddToHomeBar(!isWhite, 1);
-				}
+        /// <summary>
+        /// Is executed when a checker is hit by the current move.
+        /// </summary>
+        /// <remarks>
+        /// Can be overridden in derived classes to implement specific logic for hitting a checker.
+        /// </remarks>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="fieldIndex">Field index where the hit occurs.</param>
+        /// <param name="isWhite">Indicates if white or black checker.</param>
+        /// <exception cref="InvalidOperationException">Throws if given model does not support hitting.</exception>
+        protected virtual void HitChecker(IBoardModel model, int fieldIndex, bool isWhite)
+        {
+            if (model is IHomeBarModel homeBarModel)
+            {
+                if (isWhite)
+                {
+                    // we remove the black checker from the moveable fields array
+                    model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
+                    // and move it to the black home bar
+                    homeBarModel.AddToHomeBar(!isWhite, 1);
+                }
+                else
+                {
+                    // we remove the white checker from the moveable fields array
+                    model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
+                    // and move it to the white home bar
+                    homeBarModel.AddToHomeBar(!isWhite, 1);
+                }
 
                 // we add a hit event to the game history in order to be able to undo the hit if necessary
-                model.History.Add(HistoryEventFactory.CreateHitEvent(!isWhite, fieldIndex));
+                var hitEvent = HistoryEventFactory.CreateHitEvent(!isWhite, fieldIndex);
+                var editableHistory = (IEditableBoardHistory)model.History;
+                editableHistory.Add(hitEvent);
             }
-			else
-			{
-				throw new InvalidOperationException("Model does not support hitting checkers.");
-			}
-		}
+            else
+            {
+                throw new InvalidOperationException("Model does not support hitting checkers.");
+            }
+        }
 
-		/// <summary>
-		/// Checks if the given move to <c>to</c> would bear it off the board.
-		/// </summary>
-		/// <param name="model">Model to operate on.</param>
-		/// <param name="to">To position value.</param>
-		/// <param name="isWhite">Indicates if white or black checker.</param>
-		/// <returns>Boolean indicating if the to position bears off.</returns>
-		protected virtual bool IsBearOffMove(IBoardModel model, int to, bool isWhite)
-		{
-			if (isWhite && to == BoardPositions.BearOffWhite)
-				return true;
-			if (!isWhite && to == BoardPositions.BearOffBlack)
-				return true;
-			return false;
-		}
+        /// <summary>
+        /// Checks if the given move to <c>to</c> would bear it off the board.
+        /// </summary>
+        /// <param name="model">Model to operate on.</param>
+        /// <param name="to">To position value.</param>
+        /// <param name="isWhite">Indicates if white or black checker.</param>
+        /// <returns>Boolean indicating if the to position bears off.</returns>
+        protected virtual bool IsBearOffMove(IBoardModel model, int to, bool isWhite)
+        {
+            if (isWhite && to == BoardPositions.BearOffWhite)
+                return true;
+            if (!isWhite && to == BoardPositions.BearOffBlack)
+                return true;
+            return false;
+        }
 
-		/// <summary>
-		/// Applies the dice rules to the given legal moves and returns only those moves.
-		/// </summary>
-		/// <param name="legalMoves">Legal moves to evaluate.</param>
-		/// <param name="rolls">Rolled dices.</param>
-		/// <returns>A tuple array containing all legal moves from to.</returns>
-		protected virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
-		{
-			// only relevant for two dice rolls
-			if (rolls.Length != 2)
-				return legalMoves;
+        /// <summary>
+        /// Applies the dice rules to the given legal moves and returns only those moves.
+        /// </summary>
+        /// <param name="legalMoves">Legal moves to evaluate.</param>
+        /// <param name="rolls">Rolled dices.</param>
+        /// <returns>A tuple array containing all legal moves from to.</returns>
+        protected virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
+        {
+            // only relevant for two dice rolls
+            if (rolls.Length != 2)
+                return legalMoves;
 
-			int maxRoll = rolls.Max();
-			int combined = rolls.Sum();
+            int maxRoll = rolls.Max();
+            int combined = rolls.Sum();
 
-			// are there any combined moves (e.g. 0 > 3 for {1,2})
-			var combinedMoves = legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
-				.ToArray();
+            // are there any combined moves (e.g. 0 > 3 for {1,2})
+            var combinedMoves = legalMoves
+                .Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
+                .ToArray();
 
-			if (combinedMoves.Length > 0)
-				return combinedMoves;
+            if (combinedMoves.Length > 0)
+                return combinedMoves;
 
-			// can the rolls be used individually?
-			bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
-			bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
+            // can the rolls be used individually?
+            bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
+            bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
 
-			// if both rolls can be used, return all legal moves
-			if (canUseRoll1 && canUseRoll2)
-				return legalMoves;
+            // if both rolls can be used, return all legal moves
+            if (canUseRoll1 && canUseRoll2)
+                return legalMoves;
 
-			// otherwise return only moves with the maximum roll
-			return legalMoves
-				.Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
-				.ToArray();
-		}
+            // otherwise return only moves with the maximum roll
+            return legalMoves
+                .Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
+                .ToArray();
+        }
 
-		protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
-		{
-			// we check first if the given from to move bears the checker off
-			if (CheckerBearedOff(model, from, to, isWhite))
-			{
-				return;
-			}
+        protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
+        {
+            // we check first if the given from to move bears the checker off
+            if (CheckerBearedOff(model, from, to, isWhite))
+            {
+                return;
+            }
 
-			// we check it here because most of the variants actually use hitting
-			if (model is IHomeBarModel)
-			{
-				// we check if we would hit an opponents checker with this move
-				EvaluateHittedCheckers(model, from, to, isWhite);
-			}
+            // we check it here because most of the variants actually use hitting
+            if (model is IHomeBarModel)
+            {
+                // we check if we would hit an opponents checker with this move
+                EvaluateHittedCheckers(model, from, to, isWhite);
+            }
 
-			if (isWhite)
-			{
-				if (model.EntersFromHomeBar(from, isWhite))
-				{
-					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
-					// add a negative checker to the new position
-					model.Fields.SetValue(model.Fields[to] -= 1, to);
-				}
-				else
-				{
-					// remove a negative checker from the old position
-					model.Fields.SetValue(model.Fields[from] += 1, from);
-					// check if its an undo move back to the homebar
-					if (to == BoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
-					{
-						homeBarModel.AddToHomeBar(isWhite, 1);
-					}
-					else
-					{
-						// add a negative checker to the new position
-						model.Fields.SetValue(model.Fields[to] -= 1, to);
-					}
-				}
-			}
-			else
-			{
-				if (model.EntersFromHomeBar(from, isWhite))
-				{
-					((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
-					// add a positive checker to the new position
-					model.Fields.SetValue(model.Fields[to] += 1, to);
-				}
-				else
-				{
-					// remove a positive checker from the old position
-					model.Fields.SetValue(model.Fields[from] -= 1, from);
-					// check if its an undo move back to the homebar
-					if (to == BoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
-					{
-						homeBarModel.AddToHomeBar(isWhite, 1);
-					}
-					else
-					{
-						// add a positive checker to the new position
-						model.Fields.SetValue(model.Fields[to] += 1, to);
-					}
-				}
-			}
-		}
+            if (isWhite)
+            {
+                if (model.EntersFromHomeBar(from, isWhite))
+                {
+                    ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+                    // add a negative checker to the new position
+                    model.Fields.SetValue(model.Fields[to] -= 1, to);
+                }
+                else
+                {
+                    // remove a negative checker from the old position
+                    model.Fields.SetValue(model.Fields[from] += 1, from);
+                    // check if its an undo move back to the homebar
+                    if (to == BoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
+                    {
+                        homeBarModel.AddToHomeBar(isWhite, 1);
+                    }
+                    else
+                    {
+                        // add a negative checker to the new position
+                        model.Fields.SetValue(model.Fields[to] -= 1, to);
+                    }
+                }
+            }
+            else
+            {
+                if (model.EntersFromHomeBar(from, isWhite))
+                {
+                    ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
+                    // add a positive checker to the new position
+                    model.Fields.SetValue(model.Fields[to] += 1, to);
+                }
+                else
+                {
+                    // remove a positive checker from the old position
+                    model.Fields.SetValue(model.Fields[from] -= 1, from);
+                    // check if its an undo move back to the homebar
+                    if (to == BoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
+                    {
+                        homeBarModel.AddToHomeBar(isWhite, 1);
+                    }
+                    else
+                    {
+                        // add a positive checker to the new position
+                        model.Fields.SetValue(model.Fields[to] += 1, to);
+                    }
+                }
+            }
+        }
 
-		private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)
-		{
-			if (isWhite)
-			{
-				if (to == BoardPositions.BearOffWhite)
-				{
-					// we remove a negative checker from the old position
-					model.Fields.SetValue(model.Fields[from] += 1, from);
-					// and bear off the checker
-					model.BearOffChecker(isWhite, 1);
-					return true;
-				}
-				// we need to handle undone bear offs
-				else if (from == BoardPositions.BearOffWhite)
-				{
-					// we add a negative checker to the old position
-					model.Fields.SetValue(model.Fields[to] -= 1, to);
-					// and undo the bear off
-					model.BearOffChecker(isWhite, -1);
-					return true;
-				}
-			}
-			else
-			{
-				if (to == BoardPositions.BearOffBlack)
-				{
-					// we remove a positive checker from the old position
-					model.Fields.SetValue(model.Fields[from] -= 1, from);
-					// and bear off the checker
-					model.BearOffChecker(isWhite, 1);
-					return true;
-				}
-				// we need to handle undone bear offs
-				else if (from == BoardPositions.BearOffBlack)
-				{
-					// we add a positive checker from the old position
-					model.Fields.SetValue(model.Fields[to] += 1, to);
-					// and undo the bear off
-					model.BearOffChecker(isWhite, -1);
-					return true;
-				}
-			}
-			return false;
-		}
+        private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)
+        {
+            if (isWhite)
+            {
+                if (to == BoardPositions.BearOffWhite)
+                {
+                    // we remove a negative checker from the old position
+                    model.Fields.SetValue(model.Fields[from] += 1, from);
+                    // and bear off the checker
+                    model.BearOffChecker(isWhite, 1);
+                    return true;
+                }
+                // we need to handle undone bear offs
+                else if (from == BoardPositions.BearOffWhite)
+                {
+                    // we add a negative checker to the old position
+                    model.Fields.SetValue(model.Fields[to] -= 1, to);
+                    // and undo the bear off
+                    model.BearOffChecker(isWhite, -1);
+                    return true;
+                }
+            }
+            else
+            {
+                if (to == BoardPositions.BearOffBlack)
+                {
+                    // we remove a positive checker from the old position
+                    model.Fields.SetValue(model.Fields[from] -= 1, from);
+                    // and bear off the checker
+                    model.BearOffChecker(isWhite, 1);
+                    return true;
+                }
+                // we need to handle undone bear offs
+                else if (from == BoardPositions.BearOffBlack)
+                {
+                    // we add a positive checker from the old position
+                    model.Fields.SetValue(model.Fields[to] += 1, to);
+                    // and undo the bear off
+                    model.BearOffChecker(isWhite, -1);
+                    return true;
+                }
+            }
+            return false;
+        }
 
-		private static int GetHomeBarCount(IBoardModel model, bool isWhite)
-		{
-			if (model is IHomeBarModel homebarBoard)
-			{
-				return isWhite ? homebarBoard.HomeBarCountWhite : homebarBoard.HomeBarCountBlack;
-			}
-			return 0;
-		}
+        private static int GetHomeBarCount(IBoardModel model, bool isWhite)
+        {
+            if (model is IHomeBarModel homebarBoard)
+            {
+                return isWhite ? homebarBoard.HomeBarCountWhite : homebarBoard.HomeBarCountBlack;
+            }
+            return 0;
+        }
 
-		private static void AddMoveableCheckersFromFields(IBoardModel model, bool isWhite, List<int> moveableCheckers)
-		{
-			for (int i = 0; i < model.Fields.Length; i++)
-			{
-				int pointValue = model.Fields[i];
-				if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
-				{
-					moveableCheckers.Add(i);
-				}
-			}
-		}
+        private static void AddMoveableCheckersFromFields(IBoardModel model, bool isWhite, List<int> moveableCheckers)
+        {
+            for (int i = 0; i < model.Fields.Length; i++)
+            {
+                int pointValue = model.Fields[i];
+                if ((isWhite && pointValue < 0) || (!isWhite && pointValue > 0))
+                {
+                    moveableCheckers.Add(i);
+                }
+            }
+        }
 
-		private List<MoveSequenceModel> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
-		{
-			var results = new List<MoveSequenceModel>();
-			ExploreBoardRecursively(model, isWhite, rolls.ToList(), new List<MoveModel>(), new List<int>(), results);
-			return results
-				.GroupBy(s => s.SequenceKey())
-				.Select(g => g.First())
-				.ToList();
-		}
+        private List<MoveSequenceModel> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
+        {
+            var sortedRolls = rolls.ToList();
+            sortedRolls.Sort();
+            var results = new List<MoveSequenceModel>();
+            ExploreBoardRecursively(model, isWhite, sortedRolls, new List<MoveModel>(), new List<int>(), results);
+            return results
+                .ToHashSet(_moveSequenceModelComparer)
+                .ToList();
+        }
 
-		private void ExploreBoardRecursively(
-			IBoardModel board,
-			bool isWhite,
-			List<int> remainingRolls,
-			IEnumerable<MoveModel> currentMoves,
-			IEnumerable<int> usedDices,
-			List<MoveSequenceModel> results)
-		{
-			bool anyMovePossible = false;
-			for (int i = 0; i < remainingRolls.Count; i++)
-			{
-				int die = remainingRolls[i];
-				var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
+        private void ExploreBoardRecursively(
+            IBoardModel board,
+            bool isWhite,
+            List<int> remainingRolls,
+            IEnumerable<MoveModel> currentMoves,
+            IEnumerable<int> usedDices,
+            List<MoveSequenceModel> results)
+        {
+            bool anyMovePossible = false;
+            for (int i = 0; i < remainingRolls.Count; i++)
+            {
+                int die = remainingRolls[i];
+                // skip duplicate dice values — identical values at adjacent indices
+                // produce identical sub-trees since the remaining rolls stay sorted
+                if (i > 0 && die == remainingRolls[i - 1])
+                    continue;
 
-				if (possibleMoves.Count == 0)
-					continue;
+                var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
 
-				anyMovePossible = true;
+                if (possibleMoves.Count == 0)
+                    continue;
 
-				foreach (var move in possibleMoves)
-				{
-					var shadowBoard = board.DeepClone();
-					MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
+                anyMovePossible = true;
 
-					var newRemaining = new List<int>(remainingRolls);
-					newRemaining.RemoveAt(i);
+                foreach (var move in possibleMoves)
+                {
+                    MoveCheckerTo(board, move.From, move.To, isWhite);
 
-					var newMoves = new List<MoveModel>(currentMoves) { move };
-					var newUsedDice = new List<int>(usedDices) { die };
+                    var newRemaining = new List<int>(remainingRolls);
+                    newRemaining.RemoveAt(i);
 
-					ExploreBoardRecursively(shadowBoard, isWhite, newRemaining, newMoves, newUsedDice, results);
-				}
-			}
+                    var newMoves = new List<MoveModel>(currentMoves) { move };
+                    var newUsedDice = new List<int>(usedDices) { die };
 
-			if (!anyMovePossible && currentMoves.Any())
-			{
-				var seq = new MoveSequenceModel();
-				seq.Moves.AddRange(currentMoves);
-				seq.UsedDices.AddRange(usedDices);
-				results.Add(seq);
-			}
-		}
+                    ExploreBoardRecursively(board, isWhite, newRemaining, newMoves, newUsedDice, results);
 
-		private List<MoveModel> GetMovesForDiceRoll(IBoardModel board, bool isWhite, int diceRoll)
-		{
-			var shadowBoard = board.DeepClone();
-			var moves = new List<MoveModel>();
-			var moveable = GetMoveableCheckerFields(shadowBoard, isWhite);
+                    // we use undo move here to avoid the overhead of cloning the board for each move
+                    UndoMove(board, move, isWhite);
+                }
+            }
 
-			foreach (var from in moveable)
-			{
-				if (CanBearOffChecker(shadowBoard, from, diceRoll, isWhite))
-				{
-					int to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
-					moves.Add(new MoveModel(from, to));
-				}
-				else if (CanMoveChecker(shadowBoard, from, diceRoll, isWhite))
-				{
-					int to = shadowBoard.MoveOperator(isWhite, from, diceRoll);
-					moves.Add(new MoveModel(from, to));
-				}
-			}
+            if (!anyMovePossible && currentMoves.Any())
+            {
+                var seq = new MoveSequenceModel();
+                seq.Moves.AddRange(currentMoves);
+                seq.UsedDices.AddRange(usedDices);
+                results.Add(seq);
+            }
+        }
 
-			return moves;
-		}
+        private void ExploreWithCallback(
+            IBoardModel board,
+            bool isWhite,
+            List<int> remainingRolls,
+            List<MoveModel> currentMoves,
+            int totalDices,
+            Func<IReadOnlyList<MoveModel>, bool> callback,
+            ref int maxDepthSeen,
+            ref bool satisfied)
+        {
+            // we already found a satisfying move sequence at full depth, stop immediately
+            if (satisfied && maxDepthSeen == totalDices)
+                return;
 
-		private static List<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel> sequences, int[] rolls)
-		{
-			// if possible: only sequences that use all dice
-			// if not possible: only sequences that use the highest dice
-			if (sequences == null || sequences.Count == 0)
-				return new List<MoveSequenceModel>();
+            bool anyMovePossible = false;
 
-			int totalDice = rolls.Length;
-			int maxRoll = rolls.Max();
+            for (int i = 0; i < remainingRolls.Count; i++)
+            {
+                int die = remainingRolls[i];
+                if (i > 0 && die == remainingRolls[i - 1])
+                    continue;
 
-			var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice).ToList();
-			if (usingAll.Count > 0)
-				return usingAll;
+                var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
+                if (possibleMoves.Count == 0)
+                    continue;
 
-			// no sequence has used all the dice -> only sequences are allowed that
-			// who have used at least the highest die
-			var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll)).ToList();
-			if (usingMax.Count > 0)
-				return usingMax;
-			// we return all found moves if the max roll can not be used at all
-			return sequences;
-		}
+                anyMovePossible = true;
 
-		private IEnumerable<MoveModel> ConvertToFlattenedMoves(List<MoveSequenceModel> sequences, IBoardModel model, bool isWhite)
-		{
-			// flatten sequences into a set of (from,to):
-			// add all single moves from allowed sequences
-			// additionally add “collapsed” chains (e.g. (0->1,1->3) -> collapsed (0->3)) 
-			// only if all moves in the sequence form a continuous chain.
-			var flattenedMoves = new HashSet<(int from, int to)>();
-			var sequenceCopies = sequences.Select(s => s.DeepClone());
-			var initialMovableFields = new HashSet<int>(GetMoveableCheckerFields(model, isWhite));
-			foreach (var seq in sequenceCopies)
-			{
-				var combinedMoves = GetCombinedMoves(seq, initialMovableFields, true);
-				foreach (var move in combinedMoves)
-				{
-					flattenedMoves.Add(move);
-				}
-			}
-			return flattenedMoves.Select(s => new MoveModel(s.from, s.to));
-		}
+                foreach (var move in possibleMoves)
+                {
+                    if (satisfied && maxDepthSeen == totalDices)
+                        return;
 
-		private static HashSet<(int from, int to)> GetCombinedMoves(
-			MoveSequenceModel seq,
-			HashSet<int> initialMovableFields,
-			bool partialCombinedMoves)
-		{
-			var set = new HashSet<(int from, int to)>();
-			if (seq.Moves.Count >= 2)
-			{
-				// check whether the moves form a genuine chain of the same checkers.
-				bool isContinuousChain = true;
-				for (int i = 1; i < seq.Moves.Count; i++)
-				{
-					if (seq.Moves[i - 1].To != seq.Moves[i].From)
-					{
-						if (partialCombinedMoves)
-						{
-							// the sequence may contain a partial continuous chain move
-							// substract it from the sequence and handle the remaining moves
-							var partialCollapsed = (seq.Moves[0].From, seq.Moves[i - 1].To);
-							// only add if it is not a no-op such as (5->5)
-							if (partialCollapsed.From != partialCollapsed.To)
-							{
-								set.Add(partialCollapsed);
-								seq.Moves.RemoveRange(0, i);
-							}
-						}
-						isContinuousChain = false;
-						break;
-					}
-				}
+                    MoveCheckerTo(board, move.From, move.To, isWhite);
 
-				if (isContinuousChain)
-				{
-					var collapsed = (seq.Moves.First().From, seq.Moves.Last().To);
+                    var newRemaining = new List<int>(remainingRolls);
+                    newRemaining.RemoveAt(i);
 
-					// only add if it is not a no-op such as (5->5)
-					if (collapsed.From != collapsed.To)
-					{
-						set.Add(collapsed);
-					}
+                    var newMoves = new List<MoveModel>(currentMoves) { move };
 
-					return set;
-				}
-			}
+                    ExploreWithCallback(board, isWhite, newRemaining, newMoves, totalDices, callback, ref maxDepthSeen, ref satisfied);
 
-			if (partialCombinedMoves)
-			{
-				// check individual moves and adopt them if necessary
-				for (int i = 0; i < seq.Moves.Count; i++)
-				{
-					if (initialMovableFields.Contains(seq.Moves[i].From))
-					{
-						var m = seq.Moves[i];
-						set.Add((m.From, m.To));
-					}
-				}
-			}
+                    UndoMove(board, move, isWhite);
+                }
+            }
 
-			return set;
-		}
-	}
+            if (!anyMovePossible && currentMoves.Count > 0)
+            {
+                int usedDice = currentMoves.Count;
+                if (usedDice > maxDepthSeen)
+                {
+                    // deeper sequences found. previous shallower results are invalid per dice rules
+                    maxDepthSeen = usedDice;
+                    satisfied = false;
+                }
+
+                if (usedDice == maxDepthSeen && callback(currentMoves))
+                {
+                    satisfied = true;
+                }
+            }
+        }
+
+        private List<MoveModel> GetMovesForDiceRoll(IBoardModel board, bool isWhite, int diceRoll)
+        {
+            var moves = new List<MoveModel>();
+            var moveable = GetMoveableCheckerFields(board, isWhite);
+
+            foreach (var from in moveable)
+            {
+                if (CanBearOffChecker(board, from, diceRoll, isWhite))
+                {
+                    int to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
+                    moves.Add(new MoveModel(from, to));
+                }
+                else if (CanMoveChecker(board, from, diceRoll, isWhite))
+                {
+                    int to = board.MoveOperator(isWhite, from, diceRoll);
+                    moves.Add(new MoveModel(from, to));
+                }
+            }
+
+            return moves;
+        }
+
+        private static IEnumerable<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel> sequences, int[] rolls)
+        {
+            // if possible: only sequences that use all dice
+            // if not possible: only sequences that use the highest dice
+            if (sequences == null || sequences.Count == 0)
+                return new List<MoveSequenceModel>();
+
+            int totalDice = rolls.Length;
+            int maxRoll = rolls.Max();
+
+            var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice);
+            if (usingAll.Any())
+                return usingAll;
+
+            // no sequence has used all the dice -> only sequences are allowed that
+            // who have used at least the highest die
+            var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll));
+            if (usingMax.Any())
+                return usingMax;
+            // we return all found moves if the max roll can not be used at all
+            return sequences;
+        }
+
+        private IEnumerable<MoveModel> ConvertToFlattenedMoves(IEnumerable<MoveSequenceModel> sequences, IBoardModel model, bool isWhite)
+        {
+            // flatten sequences into a set of (from,to):
+            // add all single moves from allowed sequences
+            // additionally add collapsed chains (e.g. (0->1,1->3) -> collapsed (0->3)) 
+            // only if all moves in the sequence form a continuous chain.
+            var flattenedMoves = new HashSet<(int from, int to)>();
+            var sequenceCopies = sequences.Select(s => s.DeepClone());
+            var initialMovableFields = new HashSet<int>(GetMoveableCheckerFields(model, isWhite));
+            foreach (var seq in sequenceCopies)
+            {
+                var combinedMoves = GetCombinedMoves(seq, initialMovableFields, true);
+                foreach (var move in combinedMoves)
+                {
+                    flattenedMoves.Add(move);
+                }
+            }
+            return flattenedMoves.Select(s => new MoveModel(s.from, s.to));
+        }
+
+        private static HashSet<(int from, int to)> GetCombinedMoves(
+            MoveSequenceModel seq,
+            HashSet<int> initialMovableFields,
+            bool partialCombinedMoves)
+        {
+            var set = new HashSet<(int from, int to)>();
+            if (seq.Moves.Count >= 2)
+            {
+                // check whether the moves form a genuine chain of the same checkers.
+                bool isContinuousChain = true;
+                for (int i = 1; i < seq.Moves.Count; i++)
+                {
+                    if (seq.Moves[i - 1].To != seq.Moves[i].From)
+                    {
+                        if (partialCombinedMoves)
+                        {
+                            // the sequence may contain a partial continuous chain move
+                            // substract it from the sequence and handle the remaining moves
+                            var partialCollapsed = (seq.Moves[0].From, seq.Moves[i - 1].To);
+                            // only add if it is not a no-op such as (5->5)
+                            if (partialCollapsed.From != partialCollapsed.To)
+                            {
+                                set.Add(partialCollapsed);
+                                seq.Moves.RemoveRange(0, i);
+                            }
+                        }
+                        isContinuousChain = false;
+                        break;
+                    }
+                }
+
+                if (isContinuousChain)
+                {
+                    var collapsed = (seq.Moves.First().From, seq.Moves.Last().To);
+
+                    // only add if it is not a no-op such as (5->5)
+                    if (collapsed.From != collapsed.To)
+                    {
+                        set.Add(collapsed);
+                    }
+
+                    return set;
+                }
+            }
+
+            if (partialCombinedMoves)
+            {
+                // check individual moves and adopt them if necessary
+                for (int i = 0; i < seq.Moves.Count; i++)
+                {
+                    if (initialMovableFields.Contains(seq.Moves[i].From))
+                    {
+                        var m = seq.Moves[i];
+                        set.Add((m.From, m.To));
+                    }
+                }
+            }
+
+            return set;
+        }
+    }
 }

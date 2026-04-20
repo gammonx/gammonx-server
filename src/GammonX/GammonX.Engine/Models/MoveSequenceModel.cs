@@ -43,7 +43,14 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public bool Equals(MoveSequenceModel? other)
 		{
-			return other != null && SequenceKey() == other.SequenceKey();
+			if (other == null || Moves.Count != other.Moves.Count)
+				return false;
+			for (int i = 0; i < Moves.Count; i++)
+			{
+				if (Moves[i].From != other.Moves[i].From || Moves[i].To != other.Moves[i].To)
+					return false;
+			}
+			return true;
 		}
 
 		public MoveSequenceModel Invert(GameModus modus)
@@ -70,7 +77,13 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public int GetHashCode(MoveSequenceModel obj)
 		{
-			return obj.SequenceKey().GetHashCode();
+			var hash = new HashCode();
+			foreach (var move in obj.Moves)
+			{
+				hash.Add(move.From);
+				hash.Add(move.To);
+			}
+			return hash.ToHashCode();
 		}
 	}
 
@@ -99,12 +112,6 @@ namespace GammonX.Engine.Models
 			To = to;
 		}
 
-		// <inheritdoc />
-		public bool Equals(MoveModel? other)
-		{
-			return other != null && other.From == From && other.To == To;
-		}
-
 		public MoveModel Invert(GameModus modus)
 		{
 			if (modus == GameModus.Fevga)
@@ -118,5 +125,23 @@ namespace GammonX.Engine.Models
 				return new MoveModel(inverted.Item1, inverted.Item2);
 			}
 		}
-	}
+
+        // <inheritdoc />
+        public bool Equals(MoveModel? other)
+        {
+            return other != null && other.From == From && other.To == To;
+        }
+
+        // <inheritdoc />
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as MoveModel);
+        }
+
+        // <inheritdoc />
+        public override int GetHashCode()
+        {
+			return base.GetHashCode();
+        }
+    }
 }

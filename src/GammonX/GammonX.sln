@@ -30,6 +30,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Models.Tests", "Gam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.DynamoDb.Tests", "GammonX.DynamoDb.Tests\GammonX.DynamoDb.Tests.csproj", "{96AD3522-1351-433E-9F1D-4AE15F4D296E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mars", "Mars", "{2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Mars.Server", "GammonX.Mars.Server\GammonX.Mars.Server.csproj", "{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Mars.Server.Tests", "GammonX.Mars.Server.Tests\GammonX.Mars.Server.Tests.csproj", "{F1480F4E-4DF0-49B8-99E3-1F965212E277}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,6 +82,14 @@ Global
 		{96AD3522-1351-433E-9F1D-4AE15F4D296E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{96AD3522-1351-433E-9F1D-4AE15F4D296E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{96AD3522-1351-433E-9F1D-4AE15F4D296E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1480F4E-4DF0-49B8-99E3-1F965212E277}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1480F4E-4DF0-49B8-99E3-1F965212E277}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1480F4E-4DF0-49B8-99E3-1F965212E277}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1480F4E-4DF0-49B8-99E3-1F965212E277}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -85,6 +99,8 @@ Global
 		{38584AF6-F7C9-24C9-7CE8-DA1B94596FD6} = {964C1780-1249-4EDC-88F0-CA5439177E1B}
 		{C12B28ED-81DA-4FFD-905E-2CF20F07D874} = {964C1780-1249-4EDC-88F0-CA5439177E1B}
 		{96AD3522-1351-433E-9F1D-4AE15F4D296E} = {964C1780-1249-4EDC-88F0-CA5439177E1B}
+		{60C0FA95-0F2E-45AC-9AE9-CDC4649E829A} = {2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}
+		{F1480F4E-4DF0-49B8-99E3-1F965212E277} = {2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {945C9211-4F4A-4FC0-A666-EDC2BF21D7FE}

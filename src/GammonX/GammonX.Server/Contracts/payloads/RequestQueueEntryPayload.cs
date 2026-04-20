@@ -1,11 +1,13 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Contracts;
+
+using GammonX.Server.Models;
 
 using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public sealed class RequestQueueEntryPayload : RequestPayload
+	public sealed class RequestQueueEntryPayload : ResponsePayload
 	{
 		/// <summary>
 		/// Gets or sets the unique id of this queue entry.

@@ -1,4 +1,5 @@
-﻿using GammonX.Models.Enums;
+﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -47,7 +48,7 @@ namespace GammonX.Server.Tests
 			// join player 1
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
 			var resultJson1 = await response1.Content.ReadAsStringAsync();
-			var joinResponse1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson1);
+			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
 			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload1.Status);
@@ -58,7 +59,7 @@ namespace GammonX.Server.Tests
 			var statusResponse1 = await client.PostAsJsonAsync($"/api/matches/queues/{joinPayload1.QueueId}", statusRequest1);
 			var statusJson1 = await statusResponse1.Content.ReadAsStringAsync();
 			Assert.NotNull(statusJson1);
-			var statusContract1 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(statusJson1);
+			var statusContract1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(statusJson1);
 			Assert.NotNull(statusContract1);
 			Assert.Equal(QueueEntryStatus.WaitingForOpponent, statusContract1.Payload.Status);
 			Assert.Null(statusContract1.Payload.MatchId);
@@ -66,7 +67,7 @@ namespace GammonX.Server.Tests
 			// join player 2
 			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
 			var resultJson2 = await response2.Content.ReadAsStringAsync();
-			var joinResponse2 = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(resultJson2);
+			var joinResponse2 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
 			Assert.Equal(QueueEntryStatus.WaitingForOpponent, joinPayload2.Status);

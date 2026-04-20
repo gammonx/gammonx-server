@@ -11,28 +11,31 @@
 		Stack<IHistoryEvent> Events { get; }
 
 		/// <summary>
-		/// Adds the given <paramref name="historyEvent"/> to <see cref="Events"/>.
-		/// </summary>
-		/// <param name="historyEvent">Event to add.</param>
-		void Add(IHistoryEvent historyEvent);
-
-		/// <summary>
-		/// Removes the given <paramref name="historyEvent"/> from <see cref="Events"/>.
-		/// </summary>
-		/// <param name="historyEvent">Event to remove.</param>
-		void Remove(IHistoryEvent historyEvent);
-
-		/// <summary>
-		/// Tries to removes the last entry from <see cref="Events"/>
-		/// </summary>
-		/// <returns>True if remove. False if not.</returns>
-		bool TryRemoveLast();
-
-		/// <summary>
 		/// Tries to peek if there is a last history event available.
 		/// </summary>
 		/// <param name="lastEvent">Last event added to history or null if non there.</param>
 		/// <returns>Last history event added to the stack.</returns>
 		bool TryPeekLast(out IHistoryEvent? lastEvent);
 	}
+
+	public interface IEditableBoardHistory
+	{
+        /// <summary>
+        /// Adds the given <paramref name="historyEvent"/> to <see cref="Events"/>.
+        /// </summary>
+        /// <param name="historyEvent">Event to add.</param>
+        void Add(IHistoryEvent historyEvent);
+
+        /// <summary>
+        /// Removes the given <paramref name="historyEvent"/> from <see cref="Events"/>.
+        /// </summary>
+        /// <param name="historyEvent">Event to remove.</param>
+        void Remove(IHistoryEvent historyEvent);
+
+        /// <summary>
+        /// Tries to removes the last entry from <see cref="Events"/>
+        /// </summary>
+        /// <returns>True if remove. False if not.</returns>
+        bool TryRemoveLast();
+    }
 }

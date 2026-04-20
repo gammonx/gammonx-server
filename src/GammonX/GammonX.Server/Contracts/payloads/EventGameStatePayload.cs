@@ -1,9 +1,11 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Models.Contracts;
+
+using GammonX.Engine.Models;
+using GammonX.Engine.Extensions;
 
 using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
-using GammonX.Server.Services;
 
 using System.Runtime.Serialization;
 
@@ -40,13 +42,13 @@ namespace GammonX.Server.Contracts
 		public MoveSequenceModel[] MoveSequences { get; set; }
 
 		[DataMember(Name = "boardState")]
-		public BoardStateContract BoardState { get; set; }
+		public BoardModelContract BoardState { get; set; }
 
 		public EventGameStatePayload(params string[] allowedCommands) : base(allowedCommands)
 		{
 			DiceRolls = Array.Empty<DiceRollContract>();
 			MoveSequences = Array.Empty<MoveSequenceModel>();
-			BoardState = new BoardStateContract();
+			BoardState = new BoardModelContract();
 		}
 
 		public static EventGameStatePayload Create(IGameSessionModel model, bool inverted, params string[] allowedCommands)

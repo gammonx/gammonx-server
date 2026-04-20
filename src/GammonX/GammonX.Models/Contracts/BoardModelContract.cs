@@ -1,9 +1,9 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Models.Contracts
 {
 	[DataContract]
-	public sealed class BoardStateContract
+	public sealed class BoardModelContract
 	{
 		[DataMember(Name = "fields", IsRequired = true)]
 		public int[] Fields { get; set; }
@@ -35,9 +35,9 @@ namespace GammonX.Server.Contracts
 		[DataMember(Name = "doublingCubeOwner", IsRequired = false, EmitDefaultValue = false)]
 		public bool DoublingCubeOwner { get; set; }
 
-		public BoardStateContract()
+		public BoardModelContract()
 		{
 			Fields = Array.Empty<int>();
 		}
-	}
+    }
 }

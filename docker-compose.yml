@@ -15,7 +15,8 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
       - GAME_SERVICE__BASEPATH=/game
-      - BOT_SERVICE__BASEURL=http://wildbg-service:8082/bot/wildbg/
+      - BOT_SERVICE__MARS=http://mars-service:8083/bot/mars/
+      - BOT_SERVICE__WILDBG=http://wildbg-service:8082/bot/wildbg/
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
@@ -34,6 +35,7 @@ services:
       # - REPOSITORY__BASEURL=http://aws-stack-local:4566/restapis/{api-id}/dev/_user_request_
     depends_on:
       - wildbg-service
+      - mars-service
     networks:
     - gammonx-network   
 
@@ -49,6 +51,24 @@ services:
       - "8082:8082"
     environment:
       - SERVICE_BASEPATH=/bot/wildbg
+    networks:
+    - gammonx-network   
+
+  mars-service:
+    image: gammonx/mars-service
+    build:
+      context: .
+      dockerfile: ./src/GammonX/Dockerfile
+      target: mars-server-final
+      args:
+        BUILD_CONFIGURATION: debug
+    container_name: mars-bot
+    ports:
+      - "8083:8080"
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - SERVICE__BASEPATH=/bot/mars
     networks:
     - gammonx-network   
 

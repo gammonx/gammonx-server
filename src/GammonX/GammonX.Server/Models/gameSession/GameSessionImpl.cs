@@ -133,7 +133,7 @@ namespace GammonX.Server.Models
                 Phase = GamePhase.WaitingForEndTurn;
             }
 
-            _boardService.AddEventToHistory(BoardModel, isWhite, rolls);
+            _boardService.AddRollEventToHistory(BoardModel, isWhite, rolls);
         }
 
         // <inheritdoc />
@@ -180,7 +180,6 @@ namespace GammonX.Server.Models
                 {
                     _boardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
                     _activeUndoStack.Push(move);
-                    _boardService.AddEventToHistory(BoardModel, isWhite, move);
                 }
 
                 // we recalculate the remaining move for the given unused dices
@@ -218,7 +217,7 @@ namespace GammonX.Server.Models
 			{
 				if (BoardModel.History.TryPeekLast(out var lastEvent))
 				{
-					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move && BoardModel.History.TryRemoveLast())
+					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move)
 					{
                         // we reverse the move direction in order to undo the last move
                         _boardService.UndoMove(BoardModel, lastMove, isWhite);

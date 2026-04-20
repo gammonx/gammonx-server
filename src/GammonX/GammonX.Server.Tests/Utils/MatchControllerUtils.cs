@@ -1,4 +1,5 @@
-﻿using GammonX.Models.Enums;
+﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -19,7 +20,7 @@ namespace GammonX.Server.Tests.Utils
                 var response = await client.PostAsJsonAsync($"/api/matches/queues/{queueId}", req);
                 var statusJson = await response.Content.ReadAsStringAsync();
                 Assert.NotNull(statusJson);
-                var status = JsonConvert.DeserializeObject<RequestResponseContract<RequestQueueEntryPayload>>(statusJson);
+                var status = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(statusJson);
                 Assert.NotNull(status);
                 return status.Payload;
             }

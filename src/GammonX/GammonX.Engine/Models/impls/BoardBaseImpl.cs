@@ -147,8 +147,16 @@ namespace GammonX.Engine.Models
 			return true;
 		});
 
-		// <inheritdoc />
-		public virtual void BearOffChecker(bool isWhite, int amount)
+        // <inheritdoc />
+        public virtual Func<bool, int, bool> IsInStartOperator => new((isWhite, position) =>
+        {
+            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value)) return false;
+            if (!isWhite && (position > StartRangeBlack.Start.Value || position < StartRangeBlack.End.Value)) return false;
+            return true;
+        });
+
+        // <inheritdoc />
+        public virtual void BearOffChecker(bool isWhite, int amount)
 		{
 			if (isWhite)
 			{

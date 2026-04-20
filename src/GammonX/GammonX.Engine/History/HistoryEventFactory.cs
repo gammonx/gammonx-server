@@ -21,7 +21,7 @@ namespace GammonX.Engine.History
 		{
 			var hitEventValue = new HitEventValueImpl(from, isWhite);
 			return new HistoryEventImpl(HistoryEventType.Hit, hitEventValue, isWhite);
-        }
+		}
 	}
 
 	public static class BoardHistoryFactory

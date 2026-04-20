@@ -15,7 +15,7 @@ namespace GammonX.Server.Bot
 		public CubeDecision CubeDecision { get; set; } = new();
 
 		/// <summary>
-		/// Gets the win/lose probabilities for the move given in <see cref="LegalPlays"/>
+		/// Gets the win/lose probabilities for the move.
 		/// </summary>
 		[DataMember(Name = "probabilities")]
 		public Probabilities PlayProbabilities { get; set; } = new();

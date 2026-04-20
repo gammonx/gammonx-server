@@ -2,14 +2,13 @@
 - see changelog 
 
 ## Active
-- none
+- fevga/plakoto bot implementation
 
 ## TODO 
-- fevga/plakoto bot implementation
-- palamedes schreiben
+- bot dificulty levels
+- mars bot eval match equity (points away)
 - doubling cube to history/stats
 - export matches to sgf/.mat format
-- bot dificulty levels
 - subscription service (clientside?)
 - match equity/stats afer match :: win percentage to user
 - auth/user account > how to identify premium accounts?

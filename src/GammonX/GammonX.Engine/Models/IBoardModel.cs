@@ -115,12 +115,20 @@ namespace GammonX.Engine.Models
 		/// </summary>
 		Func<bool, int, bool> IsInHomeOperator { get; }
 
-		/// <summary>
-		/// Bears off a checker for the specified player.
-		/// </summary>
-		/// <param name="isWhite">Indicates the player, <c>true</c> for white and <c>false</c> for black.</param>
-		/// <param name="amount">Amount of checkers borne off. Normally just one.</param>
-		void BearOffChecker(bool isWhite, int amount);
+        /// <summary>
+        /// Operator function to check if a given checker is within the start range.
+        /// First parameter <c>true</c> for white player, <c>false</c> for black player.
+        /// Second int represents the current position of the checker.
+        /// Returns <c>true</c> if the checker is within the start range, otherwise <c>false</c>.
+        /// </summary>
+        Func<bool, int, bool> IsInStartOperator { get; }
+
+        /// <summary>
+        /// Bears off a checker for the specified player.
+        /// </summary>
+        /// <param name="isWhite">Indicates the player, <c>true</c> for white and <c>false</c> for black.</param>
+        /// <param name="amount">Amount of checkers borne off. Normally just one.</param>
+        void BearOffChecker(bool isWhite, int amount);
 
 		/// <summary>
 		/// Inverts this instance of the board horizontally (white>black/black>white) for the other player.
