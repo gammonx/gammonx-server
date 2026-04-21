@@ -1,3 +1,5 @@
+using GammonX.Mars.Server;
+using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
 
 using GammonX.Mars.Training;
@@ -29,6 +31,8 @@ else
     Console.WriteLine("Invalid selection. Exiting.");
 }
 
+Console.ReadLine();
+
 #region Train Model
 
 static void RunTrainModel()
@@ -39,10 +43,17 @@ static void RunTrainModel()
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", $"{modus}_net.dat");
 
-    PlakotoNetTrainer.Train(
+    if (modus == GameModus.Plakoto)
+    {
+        PlakotoNetTrainer.Train(
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
         outputModelPath: outputModelPath);
+    }
+    else
+    {
+        throw new InvalidOperationException($"Training for modus {modus} is not implemented.");
+    }
 }
 
 #endregion Train Model
@@ -66,6 +77,24 @@ static void RunGenerateTrainingData()
         GameModus.Fevga => new FevgaFeatureVectorExtractor(),
         _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
     };
+    ContactWeightModel contactWeights = modus switch
+    {
+        GameModus.Plakoto => EvalWeights.PlakotoContactWeights,
+        GameModus.Fevga => EvalWeights.FevgaContactWeights,
+        _ => throw new NotSupportedException($"Modus {modus} has no contact weights.")
+    };
+    ContactWeightModel cheapContactWeights = modus switch
+    {
+        GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
+        GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
+        _ => throw new NotSupportedException($"Modus {modus} has no cheapcontact weights.")
+    };
+    RaceWeightModel raceWeightModel= modus switch
+    {
+        GameModus.Plakoto => EvalWeights.RaceWeights,
+        GameModus.Fevga => EvalWeights.RaceWeights,
+        _ => throw new NotSupportedException($"Modus {modus} has no race weights.")
+    };
 
     var completed = 0;
     var discarded = 0;
@@ -82,7 +111,7 @@ static void RunGenerateTrainingData()
     {
         var recorder = new SelfPlayRecorder(extractor, lambda);
         var runner = new SelfPlayRunner(recorder, modus);
-        var samples = runner.Run();
+        var samples = runner.Run(contactWeights, cheapContactWeights, raceWeightModel);
 
         lock (lockObj)
         {

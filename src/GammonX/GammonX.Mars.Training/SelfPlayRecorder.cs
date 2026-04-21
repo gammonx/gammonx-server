@@ -10,7 +10,7 @@ namespace GammonX.Mars.Training
     /// </summary>
     public sealed class SelfPlayRecorder
     {
-        public const float DefaultLambda = 0.95f; // kept for API compatibility
+        public const float DefaultLambda = 0.95f; // TODO
 
         private readonly IFeatureVectorExtractor _featureVectorExtractor;
         private readonly List<(float[] Features, bool IsWhite)> _positions = [];
