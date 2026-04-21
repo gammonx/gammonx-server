@@ -1,80 +1,132 @@
 using GammonX.Mars.Server.Services;
 
 using GammonX.Mars.Training;
-
+using GammonX.Mars.Training.NeuralNet;
 using GammonX.Models.Enums;
 
-// -- Configuration ------------------------------------------------------------
-const int totalGames = 1_000;
-const GameModus modus = GameModus.Plakoto;
-const string outputPath = "training_data.csv";
-const float lambda = SelfPlayRecorder.DefaultLambda;
-// -----------------------------------------------------------------------------
+using System.Diagnostics;
 
-IFeatureVectorExtractor extractor = modus switch
-{
-    GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
-    GameModus.Fevga => new FevgaFeatureVectorExtractor(),
-    _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
-};
-
-var completed = 0;
-var discarded = 0;
-
-Console.WriteLine($"Starting self-play: {totalGames} games, modus={modus}, lambda={lambda}");
-Console.WriteLine($"Output: {Path.GetFullPath(outputPath)}");
+Console.WriteLine("===========================================");
+Console.WriteLine("  GammonX Mars — Training Console");
+Console.WriteLine("===========================================");
 Console.WriteLine();
-
-var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
-var lockObj = new object();
-
-Parallel.For(0, totalGames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, _ =>
-{
-    var recorder = new SelfPlayRecorder(extractor, lambda);
-    var runner = new SelfPlayRunner(recorder, modus);
-    var samples = runner.Run();
-
-    lock (lockObj)
-    {
-        if (samples.Count == 0)
-        {
-            discarded++;
-        }
-        else
-        {
-            allSamples.AddRange(samples);
-            completed++;
-        }
-
-        var started = completed + discarded;
-        Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
-    }
-});
-
+Console.WriteLine("  1  Generate training data");
+Console.WriteLine("  2  Train model");
 Console.WriteLine();
-Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
-Console.WriteLine("Shuffling...");
+Console.Write("Select mode: ");
 
-var rng = Random.Shared;
-for (int i = allSamples.Count - 1; i > 0; i--)
+var modeInput = Console.ReadLine()?.Trim();
+if (modeInput == "1")
 {
-    int j = rng.Next(i + 1);
-    (allSamples[i], allSamples[j]) = (allSamples[j], allSamples[i]);
+    RunGenerateTrainingData();
+}
+else if (modeInput == "2")
+{
+    RunTrainModel();
+}
+else
+{
+    Console.WriteLine("Invalid selection. Exiting.");
 }
 
-int splitIndex = (int)(allSamples.Count * 0.85);
-var trainSamples = allSamples[..splitIndex];
-var valSamples = allSamples[splitIndex..];
+#region Train Model
 
-Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
-Console.WriteLine("Writing CSV files...");
+static void RunTrainModel()
+{
+    Console.WriteLine();
 
-WriteCsv(outputPath, trainSamples, extractor.FeatureCount);
-WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), valSamples, extractor.FeatureCount);
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
+    var outputModelPath = PromptString("Output model path", $"{modus}_net.dat");
 
-Console.WriteLine($"Written: {outputPath}");
-Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
-Console.WriteLine("Complete.");
+    PlakotoNetTrainer.Train(
+        trainCsvPath: trainingCsvPath,
+        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath: outputModelPath);
+}
+
+#endregion Train Model
+
+#region Generate Training Data
+
+static void RunGenerateTrainingData()
+{
+    Console.WriteLine();
+
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    var totalGames = PromptInt("Total games", 1_000);
+    var outputPath = PromptString("Output CSV path", "training_data.csv");
+    var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
+
+    Console.WriteLine();
+
+    IFeatureVectorExtractor extractor = modus switch
+    {
+        GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
+        GameModus.Fevga => new FevgaFeatureVectorExtractor(),
+        _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
+    };
+
+    var completed = 0;
+    var discarded = 0;
+    var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
+    var lockObj = new object();
+
+    Console.WriteLine($"Starting self-play: {totalGames} games, modus={modus}, lambda={lambda}");
+    Console.WriteLine($"Output: {Path.GetFullPath(outputPath)}");
+    Console.WriteLine();
+
+    var stopwatch = Stopwatch.StartNew();
+
+    Parallel.For(0, totalGames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, _ =>
+    {
+        var recorder = new SelfPlayRecorder(extractor, lambda);
+        var runner = new SelfPlayRunner(recorder, modus);
+        var samples = runner.Run();
+
+        lock (lockObj)
+        {
+            if (samples.Count == 0)
+            {
+                discarded++;
+            }
+            else
+            {
+                allSamples.AddRange(samples);
+                completed++;
+            }
+
+            var started = completed + discarded;
+            Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
+        }
+    });
+
+    Console.WriteLine();
+    Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
+    Console.WriteLine("Shuffling...");
+
+    var rng = Random.Shared;
+    for (int i = allSamples.Count - 1; i > 0; i--)
+    {
+        int j = rng.Next(i + 1);
+        (allSamples[i], allSamples[j]) = (allSamples[j], allSamples[i]);
+    }
+
+    int splitIndex = (int)(allSamples.Count * 0.85);
+    var trainSamples = allSamples[..splitIndex];
+    var valSamples = allSamples[splitIndex..];
+
+    Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
+    Console.WriteLine("Writing CSV files...");
+
+    WriteCsv(outputPath, trainSamples, extractor.FeatureCount);
+    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), valSamples, extractor.FeatureCount);
+
+    Console.WriteLine($"Written: {outputPath}");
+    Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
+    Console.WriteLine($"Elapsed: {stopwatch.Elapsed:hh\\:mm\\:ss}");
+    Console.WriteLine("Complete.");
+}
 
 static void WriteCsv(string path, List<(float[] Features, float Label)> samples, int featureCount)
 {
@@ -87,3 +139,42 @@ static void WriteCsv(string path, List<(float[] Features, float Label)> samples,
         writer.WriteLine(label.ToString("G6"));
     }
 }
+
+#endregion Generate Training Data
+
+#region Prompt Helpers
+
+static GameModus PromptEnum(string label, GameModus[] options, GameModus defaultValue)
+{
+    Console.WriteLine($"{label}:");
+    for (int i = 0; i < options.Length; i++)
+        Console.WriteLine($"  {i + 1}  {options[i]}");
+    Console.Write($"Select [{defaultValue}]: ");
+    var input = Console.ReadLine()?.Trim();
+    if (int.TryParse(input, out var idx) && idx >= 1 && idx <= options.Length)
+        return options[idx - 1];
+    return defaultValue;
+}
+
+static int PromptInt(string label, int defaultValue)
+{
+    Console.Write($"{label} [{defaultValue}]: ");
+    var input = Console.ReadLine()?.Trim();
+    return int.TryParse(input, out var v) ? v : defaultValue;
+}
+
+static float PromptFloat(string label, float defaultValue)
+{
+    Console.Write($"{label} [{defaultValue}]: ");
+    var input = Console.ReadLine()?.Trim();
+    return float.TryParse(input, out var v) ? v : defaultValue;
+}
+
+static string PromptString(string label, string defaultValue)
+{
+    Console.Write($"{label} [{defaultValue}]: ");
+    var input = Console.ReadLine()?.Trim();
+    return string.IsNullOrEmpty(input) ? defaultValue : input;
+}
+
+#endregion Prompt Helpers
