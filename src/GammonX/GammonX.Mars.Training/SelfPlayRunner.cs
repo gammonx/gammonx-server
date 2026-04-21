@@ -1,7 +1,7 @@
 ﻿using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.Server;
+using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
 
 using GammonX.Models.Contracts;
@@ -20,7 +20,10 @@ namespace GammonX.Mars.Training
             _modus = modus;
         }
 
-        public IReadOnlyList<(float[] Features, float Label)> Run()
+        public IReadOnlyList<(float[] Features, float Label)> Run(
+            ContactWeightModel contactWeights, 
+            ContactWeightModel cheapContactWeights, 
+            RaceWeightModel raceWeights)
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
@@ -49,12 +52,11 @@ namespace GammonX.Mars.Training
                     Rolls = rolls
                 };
 
-                // TODO: only plakoto weights supported atm
                 var result = evalService.EvalMoveSequenceForTraining(
                     evalRequest, 
-                    EvalWeights.PlakotoCheapContactWeights, 
-                    EvalWeights.PlakotoContactWeights, 
-                    EvalWeights.RaceWeights,
+                    cheapContactWeights, 
+                    contactWeights, 
+                    raceWeights,
                     150);
 
                 if (result.BestMove.Moves.Count != 0)
