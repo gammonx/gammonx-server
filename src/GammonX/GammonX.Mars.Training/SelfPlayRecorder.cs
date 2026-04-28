@@ -1,5 +1,6 @@
 ﻿using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
+using GammonX.Mars.Server.Services.NN;
 
 namespace GammonX.Mars.Training
 {
@@ -10,15 +11,18 @@ namespace GammonX.Mars.Training
     /// </summary>
     public sealed class SelfPlayRecorder
     {
-        public const float DefaultLambda = 0.95f; // TODO
+        public const float DefaultLambda = 0.7f;
 
-        private readonly IFeatureVectorExtractor _featureVectorExtractor;
-        private readonly List<(float[] Features, bool IsWhite)> _positions = [];
+        private readonly IFeatureVectorExtractor _extractor;
+        private readonly INeuralEvalService? _neuralEvalService; // null = generation 0
+        private readonly float _lambda;
+        private readonly List<(float[] Features, bool IsWhite, float NetPrediction)> _positions = [];
 
-        public SelfPlayRecorder(IFeatureVectorExtractor featureVectorExtractor, float lambda = DefaultLambda)
+        public SelfPlayRecorder(IFeatureVectorExtractor extractor, INeuralEvalService? neuralEvalService = null, float lambda = DefaultLambda)
         {
-            _featureVectorExtractor = featureVectorExtractor;
-            // TODO: lambda reserved for future TD(λ) bootstrapping once base model converges
+            _extractor = extractor;
+            _lambda = lambda;
+            _neuralEvalService = neuralEvalService;
         }
 
         /// <summary>
@@ -30,7 +34,10 @@ namespace GammonX.Mars.Training
         /// <param name="isWhite"><c>true</c> if the active player this turn was white.</param>
         public void RecordPosition(NormalizedEvalResultModel eval, bool isWhite)
         {
-            _positions.Add((_featureVectorExtractor.Extract(eval), isWhite));
+            var features = _extractor.Extract(eval);
+            // we store the networks current prediction for this state (0.5 if no net yet)
+            var netPred = _neuralEvalService?.Predict(eval) ?? 0.5f;
+            _positions.Add((features, isWhite, netPred));
         }
 
         /// <summary>
@@ -42,13 +49,26 @@ namespace GammonX.Mars.Training
         public IReadOnlyList<(float[] Features, float Label)> Finalize(bool whiteWon)
         {
             int T = _positions.Count;
-            var result = new (float[] Features, float Label)[T];
+            var result = new List<(float[] Features, float Label)>(T);
 
             for (int t = 0; t < T; t++)
             {
-                var (features, isWhite) = _positions[t];
-                var label = (isWhite == whiteWon) ? 1.0f : 0.0f;
-                result[t] = (features, label);
+                var (features, isWhite, _) = _positions[t];
+                var terminal = (isWhite == whiteWon) ? 1.0f : 0.0f;
+
+                // near end we trust terminal
+                // early we trust next-state bootstrap (try to exclude noisy game start)
+                int stepsFromEnd = T - 1 - t;
+                float decay = MathF.Pow(_lambda, stepsFromEnd);
+
+                // we make next-state network prediction from the same players perspective
+                // if no future same-player position exists (last 2 turns), bootstrap from terminal
+                float bootstrap = (t + 2 < T)
+                    ? _positions[t + 2].NetPrediction
+                    : terminal;
+
+                float label = decay * terminal + (1f - decay) * bootstrap;
+                result.Add((features, label));
             }
 
             return result;

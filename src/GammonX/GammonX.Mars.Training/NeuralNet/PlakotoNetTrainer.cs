@@ -11,15 +11,16 @@ public static class PlakotoNetTrainer
         string trainCsvPath,
         string valCsvPath,
         string outputModelPath,
-        int epochs = 50,
+        int epochs = 100,
         int batchSize = 256,
-        float learningRate = 1e-3f)
+        float learningRate = 3e-3f)
     {
         var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath);
         var (valFeatures, valLabels) = LoadCsv(valCsvPath);
 
         var model = new PlakotoNet();
         var optimizer = optim.Adam(model.parameters(), lr: learningRate);
+        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.5);
         var loss = BCELoss();
 
         Console.WriteLine($"Train={trainFeatures.shape[0]}  Val={valFeatures.shape[0]}");
@@ -37,7 +38,10 @@ public static class PlakotoNetTrainer
             using (no_grad())
                 valLoss = RunEpoch(model, optimizer, loss, valFeatures, valLabels, batchSize, train: false);
 
-            Console.WriteLine($"Epoch {epoch,3}/{epochs}  train_loss={trainLoss:F5}  val_loss={valLoss:F5}");
+            var currentLr = optimizer.ParamGroups.First().LearningRate;
+            Console.WriteLine($"Epoch {epoch,3}/{epochs}  train_loss={trainLoss:F5}  val_loss={valLoss:F5}  lr={currentLr:G3}");
+
+            scheduler.step();
         }
 
         model.save(outputModelPath);

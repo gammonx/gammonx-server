@@ -1,6 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
 using GammonX.Mars.Server.Models;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Contracts;
 
@@ -11,6 +12,15 @@ namespace GammonX.Mars.Server.Services
     /// </summary>
     public interface IFeatureEvalService
     {
+        /// <summary>
+        /// Gets or sets the neural evaluation service to use for normalized board evaluation.
+        /// </summary>
+        /// <remarks>
+        /// If set it is used to evaluate the normalized board features for each candidate move sequence, 
+        /// and the resulting win probability is included as an additional feature in the final score calculation.
+        /// </remarks>
+        INeuralEvalService? NeuralEvalService { get; set; }
+
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in
         /// <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.

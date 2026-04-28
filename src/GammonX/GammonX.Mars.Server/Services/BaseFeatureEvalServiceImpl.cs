@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Mars.Server.Features;
 using GammonX.Mars.Server.Models;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Contracts;
 
@@ -11,9 +12,18 @@ namespace GammonX.Mars.Server.Services
     // <inheritdoc />
     public abstract class BaseFeatureEvalServiceImpl : IFeatureEvalService
     {
+        private INeuralEvalService? _neuralEvalService;
+
         protected abstract IBoardService BoardService { get; }
 
         protected RaceFeature RaceFeature { get; } = new RaceFeature();
+
+        // <inheritdoc />
+        public INeuralEvalService? NeuralEvalService
+        {
+            get => _neuralEvalService;
+            set => _neuralEvalService = value;
+        }
 
         // <inheritdoc />
         public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
@@ -25,7 +35,9 @@ namespace GammonX.Mars.Server.Services
             var isRace = RaceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            var score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+            var score = NeuralEvalService != null
+                    ? NeuralEvalService.Predict(NormalizedEvalResultModel.From(eval))
+                    : EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             return score;
         }
 
@@ -91,7 +103,9 @@ namespace GammonX.Mars.Server.Services
 
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(shadowBoard, isWhite, false);
-                var score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                var score = NeuralEvalService  != null
+                    ? NeuralEvalService.Predict(NormalizedEvalResultModel.From(eval))
+                    : EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
 
                 if (score > bestScore)
                 {
