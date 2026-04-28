@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -13,11 +14,13 @@ namespace GammonX.Mars.Training
     {
         private readonly GameModus _modus;
         private readonly SelfPlayRecorder _recorder;
+        private readonly INeuralEvalService? _neuralEvalService;
 
-        public SelfPlayRunner(SelfPlayRecorder recorder, GameModus modus)
+        public SelfPlayRunner(SelfPlayRecorder recorder, GameModus modus, INeuralEvalService? neuralService)
         {
             _recorder = recorder;
             _modus = modus;
+            _neuralEvalService = neuralService;
         }
 
         public IReadOnlyList<(float[] Features, float Label)> Run(
@@ -28,6 +31,10 @@ namespace GammonX.Mars.Training
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
             var evalService = FeatureEvalServiceFactory.Create(_modus);
+            if (_neuralEvalService != null)
+            {
+                evalService.NeuralEvalService = _neuralEvalService;
+            }
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var isWhite = true;

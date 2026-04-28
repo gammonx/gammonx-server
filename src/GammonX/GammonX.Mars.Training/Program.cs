@@ -1,9 +1,11 @@
 using GammonX.Mars.Server;
 using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Mars.Training;
 using GammonX.Mars.Training.NeuralNet;
+
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
@@ -41,7 +43,7 @@ static void RunTrainModel()
 
     var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
-    var outputModelPath = PromptString("Output model path", $"{modus}_net.dat");
+    var outputModelPath = PromptString("Output model path", $"training_net.dat");
 
     if (modus == GameModus.Plakoto)
     {
@@ -67,6 +69,7 @@ static void RunGenerateTrainingData()
     var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
+    var modelPath = PromptString("Neural model path (e.g. training_net.dat). Leave blank to use hard coded weights.", "");
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
 
     Console.WriteLine();
@@ -96,6 +99,17 @@ static void RunGenerateTrainingData()
         _ => throw new NotSupportedException($"Modus {modus} has no race weights.")
     };
 
+    INeuralEvalService? neuralEvalService = null;
+    if (!string.IsNullOrEmpty(modelPath) && File.Exists(modelPath) && modus == GameModus.Plakoto)
+    {
+        neuralEvalService = PlakotoNeuralEvalService.Load(modelPath);
+        Console.WriteLine($"Loaded neural evaluator: {modelPath}");
+    }
+    else
+    {
+        Console.WriteLine("Using hand-crafted eval weights.");
+    }
+
     var completed = 0;
     var discarded = 0;
     var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
@@ -107,10 +121,10 @@ static void RunGenerateTrainingData()
 
     var stopwatch = Stopwatch.StartNew();
 
-    Parallel.For(0, totalGames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, _ =>
+    Parallel.For(0, totalGames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 }, _ =>
     {
-        var recorder = new SelfPlayRecorder(extractor, lambda);
-        var runner = new SelfPlayRunner(recorder, modus);
+        var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
+        var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
         var samples = runner.Run(contactWeights, cheapContactWeights, raceWeightModel);
 
         lock (lockObj)
@@ -153,7 +167,7 @@ static void RunGenerateTrainingData()
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
-    Console.WriteLine($"Elapsed: {stopwatch.Elapsed:hh\\:mm\\:ss}");
+    Console.WriteLine($"Elapsed: {stopwatch.Elapsed:dd\\:hh\\:mm\\:ss}");
     Console.WriteLine("Complete.");
 }
 

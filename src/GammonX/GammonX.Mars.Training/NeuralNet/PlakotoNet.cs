@@ -24,7 +24,7 @@ public sealed class PlakotoNet : Module<Tensor, Tensor>
     {
         x = functional.relu(_fc1.forward(x));
         x = functional.relu(_fc2.forward(x));
-        x = torch.sigmoid(_fc3.forward(x));
+        x = sigmoid(_fc3.forward(x));
         return x.squeeze(-1);
     }
 }
