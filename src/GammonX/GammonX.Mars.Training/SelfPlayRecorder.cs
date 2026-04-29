@@ -41,6 +41,12 @@ namespace GammonX.Mars.Training
         }
 
         /// <summary>
+        /// Returns the raw network predictions collected during the game.
+        /// Only meaningful when a neural eval service is present; otherwise all values are 0.5.
+        /// </summary>
+        public IReadOnlyList<float> NetPredictions => _positions.Select(p => p.NetPrediction).ToList();
+
+        /// <summary>
         /// Finalizes the recording and returns all (features, label) training samples.
         /// Each position receives the terminal game outcome from the active player's perspective:
         /// 1.0 if that player won, 0.0 if they lost.
