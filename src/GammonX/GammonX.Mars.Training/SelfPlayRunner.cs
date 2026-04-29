@@ -10,6 +10,11 @@ using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Training
 {
+    public sealed record SelfPlayRunResult(
+        IReadOnlyList<(float[] Features, float Label)> Samples,
+        int TurnCount,
+        float? PredictionVariance);
+
     public sealed class SelfPlayRunner
     {
         private readonly GameModus _modus;
@@ -23,7 +28,7 @@ namespace GammonX.Mars.Training
             _neuralEvalService = neuralService;
         }
 
-        public IReadOnlyList<(float[] Features, float Label)> Run(
+        public SelfPlayRunResult Run(
             ContactWeightModel contactWeights, 
             ContactWeightModel cheapContactWeights, 
             RaceWeightModel raceWeights)
@@ -78,10 +83,23 @@ namespace GammonX.Mars.Training
             }
 
             if (turnCount >= maxTurns)
-                return [];
+                return new SelfPlayRunResult([], turnCount, null);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
-            return _recorder.Finalize(whiteWon);
+            var samples = _recorder.Finalize(whiteWon);
+
+            float? predictionVariance = null;
+            if (_neuralEvalService != null)
+            {
+                var preds = _recorder.NetPredictions;
+                if (preds.Count > 1)
+                {
+                    var mean = preds.Average();
+                    predictionVariance = preds.Average(p => (p - mean) * (p - mean));
+                }
+            }
+
+            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
         }
     }
 }

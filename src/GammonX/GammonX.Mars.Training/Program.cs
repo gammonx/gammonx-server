@@ -99,20 +99,18 @@ static void RunGenerateTrainingData()
         _ => throw new NotSupportedException($"Modus {modus} has no race weights.")
     };
 
-    INeuralEvalService? neuralEvalService = null;
-    if (!string.IsNullOrEmpty(modelPath) && File.Exists(modelPath) && modus == GameModus.Plakoto)
-    {
-        neuralEvalService = PlakotoNeuralEvalService.Load(modelPath);
+    var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath) && modus == GameModus.Plakoto;
+    if (useNeuralEval)
         Console.WriteLine($"Loaded neural evaluator: {modelPath}");
-    }
     else
-    {
         Console.WriteLine("Using hand-crafted eval weights.");
-    }
 
     var completed = 0;
     var discarded = 0;
     var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
+    var totalTurnCount = 0L;
+    var totalPredVariance = 0.0;
+    var predVarianceCount = 0;
     var lockObj = new object();
 
     Console.WriteLine($"Starting self-play: {totalGames} games, modus={modus}, lambda={lambda}");
@@ -121,31 +119,49 @@ static void RunGenerateTrainingData()
 
     var stopwatch = Stopwatch.StartNew();
 
-    Parallel.For(0, totalGames, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 }, _ =>
-    {
-        var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
-        var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
-        var samples = runner.Run(contactWeights, cheapContactWeights, raceWeightModel);
-
-        lock (lockObj)
+    Parallel.For(
+        0, totalGames,
+        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 },
+        () => useNeuralEval ? PlakotoNeuralEvalService.Load(modelPath) : null,
+        (_, _, neuralEvalService) =>
         {
-            if (samples.Count == 0)
+            var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
+            var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
+            var result = runner.Run(contactWeights, cheapContactWeights, raceWeightModel);
+
+            lock (lockObj)
             {
-                discarded++;
-            }
-            else
-            {
-                allSamples.AddRange(samples);
-                completed++;
+                totalTurnCount += result.TurnCount;
+
+                if (result.Samples.Count == 0)
+                {
+                    discarded++;
+                }
+                else
+                {
+                    allSamples.AddRange(result.Samples);
+                    completed++;
+
+                    if (result.PredictionVariance.HasValue)
+                    {
+                        totalPredVariance += result.PredictionVariance.Value;
+                        predVarianceCount++;
+                    }
+                }
+
+                var started = completed + discarded;
+                Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
             }
 
-            var started = completed + discarded;
-            Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
-        }
-    });
+            return neuralEvalService;
+        },
+        _ => { });
 
     Console.WriteLine();
     Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
+    Console.WriteLine($"Avg turns/game : {(double)totalTurnCount / totalGames:F1}");
+    if (predVarianceCount > 0)
+        Console.WriteLine($"Avg pred variance: {totalPredVariance / predVarianceCount:F5}  (over {predVarianceCount} completed games)");
     Console.WriteLine("Shuffling...");
 
     var rng = Random.Shared;
