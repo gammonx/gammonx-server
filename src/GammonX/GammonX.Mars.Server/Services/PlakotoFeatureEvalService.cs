@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Mars.Server.Features;
 using GammonX.Mars.Server.Models;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Enums;
 
@@ -22,7 +23,8 @@ namespace GammonX.Mars.Server.Services
 
         protected override IBoardService BoardService { get; }
 
-        public PlakotoFeatureEvalService()
+        public PlakotoFeatureEvalService(
+            [FromKeyedServices(GameModus.Plakoto)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
             _contactFeatures = new ContactProbabilityFeature(BoardService);

@@ -1,7 +1,6 @@
 ﻿using GammonX.Engine.Models;
 
 using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Contracts;
 
@@ -13,22 +12,13 @@ namespace GammonX.Mars.Server.Services
     public interface IFeatureEvalService
     {
         /// <summary>
-        /// Gets or sets the neural evaluation service to use for normalized board evaluation.
-        /// </summary>
-        /// <remarks>
-        /// If set it is used to evaluate the normalized board features for each candidate move sequence, 
-        /// and the resulting win probability is included as an additional feature in the final score calculation.
-        /// </remarks>
-        INeuralEvalService? NeuralEvalService { get; set; }
-
-        /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in
         /// <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.
         /// </summary>
         /// <param name="contract">Contains board state .</param>
         /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Raace position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
         /// <returns>Score rating of the given board for a given player.</returns>
         double EvalBoardState(
             EvalBoardRequestContract contract,
@@ -43,7 +33,7 @@ namespace GammonX.Mars.Server.Services
         /// <param name="contract">Contains board state and rolls.</param>
         /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Raace position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>Best rated move sequence.</returns>
         MoveSequenceModel EvalMoveSequence(

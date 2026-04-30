@@ -5,16 +5,14 @@ namespace GammonX.Mars.Server.Services
     // <inheritdoc />
     public class FevgaFeatureVectorExtractor : IFeatureVectorExtractor
     {
-        private const int _featureCount = 10;
-
         // <inheritdoc />
-        public int FeatureCount => _featureCount;
+        public int FeatureCount => 10;
 
         // <inheritdoc />
         public float[] Extract(NormalizedEvalResultModel model)
         {
-            return new float[_featureCount]
-            {
+            return
+            [
                 // contact features
                 (float)model.PrimeProbabilityPlayer,
                 (float)model.PrimeProbabilityOpp,
@@ -28,8 +26,8 @@ namespace GammonX.Mars.Server.Services
                 (float)model.PipToBearOffOpp,
                 (float)model.PipDifference,
                 // race flag
-                model.Race ? 1f : 0f,
-            };
+                model.Race ? 1f : 0f
+            ];
         }
     }
 }

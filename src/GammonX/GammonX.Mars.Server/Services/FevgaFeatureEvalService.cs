@@ -3,6 +3,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Mars.Server.Features;
 using GammonX.Mars.Server.Models;
+using GammonX.Mars.Server.Services.NN;
 
 using GammonX.Models.Enums;
 
@@ -15,14 +16,15 @@ namespace GammonX.Mars.Server.Services
         private readonly PipDifferenceFeature _pipDifferenceFeature = new PipDifferenceFeature();
         private readonly MaxPrimeLengthFeature _maxPrimeLengthFeature = new MaxPrimeLengthFeature();
         private readonly HomebarCountFeature _homebarCountFeature = new HomebarCountFeature();
-        // we see a hight blot count in fevga as a positive board control feature
+        // we see a high blot count in fevga as a positive board control feature
         private readonly BlotCountFeature _blotCountFeature = new BlotCountFeature();
         private readonly PrimeProbabilityFeature _primeProbabilityFeature;
 
         protected override IBoardService BoardService { get; }
 
 
-        public FevgaFeatureEvalService()
+        public FevgaFeatureEvalService(
+            [FromKeyedServices(GameModus.Fevga)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Fevga);
             _primeProbabilityFeature = new PrimeProbabilityFeature(BoardService);

@@ -1,8 +1,9 @@
 using DotNetEnv;
 
 using GammonX.Mars.Server;
+using GammonX.Mars.Server.NN;
 using GammonX.Mars.Server.Services;
-
+using GammonX.Mars.Server.Services.NN;
 using GammonX.Models.Enums;
 
 using Microsoft.Extensions.Options;
@@ -41,6 +42,8 @@ builder.Services.AddKeyedSingleton<IFeatureEvalService, PlakotoFeatureEvalServic
 builder.Services.AddKeyedSingleton<IFeatureEvalService, FevgaFeatureEvalService>(GameModus.Fevga);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, PlakotoFeatureVectorExtractor>(GameModus.Plakoto);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorExtractor>(GameModus.Fevga);
+builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Plakoto, (_, _) => NeuralEvalService.LoadEmbedded(GameModus.Plakoto));
+builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Fevga, (_, _) => NeuralEvalService.LoadEmbedded(GameModus.Fevga));
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------

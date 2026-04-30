@@ -43,7 +43,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
@@ -86,7 +86,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
@@ -127,7 +127,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
@@ -165,7 +165,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
@@ -187,7 +187,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
 
             EvalBoardRequestContract requestBlack = new EvalBoardRequestContract()
             {

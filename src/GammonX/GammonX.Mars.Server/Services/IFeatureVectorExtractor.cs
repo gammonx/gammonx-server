@@ -1,4 +1,5 @@
 ﻿using GammonX.Mars.Server.Models;
+using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Server.Services
 {
@@ -16,5 +17,18 @@ namespace GammonX.Mars.Server.Services
         /// </summary>
         /// <returns>A normalized feature vector as a float array.</returns>
         float[] Extract(NormalizedEvalResultModel n);
+    }
+
+    public static class FeatureVectorExtractorFactory
+    {
+        public static IFeatureVectorExtractor Create(GameModus modus)
+        {
+            return modus switch
+            {
+                GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
+                GameModus.Fevga => new FevgaFeatureVectorExtractor(),
+                _ => throw new NotSupportedException($"Modus {modus} has no feature vector extractor.")
+            };
+        }
     }
 }

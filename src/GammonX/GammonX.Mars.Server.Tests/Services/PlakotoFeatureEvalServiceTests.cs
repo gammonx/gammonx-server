@@ -36,7 +36,7 @@ namespace GammonX.Mars.Server.Tests.Services
         [InlineData(5, 5)]
         [InlineData(5, 6)]
         [InlineData(6, 6)]
-        public void PlaktotoStartBoardEvalEqualsForBlackAndWhite(int roll1, int roll2)
+        public void PlakotoStartBoardEvalEqualsForBlackAndWhite(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBoard1);
             Assert.NotNull(boardContract);
@@ -53,7 +53,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
-            var evalService = new PlakotoFeatureEvalService();
+            var evalService = new PlakotoFeatureEvalService(null);
             var result = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
 
             Assert.NotNull(result);
@@ -92,7 +92,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
-            var evalService = new PlakotoFeatureEvalService();
+            var evalService = new PlakotoFeatureEvalService(null);
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
@@ -129,7 +129,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
-            var evalService = new PlakotoFeatureEvalService();
+            var evalService = new PlakotoFeatureEvalService(null);
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
@@ -158,7 +158,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
-            var evalService = new PlakotoFeatureEvalService();
+            var evalService = new PlakotoFeatureEvalService(null);
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
@@ -181,7 +181,7 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
-            var evalService = new PlakotoFeatureEvalService();
+            var evalService = new PlakotoFeatureEvalService(null);
 
             EvalBoardRequestContract requestBlack = new EvalBoardRequestContract()
             {
