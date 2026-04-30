@@ -62,7 +62,7 @@ namespace GammonX.Mars.Training
                 var (features, isWhite, _) = _positions[t];
                 var terminal = (isWhite == whiteWon) ? 1.0f : 0.0f;
 
-                // near end we trust terminal
+                // near the end we trust terminal
                 // early we trust next-state bootstrap (try to exclude noisy game start)
                 int stepsFromEnd = T - 1 - t;
                 float decay = MathF.Pow(_lambda, stepsFromEnd);

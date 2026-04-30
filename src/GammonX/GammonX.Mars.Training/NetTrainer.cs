@@ -1,13 +1,17 @@
-﻿using TorchSharp;
+using GammonX.Mars.Server.NN;
+using GammonX.Models.Enums;
+
+using TorchSharp;
 
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace GammonX.Mars.Training.NeuralNet;
+namespace GammonX.Mars.Training;
 
-public static class PlakotoNetTrainer
+public static class NetTrainer
 {
     public static void Train(
+        GameModus modus,
         string trainCsvPath,
         string valCsvPath,
         string outputModelPath,
@@ -18,8 +22,8 @@ public static class PlakotoNetTrainer
         var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath);
         var (valFeatures, valLabels) = LoadCsv(valCsvPath);
 
-        var model = new PlakotoNet();
-        var optimizer = optim.Adam(model.parameters(), lr: learningRate);
+        var model = NetModelFactory.Create(modus);
+        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate);
         var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.5);
         var loss = BCELoss();
 
@@ -30,10 +34,10 @@ public static class PlakotoNetTrainer
 
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
-            model.train();
+            model.Train();
             var trainLoss = RunEpoch(model, optimizer, loss, trainFeatures, trainLabels, batchSize, train: true);
 
-            model.eval();
+            model.Eval();
             float valLoss;
             using (no_grad())
                 valLoss = RunEpoch(model, optimizer, loss, valFeatures, valLabels, batchSize, train: false);
@@ -44,12 +48,12 @@ public static class PlakotoNetTrainer
             scheduler.step();
         }
 
-        model.save(outputModelPath);
+        model.Save(outputModelPath);
         Console.WriteLine($"Model saved: {outputModelPath}");
     }
 
     private static float RunEpoch(
-        PlakotoNet model,
+        INetModel model,
         optim.Optimizer optimizer,
         Loss<Tensor, Tensor, Tensor> loss,
         Tensor features,
@@ -67,7 +71,7 @@ public static class PlakotoNetTrainer
             var xBatch = features.narrow(0, start, end - start);
             var yBatch = labels.narrow(0, start, end - start);
 
-            var pred = model.forward(xBatch);
+            var pred = model.Forward(xBatch);
             var l = loss.forward(pred, yBatch);
 
             if (train)

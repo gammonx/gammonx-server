@@ -12,18 +12,16 @@ namespace GammonX.Mars.Server.Services
     // <inheritdoc />
     public abstract class BaseFeatureEvalServiceImpl : IFeatureEvalService
     {
-        private INeuralEvalService? _neuralEvalService;
+        private readonly INeuralEvalService _neuralEvalService;
+
+        protected BaseFeatureEvalServiceImpl(INeuralEvalService neuralEvalService)
+        {
+            _neuralEvalService = neuralEvalService;
+        }
 
         protected abstract IBoardService BoardService { get; }
 
-        protected RaceFeature RaceFeature { get; } = new RaceFeature();
-
-        // <inheritdoc />
-        public INeuralEvalService? NeuralEvalService
-        {
-            get => _neuralEvalService;
-            set => _neuralEvalService = value;
-        }
+        protected RaceFeature RaceFeature { get; } = new();
 
         // <inheritdoc />
         public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
@@ -35,9 +33,7 @@ namespace GammonX.Mars.Server.Services
             var isRace = RaceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            var score = NeuralEvalService != null
-                    ? NeuralEvalService.Predict(NormalizedEvalResultModel.From(eval))
-                    : EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+            var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval)) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             return score;
         }
 
@@ -64,8 +60,8 @@ namespace GammonX.Mars.Server.Services
             // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
             var candidates = GetCandidatesByCheapScore(board, legalMovesSeq, isWhite, cheapContactWeights, raceWeights);
 
-            var identicalTopEvalCandidates = candidates.Count(c => c.CheapScore == candidates[0].CheapScore);
-            // we want atleast all candidates with the same cheap score to be fully evaluated
+            var identicalTopEvalCandidates = candidates.Count(c => Math.Abs(c.CheapScore - candidates[0].CheapScore) < 1e-9);
+            // we want at least all candidates with the same cheap score to be fully evaluated
             // in this case we overwrite the given maxCandidates count
             var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Length);
 
@@ -103,9 +99,7 @@ namespace GammonX.Mars.Server.Services
 
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(shadowBoard, isWhite, false);
-                var score = NeuralEvalService  != null
-                    ? NeuralEvalService.Predict(NormalizedEvalResultModel.From(eval))
-                    : EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval)) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
 
                 if (score > bestScore)
                 {
@@ -138,6 +132,7 @@ namespace GammonX.Mars.Server.Services
 
                 var isRace = RaceFeature.Eval(shadowBoard, isWhite);
                 var eval = CalculateCheapEvalModel(shadowBoard, isWhite, isRace);
+                // TODO: also calculate cheap score by neural net?
                 var cheapScore = EvalScoreCalculator.CalculateCheapScore(eval, cheapContactWeights, raceWeights);
                 var cheapEvalResult = new CheapEvalResult(cheapScore, index, isRace);
                 candidates.Add(cheapEvalResult);

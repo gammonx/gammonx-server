@@ -35,11 +35,7 @@ namespace GammonX.Mars.Training
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
-            var evalService = FeatureEvalServiceFactory.Create(_modus);
-            if (_neuralEvalService != null)
-            {
-                evalService.NeuralEvalService = _neuralEvalService;
-            }
+            var evalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var isWhite = true;
@@ -56,7 +52,7 @@ namespace GammonX.Mars.Training
                     ? [rolls[0], rolls[0], rolls[0], rolls[0]]
                     : [rolls[0], rolls[1]];
 
-                var evalRequest = new EvalMoveRequestContract()
+                var evalRequest = new EvalMoveRequestContract
                 {
                     Board = board.ToContract(false),
                     IsWhite = isWhite,
@@ -76,7 +72,9 @@ namespace GammonX.Mars.Training
                     _recorder.RecordPosition(result.EvalResult, isWhite);
 
                     foreach (var move in result.BestMove.Moves)
+                    {
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
+                    }
                 }
 
                 isWhite = !isWhite;
@@ -91,11 +89,11 @@ namespace GammonX.Mars.Training
             float? predictionVariance = null;
             if (_neuralEvalService != null)
             {
-                var preds = _recorder.NetPredictions;
-                if (preds.Count > 1)
+                var predictions = _recorder.NetPredictions;
+                if (predictions.Count > 1)
                 {
-                    var mean = preds.Average();
-                    predictionVariance = preds.Average(p => (p - mean) * (p - mean));
+                    var mean = predictions.Average();
+                    predictionVariance = predictions.Average(p => (p - mean) * (p - mean));
                 }
             }
 

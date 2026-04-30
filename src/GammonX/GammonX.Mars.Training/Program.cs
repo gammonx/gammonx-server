@@ -1,10 +1,9 @@
 using GammonX.Mars.Server;
 using GammonX.Mars.Server.Models;
 using GammonX.Mars.Server.Services;
-using GammonX.Mars.Server.Services.NN;
+using GammonX.Mars.Server.NN;
 
 using GammonX.Mars.Training;
-using GammonX.Mars.Training.NeuralNet;
 
 using GammonX.Models.Enums;
 
@@ -45,17 +44,11 @@ static void RunTrainModel()
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", $"training_net.dat");
 
-    if (modus == GameModus.Plakoto)
-    {
-        PlakotoNetTrainer.Train(
+    NetTrainer.Train(
+        modus,
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
         outputModelPath: outputModelPath);
-    }
-    else
-    {
-        throw new InvalidOperationException($"Training for modus {modus} is not implemented.");
-    }
 }
 
 #endregion Train Model
@@ -90,7 +83,7 @@ static void RunGenerateTrainingData()
     {
         GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
         GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
-        _ => throw new NotSupportedException($"Modus {modus} has no cheapcontact weights.")
+        _ => throw new NotSupportedException($"Modus {modus} has no cheap contact weights.")
     };
     RaceWeightModel raceWeightModel= modus switch
     {
@@ -99,7 +92,7 @@ static void RunGenerateTrainingData()
         _ => throw new NotSupportedException($"Modus {modus} has no race weights.")
     };
 
-    var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath) && modus == GameModus.Plakoto;
+    var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
     if (useNeuralEval)
         Console.WriteLine($"Loaded neural evaluator: {modelPath}");
     else
@@ -122,7 +115,7 @@ static void RunGenerateTrainingData()
     Parallel.For(
         0, totalGames,
         new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 },
-        () => useNeuralEval ? PlakotoNeuralEvalService.Load(modelPath) : null,
+        () => useNeuralEval ? NeuralEvalService.Load(modus, modelPath) : null,
         (_, _, neuralEvalService) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
