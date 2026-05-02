@@ -1,9 +1,8 @@
 ﻿using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services;
-using GammonX.Mars.Server.Services.NN;
+using GammonX.Mars.NN.Models;
+using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -29,16 +28,16 @@ namespace GammonX.Mars.Training
         }
 
         public SelfPlayRunResult Run(
-            ContactWeightModel contactWeights, 
-            ContactWeightModel cheapContactWeights, 
+            ContactWeightModel contactWeights,
+            ContactWeightModel cheapContactWeights,
             RaceWeightModel raceWeights)
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
-            var evalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService);
+            var evalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService!);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
-            var isWhite = true;
+            var isWhite = Random.Shared.Next(2) == 0;
             const int maxTurns = 250;
             var turnCount = 0;
 
@@ -61,9 +60,9 @@ namespace GammonX.Mars.Training
                 };
 
                 var result = evalService.EvalMoveSequenceForTraining(
-                    evalRequest, 
-                    cheapContactWeights, 
-                    contactWeights, 
+                    evalRequest,
+                    cheapContactWeights,
+                    contactWeights,
                     raceWeights,
                     150);
 

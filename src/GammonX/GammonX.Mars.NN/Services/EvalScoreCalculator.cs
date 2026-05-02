@@ -1,6 +1,6 @@
-﻿using GammonX.Mars.Server.Models;
+﻿using GammonX.Mars.NN.Models;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     public static class EvalScoreCalculator
     {
@@ -9,7 +9,7 @@ namespace GammonX.Mars.Server.Services
         /// </summary>
         /// <remarks>
         /// The score acts as a relative ranking metric, not an absolute position quality. It is only meaningful
-        /// when compaing two positions against each other.
+        /// when comparing two positions against each other.
         /// </remarks>
         /// <param name="eval">Absolute feature eval scores.</param>
         /// <param name="contactWeights">Contact position weights.</param>

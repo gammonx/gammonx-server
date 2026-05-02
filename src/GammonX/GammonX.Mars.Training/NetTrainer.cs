@@ -1,4 +1,5 @@
-using GammonX.Mars.Server.NN;
+using GammonX.Mars.NN.Nets;
+
 using GammonX.Models.Enums;
 
 using TorchSharp;
@@ -68,11 +69,11 @@ public static class NetTrainer
         for (var start = 0; start < n; start += batchSize)
         {
             var end = Math.Min(start + batchSize, n);
-            var xBatch = features.narrow(0, start, end - start);
-            var yBatch = labels.narrow(0, start, end - start);
+            using var xBatch = features.narrow(0, start, end - start);
+            using var yBatch = labels.narrow(0, start, end - start);
 
-            var pred = model.Forward(xBatch);
-            var l = loss.forward(pred, yBatch);
+            using var pred = model.Forward(xBatch);
+            using var l = loss.forward(pred, yBatch);
 
             if (train)
             {

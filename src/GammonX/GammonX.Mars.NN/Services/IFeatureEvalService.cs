@@ -1,10 +1,8 @@
 ﻿using GammonX.Engine.Models;
-
-using GammonX.Mars.Server.Models;
-
+using GammonX.Mars.NN.Models;
 using GammonX.Models.Contracts;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     /// <summary>
     /// Provides capabilities to evaluate board states.
@@ -50,7 +48,7 @@ namespace GammonX.Mars.Server.Services
         /// <param name="contract">Contains board state and rolls.</param>
         /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Raace position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>Best rated move sequence and related normalized eval result.</returns>
         FinalEvalResult EvalMoveSequenceForTraining(

@@ -1,6 +1,6 @@
-﻿using GammonX.Mars.Server.Models;
+﻿using GammonX.Mars.NN.Models;
 
-namespace GammonX.Mars.Server.Services.NN
+namespace GammonX.Mars.NN.Services
 {
     /// <summary>
     /// Evaluates a normalized board position and returns a win probability in [0, 1].

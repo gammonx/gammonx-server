@@ -3,7 +3,7 @@
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace GammonX.Mars.Server.NN
+namespace GammonX.Mars.NN.Nets
 {
     // <inheritdoc />
     public sealed class PlakotoNet : Module<Tensor, Tensor>, INetModel
@@ -59,10 +59,13 @@ namespace GammonX.Mars.Server.NN
         // <inheritdoc />
         public override Tensor forward(Tensor x)
         {
-            x = functional.relu(_fc1.forward(x));
-            x = functional.relu(_fc2.forward(x));
-            x = sigmoid(_fc3.forward(x));
-            return x.squeeze(-1);
+            using var h1 = _fc1.forward(x);
+            using var r1 = functional.relu(h1);
+            using var h2 = _fc2.forward(r1);
+            using var r2 = functional.relu(h2);
+            using var h3 = _fc3.forward(r2);
+            using var s  = sigmoid(h3);
+            return s.squeeze(-1);
         }
     }
 }

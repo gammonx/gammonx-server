@@ -1,13 +1,12 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.Server.Features;
-using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services.NN;
+using GammonX.Mars.NN.Features;
+using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
     public abstract class BaseFeatureEvalServiceImpl : IFeatureEvalService

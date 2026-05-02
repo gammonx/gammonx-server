@@ -1,6 +1,5 @@
-﻿using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services;
-using GammonX.Mars.Server.Services.NN;
+﻿using GammonX.Mars.NN.Models;
+using GammonX.Mars.NN.Nets;
 
 using GammonX.Models.Enums;
 
@@ -8,11 +7,15 @@ using Serilog;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.Server.NN
+namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
     public sealed class NeuralEvalService : INeuralEvalService
     {
+        // TorchSharps internal symbolic shape system (SymNodeImpl) uses global C++ state
+        // that is not thread-safe. All forward passes must be serialized across all instances.
+        private static readonly Lock InferLock = new();
+
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
 
@@ -24,11 +27,14 @@ namespace GammonX.Mars.Server.NN
 
         public static INeuralEvalService Load(GameModus modus, string modelPath)
         {
-            var net = NetModelFactory.Create(modus);
-            var extractor = FeatureVectorExtractorFactory.Create(modus);
-            net.Load(modelPath);
-            net.Eval();
-            return new NeuralEvalService(net, extractor);
+            lock (InferLock)
+            {
+                var net = NetModelFactory.Create(modus);
+                var extractor = FeatureVectorExtractorFactory.Create(modus);
+                net.Load(modelPath);
+                net.Eval();
+                return new NeuralEvalService(net, extractor);
+            }
         }
 
         /// <summary>
@@ -44,25 +50,31 @@ namespace GammonX.Mars.Server.NN
             if (stream == null)
             {
                 Log.Warning("A neural net model is missing for {modus}. Falling back to linear model.", modus);
-                return null;
+                return null!;
             }
 
-            var net = NetModelFactory.Create(modus);
-            var extractor = FeatureVectorExtractorFactory.Create(modus);
-            net.LoadFromStream(stream);
-            net.Eval();
-            return new NeuralEvalService(net, extractor);
+            lock (InferLock)
+            {
+                var net = NetModelFactory.Create(modus);
+                var extractor = FeatureVectorExtractorFactory.Create(modus);
+                net.LoadFromStream(stream);
+                net.Eval();
+                return new NeuralEvalService(net, extractor);
+            }
         }
 
         // <inheritdoc />
         public float Predict(NormalizedEvalResultModel features)
         {
-            // extract game modus dependent features and predict
             var vec = _extractor.Extract(features);
-            using var input = tensor(vec).unsqueeze(0);
-            using var _ = no_grad();
-            using var output = _netModel.Forward(input);
-            return output.item<float>();
+            lock (InferLock)
+            {
+                using var raw   = tensor(vec);
+                using var input = raw.unsqueeze(0);
+                using var _     = no_grad();
+                using var output = _netModel.Forward(input);
+                return output.item<float>();
+            }
         }
     }
 }

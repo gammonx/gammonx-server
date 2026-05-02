@@ -4,7 +4,7 @@ using TorchSharp.Modules;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.Server.NN
+namespace GammonX.Mars.NN.Nets
 {
     /// <summary>
     /// Encapsulates a neural network model that can be used for evaluation.

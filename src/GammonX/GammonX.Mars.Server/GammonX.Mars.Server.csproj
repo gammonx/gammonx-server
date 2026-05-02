@@ -8,6 +8,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Services\NN\**" />
+	  <Content Remove="Services\NN\**" />
+	  <EmbeddedResource Remove="Services\NN\**" />
+	  <None Remove="Services\NN\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Remove="NeuralNets\Plakoto\training_net.dat" />
 	  <None Remove="NeuralNets\Fevga\training_net.dat" />
 	</ItemGroup>
@@ -16,14 +23,11 @@
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
 		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-		<PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.15" />
-		<PackageReference Include="Microsoft.ML" Version="5.0.0" />
-		<PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
-		<PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+	  <ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
 	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 
@@ -38,6 +42,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Contracts\" />
+	  <Folder Include="Models\" />
 	</ItemGroup>
 
 	<ItemGroup>

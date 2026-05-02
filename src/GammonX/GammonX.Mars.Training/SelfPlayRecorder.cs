@@ -1,6 +1,5 @@
-﻿using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services;
-using GammonX.Mars.Server.Services.NN;
+﻿using GammonX.Mars.NN.Models;
+using GammonX.Mars.NN.Services;
 
 namespace GammonX.Mars.Training
 {

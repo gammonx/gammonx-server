@@ -1,13 +1,14 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.Server.Features;
-using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services.NN;
+using GammonX.Mars.NN.Features;
+using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Server.Services
+using Microsoft.Extensions.DependencyInjection;
+
+namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
     public sealed class PlakotoFeatureEvalService : BaseFeatureEvalServiceImpl
