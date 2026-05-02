@@ -1,6 +1,6 @@
-﻿using GammonX.Mars.Server.Models;
+﻿using GammonX.Mars.NN.Models;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
     public class FevgaFeatureVectorExtractor : IFeatureVectorExtractor

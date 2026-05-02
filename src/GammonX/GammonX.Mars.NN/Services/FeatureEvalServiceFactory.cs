@@ -1,7 +1,6 @@
-﻿using GammonX.Mars.Server.Services.NN;
-using GammonX.Models.Enums;
+﻿using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     public static class FeatureEvalServiceFactory
     {

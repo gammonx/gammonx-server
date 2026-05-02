@@ -1,7 +1,8 @@
-﻿using GammonX.Mars.Server.Models;
+﻿using GammonX.Mars.NN.Models;
+
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     public interface IFeatureVectorExtractor
     {

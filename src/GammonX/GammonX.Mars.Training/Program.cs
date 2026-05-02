@@ -1,16 +1,15 @@
-using GammonX.Mars.Server;
-using GammonX.Mars.Server.Models;
-using GammonX.Mars.Server.Services;
-using GammonX.Mars.Server.NN;
-
 using GammonX.Mars.Training;
 
 using GammonX.Models.Enums;
 
+using GammonX.Mars.NN;
+using GammonX.Mars.NN.Models;
+using GammonX.Mars.NN.Services;
+
 using System.Diagnostics;
 
 Console.WriteLine("===========================================");
-Console.WriteLine("  GammonX Mars â€” Training Console");
+Console.WriteLine("  GammonX Mars — Training Console");
 Console.WriteLine("===========================================");
 Console.WriteLine();
 Console.WriteLine("  1  Generate training data");
@@ -85,7 +84,7 @@ static void RunGenerateTrainingData()
         GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
         _ => throw new NotSupportedException($"Modus {modus} has no cheap contact weights.")
     };
-    RaceWeightModel raceWeightModel= modus switch
+    RaceWeightModel raceWeightModel = modus switch
     {
         GameModus.Plakoto => EvalWeights.RaceWeights,
         GameModus.Fevga => EvalWeights.RaceWeights,
@@ -93,10 +92,16 @@ static void RunGenerateTrainingData()
     };
 
     var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
+    INeuralEvalService neuralEvalService = null!;
     if (useNeuralEval)
+    {
+        neuralEvalService = NeuralEvalService.Load(modus, modelPath);
         Console.WriteLine($"Loaded neural evaluator: {modelPath}");
+    }
     else
+    {
         Console.WriteLine("Using hand-crafted eval weights.");
+    }
 
     var completed = 0;
     var discarded = 0;
@@ -113,10 +118,10 @@ static void RunGenerateTrainingData()
     var stopwatch = Stopwatch.StartNew();
 
     Parallel.For(
-        0, totalGames,
-        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 },
-        () => useNeuralEval ? NeuralEvalService.Load(modus, modelPath) : null,
-        (_, _, neuralEvalService) =>
+        0, 
+        totalGames,
+        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+        (_) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
             var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
@@ -145,10 +150,7 @@ static void RunGenerateTrainingData()
                 var started = completed + discarded;
                 Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
             }
-
-            return neuralEvalService;
-        },
-        _ => { });
+        });
 
     Console.WriteLine();
     Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
