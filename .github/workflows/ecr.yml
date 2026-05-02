@@ -12,9 +12,11 @@ env:
   IMAGE_PREFIX: gammonx
   GAME_SERVICE: game-service
   WILDBG_SERVICE: wildbg-service
+  MARS_SERVICE: mars-service
   LAMBDA_SERVICE: lambda-service
   ECR_GAME_REPO: gammonx-dev-gameservice-ecrrepo
   ECR_WILDBG_REPO: gammonx-dev-wildbgservice-ecrrepo
+  ECR_MARS_REPO: gammonx-dev-marsservice-ecrrepo
   ECR_LAMBDA_REPO: gammonx-dev-lambdaservice-ecrrepo
 
 jobs:
@@ -58,6 +60,13 @@ jobs:
           echo "Tagging and pushing $IMAGE_NAME"
           # Tag image
           docker tag "${IMAGE_PREFIX}/${WILDBG_SERVICE}:latest" "$IMAGE_NAME"
+          docker push "$IMAGE_NAME"
+
+          echo "MARS SERVICE"
+          IMAGE_NAME="${ECR_REGISTRY}/${ECR_MARS_REPO}:latest"
+          echo "Tagging and pushing $IMAGE_NAME"
+          # Tag image
+          docker tag "${IMAGE_PREFIX}/${MARS_SERVICE}:latest" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
           echo "LAMBDA SERVICE"
