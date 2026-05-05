@@ -2,7 +2,6 @@
 
 using GammonX.Models.Enums;
 
-using GammonX.Server.Bot;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
