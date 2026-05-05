@@ -50,8 +50,8 @@ namespace GammonX.Mars.Training
         /// Each position receives the terminal game outcome from the active player's perspective:
         /// 1.0 if that player won, 0.0 if they lost.
         /// </summary>
-        /// <param name="whiteWon"><c>true</c> if white won the game.</param>
-        public IReadOnlyList<(float[] Features, float Label)> Finalize(bool whiteWon)
+        /// <param name="whiteWon"><c>true</c> if white won the game. <c>null</c> if the game ended in a draw.</param>
+        public IReadOnlyList<(float[] Features, float Label)> Finalize(bool? whiteWon)
         {
             int T = _positions.Count;
             var result = new List<(float[] Features, float Label)>(T);
@@ -59,7 +59,8 @@ namespace GammonX.Mars.Training
             for (int t = 0; t < T; t++)
             {
                 var (features, isWhite, _) = _positions[t];
-                var terminal = (isWhite == whiteWon) ? 1.0f : 0.0f;
+                // draw (whiteWon == null): neither player won, terminal value is 0.5
+                var terminal = whiteWon == null ? 0.5f : (isWhite == whiteWon) ? 1.0f : 0.0f;
 
                 // near the end we trust terminal
                 // early we trust next-state bootstrap (try to exclude noisy game start)

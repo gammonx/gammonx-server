@@ -69,7 +69,7 @@ namespace GammonX.Mars.NN.Services
         /// </summary>
         /// <remarks>
         /// The score acts as a relative ranking metric, not an absolute position quality. It is only meaningful
-        /// when compaing two positions against each other.
+        /// when comparing two positions against each other.
         /// </remarks>
         /// <param name="eval">Absolute feature eval scores.</param>
         /// <param name="contactWeights">(Cheap) Contact position weights.</param>
