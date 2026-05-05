@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
     <ProjectReference Include="..\GammonX.Mars.Server\GammonX.Mars.Server.csproj" />
   </ItemGroup>
 

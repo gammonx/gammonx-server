@@ -1,6 +1,6 @@
-﻿using GammonX.Mars.Server.Models;
+﻿using GammonX.Mars.NN.Models;
 
-namespace GammonX.Mars.Server
+namespace GammonX.Mars.NN
 {
     public static class EvalWeights
     {

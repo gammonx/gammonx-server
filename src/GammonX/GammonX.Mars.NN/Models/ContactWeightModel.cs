@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace GammonX.Mars.Server.Models
+namespace GammonX.Mars.NN.Models
 {
     /// <summary>
     /// Weight model config for <see cref="EvalResultModel"/> evaluation model."/>

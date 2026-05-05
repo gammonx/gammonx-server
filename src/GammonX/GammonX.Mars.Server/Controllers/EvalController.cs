@@ -1,7 +1,9 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Mars.NN;
+using GammonX.Mars.NN.Services;
+
 using GammonX.Mars.Server.Contracts;
-using GammonX.Mars.Server.Services;
 
 using GammonX.Models.Contracts;
 
@@ -33,12 +35,14 @@ namespace GammonX.Mars.Server.Controllers
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
+                // TODO: weights are obsolete with a loaded neural network
+
                 EvalWeights.RaceWeights.Validate();
                 EvalWeights.PlakotoContactWeights.Validate();
                 EvalWeights.PlakotoCheapContactWeights.Validate();
 
                 var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
-                var payload = new BoardEvalPayload() { EvalScore = boardScore };
+                var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
             }

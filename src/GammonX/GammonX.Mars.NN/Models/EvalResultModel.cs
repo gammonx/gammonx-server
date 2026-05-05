@@ -1,4 +1,4 @@
-﻿namespace GammonX.Mars.Server.Models
+﻿namespace GammonX.Mars.NN.Models
 {
     public readonly struct EvalResultModel
     {
