@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
@@ -77,6 +78,14 @@ namespace GammonX.Mars.Training
                 }
 
                 isWhite = !isWhite;
+
+                if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
+                {
+                    // draw: both mothers pinned, neither player can win
+                    // label all recorded positions as 0.5 (half-win) rather than discarding
+                    var drawSamples = _recorder.Finalize(whiteWon: null);
+                    return new SelfPlayRunResult(drawSamples, turnCount, null);
+                }
             }
 
             if (turnCount >= maxTurns)
@@ -84,7 +93,7 @@ namespace GammonX.Mars.Training
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var samples = _recorder.Finalize(whiteWon);
-
+                        
             float? predictionVariance = null;
             if (_neuralEvalService != null)
             {
