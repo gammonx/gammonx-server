@@ -8,27 +8,15 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Services\NN\**" />
-	  <Content Remove="Services\NN\**" />
-	  <EmbeddedResource Remove="Services\NN\**" />
-	  <None Remove="Services\NN\**" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Remove="NeuralNets\Plakoto\training_net.dat" />
-	  <None Remove="NeuralNets\Fevga\training_net.dat" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="DotNetEnv" Version="3.1.1" />
 		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
-	  <ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
-	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
+		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+		<ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
+		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -41,13 +29,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Contracts\" />
-	  <Folder Include="Models\" />
+		<Folder Include="Contracts\" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <EmbeddedResource Include="NeuralNets\Plakoto\training_net.dat" />
-	  <EmbeddedResource Include="NeuralNets\Fevga\training_net.dat" />
+		<EmbeddedResource Include="NeuralNets\Plakoto\training_net.dat" />
+		<EmbeddedResource Include="NeuralNets\Fevga\training_net.dat" />
 	</ItemGroup>
 
 </Project>
