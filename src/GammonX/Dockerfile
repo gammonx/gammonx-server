@@ -43,7 +43,8 @@ ENTRYPOINT ["dotnet", "GammonX.Server.dll"]
 ### MARS SERVER CONTAINER (.NET 10)
 #####################################################
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS mars-server-image
+# TorchSharp requires a glibc-based image
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS mars-server-image
 ARG BUILD_CONFIGURATION=Release
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /app
@@ -51,12 +52,13 @@ EXPOSE 8083
 
 # create an unprivileged user
 ARG APP_UID=1001
-ARG APP_GID=1000
-RUN addgroup --gid ${APP_GID} appgroup \
- && adduser --disabled-password --gecos "" --uid ${APP_UID} --g ${APP_GID} appuser \
+ARG APP_GID=1001
+RUN groupadd -g ${APP_GID} appgroup \
+ && useradd -u ${APP_UID} -g ${APP_GID} -c "" -s /bin/bash appuser \
  && chown -R appuser:appgroup /app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS mars-server-build
+# TorchSharp requires a glibc-based image
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS mars-server-build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Mars.Server/GammonX.Mars.Server.csproj", "GammonX.Mars.Server/"]
@@ -67,7 +69,7 @@ RUN dotnet build "./GammonX.Mars.Server.csproj" -c ${BUILD_CONFIGURATION} -o /ap
 
 FROM mars-server-build AS mars-server-publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./GammonX.Mars.Server.csproj" -c ${BUILD_CONFIGURATION} -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./GammonX.Mars.Server.csproj" -c ${BUILD_CONFIGURATION} -o /app/publish /p:UseAppHost=false -r linux-x64 --self-contained false
 
 FROM mars-server-image AS mars-server-final
 ARG BUILD_CONFIGURATION=Release
