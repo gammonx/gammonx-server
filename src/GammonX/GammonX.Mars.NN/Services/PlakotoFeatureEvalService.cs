@@ -46,8 +46,7 @@ namespace GammonX.Mars.NN.Services
             }
             else
             {
-                var contactEvalPlayer = _contactFeatures.Eval(board, isWhite);
-                var contactEvalOpp = _contactFeatures.Eval(board, !isWhite);
+                var (contactEvalPlayer, contactEvalOpp) = _contactFeatures.Eval(board, isWhite);
                 var pinEval = _pinEvalFeature.Eval(board, isWhite);
 
                 eval = new EvalResultModel()
