@@ -60,8 +60,7 @@ namespace GammonX.Mars.NN.Services
             // we first compute cheap features to rank candidates, avoiding the expensive
             // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
             var pool = ArrayPool<CheapEvalResult>.Shared;
-            var legalMovesCopy = legalMovesSeq.Select(lms => lms.DeepClone()).ToArray();
-            var candidates = GetCandidatesByCheapScore(board, legalMovesCopy, isWhite, cheapContactWeights, raceWeights, pool);
+            var candidates = GetCandidatesByCheapScore(board, legalMovesSeq, isWhite, cheapContactWeights, raceWeights, pool);
             try
             {
                 var identicalTopEvalCandidates = candidates.Count(c => Math.Abs(c.CheapScore - candidates[0].CheapScore) < 1e-9);
@@ -112,15 +111,14 @@ namespace GammonX.Mars.NN.Services
                     BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                 }
 
-                // TODO: create board hash, check if already computed
-
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(board, isWhite, false);
                 var normalizedEval = NormalizedEvalResultModel.From(eval);
                 var score = _neuralEvalService?.Predict(normalizedEval) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
 
-                moveSeq.Moves.Reverse();
-                foreach (var undoMove in moveSeq.Moves)
+                var reversedMoveSeq = moveSeq.DeepClone();
+                reversedMoveSeq.Moves.Reverse();
+                foreach (var undoMove in reversedMoveSeq.Moves)
                 {
                     // we manually undo the moves in order to reduce instance allocations
                     BoardService.UndoMove(board, undoMove, isWhite);
@@ -155,13 +153,12 @@ namespace GammonX.Mars.NN.Services
                     BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                 }
 
-                // TODO: create board hash, check if already computed
-
                 var isRace = RaceFeature.Eval(board, isWhite);
                 var eval = CalculateCheapEvalModel(board, isWhite, isRace);
 
-                moveSeq.Moves.Reverse();
-                foreach (var undoMove in moveSeq.Moves)
+                var reversedMoveSeq = moveSeq.DeepClone();
+                reversedMoveSeq.Moves.Reverse();
+                foreach (var undoMove in reversedMoveSeq.Moves)
                 {
                     // we manually undo the moves in order to reduce instance allocations
                     BoardService.UndoMove(board, undoMove, isWhite);

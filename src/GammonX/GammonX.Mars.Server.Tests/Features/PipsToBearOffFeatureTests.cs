@@ -1,6 +1,6 @@
 ﻿using GammonX.Engine.Services;
 
-using GammonX.Mars.Server.Features;
+using GammonX.Mars.NN.Features;
 
 using GammonX.Mars.Server.Tests.Data;
 
