@@ -90,7 +90,9 @@ namespace GammonX.Mars.Server.Services
             await _cts.CancelAsync();
             _channel.Writer.Complete();
             if (_workerTask is not null)
+            {
                 await _workerTask.ConfigureAwait(false);
+            }
         }
 
         private async Task RunWorkerAsync(CancellationToken ct)
@@ -107,7 +109,9 @@ namespace GammonX.Mars.Server.Services
 
                 // we drain all currently queued requests up to maxBatchSize
                 while (batch.Count < _maxBatchSize && _channel.Reader.TryRead(out var req))
+                {
                     batch.Add(req);
+                }
 
                 if (batch.Count == 0)
                     continue;
@@ -129,7 +133,9 @@ namespace GammonX.Mars.Server.Services
             var featureCount = batch[0].Vec.Length;
             var flat = new float[batch.Count * featureCount];
             for (var i = 0; i < batch.Count; i++)
+            {
                 batch[i].Vec.CopyTo(flat, i * featureCount);
+            }
 
             // one forward pass for all positions in the batch: [N, featureCount] > [N]
             using var input = tensor(flat, [batch.Count, featureCount]);

@@ -6,6 +6,8 @@ using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
 
+using System.Buffers;
+
 namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
@@ -57,18 +59,33 @@ namespace GammonX.Mars.NN.Services
 
             // we first compute cheap features to rank candidates, avoiding the expensive
             // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
-            var candidates = GetCandidatesByCheapScore(board, legalMovesSeq, isWhite, cheapContactWeights, raceWeights);
+            var pool = ArrayPool<CheapEvalResult>.Shared;
+            var legalMovesCopy = legalMovesSeq.Select(lms => lms.DeepClone()).ToArray();
+            var candidates = GetCandidatesByCheapScore(board, legalMovesCopy, isWhite, cheapContactWeights, raceWeights, pool);
+            try
+            {
+                var identicalTopEvalCandidates = candidates.Count(c => Math.Abs(c.CheapScore - candidates[0].CheapScore) < 1e-9);
+                // we want at least all candidates with the same cheap score to be fully evaluated
+                // in this case we overwrite the given maxCandidates count
+                var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Count);
 
-            var identicalTopEvalCandidates = candidates.Count(c => Math.Abs(c.CheapScore - candidates[0].CheapScore) < 1e-9);
-            // we want at least all candidates with the same cheap score to be fully evaluated
-            // in this case we overwrite the given maxCandidates count
-            var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Length);
-
-            var evalResult = GetCandidateByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
-            return evalResult;
+                var evalResult = GetCandidateByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
+                return evalResult;
+            }
+            finally
+            {
+                pool.Return(candidates.Array!);
+            }
         }
 
-        private FinalEvalResult GetCandidateByFullEval(IBoardModel board, MoveSequenceModel[] legalMovesSeq, bool isWhite, CheapEvalResult[] candidates, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int evalCount)
+        private FinalEvalResult GetCandidateByFullEval
+            (IBoardModel board,
+            MoveSequenceModel[] legalMovesSeq,
+            bool isWhite,
+            ArraySegment<CheapEvalResult> candidates,
+            ContactWeightModel contactWeights,
+            RaceWeightModel raceWeights,
+            int evalCount)
         {
             var bestScore = double.MinValue;
             var bestMoveSeq = legalMovesSeq[0];
@@ -81,7 +98,7 @@ namespace GammonX.Mars.NN.Services
 
                 if (candidates[i].IsRace)
                 {
-                    // race score are already calculated
+                    // race score were already calculated
                     if (candidates[i].CheapScore > bestScore)
                     {
                         bestScore = candidates[i].CheapScore;
@@ -90,56 +107,74 @@ namespace GammonX.Mars.NN.Services
                     continue;
                 }
 
-                var shadowBoard = board.DeepClone();
                 foreach (var move in moveSeq.Moves)
                 {
-                    BoardService.MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
+                    BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                 }
 
+                // TODO: create board hash, check if already computed
+
                 // we now calculate the more expensive contact features
-                var eval = CalculateEvalModel(shadowBoard, isWhite, false);
-                var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval)) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                var eval = CalculateEvalModel(board, isWhite, false);
+                var normalizedEval = NormalizedEvalResultModel.From(eval);
+                var score = _neuralEvalService?.Predict(normalizedEval) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+
+                moveSeq.Moves.Reverse();
+                foreach (var undoMove in moveSeq.Moves)
+                {
+                    // we manually undo the moves in order to reduce instance allocations
+                    BoardService.UndoMove(board, undoMove, isWhite);
+                }
 
                 if (score > bestScore)
                 {
                     bestScore = score;
                     bestMoveSeq = moveSeq;
                     // we capture the features of the resulting board, this is the NN training input
-                    bestFeatures = NormalizedEvalResultModel.From(eval);
+                    bestFeatures = normalizedEval;
                 }
             }
 
             return new FinalEvalResult(bestMoveSeq, bestFeatures);
         }
 
-        private CheapEvalResult[] GetCandidatesByCheapScore(
+        private ArraySegment<CheapEvalResult> GetCandidatesByCheapScore(
             IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
             ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+            RaceWeightModel raceWeights,
+            ArrayPool<CheapEvalResult> pool)
         {
-            var candidates = new List<CheapEvalResult>();
+            var buffer = pool.Rent(legalMovesSeq.Length);
             for (int index = 0; index < legalMovesSeq.Length; index++)
             {
-                var shadowBoard = board.DeepClone();
                 var moveSeq = legalMovesSeq[index];
                 foreach (var move in moveSeq.Moves)
                 {
-                    BoardService.MoveCheckerTo(shadowBoard, move.From, move.To, isWhite);
+                    BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                 }
 
-                var isRace = RaceFeature.Eval(shadowBoard, isWhite);
-                var eval = CalculateCheapEvalModel(shadowBoard, isWhite, isRace);
-                // TODO: also calculate cheap score by neural net?
+                // TODO: create board hash, check if already computed
+
+                var isRace = RaceFeature.Eval(board, isWhite);
+                var eval = CalculateCheapEvalModel(board, isWhite, isRace);
+
+                moveSeq.Moves.Reverse();
+                foreach (var undoMove in moveSeq.Moves)
+                {
+                    // we manually undo the moves in order to reduce instance allocations
+                    BoardService.UndoMove(board, undoMove, isWhite);
+                }
+
                 var cheapScore = EvalScoreCalculator.CalculateCheapScore(eval, cheapContactWeights, raceWeights);
                 var cheapEvalResult = new CheapEvalResult(cheapScore, index, isRace);
-                candidates.Add(cheapEvalResult);
+                buffer[index] = cheapEvalResult;
             }
 
             // we sort by cheap score descending and only fully evaluate the top N contact candidates.
-            candidates.Sort((a, b) => b.CheapScore.CompareTo(a.CheapScore));
-            return candidates.ToArray();
+            Array.Sort(buffer, 0, legalMovesSeq.Length, CheapEvalResult.DescendingComparer.Instance);
+            return new ArraySegment<CheapEvalResult>(buffer, 0, legalMovesSeq.Length);
         }
 
         protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace);
