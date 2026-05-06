@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
+
 using GammonX.Mars.NN.Models;
+
 using GammonX.Models.Contracts;
 
 namespace GammonX.Mars.NN.Services
@@ -66,5 +68,23 @@ namespace GammonX.Mars.NN.Services
     public record class CheapEvalResult(
         double CheapScore,
         int Index,
-        bool IsRace);
+        bool IsRace)
+    {
+        /// <summary>
+        /// Sorts by <see cref="CheapEvalResult.CheapScore"/> descending — highest score first.
+        /// </summary>
+        public sealed class DescendingComparer : IComparer<CheapEvalResult>
+        {
+            public static readonly DescendingComparer Instance = new();
+
+            private DescendingComparer() 
+            {
+                // pass
+            }
+
+            // <inheritdoc />
+            public int Compare(CheapEvalResult? x, CheapEvalResult? y)
+                => y!.CheapScore.CompareTo(x!.CheapScore);
+        }
+    }
 }
