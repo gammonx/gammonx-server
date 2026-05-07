@@ -31,12 +31,14 @@ namespace GammonX.Mars.Server.Features
             var playerCounts = GetCheckerCounts(board, isWhite);
             var oppCounts = GetCheckerCounts(board, !isWhite);
 
-            int playerPrimeRolls = 0;
-            int oppPrimeRolls = 0;
+            // TODO: only explore for a prime probability if checkers needed for a prime == dice count (2 or 4)
 
-            for (int die1 = 1; die1 <= 6; die1++)
+            var playerPrimeRolls = 0;
+            var oppPrimeRolls = 0;
+
+            for (var die1 = 1; die1 <= 6; die1++)
             {
-                for (int die2 = die1; die2 <= 6; die2++)
+                for (var die2 = die1; die2 <= 6; die2++)
                 {
                     var weight = die1 == die2 ? 1 : 2;
                     int[] rolls = die1 == die2
@@ -44,34 +46,32 @@ namespace GammonX.Mars.Server.Features
                         : [die1, die2];
 
                     // players chance to form a prime
+                    var playerCanFormPrime = false;
+                    _boardService.ExploreLegalMoveSequences(board, isWhite, rolls, moves =>
                     {
-                        bool canFormPrime = false;
-                        _boardService.ExploreLegalMoveSequences(board, isWhite, rolls, moves =>
+                        if (FormsPrime(playerCounts, moves))
                         {
-                            if (FormsPrime(playerCounts, moves))
-                            {
-                                canFormPrime = true;
-                                return true;
-                            }
-                            return false;
-                        });
-                        if (canFormPrime) playerPrimeRolls += weight;
-                    }
+                            playerCanFormPrime = true;
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (playerCanFormPrime) 
+                        playerPrimeRolls += weight;
 
                     // opponents chance to form a prime
+                    var oppCanFormPrime = false;
+                    _boardService.ExploreLegalMoveSequences(board, !isWhite, rolls, moves =>
                     {
-                        bool canFormPrime = false;
-                        _boardService.ExploreLegalMoveSequences(board, !isWhite, rolls, moves =>
+                        if (FormsPrime(oppCounts, moves))
                         {
-                            if (FormsPrime(oppCounts, moves))
-                            {
-                                canFormPrime = true;
-                                return true;
-                            }
-                            return false;
-                        });
-                        if (canFormPrime) oppPrimeRolls += weight;
-                    }
+                            oppCanFormPrime = true;
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (oppCanFormPrime) 
+                        oppPrimeRolls += weight;
                 }
             }
 
@@ -91,8 +91,8 @@ namespace GammonX.Mars.Server.Features
 
             foreach (var move in moves)
             {
-                int from = move.From;
-                int to = move.To;
+                var from = move.From;
+                var to = move.To;
 
                 if (from != BoardPositions.HomeBarWhite && from != BoardPositions.HomeBarBlack)
                 {
@@ -106,12 +106,12 @@ namespace GammonX.Mars.Server.Features
             }
 
             // we build resulting count per point and check for a 6-run
-            // only touched points need re-evaluatio, untouched points keep their original count.
+            // only touched points need re-evaluation, untouched points keep their original count.
             // we scan the full board range (0-23) for consecutive runs.
-            int consecutive = 0;
-            for (int i = 0; i < 24; i++)
+            var consecutive = 0;
+            for (var i = 0; i < 24; i++)
             {
-                int count = currentCounts.GetValueOrDefault(i) + deltas.GetValueOrDefault(i);
+                var count = currentCounts.GetValueOrDefault(i) + deltas.GetValueOrDefault(i);
                 if (count > 0)
                 {
                     consecutive++;
@@ -128,19 +128,23 @@ namespace GammonX.Mars.Server.Features
         }
 
         /// <summary>
-        /// Gets the checker count per board point for the given player.
+        /// Gets the checker count per board index for the given player.
         /// Counts are always positive (absolute value).
         /// </summary>
         private static Dictionary<int, int> GetCheckerCounts(IBoardModel board, bool isWhite)
         {
             var counts = new Dictionary<int, int>();
             var fields = board.Fields;
-            for (int i = 0; i < fields.Length; i++)
+            for (var index = 0; index < fields.Length; index++)
             {
-                if (isWhite && fields[i] < 0)
-                    counts[i] = Math.Abs(fields[i]);
-                else if (!isWhite && fields[i] > 0)
-                    counts[i] = Math.Abs(fields[i]);
+                if (isWhite && fields[index] < 0)
+                {
+                    counts[index] = Math.Abs(fields[index]);
+                }
+                else if (!isWhite && fields[index] > 0)
+                {
+                    counts[index] = Math.Abs(fields[index]);
+                }
             }
             return counts;
         }
