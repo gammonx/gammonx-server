@@ -44,6 +44,12 @@ namespace GammonX.Mars.NN.Services
                 score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
                 score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
                 score += normalizedResult.PrimeProbabilityPlayer * contactWeights.PrimeProbabilityPlayerWeight;
+                score += normalizedResult.BlotCountOpp * contactWeights.BlotCountOppWeight;
+                score += normalizedResult.AnchorCountInFrontPlayer * contactWeights.AnchorCountInFrontPlayerWeight;
+                score += normalizedResult.AverageStackHeightOpp * contactWeights.AverageStackHeightOppWeight;
+                score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffPlayerWeight;
+                score += normalizedResult.AverageGapSizeOpp * contactWeights.AverageGapSizeOppWeight;
+                score += normalizedResult.CheckersInPrimeZonePlayer * contactWeights.CheckersInPrimeZonePlayerWeight;
                 // bad for the player
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
@@ -58,6 +64,11 @@ namespace GammonX.Mars.NN.Services
                 score -= normalizedResult.MaxPrimeLengthOpp * contactWeights.MaxPrimeLengthOppWeight;
                 score -= normalizedResult.HomebarCountPlayer * contactWeights.HomebarCountPlayerWeight;
                 score -= normalizedResult.PrimeProbabilityOpp * contactWeights.PrimeProbabilityOppWeight;
+                score -= normalizedResult.AnchorCountInFrontOpp * contactWeights.AnchorCountInFrontOppWeight;
+                score -= normalizedResult.AverageStackHeightPlayer * contactWeights.AverageStackHeightPlayerWeight;
+                score -= normalizedResult.AverageDistanceToBearOffPlayer * contactWeights.AverageDistanceToBearOffOppWeight;
+                score -= normalizedResult.AverageGapSizePlayer * contactWeights.AverageGapSizePlayerWeight;
+                score -= normalizedResult.CheckersInPrimeZoneOpp * contactWeights.CheckersInPrimeZoneOppWeight;
             }
 
             return score;
@@ -97,6 +108,12 @@ namespace GammonX.Mars.NN.Services
                 score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
                 score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
                 score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
+                score += normalizedResult.BlotCountOpp * contactWeights.BlotCountOppWeight;
+                score += normalizedResult.AnchorCountInFrontPlayer * contactWeights.AnchorCountInFrontPlayerWeight;
+                score += normalizedResult.AverageStackHeightOpp * contactWeights.AverageStackHeightOppWeight;
+                score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffPlayerWeight;
+                score += normalizedResult.AverageGapSizeOpp * contactWeights.AverageGapSizeOppWeight;
+                score += normalizedResult.CheckersInPrimeZonePlayer * contactWeights.CheckersInPrimeZonePlayerWeight;
                 // bad for the player
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
@@ -104,6 +121,11 @@ namespace GammonX.Mars.NN.Services
                 score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
                 score -= normalizedResult.MaxPrimeLengthOpp * contactWeights.MaxPrimeLengthOppWeight;
                 score -= normalizedResult.HomebarCountPlayer * contactWeights.HomebarCountPlayerWeight;
+                score -= normalizedResult.AnchorCountInFrontOpp * contactWeights.AnchorCountInFrontOppWeight;
+                score -= normalizedResult.AverageStackHeightPlayer * contactWeights.AverageStackHeightPlayerWeight;
+                score -= normalizedResult.AverageDistanceToBearOffPlayer * contactWeights.AverageDistanceToBearOffOppWeight;
+                score -= normalizedResult.AverageGapSizePlayer * contactWeights.AverageGapSizePlayerWeight;
+                score -= normalizedResult.CheckersInPrimeZoneOpp * contactWeights.CheckersInPrimeZoneOppWeight;
             }
 
             return score;
