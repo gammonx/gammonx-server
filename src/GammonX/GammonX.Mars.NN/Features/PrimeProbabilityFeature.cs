@@ -31,8 +31,6 @@ namespace GammonX.Mars.NN.Features
             var playerCounts = GetCheckerCounts(board, isWhite);
             var oppCounts = GetCheckerCounts(board, !isWhite);
 
-            // TODO: only explore for a prime probability if checkers needed for a prime == dice count (2 or 4)
-
             var playerPrimeRolls = 0;
             var oppPrimeRolls = 0;
 
@@ -40,44 +38,75 @@ namespace GammonX.Mars.NN.Features
             {
                 for (var die2 = die1; die2 <= 6; die2++)
                 {
-                    var weight = die1 == die2 ? 1 : 2;
-                    int[] rolls = die1 == die2
+                    var isDouble = die1 == die2;
+                    var weight = isDouble ? 1 : 2;
+                    var diceCount = isDouble ? 4 : 2;
+                    int[] rolls = isDouble
                         ? [die1, die1, die1, die1]
                         : [die1, die2];
 
-                    // players chance to form a prime
-                    var playerCanFormPrime = false;
-                    _boardService.ExploreLegalMoveSequences(board, isWhite, rolls, moves =>
+                    // we check players chance to form a prime, only explore if a prime window
+                    // has as many gaps as the available dice count (2 or 4 for doubles)
+                    if (CanPotentiallyFormPrime(playerCounts, diceCount))
                     {
-                        if (FormsPrime(playerCounts, moves))
+                        var playerCanFormPrime = false;
+                        _boardService.ExploreLegalMoveSequences(board, isWhite, rolls, moves =>
                         {
-                            playerCanFormPrime = true;
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (playerCanFormPrime)
-                        playerPrimeRolls += weight;
+                            if (FormsPrime(playerCounts, moves))
+                            {
+                                playerCanFormPrime = true;
+                                return true;
+                            }
+                            return false;
+                        });
+                        if (playerCanFormPrime)
+                            playerPrimeRolls += weight;
+                    }
 
-                    // opponents chance to form a prime
-                    var oppCanFormPrime = false;
-                    _boardService.ExploreLegalMoveSequences(board, !isWhite, rolls, moves =>
+                    // we check opponents chance to form a prime, same pre check for opponent
+                    if (CanPotentiallyFormPrime(oppCounts, diceCount))
                     {
-                        if (FormsPrime(oppCounts, moves))
+                        var oppCanFormPrime = false;
+                        _boardService.ExploreLegalMoveSequences(board, !isWhite, rolls, moves =>
                         {
-                            oppCanFormPrime = true;
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (oppCanFormPrime)
-                        oppPrimeRolls += weight;
+                            if (FormsPrime(oppCounts, moves))
+                            {
+                                oppCanFormPrime = true;
+                                return true;
+                            }
+                            return false;
+                        });
+                        if (oppCanFormPrime)
+                            oppPrimeRolls += weight;
+                    }
                 }
             }
 
             return new PrimeProbabilityResult(
                 playerPrimeRolls / 36.0,
                 oppPrimeRolls / 36.0);
+        }
+
+        /// <summary>
+        /// Returns true if any 6-point window on the board has between 1 and <paramref name="gapsNeeded"/> empty
+        /// points, meaning it could become a full prime by filling at most that many gaps with the available dice.
+        /// This is a cheap O(24) pre-check to avoid recursive board exploration entirely when
+        /// no 6-point window is close enough to completion.
+        /// </summary>
+        private static bool CanPotentiallyFormPrime(Dictionary<int, int> counts, int gapsNeeded)
+        {
+            for (var start = 0; start <= 24 - PrimeLength; start++)
+            {
+                var gaps = 0;
+                for (var i = start; i < start + PrimeLength; i++)
+                {
+                    if (!counts.ContainsKey(i))
+                        gaps++;
+                }
+                if (gaps > 0 && gaps <= gapsNeeded)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
