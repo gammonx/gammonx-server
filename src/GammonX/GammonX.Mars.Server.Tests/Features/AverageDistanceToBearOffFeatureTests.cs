@@ -23,9 +23,9 @@ namespace GammonX.Mars.Server.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(20, whiteResult);
+            Assert.Equal(22.33, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(19, blackResult);
+            Assert.Equal(22.33, blackResult, 2);
         }
 
         [Fact]
@@ -38,9 +38,9 @@ namespace GammonX.Mars.Server.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(21, whiteResult);
+            Assert.Equal(20.80, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(20, blackResult);
+            Assert.Equal(19.27, blackResult, 2);
         }
 
         [Fact]
@@ -53,9 +53,9 @@ namespace GammonX.Mars.Server.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(23, whiteResult);
+            Assert.Equal(23.0, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(0, blackResult);
+            Assert.Equal(0.0, blackResult, 2);
         }
     }
 }

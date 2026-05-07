@@ -5,6 +5,9 @@ namespace GammonX.Mars.NN.Features
     /// <summary>
     /// Counts the amount of checkers for the given player in the prime zone (e.g. mid board)
     /// </summary>
+    /// <remarks>
+    /// Only applicable for Fevga at the moment based on the prime zone definition.
+    /// </remarks>
     public class CheckersInPrimeZoneFeature : IFeature<int>
     {
         // <inheritdoc />

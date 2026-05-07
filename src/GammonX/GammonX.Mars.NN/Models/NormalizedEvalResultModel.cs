@@ -201,13 +201,13 @@
 
         /// <summary>
         /// The average distance to bearoff position on the board for the player.
-        /// Range: [0, 1], where 0 means all player checkers are on the bar and 1 means all player checkers are borne off.
+        /// Range: [0, 1], where 0 means all player checkers are borne off and 1 means all player checkers are on the bar.
         /// </summary>
         public double AverageDistanceToBearOffPlayer { get; init; } = 0.0;
 
         /// <summary>
         /// The average distance to bearoff position on the board for the opponent.
-        /// Range: [0, 1], where 0 means all opponent checkers are on the bar and 1 means all opponent checkers are borne off.
+        /// Range: [0, 1], where 0 means all opponent checkers are borne off and 1 means all opponent checkers are on the bar.
         /// </summary>
         public double AverageDistanceToBearOffOpp { get; init; } = 0.0;
 
