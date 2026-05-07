@@ -13,7 +13,11 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            IPinModel pinModel = (IPinModel)board;
+            if (board is not IPinModel pinModel)
+            {
+                return 0;
+            }
+
 
             if (isWhite)
             {

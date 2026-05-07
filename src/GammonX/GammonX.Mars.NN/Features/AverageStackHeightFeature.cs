@@ -4,8 +4,11 @@ namespace GammonX.Mars.NN.Features
 {
     /// <summary>
     /// Counts the average stack height for a given player.
-    /// Shoudl detect inefficient play, too many stacked checkers implies bad structure
+    /// Should detect inefficient play, too many stacked checkers implies bad structure
     /// </summary>
+    /// <remarks>
+    /// Does not account for checker count on the homebar.
+    /// </remarks>
     public class AverageStackHeightFeature : IFeature<double>
     {
         // <inheritdoc />

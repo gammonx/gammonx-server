@@ -13,33 +13,44 @@ namespace GammonX.Mars.NN.Features
         {
             if (isWhite)
             {
-                var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
-                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountWhite > 0)
+                var totalCheckers = 0;
+                var totalDistance = 0.0;
+
+                foreach (var (index, value) in board.Fields.Index().Where(i => i.Item < 0))
                 {
-                    whitePositions.Add((board.StartRangeWhite.Start.Value, -homeBarModel.HomeBarCountWhite));
+                    var count = Math.Abs(value);
+                    totalCheckers += count;
+                    totalDistance += count * board.RecoverRollOperator(isWhite, index, board.HomeRangeWhite.End.Value);
                 }
 
-                if (whitePositions.Count != 0)
+                if (board is IHomeBarModel homeBarModelWhite && homeBarModelWhite.HomeBarCountWhite > 0)
                 {
-                    var avgIndex = whitePositions.Average(wp => wp.Index);
-                    return board.RecoverRollOperator(isWhite, (int)avgIndex, board.HomeRangeWhite.End.Value);
+                    var count = homeBarModelWhite.HomeBarCountWhite;
+                    totalCheckers += count;
+                    totalDistance += count * board.RecoverRollOperator(isWhite, board.StartRangeWhite.Start.Value, board.HomeRangeWhite.End.Value);
                 }
-                return 0.0;
+
+                return totalCheckers > 0 ? totalDistance / totalCheckers : 0.0;
             }
             else
             {
-                var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
-                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountBlack > 0)
+                var totalCheckers = 0;
+                var totalDistance = 0.0;
+
+                foreach (var (index, value) in board.Fields.Index().Where(i => i.Item > 0))
                 {
-                    blackPositions.Add((board.StartRangeBlack.Start.Value, homeBarModel.HomeBarCountBlack));
+                    totalCheckers += value;
+                    totalDistance += value * board.RecoverRollOperator(isWhite, index, board.HomeRangeBlack.End.Value);
                 }
 
-                if (blackPositions.Count != 0)
+                if (board is IHomeBarModel homeBarModelBlack && homeBarModelBlack.HomeBarCountBlack > 0)
                 {
-                    var avgIndex = blackPositions.Average(wp => wp.Index);
-                    return board.RecoverRollOperator(isWhite, (int)avgIndex, board.HomeRangeBlack.End.Value);
+                    var count = homeBarModelBlack.HomeBarCountBlack;
+                    totalCheckers += count;
+                    totalDistance += count * board.RecoverRollOperator(isWhite, board.StartRangeBlack.Start.Value, board.HomeRangeBlack.End.Value);
                 }
-                return 0.0;
+
+                return totalCheckers > 0 ? totalDistance / totalCheckers : 0.0;
             }
         }
     }
