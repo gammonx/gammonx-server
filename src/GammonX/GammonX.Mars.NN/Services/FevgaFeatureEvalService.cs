@@ -20,6 +20,11 @@ namespace GammonX.Mars.NN.Services
         // we see a high blot count in fevga as a positive board control feature
         private readonly BlotCountFeature _blotCountFeature = new BlotCountFeature();
         private readonly PrimeProbabilityFeature _primeProbabilityFeature;
+        private readonly AnchorCountInFrontFeature _anchorCountInFrontFeature = new AnchorCountInFrontFeature();
+        private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
+        private readonly AverageDistanceToBearOffFeature _averageCheckerPositionFeature = new AverageDistanceToBearOffFeature();
+        private readonly AverageGapSizeFeature _averageGapSizeFeature = new AverageGapSizeFeature();
+        private readonly CheckersInPrimeZoneFeature _checkersInPrimeZoneFeature = new CheckersInPrimeZoneFeature();
 
         protected override IBoardService BoardService { get; }
 
@@ -58,10 +63,21 @@ namespace GammonX.Mars.NN.Services
                     MaxPrimeLengthPlayer = _maxPrimeLengthFeature.Eval(board, isWhite),
                     MaxPrimeLengthOpp = _maxPrimeLengthFeature.Eval(board, !isWhite),
                     HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
+                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
                     // we need to invert the count in order to get the normalized value correct
                     BlotCount = -_blotCountFeature.Eval(board, isWhite),
                     PrimeProbabilityPlayer = contactEvalResult.PrimeProbabilityPlayer,
                     PrimeProbabilityOpp = contactEvalResult.PrimeProbabilityOpp,
+                    AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
+                    AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
+                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
+                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
+                    AverageDistanceToBearOffPlayer = _averageCheckerPositionFeature.Eval(board, isWhite),
+                    AverageDistanceToBearOffOpp = _averageCheckerPositionFeature.Eval(board, !isWhite),
+                    AverageGapSizePlayer = _averageGapSizeFeature.Eval(board, isWhite),
+                    AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
+                    CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
+                    CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
                 };
             }
 
@@ -93,8 +109,19 @@ namespace GammonX.Mars.NN.Services
                     MaxPrimeLengthPlayer = _maxPrimeLengthFeature.Eval(board, isWhite),
                     MaxPrimeLengthOpp = _maxPrimeLengthFeature.Eval(board, !isWhite),
                     HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
+                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
                     // we need to invert the count in order to get the normalized value correct
                     BlotCount = -_blotCountFeature.Eval(board, isWhite),
+                    AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
+                    AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
+                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
+                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
+                    AverageDistanceToBearOffPlayer = _averageCheckerPositionFeature.Eval(board, isWhite),
+                    AverageDistanceToBearOffOpp = _averageCheckerPositionFeature.Eval(board, !isWhite),
+                    AverageGapSizePlayer = _averageGapSizeFeature.Eval(board, isWhite),
+                    AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
+                    CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
+                    CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
                 };
             }
 

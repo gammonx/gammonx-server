@@ -43,6 +43,12 @@
         public double BlotCount { get; init; } = 0;
 
         /// <summary>
+        /// Gets the amount of blots for the opponent on the board.
+        /// [Range: [0, 1], where 0 means no blots for opponent and 1 means all checkers are blots for opponent.
+        /// </summary>
+        public double BlotCountOpp { get; init; } = 0;
+
+        /// <summary>
         /// Gets the amount of blots for the player on the board.
         /// [Range: [0, 1], where 0 means no blots in start range and 1 means 6 blots in start range.
         /// </summary>
@@ -169,6 +175,66 @@
         /// </summary>
         public double PrimeProbabilityOpp { get; init; } = 0.0;
 
+        /// <summary>
+        /// Counts the amount of anchors (blocked points) in front of the opponent.
+        /// Range: [0, 1], where 0 means no player anchors in front of opponent and 1 means all player checkers in front of opponent are anchors.
+        /// </summary>
+        public double AnchorCountInFrontPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the amount of anchors (blocked points) in front of the player.
+        /// Range: [0, 1], where 0 means no opponent anchors in front of player and 1 means all opponent checkers in front of player are anchors.
+        /// </summary>
+        public double AnchorCountInFrontOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the average stack height for the player.
+        /// Range: [0, 1], where 0 means all player checkers are alone and 1 means all player checkers are stacked together.
+        /// </summary>
+        public double AverageStackHeightPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the average stack height for the opponent.
+        /// Range: [0, 1], where 0 means all opponent checkers are alone and 1 means all opponent checkers are stacked together.
+        /// </summary>
+        public double AverageStackHeightOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// The average distance to bearoff position on the board for the player.
+        /// Range: [0, 1], where 0 means all player checkers are on the bar and 1 means all player checkers are borne off.
+        /// </summary>
+        public double AverageDistanceToBearOffPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// The average distance to bearoff position on the board for the opponent.
+        /// Range: [0, 1], where 0 means all opponent checkers are on the bar and 1 means all opponent checkers are borne off.
+        /// </summary>
+        public double AverageDistanceToBearOffOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the average size of gaps associated with the player.
+        /// Range: [0, 1], where 0 means player has no gaps and 1 means player has maximum gap size.
+        /// </summary>
+        public double AverageGapSizePlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the average size of gaps for the opponent.
+        /// Range: [0, 1], where 0 means opponent has no gaps and 1 means opponent has maximum gap size.
+        /// </summary>
+        public double AverageGapSizeOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the number of checkers the player has in the prime zone (e.g. mid board).
+        /// Range: [0, 1], where 0 means no player checkers in prime zone and 1 means all player checkers in prime zone.
+        /// </summary>
+        public double CheckersInPrimeZonePlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the number of checkers the opponent has in the prime zone (e.g. mid board).
+        /// Range: [0, 1], where 0 means no opponent checkers in prime zone and 1 means all opponent checkers in prime zone.
+        /// </summary>
+        public double CheckersInPrimeZoneOpp { get; init; } = 0.0;
+
         #endregion Fevga Features
 
         public static NormalizedEvalResultModel From(EvalResultModel eval)
@@ -182,6 +248,7 @@
                 HitOpponentProbability2 = eval.HitOpponentProbability2,
                 // we use a practical max pip difference than theoretical max and remap boundaries to 0-1
                 BlotCount = eval.BlotCount / 15,
+                BlotCountOpp = eval.BlotCountOpp / 15,
                 BlotInStartRangeCount = eval.BlotInStartRangeCount / 6.0,
                 AnchorCount = eval.AnchorCount / 7,
                 PipDifference = (eval.PipDifference / 167.0 + 1.0) / 2.0,
@@ -203,6 +270,16 @@
                 HomebarCountPlayer = eval.HomebarCountPlayer / 15.0,
                 PrimeProbabilityPlayer = eval.PrimeProbabilityPlayer,
                 PrimeProbabilityOpp = eval.PrimeProbabilityOpp,
+                AnchorCountInFrontPlayer = eval.AnchorCountInFrontPlayer / 15.0,
+                AnchorCountInFrontOpp = eval.AnchorCountInFrontOpp / 15.0,
+                AverageStackHeightPlayer = eval.AverageStackHeightPlayer / 15.0,
+                AverageStackHeightOpp = eval.AverageStackHeightOpp / 15.0,
+                AverageDistanceToBearOffPlayer = eval.AverageDistanceToBearOffPlayer / 26.0, // 24 board points + bar + borne off
+                AverageDistanceToBearOffOpp = eval.AverageDistanceToBearOffOpp / 26.0, // 24 board points + bar + borne off
+                AverageGapSizePlayer = eval.AverageGapSizePlayer / 22.0, // max gap size is when all checkers are alone and spread out
+                AverageGapSizeOpp = eval.AverageGapSizeOpp / 22.0, // max gap size is when all checkers are alone and spread out
+                CheckersInPrimeZonePlayer = eval.CheckersInPrimeZonePlayer / 15.0,
+                CheckersInPrimeZoneOpp = eval.CheckersInPrimeZoneOpp / 15.0,
             };
         }
     }

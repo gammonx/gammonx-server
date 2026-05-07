@@ -20,7 +20,7 @@ namespace GammonX.Mars.NN.Features
             }
             else
             {
-                var blackAnchors = board.Fields.Index().Where(i => i.Item > board.BlockAmount);
+                var blackAnchors = board.Fields.Index().Where(i => i.Item >= board.BlockAmount);
                 if (board is IPinModel pinModel)
                 {
                     var potBlackAnchors = board.Fields.Index().Where(i => i.Item == board.BlockAmount - 1);

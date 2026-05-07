@@ -38,6 +38,11 @@
         public double BlotCount { get; init; } = 0;
 
         /// <summary>
+        /// Gets the amount of blots for the opponent on the board.
+        /// </summary>
+        public double BlotCountOpp { get; init; } = 0;
+
+        /// <summary>
         /// Gets the amount of blots for the player in his own start range.
         /// </summary>
         public double BlotInStartRangeCount { get; init; } = 0;
@@ -143,6 +148,56 @@
         /// Gets the probability of the opponent to form a prime in his next turn.
         /// </summary>
         public double PrimeProbabilityOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the amount of anchors (blocked points) in front of the opponent.
+        /// </summary>
+        public double AnchorCountInFrontPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the amount of anchors (blocked points) in front of the player.
+        /// </summary>
+        public double AnchorCountInFrontOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the average stack height for the player.
+        /// </summary>
+        public double AverageStackHeightPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Counts the average stack height for the opponent.
+        /// </summary>
+        public double AverageStackHeightOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// The average distance to bearoff position on the board for the player.
+        /// </summary>
+        public double AverageDistanceToBearOffPlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// The average distance to bearoff position on the board for the opponent.
+        /// </summary>
+        public double AverageDistanceToBearOffOpp { get;  init; } = 0.0;
+
+        /// <summary>
+        /// Gets the average size of gaps associated with the player.
+        /// </summary>
+        public double AverageGapSizePlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the average size of gaps for the opponent.
+        /// </summary>
+        public double AverageGapSizeOpp { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the number of checkers the player has in the prime zone (e.g. mid board).
+        /// </summary>
+        public double CheckersInPrimeZonePlayer { get; init; } = 0.0;
+
+        /// <summary>
+        /// Gets the number of checkers the opponent has in the prime zone (e.g. mid board).
+        /// </summary>
+        public double CheckersInPrimeZoneOpp { get; init; } = 0.0;
 
         #endregion Fevga Features
     }

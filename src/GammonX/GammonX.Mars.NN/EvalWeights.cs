@@ -59,29 +59,51 @@ namespace GammonX.Mars.NN
         public static readonly ContactWeightModel FevgaContactWeights = new ContactWeightModel()
         {
             // priority 1: race
-            PipDifferenceWeight = 0.25,
-            PipToBearOffWeight = 0.15,
-            PipToBearOffOppWeight = 0.15,
+            PipDifferenceWeight = 0.16,
+            PipToBearOffWeight = 0.10,
+            PipToBearOffOppWeight = 0.10,
             // priority 2: prime and formation building
-            MaxPrimeLengthPlayerWeight = 0.08,
-            MaxPrimeLengthOppWeight = 0.08,
+            MaxPrimeLengthPlayerWeight = 0.06,
+            MaxPrimeLengthOppWeight = 0.06,
             HomebarCountPlayerWeight = 0.05,
             BlotCountWeight = 0.04,
-            PrimeProbabilityPlayerWeight = 0.10,
+            BlotCountOppWeight = 0.04,
+            PrimeProbabilityPlayerWeight = 0.09,
             PrimeProbabilityOppWeight = 0.10,
+            AnchorCountInFrontPlayerWeight = 0.02,
+            AnchorCountInFrontOppWeight = 0.02,
+            AverageStackHeightPlayerWeight = 0.02,
+            AverageStackHeightOppWeight = 0.02,
+            AverageDistanceToBearOffPlayerWeight = 0.02,
+            AverageDistanceToBearOffOppWeight = 0.02,
+            AverageGapSizePlayerWeight = 0.02,
+            AverageGapSizeOppWeight = 0.02,
+            CheckersInPrimeZonePlayerWeight = 0.02,
+            CheckersInPrimeZoneOppWeight = 0.02,
         };
 
         public static readonly ContactWeightModel FevgaCheapContactWeights = new ContactWeightModel()
         {
             // priority 1: race
-            PipDifferenceWeight = 0.30,
-            PipToBearOffWeight = 0.20,
-            PipToBearOffOppWeight = 0.20,
+            PipDifferenceWeight = 0.20,
+            PipToBearOffWeight = 0.15,
+            PipToBearOffOppWeight = 0.15,
             // priority 2: prime and formation building
-            MaxPrimeLengthPlayerWeight = 0.10,
-            MaxPrimeLengthOppWeight = 0.10,
-            HomebarCountPlayerWeight = 0.05,
-            BlotCountWeight = 0.05,
+            MaxPrimeLengthPlayerWeight = 0.09,
+            MaxPrimeLengthOppWeight = 0.09,
+            HomebarCountPlayerWeight = 0.04,
+            BlotCountWeight = 0.04,
+            BlotCountOppWeight = 0.04,
+            AnchorCountInFrontPlayerWeight = 0.02,
+            AnchorCountInFrontOppWeight = 0.02,
+            AverageStackHeightPlayerWeight = 0.02,
+            AverageStackHeightOppWeight = 0.02,
+            AverageDistanceToBearOffPlayerWeight = 0.02,
+            AverageDistanceToBearOffOppWeight = 0.02,
+            AverageGapSizePlayerWeight = 0.02,
+            AverageGapSizeOppWeight = 0.02,
+            CheckersInPrimeZonePlayerWeight = 0.02,
+            CheckersInPrimeZoneOppWeight = 0.02,
         };
     }
 }

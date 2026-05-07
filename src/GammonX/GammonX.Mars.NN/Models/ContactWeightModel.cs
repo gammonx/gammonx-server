@@ -24,6 +24,9 @@ namespace GammonX.Mars.NN.Models
         public double BlotCountWeight { get; set; }
 
         [DataMember]
+        public double BlotCountOppWeight { get; set; }
+
+        [DataMember]
         public double BlotInStartRangeCountWeight { get; set; }
 
         [DataMember]
@@ -83,6 +86,36 @@ namespace GammonX.Mars.NN.Models
         [DataMember]
         public double PrimeProbabilityOppWeight { get; set; }
 
+        [DataMember]
+        public double AnchorCountInFrontPlayerWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AnchorCountInFrontOppWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageStackHeightPlayerWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageStackHeightOppWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageDistanceToBearOffPlayerWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageDistanceToBearOffOppWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageGapSizePlayerWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double AverageGapSizeOppWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double CheckersInPrimeZonePlayerWeight { get; init; } = 0.0;
+
+        [DataMember]
+        public double CheckersInPrimeZoneOppWeight { get; init; } = 0.0;
+
         public void Validate()
         {
             if (Math.Abs(
@@ -91,6 +124,7 @@ namespace GammonX.Mars.NN.Models
                 HitOpponentProbability1Weight +
                 HitOpponentProbability2Weight +
                 BlotCountWeight +
+                BlotCountOppWeight +
                 BlotInStartRangeCountWeight +
                 AnchorCountWeight +
                 PipDifferenceWeight +
@@ -110,7 +144,17 @@ namespace GammonX.Mars.NN.Models
                 MaxPrimeLengthOppWeight +
                 HomebarCountPlayerWeight +
                 PrimeProbabilityPlayerWeight +
-                PrimeProbabilityOppWeight
+                PrimeProbabilityOppWeight +
+                AnchorCountInFrontPlayerWeight +
+                AnchorCountInFrontOppWeight +
+                AverageStackHeightPlayerWeight +
+                AverageStackHeightOppWeight +
+                AverageDistanceToBearOffPlayerWeight +
+                AverageDistanceToBearOffOppWeight +
+                AverageGapSizePlayerWeight +
+                AverageGapSizeOppWeight +
+                CheckersInPrimeZonePlayerWeight +
+                CheckersInPrimeZoneOppWeight
                 - 1.0)
                 > 1e-9)
             {
