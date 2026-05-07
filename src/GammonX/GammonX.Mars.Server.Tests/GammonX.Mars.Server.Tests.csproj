@@ -24,4 +24,14 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Data\NeuralNets\Fevga\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\NeuralNets\Plakoto\training_net.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

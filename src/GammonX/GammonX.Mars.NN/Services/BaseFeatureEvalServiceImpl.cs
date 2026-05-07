@@ -13,6 +13,8 @@ namespace GammonX.Mars.NN.Services
     // <inheritdoc />
     public abstract class BaseFeatureEvalServiceImpl : IFeatureEvalService
     {
+        // TODO: refactor the linear model and nn model handling into separate services
+
         private readonly INeuralEvalService _neuralEvalService;
 
         protected BaseFeatureEvalServiceImpl(INeuralEvalService neuralEvalService)
