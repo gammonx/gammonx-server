@@ -66,9 +66,10 @@ namespace GammonX.Server.Bot
 				{
                     result = await client.GetMoveAsync(requestParameters);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // debugging purposes only
+                    Serilog.Log.Error(ex, "wildbg GetMove failed: base={Base} inner={Inner}",
+                        _httpClient.BaseAddress, ex.InnerException?.Message);
                     throw;
                 }
 
