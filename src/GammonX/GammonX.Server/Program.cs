@@ -106,16 +106,16 @@ builder.Services.AddAuthentication(options =>
 {
     if (useCognito)
     {
+        // Cognito access tokens have `client_id` (not `aud`) and `token_use=access`.
+        // We validate those in OnTokenValidated; built-in audience validation is off.
         options.Authority = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cognitoUserPoolId}";
-        options.Audience = cognitoClientId;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = true,
+            ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = options.Authority,
-            ValidAudience = cognitoClientId
+            ValidIssuer = options.Authority
         };
     }
     else
@@ -150,6 +150,28 @@ builder.Services.AddAuthentication(options =>
             else if (!string.IsNullOrEmpty(accessToken))
             {
                 context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            if (!useCognito) return Task.CompletedTask;
+
+            var principal = context.Principal;
+            var tokenUse = principal?.FindFirst("token_use")?.Value;
+            var clientId = principal?.FindFirst("client_id")?.Value;
+
+            if (tokenUse != "access")
+            {
+                context.Fail($"Expected access token, got token_use={tokenUse ?? "<missing>"}");
+                return Task.CompletedTask;
+            }
+
+            if (!string.Equals(clientId, cognitoClientId, StringComparison.Ordinal))
+            {
+                context.Fail("client_id does not match expected Cognito app client");
+                return Task.CompletedTask;
             }
 
             return Task.CompletedTask;
