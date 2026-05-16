@@ -79,7 +79,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.GAME_COMPLETED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.GAME_COMPLETED_QUEUE_URL, "GAME_COMPLETED");
                 });
             }
             var matchCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL");
@@ -89,7 +89,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.MATCH_COMPLETED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.MATCH_COMPLETED_QUEUE_URL, "MATCH_COMPLETED");
                 });
             }
 
@@ -100,7 +100,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.PLAYER_CREATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.PLAYER_CREATED_QUEUE_URL, "PLAYER_CREATED");
                 });
             }
 
@@ -111,7 +111,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.STATS_UPDATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.STATS_UPDATED_QUEUE_URL, "STATS_UPDATED");
                 });
             }
 
@@ -122,7 +122,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.RATING_UPDATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.RATING_UPDATED_QUEUE_URL, "RATING_UPDATED");
                 });
             }
         }

@@ -4,7 +4,7 @@
 	{
         #region SQS Lambda Handlers
 
-        public const string MatchCompletedFunc = "MATCH_COMPELTED";
+        public const string MatchCompletedFunc = "MATCH_COMPLETED";
 
 		public const string GameCompletedFunc = "GAME_COMPLETED";
 
