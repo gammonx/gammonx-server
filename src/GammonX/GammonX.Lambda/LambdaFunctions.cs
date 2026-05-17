@@ -1,18 +1,20 @@
-﻿namespace GammonX.Lambda
+﻿using GammonX.Models.Enums;
+
+namespace GammonX.Lambda
 {
-	public static class LambdaFunctions
+	internal static class LambdaFunctions
 	{
         #region SQS Lambda Handlers
 
-        public const string MatchCompletedFunc = "MATCH_COMPLETED";
+        public static string MatchCompletedFunc = WorkQueueType.MatchCompleted.GetName();
 
-		public const string GameCompletedFunc = "GAME_COMPLETED";
+		public static string GameCompletedFunc = WorkQueueType.GameCompleted.GetName();
 
-		public const string PlayerRatingUpdatedFunc = "RATING_UPDATED";
+        public static string PlayerRatingUpdatedFunc = WorkQueueType.RatingUpdated.GetName();
 
-		public const string PlayerStatsUpdatedFunc = "STATS_UPDATED";
+        public static string PlayerStatsUpdatedFunc = WorkQueueType.StatsUpdated.GetName();
 
-		public const string PlayerCreatedFunc = "PLAYER_CREATED";
+		public static string PlayerCreatedFunc = WorkQueueType.PlayerCreated.GetName();
 
         #endregion SQS Lambda Handlers
 

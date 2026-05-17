@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace GammonX.Server.Controllers
 {
     [ApiController]
-    [Authorize(Policy = "OptionalJwt")]
+    [Authorize(Policy = "AuthPolicy")]
     [Route("api/[controller]")]
     public class MatchesController : Controller
     {

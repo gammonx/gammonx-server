@@ -19,7 +19,7 @@ namespace GammonX.Server
     /// <summary>
     /// SignalR hub for managing match lobbies/sessions and handling the game flow.
     /// </summary>
-    [Authorize(Policy = "OptionalJwt")]
+    [Authorize(Policy = "AuthPolicy")]
     public class MatchLobbyHub : Hub
     {
         /// <summary>

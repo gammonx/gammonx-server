@@ -16,7 +16,7 @@ namespace GammonX.Lambda
 {
 	public class Program
 	{
-		public static async Task Main(string[] args)
+		public static async Task Main(string[] _)
 		{
 			var services = Startup.Configure();
 
@@ -29,7 +29,7 @@ namespace GammonX.Lambda
                     var json = await ReadStreamAsStringAsync(stream);
                     context.Logger.LogInformation($"Received input JSON: {json.Length} characters");
 
-                    var deserializedInput = DeserializeFunctionInput(json, context.FunctionName);
+                    var deserializedInput = DeserializeFunctionInput(json);
 
                     if (deserializedInput is SQSEvent sqsEvent)
                     {
@@ -109,14 +109,14 @@ namespace GammonX.Lambda
             };
         }
 
-        private static object? DeserializeFunctionInput(string json, string functionName)
+        private static object? DeserializeFunctionInput(string json)
         {
-            // Try SQS first — SQS events have a "Records" array
+            // we try SQS first — SQS events have a "Records" array
             var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
             if (sqsEvent?.Records != null && sqsEvent.Records.Count > 0)
                 return sqsEvent;
 
-            // Fall back to API Gateway
+            // we fall back to API Gateway
             var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
             return apiEvent;
         }

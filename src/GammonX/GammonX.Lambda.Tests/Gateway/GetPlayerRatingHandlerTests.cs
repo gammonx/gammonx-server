@@ -142,6 +142,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
+                Path = $"/players/NOT-A-GUID/rating/{variant}",
                 Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
@@ -219,6 +220,7 @@ namespace GammonX.Lambda.Tests.Gateway
         {
             return new APIGatewayProxyRequest
             {
+                Path = $"/players/{playerId}/rating/{variant}",
                 Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>

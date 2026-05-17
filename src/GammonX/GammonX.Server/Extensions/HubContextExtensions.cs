@@ -21,11 +21,21 @@ namespace GammonX.Server.Extensions
 
         public static Guid? GetMatchId(this HubCallerContext context)
         {
-            var value = context.GetHttpContext()?.Request.Query["matchId"].FirstOrDefault();
-            if (value != null && Guid.TryParse(value, out var id))
+            // we check if we can extract the match id from the query
+            var value = context.GetHttpContext()?.Request.Query["id"].FirstOrDefault();
+            if (value != null && Guid.TryParse(value, out var matchIdFromQuery))
             {
-                return id;
+                return matchIdFromQuery;
             }
+
+            // we fall back and check if the match id is given in the user claims
+            var user = context.User;
+            var claim = user?.FindFirst("matchId");
+            if (claim != null && Guid.TryParse(claim.Value, out var matchIdFromClaim))
+            {
+                return matchIdFromClaim;
+            }
+
             return null;
         }
     }

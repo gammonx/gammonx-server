@@ -1,6 +1,4 @@
-﻿using System.Linq;
-
-using Amazon.Lambda.APIGatewayEvents;
+﻿using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 
 using GammonX.Lambda.Handlers;
@@ -9,21 +7,23 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GammonX.Lambda.Services
 {
-	public static class LambdaFunctionFactory
+	internal static class LambdaFunctionFactory
 	{
+		private static readonly HashSet<string> _wellKnownSqsFunctions =
+		[
+			LambdaFunctions.GameCompletedFunc,
+			LambdaFunctions.PlayerRatingUpdatedFunc,
+			LambdaFunctions.PlayerStatsUpdatedFunc,
+			LambdaFunctions.MatchCompletedFunc,
+			LambdaFunctions.PlayerCreatedFunc,
+		];
+
 		public static ISqsLambdaHandler CreateSqsHandler(IServiceProvider services, string functionName)
 		{
-			switch (functionName)
-			{
-				case LambdaFunctions.GameCompletedFunc:
-				case LambdaFunctions.PlayerRatingUpdatedFunc:
-				case LambdaFunctions.PlayerStatsUpdatedFunc:
-				case LambdaFunctions.MatchCompletedFunc:
-				case LambdaFunctions.PlayerCreatedFunc:
-					return services.GetRequiredKeyedService<ISqsLambdaHandler>(functionName);
-                default:
-					throw new InvalidOperationException($"unknown lambda function with name '{functionName}'");
-			}
+			if (_wellKnownSqsFunctions.Contains(functionName))
+				return services.GetRequiredKeyedService<ISqsLambdaHandler>(functionName);
+
+			throw new InvalidOperationException($"unknown lambda function with name '{functionName}'");
 		}
 
 		/// <summary>
@@ -43,14 +43,14 @@ namespace GammonX.Lambda.Services
 			context.Logger.LogInformation($"CreateApiHandler called with HttpMethod: '{request.HttpMethod}', Path: '{request.Path}', Resource: '{request.Resource}'");
 			context.Logger.LogInformation($"Available routes: {string.Join(", ", ApiRoutes.Keys.Select(k => $"({k.method} {k.pattern})"))}");
 
-			// Match against the actual path using pattern matching
+			// we match against the actual path using pattern matching
 			foreach (var route in ApiRoutes)
 			{
 				if (request.HttpMethod == route.Key.method && MatchesPathPattern(request.Path, route.Key.pattern, out var pathParameters))
 				{
 					context.Logger.LogInformation($"Route matched! Pattern: '{route.Key.pattern}', Handler type: '{route.Value.Name}'");
 
-					// Populate PathParameters if using $default catch-all route
+					// we populate PathParameters if using $default catch-all route
 					if (request.PathParameters == null || request.PathParameters.Count == 0)
 					{
 						request.PathParameters = pathParameters;
@@ -64,7 +64,7 @@ namespace GammonX.Lambda.Services
 			}
 
 			context.Logger.LogWarning($"No matching route found for HttpMethod: '{request.HttpMethod}', Path: '{request.Path}'. Returning null (404).");
-			// a return value of null will result in a 404 HTTP response.
+			// we return value of null which will result in a 404 HTTP response.
 			return null;
 		}
 
@@ -90,15 +90,15 @@ namespace GammonX.Lambda.Services
 
 			for (int i = 0; i < pathSegments.Length; i++)
 			{
-				// If pattern segment is a parameter (e.g., "{id}"), extract it
-				if (patternSegments[i].StartsWith("{") && patternSegments[i].EndsWith("}"))
+				// if pattern segment is a parameter (e.g., "{id}"), extract it
+				if (patternSegments[i].StartsWith('{') && patternSegments[i].EndsWith('}'))
 				{
 					var paramName = patternSegments[i].Trim('{', '}');
 					pathParameters[paramName] = pathSegments[i];
 					continue;
 				}
 
-				// Otherwise, segments must match exactly
+				// otherwise, segments must match exactly
 				if (pathSegments[i] != patternSegments[i])
 					return false;
 			}

@@ -34,4 +34,8 @@
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="GammonX.Lambda.Tests" />
+	</ItemGroup>
 </Project>

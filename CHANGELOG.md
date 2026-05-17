@@ -1,5 +1,14 @@
 # Changelog
 
+## 17.05.2026
+
+### NEW
+- AWS Cognito integration
+### FIXES
+- fixed lambda event type mapping and api routing
+- fixed game server docker image
+
+
 ## 17.04.2026
 
 ### NEW
