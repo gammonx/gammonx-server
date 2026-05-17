@@ -1,6 +1,6 @@
 # Changelog
 
-## 05.05.2026
+## 17.05.2026
 
 ### NEW
 - Mars Bot Project
@@ -10,9 +10,11 @@
 	- added console app for training data generation and model training
 	- neural net for plakoto
 	- neural net for fevga
+- expose bot services as lambda functions
 
 ### FIXES
 - replaced alpine with debian based image for mars service
+- fixed cross match session timer expiry which leads to unwanted force-disconnect event
 
 
 ## 17.05.2026

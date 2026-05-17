@@ -3,8 +3,10 @@
 
 ## Active
 - fevga/plakoto bot implementation
+- bot services as lambda containers/functions
+- disconnect timer fires on cross match session
 
-## TODO 
+## TODO
 - bot dificulty levels
 - mars bot eval match equity (points away)
 - doubling cube to history/stats

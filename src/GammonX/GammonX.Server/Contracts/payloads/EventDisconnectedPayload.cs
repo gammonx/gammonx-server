@@ -1,4 +1,6 @@
-﻿using System.Runtime.Serialization;
+﻿using GammonX.Server.Models;
+
+using System.Runtime.Serialization;
 
 namespace GammonX.Server.Contracts
 {
@@ -11,10 +13,17 @@ namespace GammonX.Server.Contracts
         [DataMember(Name = "expiration")]
         public DateTime Expiration { get; set; }
 
-        public EventDisconnectedPayload(TimeSpan gracePeriod)
+        [DataMember(Name = "playerId")]
+        public Guid PlayerId { get; set; }
+
+        public static EventDisconnectedPayload From(PlayerConnection playerConnection)
         {
-            GracePeriod = gracePeriod;
-            Expiration = DateTime.UtcNow.Add(gracePeriod);
+            return new EventDisconnectedPayload
+            {
+                PlayerId = playerConnection.Id,
+                GracePeriod = playerConnection.DisconnectGracePeriod,
+                Expiration = DateTime.UtcNow.Add(playerConnection.DisconnectGracePeriod)
+            };
         }
     }
 }
