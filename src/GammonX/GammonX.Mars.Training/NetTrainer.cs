@@ -17,7 +17,7 @@ public static class NetTrainer
         string valCsvPath,
         string outputModelPath,
         int epochs = 300,
-        int batchSize = 256,
+        int batchSize = 4096,
         float learningRate = 1e-3f,
         int earlyStoppingPatience = 45)
     {
@@ -25,7 +25,7 @@ public static class NetTrainer
         var (valFeatures, valLabels) = LoadCsv(valCsvPath);
 
         var model = NetModelFactory.Create(modus);
-        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 1e-4);
+        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
         var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 40, gamma: 0.5);
         var loss = BCELoss();
 
@@ -150,8 +150,8 @@ public static class NetTrainer
             {
                 var parts = rowList[start + i].Split(',');
                 for (var j = 0; j < cols; j++)
-                    featBuf[i * cols + j] = float.Parse(parts[j]);
-                lblBuf[i] = float.Parse(parts[cols]);
+                    featBuf[i * cols + j] = float.Parse(parts[j], System.Globalization.CultureInfo.InvariantCulture);
+                lblBuf[i] = float.Parse(parts[cols], System.Globalization.CultureInfo.InvariantCulture);
             }
 
             featureChunks.Add(tensor(featBuf, new long[] { count, cols }));
