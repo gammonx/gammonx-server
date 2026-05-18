@@ -1,4 +1,5 @@
-﻿using GammonX.Mars.NN.Models;
+﻿using GammonX.Engine.Models;
+using GammonX.Mars.NN.Models;
 
 namespace GammonX.Mars.NN.Services
 {
@@ -11,6 +12,10 @@ namespace GammonX.Mars.NN.Services
         /// <summary>
         /// Returns the predicted win probability for the active player given the board features.
         /// </summary>
-        float Predict(NormalizedEvalResultModel normalizedEvalResult);
+        /// <param name="model">Computed model values.</param>
+        /// <param name="board">Target board state.</param>
+        /// <param name="isWhite">Player indicator.</param>
+        /// <returns>A value between 0 (lost) and 1 (won).</returns>
+        float Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
     }
 }

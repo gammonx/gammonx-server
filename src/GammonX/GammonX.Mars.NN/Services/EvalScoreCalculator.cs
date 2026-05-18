@@ -50,7 +50,11 @@ namespace GammonX.Mars.NN.Services
                 score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffOppWeight;
                 score += normalizedResult.AverageGapSizeOpp * contactWeights.AverageGapSizeOppWeight;
                 score += normalizedResult.CheckersInPrimeZonePlayer * contactWeights.CheckersInPrimeZonePlayerWeight;
+                score += normalizedResult.MotherDistanceOpp * contactWeights.MotherDistanceOppWeight;
+                score += normalizedResult.BlotInStartRangeCountOpp * contactWeights.BlotInStartRangeCountOppWeight;
+                score += normalizedResult.HomebarCountOpp * contactWeights.HomebarCountOppWeight;
                 // bad for the player
+                score -= normalizedResult.AnchorCountOpp * contactWeights.AnchorCountOppWeight;
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
                 score -= normalizedResult.HitProbability1 * contactWeights.HitProbability1Weight;
@@ -69,6 +73,7 @@ namespace GammonX.Mars.NN.Services
                 score -= normalizedResult.AverageDistanceToBearOffPlayer * contactWeights.AverageDistanceToBearOffPlayerWeight;
                 score -= normalizedResult.AverageGapSizePlayer * contactWeights.AverageGapSizePlayerWeight;
                 score -= normalizedResult.CheckersInPrimeZoneOpp * contactWeights.CheckersInPrimeZoneOppWeight;
+                score -= normalizedResult.MotherDistancePlayer * contactWeights.MotherDistancePlayerWeight;
             }
 
             return score;
@@ -114,7 +119,10 @@ namespace GammonX.Mars.NN.Services
                 score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffPlayerWeight;
                 score += normalizedResult.AverageGapSizeOpp * contactWeights.AverageGapSizeOppWeight;
                 score += normalizedResult.CheckersInPrimeZonePlayer * contactWeights.CheckersInPrimeZonePlayerWeight;
+                score += normalizedResult.BlotInStartRangeCountOpp * contactWeights.BlotInStartRangeCountOppWeight;
+                score += normalizedResult.HomebarCountOpp * contactWeights.HomebarCountOppWeight;
                 // bad for the player
+                score -= normalizedResult.AnchorCountOpp * contactWeights.AnchorCountOppWeight;
                 score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
                 score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;

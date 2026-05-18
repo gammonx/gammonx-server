@@ -14,6 +14,7 @@ Console.WriteLine("===========================================");
 Console.WriteLine();
 Console.WriteLine("  1  Generate training data");
 Console.WriteLine("  2  Train model");
+Console.WriteLine("  3  Shuffle CSV");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -25,6 +26,10 @@ if (modeInput == "1")
 else if (modeInput == "2")
 {
     RunTrainModel();
+}
+else if (modeInput == "3")
+{
+    RunShuffleCsv();
 }
 else
 {
@@ -41,7 +46,7 @@ static void RunTrainModel()
 
     var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
-    var outputModelPath = PromptString("Output model path", $"training_net.dat");
+    var outputModelPath = PromptString("Output model path", "training_net.dat");
 
     NetTrainer.Train(
         modus,
@@ -51,6 +56,110 @@ static void RunTrainModel()
 }
 
 #endregion Train Model
+
+#region Shuffle CSV
+
+static void RunShuffleCsv()
+{
+    Console.WriteLine();
+    Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
+
+    var inputPaths = new List<string>();
+    while (true)
+    {
+        Console.Write($"  Path {inputPaths.Count + 1}: ");
+        var input = Console.ReadLine()?.Trim();
+        if (string.IsNullOrEmpty(input))
+            break;
+        if (!File.Exists(input))
+        {
+            Console.WriteLine($"  File not found, skipping: {input}");
+            continue;
+        }
+        inputPaths.Add(input);
+    }
+
+    if (inputPaths.Count == 0)
+    {
+        Console.WriteLine("No valid input files provided.");
+        return;
+    }
+
+    var defaultOutput = inputPaths.Count == 1 ? inputPaths[0] : "merged.csv";
+    var outputPath = PromptString("Output CSV path", defaultOutput);
+
+    Console.WriteLine($"Reading {inputPaths.Count} file(s)...");
+    string? header = null;
+    var allRows = new List<string>();
+
+    foreach (var path in inputPaths)
+    {
+        var lines = File.ReadAllLines(path);
+        if (lines.Length < 2)
+        {
+            Console.WriteLine($"  Skipping empty file: {path}");
+            continue;
+        }
+
+        // validate headers match when merging multiple files
+        if (header is null)
+        {
+            header = lines[0];
+        }
+        else if (lines[0] != header)
+        {
+            Console.WriteLine($"  Header mismatch in {path} — skipping.");
+            continue;
+        }
+
+        allRows.AddRange(lines[1..]);
+        Console.WriteLine($"  Loaded {lines.Length - 1:N0} rows from {Path.GetFileName(path)}");
+    }
+
+    if (allRows.Count == 0)
+    {
+        Console.WriteLine("No rows loaded.");
+        return;
+    }
+
+    Console.WriteLine($"Total rows: {allRows.Count:N0}. Shuffling...");
+    var rows = allRows.ToArray();
+    var rng = Random.Shared;
+    for (int i = rows.Length - 1; i > 0; i--)
+    {
+        int j = rng.Next(i + 1);
+        (rows[i], rows[j]) = (rows[j], rows[i]);
+    }
+
+    int splitIndex = (int)(rows.Length * 0.85);
+    var trainRows = rows[..splitIndex];
+    var valRows = rows[splitIndex..];
+
+    Console.WriteLine($"Train={trainRows.Length:N0}  Validation={valRows.Length:N0}");
+    Console.WriteLine("Writing CSV files...");
+
+    var valPath = Path.ChangeExtension(outputPath, ".val.csv");
+
+    using (var writer = new StreamWriter(outputPath))
+    {
+        writer.WriteLine(header);
+        foreach (var row in trainRows)
+            writer.WriteLine(row);
+    }
+
+    using (var writer = new StreamWriter(valPath))
+    {
+        writer.WriteLine(header);
+        foreach (var row in valRows)
+            writer.WriteLine(row);
+    }
+
+    Console.WriteLine($"Written: {outputPath}");
+    Console.WriteLine($"Written: {valPath}");
+    Console.WriteLine("Complete.");
+}
+
+#endregion Shuffle CSV
 
 #region Generate Training Data
 

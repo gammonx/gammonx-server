@@ -14,9 +14,9 @@ namespace GammonX.Mars.NN.Nets
 
         public FevgaNet() : base(nameof(FevgaNet))
         {
-            _fc1 = Linear(21, 64);
-            _fc2 = Linear(64, 32);
-            _fc3 = Linear(32, 1);
+            _fc1 = Linear(216, 256);
+            _fc2 = Linear(256, 128);
+            _fc3 = Linear(128, 1);
             RegisterComponents();
         }
 

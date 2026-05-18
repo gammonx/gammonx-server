@@ -49,16 +49,28 @@
         public double BlotCountOpp { get; init; } = 0;
 
         /// <summary>
-        /// Gets the amount of blots for the player on the board.
+        /// Gets the amount of blots for the player in the start range.
         /// [Range: [0, 1], where 0 means no blots in start range and 1 means 6 blots in start range.
         /// </summary>
         public double BlotInStartRangeCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of blots for the opponent in the start range.
+        /// [Range: [0, 1], where 0 means no blots in start range and 1 means 6 blots in start range.
+        /// </summary>
+        public double BlotInStartRangeCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the amount of anchors for the player on the board.
         /// [Range: [0, 1], where 0 means no anchors and 1 means all checkers are anchors.
         /// </summary>
         public double AnchorCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of anchors for the opponent on the board.
+        /// [Range: [0, 1], where 0 means no anchors and 1 means all checkers are anchors.
+        /// </summary>
+        public double AnchorCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the normalized pipcount difference of the player.
@@ -143,6 +155,18 @@
         /// </summary>
         public double PlayerMotherPinned { get; init; } = 0;
 
+        /// <summary>
+        /// Gets a normalized value indicating the distance the players mother checker is away from home range.
+        /// Range: [0, 1], where 0 means the players mother checker is in home range and 1 means it is far away.
+        /// </summary>
+        public double MotherDistancePlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets a normalized value indicating the distance the opponents mother checker is away from home range.
+        /// Range: [0, 1], where 0 means the opponents mother checker is in home range and 1 means it is far away.
+        /// </summary>
+        public double MotherDistanceOpp { get; init; } = 0;
+
         #region Fevga Features
 
         /// <summary>
@@ -158,10 +182,16 @@
         public double MaxPrimeLengthOpp { get; init; } = 0;
 
         /// <summary>
-        /// Gets the normalized number of checkers of the opponent on the homebar.
+        /// Gets the normalized number of checkers of the player on the homebar.
         /// Range: [0, 1], where 0 means no checkers and 1 means all checkers are on the homebar.
         /// </summary>
         public double HomebarCountPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the normalized number of checkers of the opponent on the homebar.
+        /// Range: [0, 1], where 0 means no checkers and 1 means all checkers are on the homebar.
+        /// </summary>
+        public double HomebarCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the normalized probability of the player to form a prime in his next turn.
@@ -250,7 +280,9 @@
                 BlotCount = eval.BlotCount / 15,
                 BlotCountOpp = eval.BlotCountOpp / 15,
                 BlotInStartRangeCount = eval.BlotInStartRangeCount / 6.0,
+                BlotInStartRangeCountOpp = eval.BlotInStartRangeCountOpp / 6.0,
                 AnchorCount = eval.AnchorCount / 7,
+                AnchorCountOpp = eval.AnchorCountOpp / 7,
                 PipDifference = (eval.PipDifference / 167.0 + 1.0) / 2.0,
                 PipToBearOff = eval.PipToBearOff / 167.0, // we use a practical max pip count than theoretical max
                 PipToBearOffOpp = eval.PipToBearOffOpp / 167.0, // we use a practical max pip count than theoretical max
@@ -264,10 +296,13 @@
                 PinCountOpp = eval.PinCountOpp / 15.0,
                 OppMotherPinned = eval.OppMotherPinned,
                 PlayerMotherPinned = eval.PlayerMotherPinned,
+                MotherDistancePlayer = eval.MotherDistancePlayer / 18.0,
+                MotherDistanceOpp = eval.MotherDistanceOpp / 18.0,
                 // fevga features
                 MaxPrimeLengthPlayer = eval.MaxPrimeLengthPlayer / 6.0,
                 MaxPrimeLengthOpp = eval.MaxPrimeLengthOpp / 6.0,
                 HomebarCountPlayer = eval.HomebarCountPlayer / 15.0,
+                HomebarCountOpp = eval.HomebarCountOpp / 15.0,
                 PrimeProbabilityPlayer = eval.PrimeProbabilityPlayer,
                 PrimeProbabilityOpp = eval.PrimeProbabilityOpp,
                 AnchorCountInFrontPlayer = eval.AnchorCountInFrontPlayer / 15.0,

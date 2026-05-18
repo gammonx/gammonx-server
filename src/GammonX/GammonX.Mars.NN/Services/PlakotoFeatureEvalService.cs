@@ -19,8 +19,11 @@ namespace GammonX.Mars.NN.Services
         private readonly AnchorCountFeature _anchorCountFeature = new AnchorCountFeature();
         private readonly PipDifferenceFeature _pipDifferenceFeature = new PipDifferenceFeature();
         private readonly NumbersOfCheckersInFronOfLastPinFeature _numChFronLastPinFeature = new NumbersOfCheckersInFronOfLastPinFeature();
-        private readonly ContactProbabilityFeature _contactFeatures;
+        //private readonly ContactProbabilityFeature _contactFeatures;
         private readonly PinEvalFeature _pinEvalFeature = new PinEvalFeature();
+        private readonly MotherDistanceFeature _motherDistanceFeature = new MotherDistanceFeature();
+        private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
+        private readonly AverageDistanceToBearOffFeature _averageDistancePositionFeature = new AverageDistanceToBearOffFeature();
 
         protected override IBoardService BoardService { get; }
 
@@ -28,7 +31,7 @@ namespace GammonX.Mars.NN.Services
             [FromKeyedServices(GameModus.Plakoto)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
-            _contactFeatures = new ContactProbabilityFeature(BoardService);
+            //_contactFeatures = new ContactProbabilityFeature(BoardService);
         }
         protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
@@ -46,32 +49,41 @@ namespace GammonX.Mars.NN.Services
             }
             else
             {
-                var (contactEvalPlayer, contactEvalOpp) = _contactFeatures.Eval(board, isWhite);
+                //var (contactEvalPlayer, contactEvalOpp) = _contactFeatures.Eval(board, isWhite);
                 var pinEval = _pinEvalFeature.Eval(board, isWhite);
 
                 eval = new EvalResultModel()
                 {
                     Race = false,
-                    HitProbability1 = contactEvalPlayer.HitProbability1,
-                    HitProbability2 = contactEvalPlayer.HitProbability2,
-                    HitOpponentProbability1 = contactEvalOpp.HitProbability1,
-                    HitOpponentProbability2 = contactEvalOpp.HitProbability2,
+                    //HitProbability1 = contactEvalPlayer.HitProbability1,
+                    //HitProbability2 = contactEvalPlayer.HitProbability2,
+                    //HitOpponentProbability1 = contactEvalOpp.HitProbability1,
+                    //HitOpponentProbability2 = contactEvalOpp.HitProbability2,
                     PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
                     PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
                     PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
                     NumChFrontLastPin = _numChFronLastPinFeature.Eval(board, isWhite),
                     NumChFrontLastPinOpp = _numChFronLastPinFeature.Eval(board, !isWhite),
-                    EscapeProbability1 = contactEvalPlayer.EscapeProbability1,
-                    EscapeProbability2 = contactEvalPlayer.EscapeProbability2,
-                    EscapeProbability1Opp = contactEvalOpp.EscapeProbability1,
-                    EscapeProbability2Opp = contactEvalOpp.EscapeProbability2,
+                    //EscapeProbability1 = contactEvalPlayer.EscapeProbability1,
+                    //EscapeProbability2 = contactEvalPlayer.EscapeProbability2,
+                    //EscapeProbability1Opp = contactEvalOpp.EscapeProbability1,
+                    //EscapeProbability2Opp = contactEvalOpp.EscapeProbability2,
                     PinCountOpp = pinEval.PinnedOppCount,
                     PinCountPlayer = pinEval.PinnedPlayerCount,
                     OppMotherPinned = pinEval.OppMotherPinned,
                     PlayerMotherPinned = pinEval.PlayerMotherPinned,
                     AnchorCount = _anchorCountFeature.Eval(board, isWhite),
+                    AnchorCountOpp = _anchorCountFeature.Eval(board, !isWhite),
                     BlotCount = _blotCountFeature.Eval(board, isWhite),
+                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
                     BlotInStartRangeCount = _blotStartRangeCountFeature.Eval(board, isWhite),
+                    BlotInStartRangeCountOpp = _blotStartRangeCountFeature.Eval(board, !isWhite),
+                    MotherDistancePlayer = _motherDistanceFeature.Eval(board, isWhite),
+                    MotherDistanceOpp = _motherDistanceFeature.Eval(board, !isWhite),
+                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
+                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
+                    AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
+                    AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
                 };
             }
 
@@ -105,8 +117,15 @@ namespace GammonX.Mars.NN.Services
                     PinCountOpp = pinEval.PinnedOppCount,
                     PinCountPlayer = pinEval.PinnedPlayerCount,
                     AnchorCount = _anchorCountFeature.Eval(board, isWhite),
+                    AnchorCountOpp = _anchorCountFeature.Eval(board, !isWhite),
                     BlotCount = _blotCountFeature.Eval(board, isWhite),
+                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
                     BlotInStartRangeCount = _blotStartRangeCountFeature.Eval(board, isWhite),
+                    BlotInStartRangeCountOpp = _blotStartRangeCountFeature.Eval(board, !isWhite),
+                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
+                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
+                    AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
+                    AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
                 };
             }
 

@@ -65,16 +65,16 @@ namespace GammonX.Mars.Training
                     cheapContactWeights,
                     contactWeights,
                     raceWeights,
-                    150);
+                    50);
 
                 if (result.BestMove.Moves.Count != 0)
                 {
-                    _recorder.RecordPosition(result.EvalResult, isWhite);
-
                     foreach (var move in result.BestMove.Moves)
                     {
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                     }
+
+                    _recorder.RecordPosition(result.EvalResult, board, isWhite);
                 }
 
                 isWhite = !isWhite;

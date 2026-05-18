@@ -30,7 +30,13 @@ namespace GammonX.Mars.NN.Models
         public double BlotInStartRangeCountWeight { get; set; }
 
         [DataMember]
+        public double BlotInStartRangeCountOppWeight { get; set; }
+
+        [DataMember]
         public double AnchorCountWeight { get; set; }
+
+        [DataMember]
+        public double AnchorCountOppWeight { get; set; }
 
         [DataMember]
         public double PipDifferenceWeight { get; set; }
@@ -72,6 +78,12 @@ namespace GammonX.Mars.NN.Models
         public double PlayerMotherPinnedWeight { get; set; }
 
         [DataMember]
+        public double MotherDistancePlayerWeight { get; set; }
+
+        [DataMember]
+        public double MotherDistanceOppWeight { get; set; }
+
+        [DataMember]
         public double MaxPrimeLengthPlayerWeight { get; set; }
 
         [DataMember]
@@ -79,6 +91,9 @@ namespace GammonX.Mars.NN.Models
 
         [DataMember]
         public double HomebarCountPlayerWeight { get; set; }
+
+        [DataMember]
+        public double HomebarCountOppWeight { get; set; }
 
         [DataMember]
         public double PrimeProbabilityPlayerWeight { get; set; }
@@ -126,7 +141,9 @@ namespace GammonX.Mars.NN.Models
                 BlotCountWeight +
                 BlotCountOppWeight +
                 BlotInStartRangeCountWeight +
+                BlotInStartRangeCountOppWeight +
                 AnchorCountWeight +
+                AnchorCountOppWeight +
                 PipDifferenceWeight +
                 PipToBearOffWeight +
                 PipToBearOffOppWeight +
@@ -143,6 +160,7 @@ namespace GammonX.Mars.NN.Models
                 MaxPrimeLengthPlayerWeight +
                 MaxPrimeLengthOppWeight +
                 HomebarCountPlayerWeight +
+                HomebarCountOppWeight +
                 PrimeProbabilityPlayerWeight +
                 PrimeProbabilityOppWeight +
                 AnchorCountInFrontPlayerWeight +
@@ -154,7 +172,9 @@ namespace GammonX.Mars.NN.Models
                 AverageGapSizePlayerWeight +
                 AverageGapSizeOppWeight +
                 CheckersInPrimeZonePlayerWeight +
-                CheckersInPrimeZoneOppWeight
+                CheckersInPrimeZoneOppWeight +
+                MotherDistancePlayerWeight +
+                MotherDistanceOppWeight
                 - 1.0)
                 > 1e-9)
             {

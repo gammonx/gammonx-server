@@ -36,7 +36,7 @@ namespace GammonX.Mars.NN.Services
             var isRace = RaceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval)) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+            var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval), board, isWhite) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             return score;
         }
 
@@ -115,8 +115,8 @@ namespace GammonX.Mars.NN.Services
 
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(board, isWhite, false);
-                var normalizedEval = NormalizedEvalResultModel.From(eval);
-                var score = _neuralEvalService?.Predict(normalizedEval) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                var evalModel = NormalizedEvalResultModel.From(eval);
+                var score = _neuralEvalService?.Predict(evalModel, board, isWhite) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
 
                 var reversedMoveSeq = moveSeq.DeepClone();
                 reversedMoveSeq.Moves.Reverse();
@@ -131,7 +131,7 @@ namespace GammonX.Mars.NN.Services
                     bestScore = score;
                     bestMoveSeq = moveSeq;
                     // we capture the features of the resulting board, this is the NN training input
-                    bestFeatures = normalizedEval;
+                    bestFeatures = evalModel;
                 }
             }
 

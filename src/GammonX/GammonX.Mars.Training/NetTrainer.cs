@@ -1,4 +1,4 @@
-using GammonX.Mars.NN.Nets;
+﻿using GammonX.Mars.NN.Nets;
 
 using GammonX.Models.Enums;
 
@@ -16,22 +16,26 @@ public static class NetTrainer
         string trainCsvPath,
         string valCsvPath,
         string outputModelPath,
-        int epochs = 100,
+        int epochs = 300,
         int batchSize = 256,
-        float learningRate = 3e-3f)
+        float learningRate = 1e-3f,
+        int earlyStoppingPatience = 45)
     {
         var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath);
         var (valFeatures, valLabels) = LoadCsv(valCsvPath);
 
         var model = NetModelFactory.Create(modus);
-        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate);
-        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.5);
+        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 1e-4);
+        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 40, gamma: 0.5);
         var loss = BCELoss();
 
         Console.WriteLine($"Train={trainFeatures.shape[0]}  Val={valFeatures.shape[0]}");
-
         PrintLabelStats(trainCsvPath, "train");
         PrintLabelStats(valCsvPath, "val");
+
+        var bestValLoss = float.MaxValue;
+        var epochsWithoutImprovement = 0;
+        var bestEpoch = 0;
 
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
@@ -44,13 +48,33 @@ public static class NetTrainer
                 valLoss = RunEpoch(model, optimizer, loss, valFeatures, valLabels, batchSize, train: false);
 
             var currentLr = optimizer.ParamGroups.First().LearningRate;
-            Console.WriteLine($"Epoch {epoch,3}/{epochs}  train_loss={trainLoss:F5}  val_loss={valLoss:F5}  lr={currentLr:G3}");
+
+            if (valLoss < bestValLoss)
+            {
+                bestValLoss = valLoss;
+                bestEpoch = epoch;
+                epochsWithoutImprovement = 0;
+                // save only the best
+                model.Save(outputModelPath);
+            }
+            else
+            {
+                epochsWithoutImprovement++;
+            }
+
+            var marker = epoch == bestEpoch ? " OK" : "";
+            Console.WriteLine($"Epoch {epoch,3}/{epochs}  train_loss={trainLoss:F5}  val_loss={valLoss:F5}  lr={currentLr:G3}{marker}");
+
+            if (epochsWithoutImprovement >= earlyStoppingPatience)
+            {
+                Console.WriteLine($"Early stopping — best val_loss={bestValLoss:F5} at epoch {bestEpoch}");
+                break;
+            }
 
             scheduler.step();
         }
 
-        model.Save(outputModelPath);
-        Console.WriteLine($"Model saved: {outputModelPath}");
+        Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5})");
     }
 
     private static float RunEpoch(
@@ -91,28 +115,74 @@ public static class NetTrainer
 
     private static (Tensor features, Tensor labels) LoadCsv(string path)
     {
-        var lines = File.ReadAllLines(path);
-        // we skip header
-        var rows = lines.Length - 1;
-        var firstData = lines[1].Split(',');
-        // we expect last column to be a label
-        var cols = firstData.Length - 1;
-
-        var features = new float[rows * cols];
-        var labels = new float[rows];
-
-        for (var i = 0; i < rows; i++)
+        // we read all rows first to know exact count
+        var rowList = new List<string>(capacity: 2_000_000);
+        using (var reader = new StreamReader(path))
         {
-            var parts = lines[i + 1].Split(',');
-            for (var j = 0; j < cols; j++)
-                features[i * cols + j] = float.Parse(parts[j]);
-            labels[i] = float.Parse(parts[cols]);
+            // we skip header
+            _ = reader.ReadLine();
+            while (!reader.EndOfStream)
+            {
+                var line = reader.ReadLine();
+                if (line is not null)
+                    rowList.Add(line);
+            }
         }
 
-        return (
-            tensor(features, new long[] { rows, cols }),
-            tensor(labels)
-        );
+        var rows = rowList.Count;
+        // last column is always a label
+        var cols = rowList[0].Split(',').Length - 1;
+
+        // we build the tensor in chunks and cat them together for large datasets 
+        const int chunkSize = 500_000;
+        var featureChunks = new List<Tensor>();
+        var labelChunks = new List<Tensor>();
+
+        for (var start = 0; start < rows; start += chunkSize)
+        {
+            var end = Math.Min(start + chunkSize, rows);
+            var count = end - start;
+
+            var featBuf = new float[count * cols];
+            var lblBuf = new float[count];
+
+            for (var i = 0; i < count; i++)
+            {
+                var parts = rowList[start + i].Split(',');
+                for (var j = 0; j < cols; j++)
+                    featBuf[i * cols + j] = float.Parse(parts[j]);
+                lblBuf[i] = float.Parse(parts[cols]);
+            }
+
+            featureChunks.Add(tensor(featBuf, new long[] { count, cols }));
+            labelChunks.Add(tensor(lblBuf));
+        }
+
+        var featureTensor = featureChunks.Count == 1
+            ? featureChunks[0]
+            : cat(featureChunks, dim: 0);
+
+        var labelTensor = labelChunks.Count == 1
+            ? labelChunks[0]
+            : cat(labelChunks, dim: 0);
+
+        foreach (var t in featureChunks)
+        {
+            if (!ReferenceEquals(t, featureTensor))
+            {
+                t.Dispose();
+            }
+        }
+
+        foreach (var t in labelChunks)
+        {
+            if (!ReferenceEquals(t, labelTensor))
+            {
+                t.Dispose();
+            }
+        }
+
+        return (featureTensor, labelTensor);
     }
 
     private static void PrintLabelStats(string path, string name)
