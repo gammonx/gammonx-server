@@ -1,30 +1,32 @@
 ### Trainings Data
-|    Metric    |    Value    |
-| ------------ | ----------- |
-| prior gen    | gen3        |
-| sample size  | 10_000      |
-| bootstrap    | 1.0         |
-| completed    | 10_000      |
-| discarded    | 0           |
-| samples      | 924_004     |
-| avg turns    | 96.4        |
-| avg pred var | 0.10775     |
-| duration     | 01:00:33:25 |
+|    Metric    |    Value     |
+| ------------ | ------------ |
+| prior gen    | linear model |
+| sample size  | 20_000       |
+| bootstrap    | 1            |
+| completed    | 20_000       |
+| discarded    | -            |
+| samples      | 1_863_414    |
+| avg turns    | 96.9         |
+| avg pred var | -            |
+| duration     | 00:00:28:47  |
 
 ### Training Model
-|    Metric    |    Value    |
-| ------------ | ----------- |
-| train size   | 785_403     |
-| val size     | 138_601     |
-| train mean   | 0.5186      |
-| train min    | 0           |
-| train max    | 1           |
-| t-near 0.5   | 1.4%        |
-| val mean     | 0.5190      |
-| val min      | 0           |
-| val max      | 1           |
-| v-near 0.5   | 1.3%        |
-| e1 t-loss    | 0.43959     |
-| e1 v-loss    | 0.43352     |
-| e100 t-loss  | 0.41648     |
-| e100 v-loss  | 0.42234     |
+|    Metric    |    Value     |
+| ------------ | ------------ |
+| train data   | gen 0        |
+| train size   | 1_583_901    |
+| val size     | 279_513      |
+| train mean   | 0.5158       |
+| train min    | 0            |
+| train max    | 1            |
+| t-near 0.5   | 0.4%         |
+| val mean     | 0.5147       |
+| val min      | 0            |
+| val max      | 1            |
+| v-near 0.5   | 0.4%         |
+| e1 t-loss    | 0.39723      |
+| e1 v-loss    | 0.35811      |
+| e300 t-loss  | 0.29360      |
+| e300 v-loss  | 0.31912      |
+| val gap      | 0.02552      |
