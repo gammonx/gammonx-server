@@ -2,13 +2,14 @@
 # Build and push gammonx container images to ECR.
 #
 # Usage:
-#   scripts/push-images.sh [--env dev|acc|prod] [--service game|lambda|wildbg|all]
+#   scripts/push-images.sh [--env dev|acc|prod] [--service game|lambda|wildbg|mars|all]
 #                          [--wildbg-path PATH] [--no-push]
 #
 # Examples:
-#   scripts/push-images.sh                          # build + push all 3 to dev
-#   scripts/push-images.sh --env acc                # all 3 to acc
+#   scripts/push-images.sh                          # build + push all 4 to dev
+#   scripts/push-images.sh --env acc                # all 4 to acc
 #   scripts/push-images.sh --service game           # game only
+#   scripts/push-images.sh --service mars           # mars bot only
 #   scripts/push-images.sh --no-push                # build only (smoke test)
 #
 # Requires: docker, aws CLI with credentials, git.
@@ -41,8 +42,8 @@ case "$ENV" in
 esac
 
 case "$SERVICE" in
-  all|game|lambda|wildbg) ;;
-  *) echo "Invalid --service '$SERVICE' (expected: all, game, lambda, wildbg)" >&2; exit 1 ;;
+  all|game|lambda|wildbg|mars) ;;
+  *) echo "Invalid --service '$SERVICE' (expected: all, game, lambda, wildbg, mars)" >&2; exit 1 ;;
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -117,6 +118,10 @@ if want wildbg; then
     exit 1
   fi
   build_and_push wildbg wildbgservice "$WB" "${WB}/dockerfile" ""
+fi
+
+if want mars; then
+  build_and_push mars marsservice "$REPO_ROOT" "src/GammonX/Dockerfile" mars-server-final
 fi
 
 echo ""

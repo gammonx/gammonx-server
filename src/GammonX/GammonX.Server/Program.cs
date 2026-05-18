@@ -132,6 +132,14 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 var app = builder.Build();
+
+// Validate bot service URLs eagerly so a missing env var surfaces at startup
+// rather than mid-game when the first bot move is requested.
+var botOptions = app.Services.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+if (string.IsNullOrEmpty(botOptions.WildBg))
+    throw new InvalidOperationException("BOT_SERVICE__WILDBG is not configured. Set the environment variable before starting the server.");
+if (string.IsNullOrEmpty(botOptions.Mars))
+    throw new InvalidOperationException("BOT_SERVICE__MARS is not configured. Set the environment variable before starting the server.");
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
 // -------------------------------------------------------------------------------
