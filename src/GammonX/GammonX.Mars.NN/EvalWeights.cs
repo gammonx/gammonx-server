@@ -4,8 +4,6 @@ namespace GammonX.Mars.NN
 {
     public static class EvalWeights
     {
-        // TODO: get weighting from config
-
         public static readonly RaceWeightModel RaceWeights = new RaceWeightModel()
         {
             PipDifferenceWeight = 0.45,
@@ -16,26 +14,35 @@ namespace GammonX.Mars.NN
         public static readonly ContactWeightModel PlakotoContactWeights = new ContactWeightModel()
         {
             // priority 1: existing pin strength
-            OppMotherPinnedWeight = 0.05,
-            PlayerMotherPinnedWeight = 0.06,
+            OppMotherPinnedWeight = 0.03,
+            PlayerMotherPinnedWeight = 0.04,
+            MotherDistancePlayerWeight = 0.02,
+            MotherDistanceOppWeight = 0.02,
             NumChFrontLastPinWeight = 0.04,
             NumChFrontLastPinOppWeight = 0.04,
-            PinCountOppWeight = 0.14,
-            PinCountPlayerWeight = 0.14,
+            PinCountOppWeight = 0.12,
+            PinCountPlayerWeight = 0.12,
             BlotCountWeight = 0.05,
-            BlotInStartRangeCountWeight = 0.04, 
-            AnchorCountWeight = 0.06,
+            BlotCountOppWeight = 0.04,
+            BlotInStartRangeCountWeight = 0.02,
+            BlotInStartRangeCountOppWeight = 0.02,
+            AnchorCountWeight = 0.03,
+            AnchorCountOppWeight = 0.03,
             // priority 2: future pin opportunities
-            HitOpponentProbability1Weight = 0.06,
-            HitOpponentProbability2Weight = 0.04,
+            //HitOpponentProbability1Weight = 0.06,
+            //HitOpponentProbability2Weight = 0.04,
             // priority 3: avoid getting pinned
-            HitProbability1Weight = 0.07,
-            HitProbability2Weight = 0.04,
+            //HitProbability1Weight = 0.07,
+            //HitProbability2Weight = 0.04,
+            AverageStackHeightPlayerWeight = 0.10,
+            AverageStackHeightOppWeight = 0.11,
             // priority 4: mobility / escape
-            EscapeProbability1Weight = 0.04,
-            EscapeProbability2Weight = 0.02,
-            EscapeProbability1OppWeight = 0.04,
-            EscapeProbability2OppWeight = 0.02,
+            //EscapeProbability1Weight = 0.04,
+            //EscapeProbability2Weight = 0.02,
+            //EscapeProbability1OppWeight = 0.04,
+            //EscapeProbability2OppWeight = 0.02,
+            AverageDistanceToBearOffPlayerWeight = 0.06,
+            AverageDistanceToBearOffOppWeight = 0.06,
             // priority 5: race
             PipDifferenceWeight = 0.03,
             PipToBearOffWeight = 0.01,
@@ -45,11 +52,18 @@ namespace GammonX.Mars.NN
         public static readonly ContactWeightModel PlakotoCheapContactWeights = new ContactWeightModel()
         {
             // priority 1: existing pin strength
-            PinCountOppWeight = 0.11,
-            PinCountPlayerWeight = 0.13,
-            BlotCountWeight = 0.20,
-            BlotInStartRangeCountWeight = 0.14,
-            AnchorCountWeight = 0.15,
+            PinCountOppWeight = 0.09,
+            PinCountPlayerWeight = 0.11,
+            BlotCountWeight = 0.09,
+            BlotCountOppWeight = 0.09,
+            BlotInStartRangeCountWeight = 0.06,
+            BlotInStartRangeCountOppWeight = 0.06,
+            AnchorCountWeight = 0.08,
+            AnchorCountOppWeight = 0.07,
+            AverageStackHeightPlayerWeight = 0.02,
+            AverageStackHeightOppWeight = 0.02,
+            AverageDistanceToBearOffPlayerWeight = 0.02,
+            AverageDistanceToBearOffOppWeight = 0.02,
             // priority 2: race
             PipDifferenceWeight = 0.12,
             PipToBearOffWeight = 0.10,
@@ -63,23 +77,24 @@ namespace GammonX.Mars.NN
             PipToBearOffWeight = 0.10,
             PipToBearOffOppWeight = 0.10,
             // priority 2: prime and formation building
-            MaxPrimeLengthPlayerWeight = 0.06,
-            MaxPrimeLengthOppWeight = 0.06,
+            MaxPrimeLengthPlayerWeight = 0.04,
+            MaxPrimeLengthOppWeight = 0.04,
             HomebarCountPlayerWeight = 0.05,
+            HomebarCountOppWeight = 0.04,
             BlotCountWeight = 0.04,
             BlotCountOppWeight = 0.04,
-            PrimeProbabilityPlayerWeight = 0.09,
-            PrimeProbabilityOppWeight = 0.10,
-            AnchorCountInFrontPlayerWeight = 0.02,
-            AnchorCountInFrontOppWeight = 0.02,
-            AverageStackHeightPlayerWeight = 0.02,
-            AverageStackHeightOppWeight = 0.02,
-            AverageDistanceToBearOffPlayerWeight = 0.02,
-            AverageDistanceToBearOffOppWeight = 0.02,
-            AverageGapSizePlayerWeight = 0.02,
-            AverageGapSizeOppWeight = 0.02,
-            CheckersInPrimeZonePlayerWeight = 0.02,
-            CheckersInPrimeZoneOppWeight = 0.02,
+            //PrimeProbabilityPlayerWeight = 0.09,
+            //PrimeProbabilityOppWeight = 0.10,
+            AnchorCountInFrontPlayerWeight = 0.04,
+            AnchorCountInFrontOppWeight = 0.04,
+            AverageStackHeightPlayerWeight = 0.04,
+            AverageStackHeightOppWeight = 0.04,
+            AverageDistanceToBearOffPlayerWeight = 0.04,
+            AverageDistanceToBearOffOppWeight = 0.04,
+            AverageGapSizePlayerWeight = 0.04,
+            AverageGapSizeOppWeight = 0.04,
+            CheckersInPrimeZonePlayerWeight = 0.04,
+            CheckersInPrimeZoneOppWeight = 0.03,
         };
 
         public static readonly ContactWeightModel FevgaCheapContactWeights = new ContactWeightModel()
@@ -89,9 +104,10 @@ namespace GammonX.Mars.NN
             PipToBearOffWeight = 0.15,
             PipToBearOffOppWeight = 0.15,
             // priority 2: prime and formation building
-            MaxPrimeLengthPlayerWeight = 0.09,
-            MaxPrimeLengthOppWeight = 0.09,
+            MaxPrimeLengthPlayerWeight = 0.07,
+            MaxPrimeLengthOppWeight = 0.07,
             HomebarCountPlayerWeight = 0.04,
+            HomebarCountOppWeight = 0.04,
             BlotCountWeight = 0.04,
             BlotCountOppWeight = 0.04,
             AnchorCountInFrontPlayerWeight = 0.02,

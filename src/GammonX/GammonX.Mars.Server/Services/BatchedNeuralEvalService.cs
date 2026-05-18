@@ -1,3 +1,4 @@
+using GammonX.Engine.Models;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 using GammonX.Mars.NN.Services;
@@ -66,9 +67,9 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public float Predict(NormalizedEvalResultModel features)
+        public float Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            var vec = _extractor.Extract(features);
+            var vec = _extractor.Extract(model, board, isWhite);
             var tcs = new TaskCompletionSource<float>(TaskCreationOptions.RunContinuationsAsynchronously);
             // TryWrite will not block here: the channel is bounded but large relative to batch size;
             // under sustained overload the channel's Wait mode applies back-pressure.

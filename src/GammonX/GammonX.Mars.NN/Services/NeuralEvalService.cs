@@ -1,4 +1,5 @@
-﻿using GammonX.Mars.NN.Models;
+﻿using GammonX.Engine.Models;
+using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 
 using GammonX.Models.Enums;
@@ -64,14 +65,14 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public float Predict(NormalizedEvalResultModel features)
+        public float Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            var vec = _extractor.Extract(features);
+            var vec = _extractor.Extract(model, board, isWhite);
             lock (InferLock)
             {
                 using var raw   = tensor(vec);
                 using var input = raw.unsqueeze(0);
-                using var _     = no_grad();
+                using var _ = no_grad();
                 using var output = _netModel.Forward(input);
                 return output.item<float>();
             }

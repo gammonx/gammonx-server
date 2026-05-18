@@ -1,4 +1,6 @@
-﻿using GammonX.Mars.NN.Models;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Models;
+using GammonX.Mars.NN.Models;
 
 namespace GammonX.Mars.NN.Services
 {
@@ -6,20 +8,23 @@ namespace GammonX.Mars.NN.Services
     public class FevgaFeatureVectorExtractor : IFeatureVectorExtractor
     {
         // <inheritdoc />
-        public int FeatureCount => 21;
+        public int FeatureCount => 216;
 
         // <inheritdoc />
-        public float[] Extract(NormalizedEvalResultModel model)
+        public float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            return
+            var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
+
+            List<float> features =
             [
                 // contact features
-                (float)model.PrimeProbabilityPlayer,
-                (float)model.PrimeProbabilityOpp,
+                //(float)model.PrimeProbabilityPlayer,
+                //(float)model.PrimeProbabilityOpp,
                 // structure
                 (float)model.MaxPrimeLengthPlayer,
                 (float)model.MaxPrimeLengthOpp,
                 (float)model.HomebarCountPlayer,
+                (float)model.HomebarCountOpp,
                 (float)-model.BlotCount, // we need to invert the count in order to get the normalized value correct
                 (float)model.BlotCountOpp,
                 (float)model.AnchorCountInFrontPlayer,
@@ -37,8 +42,32 @@ namespace GammonX.Mars.NN.Services
                 (float)model.PipToBearOffOpp,
                 (float)model.PipDifference,
                 // race flag
-                model.Race ? 1f : 0f
+                model.Race ? 1f : 0f,
+                // raw board tensors
+                isWhite ? 1f : 0f,
+                board.BearOffCountWhite / 15f,
+                board.BearOffCountBlack / 15f,
+                turnNumber / 100f,
             ];
+
+            // we add the raw board as input
+            var sign = isWhite ? -1 : 1;
+            var fields = isWhite ? board.Fields : board.Fields.Reverse().ToArray();
+            for (var i = 0; i < board.Fields.Length; i++)
+            {
+                // active player view: own = positive
+                var v = fields[i] * sign;
+                features.Add(v >= 1 ? 1f : 0f);  // own blot
+                features.Add(v >= 2 ? 1f : 0f);  // own anchor
+                features.Add(v >= 3 ? 1f : 0f);  // own 3+
+                features.Add(v >= 4 ? 1f : 0f);  // own 4+
+                features.Add(v <= -1 ? 1f : 0f); // opp blot
+                features.Add(v <= -2 ? 1f : 0f); // opp anchor
+                features.Add(v <= -3 ? 1f : 0f); // opp 3+
+                features.Add(v <= -4 ? 1f : 0f); // opp 4+
+            }
+
+            return features.ToArray();
         }
     }
 }

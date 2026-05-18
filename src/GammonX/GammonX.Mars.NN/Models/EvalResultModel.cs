@@ -48,9 +48,19 @@
         public double BlotInStartRangeCount { get; init; } = 0;
 
         /// <summary>
+        /// Gets the amount of blots for the opponent in the start range.
+        /// </summary>
+        public double BlotInStartRangeCountOpp { get; init; } = 0;
+
+        /// <summary>
         /// Gets the amount of anchors for the player on the board.
         /// </summary>
         public double AnchorCount { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the amount of anchors for the opponent on the board.
+        /// </summary>
+        public double AnchorCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the pipcount difference of the player.
@@ -122,6 +132,16 @@
         /// </summary>
         public double PlayerMotherPinned { get; init; } = 0;
 
+        /// <summary>
+        /// Gets a value indicating the distance the players mother checker is away from home range.
+        /// </summary>
+        public double MotherDistancePlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets a value indicating the distance the opponents mother checker is away from home range.
+        /// </summary>
+        public double MotherDistanceOpp { get; init; } = 0;
+
         #region Fevga Features
 
         /// <summary>
@@ -135,9 +155,14 @@
         public double MaxPrimeLengthOpp { get; init; } = 0;
 
         /// <summary>
-        /// Gets the number of checkers of the opponent on the homebar.
+        /// Gets the number of checkers of the player on the homebar.
         /// </summary>
         public double HomebarCountPlayer { get; init; } = 0;
+
+        /// <summary>
+        /// Gets the number of checkers of the opponent on the homebar.
+        /// </summary>
+        public double HomebarCountOpp { get; init; } = 0;
 
         /// <summary>
         /// Gets the probability of the player to form a prime in his next turn.

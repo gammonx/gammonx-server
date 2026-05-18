@@ -16,14 +16,22 @@ namespace GammonX.Mars.NN.Features
         {
             if (isWhite)
             {
-                var whitePositions = board.Fields.Index().Where(i => i.Item < 0);
-                return Math.Abs(whitePositions.Average(wp => wp.Item));
+                var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
+                if (whitePositions.Count != 0)
+                {
+                    return Math.Abs(whitePositions.Average(wp => wp.Item));
+                }
             }
             else
             {
-                var blackPositions = board.Fields.Index().Where(i => i.Item > 0);
-                return blackPositions.Average(bp => bp.Item);
+                var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
+                if (blackPositions.Count != 0)
+                {
+                    return blackPositions.Average(bp => bp.Item);
+                }
             }
+
+            return 0;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using GammonX.Mars.NN.Models;
+﻿using GammonX.Engine.Models;
+using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
 
 namespace GammonX.Mars.Training
@@ -29,13 +30,14 @@ namespace GammonX.Mars.Training
         /// Features are already in active-player perspective so white and black
         /// positions are directly comparable — no separate recorder per color needed.
         /// </summary>
-        /// <param name="eval">Normalized features of the resulting board state.</param>
+        /// <param name="model">Normalized features of the resulting board state.</param>
+        /// <param name="board">Target board.</param>
         /// <param name="isWhite"><c>true</c> if the active player this turn was white.</param>
-        public void RecordPosition(NormalizedEvalResultModel eval, bool isWhite)
+        public void RecordPosition(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            var features = _extractor.Extract(eval);
+            var features = _extractor.Extract(model, board, isWhite);
             // we store the networks current prediction for this state (0.5 if no net yet)
-            var netPred = _neuralEvalService?.Predict(eval) ?? 0.5f;
+            var netPred = _neuralEvalService?.Predict(model, board, isWhite) ?? 0.5f;
             _positions.Add((features, isWhite, netPred));
         }
 
