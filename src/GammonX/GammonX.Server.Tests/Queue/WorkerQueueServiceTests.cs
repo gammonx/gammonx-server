@@ -17,7 +17,7 @@ namespace GammonX.Server.Tests.Queue
 {
     public class WorkerQueueServiceTests
     {
-        private IServiceProvider _serviceProvider;
+        private readonly IServiceProvider _serviceProvider;
 
         public WorkerQueueServiceTests()
         {
@@ -39,28 +39,28 @@ namespace GammonX.Server.Tests.Queue
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE", WorkQueueType.GameCompleted.GetName());
             });
 
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE", WorkQueueType.MatchCompleted.GetName());
             });
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE", WorkQueueType.PlayerCreated.GetName());
             });
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE", WorkQueueType.StatsUpdated.GetName());
             });
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, key) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE");
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE", WorkQueueType.RatingUpdated.GetName());
             });
 
             _serviceProvider = services.BuildServiceProvider();

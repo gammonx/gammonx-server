@@ -11,6 +11,7 @@ using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -101,67 +102,7 @@ builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, (sp, 
 // -------------------------------------------------------------------------------
 // AUTHENTICATION + AUTHORIZATION SETUP
 // -------------------------------------------------------------------------------
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-at-least-32-characters-long-for-hs256";
-    var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "";
-    var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "";
-
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = !string.IsNullOrEmpty(jwtIssuer),
-        ValidateAudience = !string.IsNullOrEmpty(jwtAudience),
-        ValidateLifetime = !string.IsNullOrEmpty(jwtSecret),
-        ValidateIssuerSigningKey = !string.IsNullOrEmpty(jwtSecret),
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-        {
-            var accessToken = context.Request.Query["token"].FirstOrDefault();
-            var bearerToken = context.Request.Headers.Authorization.FirstOrDefault()?.Replace("Bearer ", "");
-
-            if (!string.IsNullOrEmpty(bearerToken))
-            {
-                context.Token = bearerToken;
-            }
-            else if (!string.IsNullOrEmpty(accessToken))
-            {
-                context.Token = accessToken;
-            }
-
-            return Task.CompletedTask;
-        },
-        OnAuthenticationFailed = context =>
-        {
-            // we allow invalid JWT token for now
-            Log.Warning("JWT authentication failed: {Exception}", context.Exception?.Message);
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            // we make auth for now optional
-            context.HandleResponse();
-            return Task.CompletedTask;
-        }
-    };
-});
-builder.Services.AddAuthorizationBuilder()
-    .SetDefaultPolicy(new AuthorizationPolicyBuilder()
-        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireAuthenticatedUser()
-        .Build())
-    .AddPolicy("OptionalJwt", new AuthorizationPolicyBuilder()
-        .RequireAssertion(context => true)
-        .Build());
+builder.Services.AddAuthenticationConfig();
 // -------------------------------------------------------------------------------
 // CORS SETUP
 // -------------------------------------------------------------------------------
@@ -178,13 +119,33 @@ builder.Services.AddCors(options =>
 // -------------------------------------------------------------------------------
 // CORE SETUP
 // -------------------------------------------------------------------------------
+// we trust X-Forwarded-* headers from CloudFront/ALB so Request.Scheme reflects the original https scheme.
+// without this, UseHttpsRedirection can issue 307s that break the SignalR WebSocket upgrade.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 var app = builder.Build();
+
+// Validate bot service URLs eagerly so a missing env var surfaces at startup
+// rather than mid-game when the first bot move is requested.
+var botOptions = app.Services.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+if (string.IsNullOrEmpty(botOptions.WildBg))
+    throw new InvalidOperationException("BOT_SERVICE__WILDBG is not configured. Set the environment variable before starting the server.");
+if (string.IsNullOrEmpty(botOptions.Mars))
+    throw new InvalidOperationException("BOT_SERVICE__MARS is not configured. Set the environment variable before starting the server.");
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
 // -------------------------------------------------------------------------------
+// we must run before any middleware that inspects scheme/host (HTTPS redirect, auth, redirect URI generation).
+app.UseForwardedHeaders();
+
 var basePath = app.Services.GetRequiredService<IOptions<GameServiceOptions>>().Value.BasePath;
 app.UsePathBase(basePath);
 app.Use((context, next) =>
@@ -195,14 +156,11 @@ app.Use((context, next) =>
 // -------------------------------------------------------------------------------
 // APP CONFIGURATION
 // -------------------------------------------------------------------------------
-// signalR hubs
-app.MapHub<MatchLobbyHub>("/matchhub");
-// health check
-app.MapHealthChecks("/health");
-// configure the HTTP request pipeline.
 app.UseHttpsRedirection();
-app.UseAuthorization();
 app.UseAuthentication();
+app.UseAuthorization();
+app.MapHub<MatchLobbyHub>("/matchhub");
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 Log.Information("SERILOG LOGLEVEL: {SerilogLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__DEFAULT"));

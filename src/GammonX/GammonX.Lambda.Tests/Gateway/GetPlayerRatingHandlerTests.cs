@@ -62,7 +62,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = MakeRequest(playerId, variant);
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.NotNull(handler);
 
             var result = await handler.HandleAsync(request, context);
@@ -119,7 +119,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = MakeRequest(playerId, variant);
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.NotNull(handler);
 
             var result = await handler.HandleAsync(request, context);
@@ -142,6 +142,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
+                Path = $"/players/NOT-A-GUID/rating/{variant}",
                 Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
@@ -151,7 +152,7 @@ namespace GammonX.Lambda.Tests.Gateway
                 }
             };
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.NotNull(handler);
 
             await Assert.ThrowsAsync<FormatException>(async () => await handler.HandleAsync(request, context));
@@ -177,7 +178,7 @@ namespace GammonX.Lambda.Tests.Gateway
                 }
             };
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.Null(handler);
         }
 
@@ -199,7 +200,7 @@ namespace GammonX.Lambda.Tests.Gateway
             var newPlayerId = Guid.NewGuid();
             var request = MakeRequest(newPlayerId, MatchVariant.Backgammon);
 
-            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services);
+            var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.NotNull(handler);
 
             var result = await handler.HandleAsync(request, context);
@@ -219,6 +220,7 @@ namespace GammonX.Lambda.Tests.Gateway
         {
             return new APIGatewayProxyRequest
             {
+                Path = $"/players/{playerId}/rating/{variant}",
                 Resource = "/players/{id}/rating/{variant}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>

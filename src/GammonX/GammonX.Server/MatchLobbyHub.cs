@@ -19,8 +19,8 @@ namespace GammonX.Server
     /// <summary>
     /// SignalR hub for managing match lobbies/sessions and handling the game flow.
     /// </summary>
-    [Authorize(Policy = "OptionalJwt")]
-    internal class MatchLobbyHub : Hub
+    [Authorize(Policy = "AuthPolicy")]
+    public class MatchLobbyHub : Hub
     {
         /// <summary>
         /// Stores the timeouts for players which are expected to do an action within a certain time frame

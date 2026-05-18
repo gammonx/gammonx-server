@@ -91,7 +91,7 @@ COPY ["src/GammonX/GammonX.Lambda/GammonX.Lambda.csproj", "GammonX.Lambda/"]
 RUN dotnet restore "./GammonX.Lambda/GammonX.Lambda.csproj"
 COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Lambda"
-RUN dotnet publish -c ${BUILD_CONFIGURATION} -o /build --self-contained true -r linux-x64
+RUN dotnet publish -c ${BUILD_CONFIGURATION} -o /build --self-contained true -r linux-arm64
 
 # we use custom runtime container in order to setup DI
 FROM public.ecr.aws/lambda/provided:al2 AS lambda-runtime

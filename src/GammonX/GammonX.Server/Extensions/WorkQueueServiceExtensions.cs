@@ -2,6 +2,8 @@
 using Amazon.Runtime;
 using Amazon.SQS;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Queue;
 
 using Microsoft.Extensions.Options;
@@ -79,7 +81,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.GAME_COMPLETED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.GAME_COMPLETED_QUEUE_URL, WorkQueueType.GameCompleted.GetName());
                 });
             }
             var matchCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL");
@@ -89,7 +91,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.MATCH_COMPLETED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.MATCH_COMPLETED_QUEUE_URL, WorkQueueType.MatchCompleted.GetName());
                 });
             }
 
@@ -100,7 +102,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.PLAYER_CREATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.PLAYER_CREATED_QUEUE_URL, WorkQueueType.PlayerCreated.GetName());
                 });
             }
 
@@ -111,7 +113,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.STATS_UPDATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.STATS_UPDATED_QUEUE_URL, WorkQueueType.StatsUpdated.GetName());
                 });
             }
 
@@ -122,7 +124,7 @@ namespace GammonX.Server.Extensions
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
-                    return new SqsWorkQueue(sqs, options.RATING_UPDATED_QUEUE_URL);
+                    return new SqsWorkQueue(sqs, options.RATING_UPDATED_QUEUE_URL, WorkQueueType.RatingUpdated.GetName());
                 });
             }
         }

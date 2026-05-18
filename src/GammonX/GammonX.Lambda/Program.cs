@@ -16,7 +16,7 @@ namespace GammonX.Lambda
 {
 	public class Program
 	{
-		public static async Task Main(string[] args)
+		public static async Task Main(string[] _)
 		{
 			var services = Startup.Configure();
 
@@ -29,7 +29,7 @@ namespace GammonX.Lambda
                     var json = await ReadStreamAsStringAsync(stream);
                     context.Logger.LogInformation($"Received input JSON: {json.Length} characters");
 
-                    var deserializedInput = DeserializeFunctionInput(json, context.FunctionName);
+                    var deserializedInput = DeserializeFunctionInput(json);
 
                     if (deserializedInput is SQSEvent sqsEvent)
                     {
@@ -61,8 +61,11 @@ namespace GammonX.Lambda
         private static async Task<object> HandleSqsEventAsync(ILambdaContext context, IServiceProvider services, SQSEvent sqsEvent)
         {
             using var scope = services.CreateScope();
-            var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, context.FunctionName);
+
+            var eventType = sqsEvent.Records.First().MessageAttributes["EVENT_TYPE"].StringValue;
+            var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, eventType);
             await handler.HandleAsync(sqsEvent, context);
+
             return new object();
         }
 
@@ -71,7 +74,7 @@ namespace GammonX.Lambda
             try
             {
                 using var scope = services.CreateScope();
-                var handler = LambdaFunctionFactory.CreateApiHandler(apiRequest, scope.ServiceProvider);
+                var handler = LambdaFunctionFactory.CreateApiHandler(apiRequest, scope.ServiceProvider, context);
 
                 if (handler == null)
                 {
@@ -106,23 +109,16 @@ namespace GammonX.Lambda
             };
         }
 
-        private static object? DeserializeFunctionInput(string json, string functionName)
+        private static object? DeserializeFunctionInput(string json)
         {
-            switch (functionName)
-            {
-                case LambdaFunctions.GameCompletedFunc:
-                case LambdaFunctions.MatchCompletedFunc:
-                case LambdaFunctions.PlayerCreatedFunc:
-                case LambdaFunctions.PlayerRatingUpdatedFunc:
-                case LambdaFunctions.PlayerStatsUpdatedFunc:
-                    var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
-                    return sqsEvent;
-                case LambdaFunctions.ApiGatewayHandlerFunc:
-                    var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
-                    return apiEvent;
-                default:
-                    return null;
-            }
+            // we try SQS first — SQS events have a "Records" array
+            var sqsEvent = JsonConvert.DeserializeObject<SQSEvent>(json);
+            if (sqsEvent?.Records != null && sqsEvent.Records.Count > 0)
+                return sqsEvent;
+
+            // we fall back to API Gateway
+            var apiEvent = JsonConvert.DeserializeObject<APIGatewayProxyRequest>(json);
+            return apiEvent;
         }
 
         private static async Task<string> ReadStreamAsStringAsync(Stream stream)

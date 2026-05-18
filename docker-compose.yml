@@ -33,6 +33,9 @@ services:
       # - WORK_QUEUE__STATS_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE
       # - WORK_QUEUE__RATING_UPDATED_QUEUE_URL=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE
       # - REPOSITORY__BASEURL=http://aws-stack-local:4566/restapis/{api-id}/dev/_user_request_
+      # - COGNITO_USER_POOL_ID=
+      # - COGNITO_CLIENT_ID=
+      # - COGNITO_REGION=
     depends_on:
       - wildbg-service
       - mars-service

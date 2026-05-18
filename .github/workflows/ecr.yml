@@ -1,29 +1,46 @@
-name: Build and Push Docker Compose Images to ECR
+name: Build and push images to ECR
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      env:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options: [dev, acc, prod]
+      service:
+        description: Service to build
+        required: true
+        default: all
+        type: choice
+        options: [all, game, lambda, wildbg]
 
 env:
   AWS_REGION: eu-central-1
-  COMPOSE_FILE: docker-compose.yml
-  IMAGE_PREFIX: gammonx
-  GAME_SERVICE: game-service
-  WILDBG_SERVICE: wildbg-service
-  LAMBDA_SERVICE: lambda-service
-  ECR_GAME_REPO: gammonx-dev-gameservice-ecrrepo
-  ECR_WILDBG_REPO: gammonx-dev-wildbgservice-ecrrepo
-  ECR_LAMBDA_REPO: gammonx-dev-lambdaservice-ecrrepo
+  # Pinned ref of gammonx-wildbg to check out. Override on dispatch by editing here,
+  # or pin to a tag/sha for reproducible deploys.
+  WILDBG_REF: main
 
 jobs:
-  build-and-push:
+  push:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout gammonx-server
         uses: actions/checkout@v4
+        with:
+          path: gammonx-server
+
+      - name: Checkout gammonx-wildbg
+        if: ${{ inputs.service == 'all' || inputs.service == 'wildbg' || github.event_name == 'push' }}
+        uses: actions/checkout@v4
+        with:
+          repository: gammonx/gammonx-wildbg
+          ref: ${{ env.WILDBG_REF }}
+          path: gammonx-wildbg
+          token: ${{ secrets.WILDBG_REPO_TOKEN || github.token }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -32,37 +49,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Compose images
-        env:
-          DOCKER_DEFAULT_PLATFORM: linux/amd64
+      - name: Build and push
+        working-directory: gammonx-server
         run: |
-          docker compose build ${GAME_SERVICE}
-
-      - name: Tag and Push images to ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          echo "GAME SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_GAME_REPO}:latest"
-          echo "Tagging and pushing $IMAGE_NAME"
-          # Tag image
-          docker tag "${IMAGE_PREFIX}/${GAME_SERVICE}:latest" "$IMAGE_NAME"
-          docker push "$IMAGE_NAME"
-
-          echo "WILDBG SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_WILDBG_REPO}:latest"
-          echo "Tagging and pushing $IMAGE_NAME"
-          # Tag image
-          docker tag "${IMAGE_PREFIX}/${WILDBG_SERVICE}:latest" "$IMAGE_NAME"
-          docker push "$IMAGE_NAME"
-
-          echo "LAMBDA SERVICE"
-          IMAGE_NAME="${ECR_REGISTRY}/${ECR_LAMBDA_REPO}:latest"
-          echo "Tagging and pushing $IMAGE_NAME"
-          # Tag image
-          docker tag "${IMAGE_PREFIX}/${LAMBDA_SERVICE}:latest" "$IMAGE_NAME"
-          docker push "$IMAGE_NAME"
+          scripts/push-images.sh \
+            --env "${{ inputs.env || 'dev' }}" \
+            --service "${{ inputs.service || 'all' }}" \
+            --wildbg-path "${{ github.workspace }}/gammonx-wildbg"
