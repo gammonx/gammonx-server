@@ -109,7 +109,8 @@ namespace GammonX.Lambda.Services
         private static readonly Dictionary<(string method, string pattern), Type> ApiRoutes =
 			new()
 			{
-				{ ("GET", "/players/{id}/rating/{variant}"), typeof(GetPlayerRatingHandler) }
+				{ ("GET", "/players/{id}/rating/{variant}"), typeof(GetPlayerRatingHandler) },
+				{ ("GET", "/players/{id}/games"), typeof(GetPlayerGamesHandler) },
 			};
     }
 }

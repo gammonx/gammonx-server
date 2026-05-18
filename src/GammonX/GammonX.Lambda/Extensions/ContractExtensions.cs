@@ -1,4 +1,4 @@
-﻿using GammonX.DynamoDb.Items;
+using GammonX.DynamoDb.Items;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
@@ -107,6 +107,28 @@ namespace GammonX.Lambda.Extensions
             return new PlayerRatingResponseContract()
             {
                 Rating = item.Rating
+            };
+        }
+
+        public static PlayerGamesResponseContract ToGamesResponse(this IEnumerable<GameItem> items)
+        {
+            return new PlayerGamesResponseContract
+            {
+                Games = items.Select(item => new GameSummaryContract
+                {
+                    Id = item.Id,
+                    MatchId = item.MatchId,
+                    Result = item.Result,
+                    Modus = item.Modus,
+                    Points = item.Points,
+                    Length = item.Length,
+                    StartedAt = item.StartedAt,
+                    EndedAt = item.EndedAt,
+                    Duration = item.Duration,
+                    PipesLeft = item.PipesLeft,
+                    DiceDoubles = item.DiceDoubles,
+                    DoublingCubeValue = item.DoublingCubeValue,
+                }).ToList()
             };
         }
 
