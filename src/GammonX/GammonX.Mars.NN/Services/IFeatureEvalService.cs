@@ -64,7 +64,7 @@ namespace GammonX.Mars.NN.Services
     /// <summary>
     /// Provides the final evaluation results for all move explored.
     /// </summary>
-    /// <param name="score">Evaluated score.</param>
+    /// <param name="Score">Evaluated score.</param>
     /// <param name="Move">Evaluated move.</param>
     /// <param name="EvalResult">Eval result.</param>
     public record FinalEvalResult(

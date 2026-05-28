@@ -1,6 +1,6 @@
 # Changelog
 
-## 17.05.2026
+## 28.05.2026
 
 ### NEW
 - Mars Bot Project
@@ -8,9 +8,8 @@
 	- added additional library for centralizing torchsharp access
 	- made mars server ready for neural net usage
 	- added console app for training data generation and model training
-	- neural net for plakoto
-	- neural net for fevga
-- expose bot services as lambda functions
+	- neural net for plakoto (gen6)
+	- neural net for fevga (gen6)
 
 ### FIXES
 - replaced alpine with debian based image for mars service

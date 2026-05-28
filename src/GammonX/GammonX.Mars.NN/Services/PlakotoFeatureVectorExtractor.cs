@@ -19,16 +19,7 @@ namespace GammonX.Mars.NN.Services
 
             List<float> features =
             [
-                // contact features
-                //(float)model.HitProbability1,
-                //(float)model.HitProbability2,
-                //(float)model.HitOpponentProbability1,
-                //(float)model.HitOpponentProbability2,
-                //(float)model.EscapeProbability1,
-                //(float)model.EscapeProbability2,
-                //(float)model.EscapeProbability1Opp,
-                //(float)model.EscapeProbability2Opp,
-                // pin features
+                // self-crafted pin features
                 (float)model.PinCountOpp,
                 (float)model.PinCountPlayer,
                 (float)model.OppMotherPinned,
@@ -37,7 +28,7 @@ namespace GammonX.Mars.NN.Services
                 (float)model.MotherDistanceOpp,
                 (float)model.NumChFrontLastPin,
                 (float)model.NumChFrontLastPinOpp,
-                // structure
+                // self-crafted structural features
                 (float)model.BlotCount,
                 (float)model.BlotCountOpp,
                 (float)model.BlotInStartRangeCount,
@@ -48,13 +39,13 @@ namespace GammonX.Mars.NN.Services
                 (float)model.AverageStackHeightOpp,
                 (float)model.AverageDistanceToBearOffPlayer,
                 (float)model.AverageDistanceToBearOffOpp,
-                // race
+                // race features
                 (float)model.PipDifference,
                 (float)model.PipToBearOff,
                 (float)model.PipToBearOffOpp,
-                // race flag
+                // race feature flag
                 model.Race ? 1f : 0f,
-                // raw board tensors
+                // raw board feature tensors
                 isWhite ? 1f : 0f,
                 board.BearOffCountWhite / 15f,
                 board.BearOffCountBlack / 15f,

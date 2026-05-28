@@ -102,9 +102,9 @@ namespace GammonX.Mars.Training
 
                         if (played % 50 == 0 || played == totalGames)
                         {
-                            var ci = ComputeWilsonCI(modelAWins, total);
+                            var (low, high) = ComputeWilsonCi(modelAWins, total);
                             Console.WriteLine($"  {played,5}/{totalGames}  AWins={modelAWins}  BWins={modelBWins}  Draws={draws}  Discarded={discarded}  " +
-                                              $"A-winrate={winRate:P1}  95%CI=[{ci.low:P1},{ci.high:P1}]");
+                                              $"A-winrate={winRate:P1}  95%CI=[{low:P1},{high:P1}]");
                         }
                     }
                 });
@@ -194,7 +194,7 @@ namespace GammonX.Mars.Training
         /// Wilson score confidence interval for a proportion.
         /// More accurate than normal approximation for small samples or extreme proportions.
         /// </summary>
-        private static (double low, double high) ComputeWilsonCI(int successes, int total, double z = 1.96)
+        private static (double low, double high) ComputeWilsonCi(int successes, int total, double z = 1.96)
         {
             if (total == 0) return (0, 1);
             var p = (double)successes / total;
@@ -209,7 +209,7 @@ namespace GammonX.Mars.Training
         {
             var decisive = result.ModelAWins + result.ModelBWins;
             var winRate = decisive > 0 ? (double)result.ModelAWins / decisive : 0.5;
-            var ci = ComputeWilsonCI(result.ModelAWins, decisive);
+            var ci = ComputeWilsonCi(result.ModelAWins, decisive);
             var significance = decisive >= 100
                 ? DetermineSignificance(result.ModelAWins, decisive)
                 : "insufficient games for significance test";

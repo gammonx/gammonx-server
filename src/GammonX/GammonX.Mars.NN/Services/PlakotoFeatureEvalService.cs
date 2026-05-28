@@ -19,7 +19,6 @@ namespace GammonX.Mars.NN.Services
         private readonly AnchorCountFeature _anchorCountFeature = new AnchorCountFeature();
         private readonly PipDifferenceFeature _pipDifferenceFeature = new PipDifferenceFeature();
         private readonly NumbersOfCheckersInFronOfLastPinFeature _numChFronLastPinFeature = new NumbersOfCheckersInFronOfLastPinFeature();
-        //private readonly ContactProbabilityFeature _contactFeatures;
         private readonly PinEvalFeature _pinEvalFeature = new PinEvalFeature();
         private readonly MotherDistanceFeature _motherDistanceFeature = new MotherDistanceFeature();
         private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
@@ -31,7 +30,6 @@ namespace GammonX.Mars.NN.Services
             [FromKeyedServices(GameModus.Plakoto)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
-            //_contactFeatures = new ContactProbabilityFeature(BoardService);
         }
         protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
@@ -55,19 +53,11 @@ namespace GammonX.Mars.NN.Services
                 eval = new EvalResultModel()
                 {
                     Race = false,
-                    //HitProbability1 = contactEvalPlayer.HitProbability1,
-                    //HitProbability2 = contactEvalPlayer.HitProbability2,
-                    //HitOpponentProbability1 = contactEvalOpp.HitProbability1,
-                    //HitOpponentProbability2 = contactEvalOpp.HitProbability2,
                     PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
                     PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
                     PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
                     NumChFrontLastPin = _numChFronLastPinFeature.Eval(board, isWhite),
                     NumChFrontLastPinOpp = _numChFronLastPinFeature.Eval(board, !isWhite),
-                    //EscapeProbability1 = contactEvalPlayer.EscapeProbability1,
-                    //EscapeProbability2 = contactEvalPlayer.EscapeProbability2,
-                    //EscapeProbability1Opp = contactEvalOpp.EscapeProbability1,
-                    //EscapeProbability2Opp = contactEvalOpp.EscapeProbability2,
                     PinCountOpp = pinEval.PinnedOppCount,
                     PinCountPlayer = pinEval.PinnedPlayerCount,
                     OppMotherPinned = pinEval.OppMotherPinned,

@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.History;
 using GammonX.Engine.Models;
+
 using GammonX.Mars.NN.Models;
 
 namespace GammonX.Mars.NN.Services
@@ -17,10 +18,7 @@ namespace GammonX.Mars.NN.Services
 
             List<float> features =
             [
-                // contact features
-                //(float)model.PrimeProbabilityPlayer,
-                //(float)model.PrimeProbabilityOpp,
-                // structure
+                // self-crafted structural features
                 (float)model.MaxPrimeLengthPlayer,
                 (float)model.MaxPrimeLengthOpp,
                 (float)model.HomebarCountPlayer,
@@ -37,13 +35,13 @@ namespace GammonX.Mars.NN.Services
                 (float)model.AverageGapSizeOpp,
                 (float)model.CheckersInPrimeZonePlayer,
                 (float)model.CheckersInPrimeZoneOpp,
-                // race
+                // race features
                 (float)model.PipToBearOff,
                 (float)model.PipToBearOffOpp,
                 (float)model.PipDifference,
-                // race flag
+                // race feature flag
                 model.Race ? 1f : 0f,
-                // raw board tensors
+                // raw board feature tensors
                 isWhite ? 1f : 0f,
                 board.BearOffCountWhite / 15f,
                 board.BearOffCountBlack / 15f,

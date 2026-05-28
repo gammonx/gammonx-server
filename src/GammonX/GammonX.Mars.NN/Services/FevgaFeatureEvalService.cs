@@ -19,7 +19,6 @@ namespace GammonX.Mars.NN.Services
         private readonly HomebarCountFeature _homebarCountFeature = new HomebarCountFeature();
         // we see a high blot count in fevga as a positive board control feature
         private readonly BlotCountFeature _blotCountFeature = new BlotCountFeature();
-        //private readonly PrimeProbabilityFeature _primeProbabilityFeature;
         private readonly AnchorCountInFrontFeature _anchorCountInFrontFeature = new AnchorCountInFrontFeature();
         private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
         private readonly AverageDistanceToBearOffFeature _averageDistancePositionFeature = new AverageDistanceToBearOffFeature();
@@ -52,8 +51,6 @@ namespace GammonX.Mars.NN.Services
             }
             else
             {
-                //var contactEvalResult = _primeProbabilityFeature.Eval(board, isWhite);
-
                 eval = new EvalResultModel()
                 {
                     Race = false,
@@ -67,8 +64,6 @@ namespace GammonX.Mars.NN.Services
                     BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
                     // we need to invert the count in order to get the normalized value correct
                     BlotCount = -_blotCountFeature.Eval(board, isWhite),
-                    //PrimeProbabilityPlayer = contactEvalResult.PrimeProbabilityPlayer,
-                    //PrimeProbabilityOpp = contactEvalResult.PrimeProbabilityOpp,
                     AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
                     AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
                     AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
