@@ -16,17 +16,25 @@ public static class NetTrainer
         string trainCsvPath,
         string valCsvPath,
         string outputModelPath,
-        int epochs = 300,
+        int epochs = 200,
         int batchSize = 4096,
-        float learningRate = 1e-3f,
-        int earlyStoppingPatience = 45)
+        float learningRate = 1.5e-3f,
+        int earlyStoppingPatience = 25,
+        bool shuffleLabels = false)
     {
         var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath);
         var (valFeatures, valLabels) = LoadCsv(valCsvPath);
 
+        if (shuffleLabels)
+        {
+            Console.WriteLine("WARNING: label shuffling enabled, not a real training run.");
+            trainLabels = ShuffleLabels(trainLabels);
+            valLabels = ShuffleLabels(valLabels);
+        }
+
         var model = NetModelFactory.Create(modus);
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
-        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 40, gamma: 0.5);
+        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.75);
         var loss = BCELoss();
 
         Console.WriteLine($"Train={trainFeatures.shape[0]}  Val={valFeatures.shape[0]}");
@@ -36,11 +44,16 @@ public static class NetTrainer
         var bestValLoss = float.MaxValue;
         var epochsWithoutImprovement = 0;
         var bestEpoch = 0;
-
+            
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
+            // we shuffle training indices each epoch for better convergence
+            using var trainIdx = randperm(trainFeatures.shape[0]);
+            using var shuffledFeatures = trainFeatures.index_select(0, trainIdx);
+            using var shuffledLabels = trainLabels.index_select(0, trainIdx);
+
             model.Train();
-            var trainLoss = RunEpoch(model, optimizer, loss, trainFeatures, trainLabels, batchSize, train: true);
+            var trainLoss = RunEpoch(model, optimizer, loss, shuffledFeatures, shuffledLabels, batchSize, train: true);
 
             model.Eval();
             float valLoss;
@@ -76,7 +89,7 @@ public static class NetTrainer
 
         Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5})");
     }
-
+        
     private static float RunEpoch(
         INetModel model,
         optim.Optimizer optimizer,
@@ -183,6 +196,12 @@ public static class NetTrainer
         }
 
         return (featureTensor, labelTensor);
+    }
+
+    private static Tensor ShuffleLabels(Tensor labels)
+    {
+        using var idx = randperm(labels.shape[0]);
+        return labels.index_select(0, idx);
     }
 
     private static void PrintLabelStats(string path, string name)

@@ -52,8 +52,8 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
-        /// <returns>Best rated move sequence and related normalized eval result.</returns>
-        FinalEvalResult EvalMoveSequenceForTraining(
+        /// <returns>All rated moves sorted descending by their eval score.</returns>
+        FinalEvalResult[] EvalMoveSequenceForTraining(
             EvalMoveRequestContract contract,
             ContactWeightModel cheapContactWeight,
             ContactWeightModel contactWeights,
@@ -61,14 +61,22 @@ namespace GammonX.Mars.NN.Services
             int maxCandidates);
     }
 
-    public record class FinalEvalResult(
-        MoveSequenceModel BestMove,
+    /// <summary>
+    /// Provides the final evaluation results for all move explored.
+    /// </summary>
+    /// <param name="score">Evaluated score.</param>
+    /// <param name="Move">Evaluated move.</param>
+    /// <param name="EvalResult">Eval result.</param>
+    public record FinalEvalResult(
+        double Score,
+        MoveSequenceModel Move,
         NormalizedEvalResultModel EvalResult);
 
-    public record class CheapEvalResult(
+    public record CheapEvalResult(
         double CheapScore,
         int Index,
-        bool IsRace)
+        bool IsRace,
+        NormalizedEvalResultModel EvalResult)
     {
         /// <summary>
         /// Sorts by <see cref="CheapEvalResult.CheapScore"/> descending — highest score first.

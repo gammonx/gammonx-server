@@ -43,11 +43,18 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
-            return EvalMoveSequenceForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates).BestMove;
+            var evalMoves = EvalMoveSequenceForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates);
+
+            if (evalMoves.Length != 0)
+            {
+                return evalMoves.First().Move;
+            }
+
+            return new MoveSequenceModel();
         }
 
         // <inheritdoc />
-        public FinalEvalResult EvalMoveSequenceForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public FinalEvalResult[] EvalMoveSequenceForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -57,7 +64,7 @@ namespace GammonX.Mars.NN.Services
             var legalMovesSeq = BoardService.GetLegalMoveSequences(board, isWhite, rolls);
 
             if (legalMovesSeq.Length == 0)
-                return new FinalEvalResult(new MoveSequenceModel(), default);
+                return [];
 
             // we first compute cheap features to rank candidates, avoiding the expensive
             // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
@@ -70,8 +77,8 @@ namespace GammonX.Mars.NN.Services
                 // in this case we overwrite the given maxCandidates count
                 var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Count);
 
-                var evalResult = GetCandidateByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
-                return evalResult;
+                var evalResult = GetCandidatesByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
+                return evalResult.ToArray();
             }
             finally
             {
@@ -79,7 +86,7 @@ namespace GammonX.Mars.NN.Services
             }
         }
 
-        private FinalEvalResult GetCandidateByFullEval
+        private IEnumerable<FinalEvalResult> GetCandidatesByFullEval
             (IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
@@ -88,9 +95,7 @@ namespace GammonX.Mars.NN.Services
             RaceWeightModel raceWeights,
             int evalCount)
         {
-            var bestScore = double.MinValue;
-            var bestMoveSeq = legalMovesSeq[0];
-            var bestFeatures = default(NormalizedEvalResultModel);
+            var evals = new List<FinalEvalResult>();
 
             for (int i = 0; i < evalCount; i++)
             {
@@ -100,10 +105,10 @@ namespace GammonX.Mars.NN.Services
                 if (candidates[i].IsRace)
                 {
                     // race score were already calculated
-                    if (candidates[i].CheapScore > bestScore)
+                    if (evals.Count == 0 || candidates[i].CheapScore > evals[0].Score)
                     {
-                        bestScore = candidates[i].CheapScore;
-                        bestMoveSeq = moveSeq;
+                        var cheapEvalResultResult = new FinalEvalResult(candidates[i].CheapScore, moveSeq, candidates[i].EvalResult);
+                        evals.Add(cheapEvalResultResult);
                     }
                     continue;
                 }
@@ -126,16 +131,11 @@ namespace GammonX.Mars.NN.Services
                     BoardService.UndoMove(board, undoMove, isWhite);
                 }
 
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestMoveSeq = moveSeq;
-                    // we capture the features of the resulting board, this is the NN training input
-                    bestFeatures = evalModel;
-                }
+                var evalResult = new FinalEvalResult(score, moveSeq, evalModel);
+                evals.Add(evalResult);
             }
 
-            return new FinalEvalResult(bestMoveSeq, bestFeatures);
+            return evals.OrderByDescending(e => e.Score);
         }
 
         private ArraySegment<CheapEvalResult> GetCandidatesByCheapScore(
@@ -167,7 +167,7 @@ namespace GammonX.Mars.NN.Services
                 }
 
                 var cheapScore = EvalScoreCalculator.CalculateCheapScore(eval, cheapContactWeights, raceWeights);
-                var cheapEvalResult = new CheapEvalResult(cheapScore, index, isRace);
+                var cheapEvalResult = new CheapEvalResult(cheapScore.Item2, index, isRace, cheapScore.Item1);
                 buffer[index] = cheapEvalResult;
             }
 

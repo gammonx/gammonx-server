@@ -12,9 +12,11 @@ Console.WriteLine("===========================================");
 Console.WriteLine("  GammonX Mars — Training Console");
 Console.WriteLine("===========================================");
 Console.WriteLine();
-Console.WriteLine("  1  Generate training data");
-Console.WriteLine("  2  Train model");
-Console.WriteLine("  3  Shuffle CSV");
+Console.WriteLine("  1  Self play Mode");
+Console.WriteLine("  2  Train Mode");
+Console.WriteLine("  3  Shuffle Mode");
+Console.WriteLine("  4  Noise floor Mode");
+Console.WriteLine("  5  Tournament Mode");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -30,6 +32,14 @@ else if (modeInput == "2")
 else if (modeInput == "3")
 {
     RunShuffleCsv();
+}
+else if (modeInput == "4")
+{
+    RunNoiseDiagnostic();
+}
+else if (modeInput == "5")
+{
+    RunTournament();
 }
 else
 {
@@ -57,10 +67,64 @@ static void RunTrainModel()
 
 #endregion Train Model
 
+#region Noise Floor Diagnostic
+
+static void RunNoiseDiagnostic()
+{
+    // we check based on a random label distribution if the given feature set have any predictive power
+    // if the noise diagnostic loss gap compared to a real run is greater than 0.3 then the features have predictive capacity.
+    // if it is less than that, then the feature sets hold no or to little positional information.
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
+    var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
+
+    NetTrainer.Train(
+        modus,
+        trainCsvPath: trainingCsvPath,
+        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath: outputModelPath,
+        shuffleLabels: true);
+}
+
+#endregion Noise Floor Diagnostic
+
+#region Tournament
+
+static void RunTournament()
+{
+    Console.WriteLine();
+
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
+    var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
+    var totalGames = PromptInt("Total games", 1000);
+
+    if (!File.Exists(modelAPath))
+    {
+        Console.WriteLine($"Model A not found: {modelAPath}"); return;
+    }
+
+    if (!File.Exists(modelBPath))
+    {
+        Console.WriteLine($"Model B not found: {modelBPath}"); return;
+    }
+
+    var contactWeights = GetContactWeights(modus);
+    var cheapContactWeights = GetCheapContactWeights(modus);
+    var raceWeights = GetRaceWeights(modus);
+
+    var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights);
+
+    TournamentRunner.PrintReport(result);
+}
+
+#endregion Tournament
+
 #region Shuffle CSV
 
 static void RunShuffleCsv()
 {
+    // we shuffle all inputs training data to create new CSV files which can be used for combined training
     Console.WriteLine();
     Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
 
@@ -170,46 +234,30 @@ static void RunGenerateTrainingData()
     var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
-    var modelPath = PromptString("Neural model path (e.g. training_net.dat). Leave blank to use hard coded weights.", "");
+    var modelPath = PromptString("Model path. Leave blank for linear.", "");
+    // we expect with a lambda below < 1.0 smooth intermediate labels, not just binary 1/0.
+    // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
+    // we also expect near-0.5 positions to increase above 0.0%
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
 
     Console.WriteLine();
 
-    IFeatureVectorExtractor extractor = modus switch
-    {
-        GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
-        GameModus.Fevga => new FevgaFeatureVectorExtractor(),
-        _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
-    };
-    ContactWeightModel contactWeights = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.PlakotoContactWeights,
-        GameModus.Fevga => EvalWeights.FevgaContactWeights,
-        _ => throw new NotSupportedException($"Modus {modus} has no contact weights.")
-    };
-    ContactWeightModel cheapContactWeights = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
-        GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
-        _ => throw new NotSupportedException($"Modus {modus} has no cheap contact weights.")
-    };
-    RaceWeightModel raceWeightModel = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.RaceWeights,
-        GameModus.Fevga => EvalWeights.RaceWeights,
-        _ => throw new NotSupportedException($"Modus {modus} has no race weights.")
-    };
+    var extractor = GetFeatureVectorExtractor(modus);
+    var contactWeights = GetContactWeights(modus);
+    var cheapContactWeights = GetCheapContactWeights(modus);
+    var raceWeights = GetRaceWeights(modus);
 
     var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
     INeuralEvalService neuralEvalService = null!;
+
     if (useNeuralEval)
     {
         neuralEvalService = NeuralEvalService.Load(modus, modelPath);
-        Console.WriteLine($"Loaded neural evaluator: {modelPath}");
+        Console.WriteLine($"Loaded model: {modelPath}");
     }
     else
     {
-        Console.WriteLine("Using hand-crafted eval weights.");
+        Console.WriteLine("Using linear model.");
     }
 
     var completed = 0;
@@ -227,14 +275,14 @@ static void RunGenerateTrainingData()
     var stopwatch = Stopwatch.StartNew();
 
     Parallel.For(
-        0, 
+        0,
         totalGames,
         new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
         (_) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
             var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
-            var result = runner.Run(contactWeights, cheapContactWeights, raceWeightModel);
+            var result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
 
             lock (lockObj)
             {
@@ -264,18 +312,20 @@ static void RunGenerateTrainingData()
     Console.WriteLine();
     Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
     Console.WriteLine($"Avg turns/game : {(double)totalTurnCount / totalGames:F1}");
+
     if (predVarianceCount > 0)
         Console.WriteLine($"Avg pred variance: {totalPredVariance / predVarianceCount:F5}  (over {predVarianceCount} completed games)");
+
     Console.WriteLine("Shuffling...");
 
     var rng = Random.Shared;
-    for (int i = allSamples.Count - 1; i > 0; i--)
+    for (var i = allSamples.Count - 1; i > 0; i--)
     {
-        int j = rng.Next(i + 1);
+        var j = rng.Next(i + 1);
         (allSamples[i], allSamples[j]) = (allSamples[j], allSamples[i]);
     }
 
-    int splitIndex = (int)(allSamples.Count * 0.85);
+    var splitIndex = (int)(allSamples.Count * 0.85);
     var trainSamples = allSamples[..splitIndex];
     var valSamples = allSamples[splitIndex..];
 
@@ -310,7 +360,7 @@ static void WriteCsv(string path, List<(float[] Features, float Label)> samples,
 static GameModus PromptEnum(string label, GameModus[] options, GameModus defaultValue)
 {
     Console.WriteLine($"{label}:");
-    for (int i = 0; i < options.Length; i++)
+    for (var i = 0; i < options.Length; i++)
         Console.WriteLine($"  {i + 1}  {options[i]}");
     Console.Write($"Select [{defaultValue}]: ");
     var input = Console.ReadLine()?.Trim();
@@ -341,3 +391,51 @@ static string PromptString(string label, string defaultValue)
 }
 
 #endregion Prompt Helpers
+
+#region Helpers
+
+static ContactWeightModel GetContactWeights(GameModus modus)
+{
+    var contactWeights = modus switch
+    {
+        GameModus.Plakoto => EvalWeights.PlakotoContactWeights,
+        GameModus.Fevga => EvalWeights.FevgaContactWeights,
+        _ => throw new NotSupportedException()
+    };
+    return contactWeights;
+}
+
+static ContactWeightModel GetCheapContactWeights(GameModus modus)
+{
+    var cheapContactWeights = modus switch
+    {
+        GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
+        GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
+        _ => throw new NotSupportedException()
+    };
+    return cheapContactWeights;
+}
+
+static RaceWeightModel GetRaceWeights(GameModus modus)
+{
+    var raceWeights = modus switch
+    {
+        GameModus.Plakoto => EvalWeights.RaceWeights,
+        GameModus.Fevga => EvalWeights.RaceWeights,
+        _ => throw new NotSupportedException()
+    };
+    return raceWeights;
+}
+
+static IFeatureVectorExtractor GetFeatureVectorExtractor(GameModus modus)
+{
+    IFeatureVectorExtractor extractor = modus switch
+    {
+        GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
+        GameModus.Fevga => new FevgaFeatureVectorExtractor(),
+        _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
+    };
+    return extractor;
+}
+
+#endregion Helpers

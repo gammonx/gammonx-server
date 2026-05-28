@@ -91,7 +91,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contactWeights">(Cheap) Contact position weights.</param>
         /// <param name="raceWeights">Race position weights.</param>
         /// <returns>A (cheap) weighted score representing the relative quality of the position.</returns>
-        public static double CalculateCheapScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public static (NormalizedEvalResultModel, double) CalculateCheapScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
             var normalizedResult = NormalizedEvalResultModel.From(eval);
             var score = 0.0;
@@ -136,7 +136,7 @@ namespace GammonX.Mars.NN.Services
                 score -= normalizedResult.CheckersInPrimeZoneOpp * contactWeights.CheckersInPrimeZoneOppWeight;
             }
 
-            return score;
+            return new ValueTuple<NormalizedEvalResultModel, double>(normalizedResult, score);
         }
     }
 }

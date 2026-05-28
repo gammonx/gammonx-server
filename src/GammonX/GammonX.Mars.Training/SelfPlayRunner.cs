@@ -67,14 +67,25 @@ namespace GammonX.Mars.Training
                     raceWeights,
                     50);
 
-                if (result.BestMove.Moves.Count != 0)
+                if (result.Length != 0)
                 {
-                    foreach (var move in result.BestMove.Moves)
+                    // we use epsilon-greediness to occasionally pick a random legal move
+                    // for exploration and increase the diversity of training samples
+                    // we can start with a higher epsilon in the early turns and decrease it as the game progresses
+                    var effectiveEpsilon = turnCount <= 20 ? 0.25f : 0.05f;
+
+                    var resultToPlay = effectiveEpsilon > 0f
+                        && _neuralEvalService != null
+                        && Random.Shared.NextSingle() < effectiveEpsilon
+                            ? result[Random.Shared.Next(result.Length)]
+                            : result[0]; // best move sequences
+
+                    foreach (var move in resultToPlay.Move.Moves)
                     {
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                     }
 
-                    _recorder.RecordPosition(result.EvalResult, board, isWhite);
+                    _recorder.RecordPosition(resultToPlay.EvalResult, board, isWhite);
                 }
 
                 isWhite = !isWhite;
