@@ -1,10 +1,17 @@
 ﻿using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
-using GammonX.Mars.Server.Services;
+
+using GammonX.Mars.NN;
+using GammonX.Mars.NN.Services;
+
 using GammonX.Mars.Server.Tests.Data;
+
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
+
 using Newtonsoft.Json;
+
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 
 namespace GammonX.Mars.Server.Tests.Services
 {
@@ -43,25 +50,25 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2 },
+                Rolls = [roll1, roll2],
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2 },
+                Rolls = [roll1, roll2],
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -86,25 +93,25 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -127,25 +134,25 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultBlack);
         }
 
@@ -165,16 +172,48 @@ namespace GammonX.Mars.Server.Tests.Services
             EvalWeights.RaceWeights.Validate();
             EvalWeights.FevgaCheapContactWeights.Validate();
 
-            var evalService = new FevgaFeatureEvalService();
+            var evalService = new FevgaFeatureEvalService(null);
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
                 Board = boardContract,
                 Modus = GameModus.Fevga,
-                Rolls = new int[] { roll1, roll2, roll1, roll2 },
+                Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
+        }
+
+        [Fact]
+        public void CanEvalFevgaBlackWonBoard()
+        {
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBlackWonBoard);
+            Assert.NotNull(boardContract);
+
+            EvalWeights.FevgaContactWeights.Validate();
+            EvalWeights.RaceWeights.Validate();
+            EvalWeights.FevgaCheapContactWeights.Validate();
+
+            var evalService = new FevgaFeatureEvalService(null);
+
+            EvalBoardRequestContract requestBlack = new EvalBoardRequestContract()
+            {
+                Board = boardContract,
+                Modus = GameModus.Fevga,
+                IsWhite = false
+            };
+            var resultBlack = evalService.EvalBoardState(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+
+            EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
+            {
+                Board = boardContract,
+                Modus = GameModus.Fevga,
+                IsWhite = true
+            };
+            var resultWhite = evalService.EvalBoardState(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+
+            Assert.True(resultBlack > 0.5);
+            Assert.True(resultWhite < -0.25);
         }
     }
 }

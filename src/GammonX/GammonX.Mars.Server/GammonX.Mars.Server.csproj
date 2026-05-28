@@ -14,8 +14,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
-	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
+		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+		<ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
+		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -28,7 +29,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Contracts\" />
+		<Folder Include="Contracts\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="NeuralNets\Fevga\training_net.dat" />
+		<EmbeddedResource Include="NeuralNets\Plakoto\training_net.dat" />
 	</ItemGroup>
 
 </Project>

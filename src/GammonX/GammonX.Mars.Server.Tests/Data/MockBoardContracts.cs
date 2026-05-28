@@ -24,13 +24,19 @@
 
         public const string PlakotoRacePinBoard1 = "{\"fields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,14,-14,0,0,0,0,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0]}";
 
+        public const string PlakotoBlackWonBoard = "{\"fields\":[-15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":15,\"pipCountWhite\":350,\"pipCountBlack\":0,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
+
         #endregion Test Plakoto Boards
 
         #region Test Fevga Boards
 
+        public const string FevgaBlackWonBoard = "{\"fields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":15,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":15,\"homebarCountBlack\":0}";
+
         public const string FevgaBoard1 = "{\"fields\":[-1,-2,0,-2,-2,-2,0,-1,0,0,0,0,2,2,2,1,0,3,3,2,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":5,\"homebarCountBlack\":0}";
 
         public const string FevgaBoard2 = "{\"fields\":[-3,0,0,-2,-1,0,1,0,0,0,0,0,1,1,1,1,1,-1,0,0,0,0,0,1],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":333,\"pipCountBlack\":321,\"pinnedFields\":null,\"homeBarCountWhite\":8,\"homeBarCountBlack\":8,\"doublingCubeValue\":0,\"doublingCubeOwner\":false}";
+
+        public const string FevgaBoard3 = "{\"fields\":[1,-1,1,0,2,-14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":11,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
 
         #endregion Test Fevga Boards
     }

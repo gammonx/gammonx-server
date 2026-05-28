@@ -9,15 +9,10 @@ using GammonX.Server.Bot;
 using GammonX.Server.Extensions;
 using GammonX.Server.Services;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 using Serilog;
-
-using System.Text;
 
 // -------------------------------------------------------------------------------
 // ENVIRONMENT SETUP
@@ -119,7 +114,7 @@ builder.Services.AddCors(options =>
 // -------------------------------------------------------------------------------
 // CORE SETUP
 // -------------------------------------------------------------------------------
-// we trust X-Forwarded-* headers from CloudFront/ALB so Request.Scheme reflects the original https scheme.
+// we trust X-Forwarded-* headers from CloudFront/ALB so Request. Scheme reflects the original https scheme.
 // without this, UseHttpsRedirection can issue 307s that break the SignalR WebSocket upgrade.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -133,8 +128,7 @@ builder.Services.AddSignalR();
 builder.Services.AddHealthChecks();
 var app = builder.Build();
 
-// Validate bot service URLs eagerly so a missing env var surfaces at startup
-// rather than mid-game when the first bot move is requested.
+// we validate bot service URLs eagerly so a missing env var surfaces at startup rather than mid-game when the first bot move is requested.
 var botOptions = app.Services.GetRequiredService<IOptions<BotServiceOptions>>().Value;
 if (string.IsNullOrEmpty(botOptions.WildBg))
     throw new InvalidOperationException("BOT_SERVICE__WILDBG is not configured. Set the environment variable before starting the server.");
@@ -143,6 +137,7 @@ if (string.IsNullOrEmpty(botOptions.Mars))
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
 // -------------------------------------------------------------------------------
+
 // we must run before any middleware that inspects scheme/host (HTTPS redirect, auth, redirect URI generation).
 app.UseForwardedHeaders();
 
@@ -172,5 +167,5 @@ Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetE
 
 app.Run();
 
-// used for webapplication factory tests
+// we require this for webapplication factory tests
 public partial class Program { }

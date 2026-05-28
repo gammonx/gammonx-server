@@ -1,5 +1,7 @@
 using DotNetEnv;
 
+using GammonX.Mars.NN.Services;
+
 using GammonX.Mars.Server;
 using GammonX.Mars.Server.Services;
 
@@ -39,10 +41,24 @@ builder.Services.Configure<ServiceOptions>(
 // -------------------------------------------------------------------------------
 builder.Services.AddKeyedSingleton<IFeatureEvalService, PlakotoFeatureEvalService>(GameModus.Plakoto);
 builder.Services.AddKeyedSingleton<IFeatureEvalService, FevgaFeatureEvalService>(GameModus.Fevga);
+builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, PlakotoFeatureVectorExtractor>(GameModus.Plakoto);
+builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorExtractor>(GameModus.Fevga);
+var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Plakoto);
+if (plakotoInference != null)
+{
+    builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Plakoto, (_, _) => plakotoInference);
+    builder.Services.AddSingleton<IHostedService>(plakotoInference);
+}
+var fevgaInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Fevga);
+if (fevgaInference != null)
+{
+    builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Fevga, (_, _) => fevgaInference);
+    builder.Services.AddSingleton<IHostedService>(fevgaInference);
+}
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------
-builder.Host.UseSerilog((context, services, configuration) =>
+builder.Host.UseSerilog((_, _, configuration) =>
 {
     configuration
         .Enrich.FromLogContext()

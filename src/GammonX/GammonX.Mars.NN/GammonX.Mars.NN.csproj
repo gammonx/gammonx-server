@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.15" />
+		<PackageReference Include="Microsoft.ML" Version="5.0.0" />
+		<PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
+		<PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
+		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
+	</ItemGroup>
+
+</Project>

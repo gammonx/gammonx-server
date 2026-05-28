@@ -1,5 +1,21 @@
 # Changelog
 
+## 28.05.2026
+
+### NEW
+- Mars Bot Project
+	- minor refactorings towards extensibility for future game modus support
+	- added additional library for centralizing torchsharp access
+	- made mars server ready for neural net usage
+	- added console app for training data generation and model training
+	- neural net for plakoto (gen6)
+	- neural net for fevga (gen6)
+
+### FIXES
+- replaced alpine with debian based image for mars service
+- fixed cross match session timer expiry which leads to unwanted force-disconnect event
+
+
 ## 17.05.2026
 
 ### NEW

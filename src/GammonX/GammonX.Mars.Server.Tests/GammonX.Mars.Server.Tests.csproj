@@ -15,11 +15,26 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
+    <ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
     <ProjectReference Include="..\GammonX.Mars.Server\GammonX.Mars.Server.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Data\NeuralNets\Fevga\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\NeuralNets\Fevga\training_net.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\NeuralNets\Plakoto\training_net.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

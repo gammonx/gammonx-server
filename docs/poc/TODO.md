@@ -2,15 +2,17 @@
 - see changelog 
 
 ## Active
-- fevga/plakoto bot implementation
+- bot services as lambda containers/functions
+- disconnect timer fires on cross match session
+- validate start index for fevga/plakoto 
 
-## TODO 
-- bot dificulty levels
+## TODO
+- bot difficulty levels
 - mars bot eval match equity (points away)
 - doubling cube to history/stats
 - export matches to sgf/.mat format
-- subscription service (clientside?)
-- match equity/stats afer match :: win percentage to user
+- subscription service (clients ide?)
+- match equity/stats after match :: win percentage to user
 - auth/user account > how to identify premium accounts?
     - authentication with api gateway
     - authorization required
