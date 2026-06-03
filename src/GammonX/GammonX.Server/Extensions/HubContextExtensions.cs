@@ -22,7 +22,7 @@ namespace GammonX.Server.Extensions
         public static Guid? GetMatchId(this HubCallerContext context)
         {
             // we check if we can extract the match id from the query
-            var value = context.GetHttpContext()?.Request.Query["id"].FirstOrDefault();
+            var value = context.GetHttpContext()?.Request.Query["matchId"].FirstOrDefault();
             if (value != null && Guid.TryParse(value, out var matchIdFromQuery))
             {
                 return matchIdFromQuery;
