@@ -1,5 +1,15 @@
 # Changelog
 
+## 01.06.2026
+
+### NEW
+- Mars Bot
+	- Neural Nets for Backgammon, Tavla, Portes
+	- Replacing the wildbg implementation
+
+### FIXES
+- ?
+
 ## 28.05.2026
 
 ### NEW

@@ -2,8 +2,8 @@
 - see changelog 
 
 ## Active
+- next gen mars bots
 - bot services as lambda containers/functions
-- disconnect timer fires on cross match session
 - validate start index for fevga/plakoto 
 
 ## TODO

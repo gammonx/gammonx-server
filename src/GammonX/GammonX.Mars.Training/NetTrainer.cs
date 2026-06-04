@@ -128,47 +128,71 @@ public static class NetTrainer
 
     private static (Tensor features, Tensor labels) LoadCsv(string path)
     {
-        // we read all rows first to know exact count
-        var rowList = new List<string>(capacity: 2_000_000);
-        using (var reader = new StreamReader(path))
+        // we stream the CSV and fill tensors in chunks to avoid holding all raw strings in memory
+        int cols;
+        using (var headerReader = new StreamReader(path))
         {
-            // we skip header
-            _ = reader.ReadLine();
-            while (!reader.EndOfStream)
-            {
-                var line = reader.ReadLine();
-                if (line is not null)
-                    rowList.Add(line);
-            }
+            var header = headerReader.ReadLine()!;
+            // last column is always a label
+            cols = header.Split(',').Length - 1;
         }
 
-        var rows = rowList.Count;
-        // last column is always a label
-        var cols = rowList[0].Split(',').Length - 1;
-
-        // we build the tensor in chunks and cat them together for large datasets 
         const int chunkSize = 500_000;
         var featureChunks = new List<Tensor>();
         var labelChunks = new List<Tensor>();
 
-        for (var start = 0; start < rows; start += chunkSize)
+        using (var reader = new StreamReader(path))
         {
-            var end = Math.Min(start + chunkSize, rows);
-            var count = end - start;
+            // we skip header
+            _ = reader.ReadLine();
 
-            var featBuf = new float[count * cols];
-            var lblBuf = new float[count];
-
-            for (var i = 0; i < count; i++)
+            while (!reader.EndOfStream)
             {
-                var parts = rowList[start + i].Split(',');
-                for (var j = 0; j < cols; j++)
-                    featBuf[i * cols + j] = float.Parse(parts[j], System.Globalization.CultureInfo.InvariantCulture);
-                lblBuf[i] = float.Parse(parts[cols], System.Globalization.CultureInfo.InvariantCulture);
-            }
+                var featBuf = new float[chunkSize * cols];
+                var lblBuf = new float[chunkSize];
+                var count = 0;
 
-            featureChunks.Add(tensor(featBuf, new long[] { count, cols }));
-            labelChunks.Add(tensor(lblBuf));
+                while (count < chunkSize && !reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    if (line == null)
+                        break;
+
+                    var span = line.AsSpan();
+                    var colIndex = 0;
+                    var expectedCols = cols + 1;
+
+                    while (!span.IsEmpty && colIndex < expectedCols)
+                    {
+                        var commaPos = span.IndexOf(',');
+                        var field = commaPos >= 0 ? span[..commaPos] : span;
+
+                        var value = float.Parse(field, System.Globalization.CultureInfo.InvariantCulture);
+
+                        if (colIndex < cols)
+                            featBuf[count * cols + colIndex] = value;
+                        else
+                            lblBuf[count] = value;
+
+                        colIndex++;
+                        span = commaPos >= 0 ? span[(commaPos + 1)..] : [];
+                    }
+
+                    if (colIndex != expectedCols)
+                    {
+                        Console.WriteLine($"Skipping row: expected {expectedCols} columns, got {colIndex}");
+                        continue;
+                    }
+
+                    count++;
+                }
+
+                if (count == 0)
+                    break;
+
+                featureChunks.Add(tensor(featBuf.AsSpan(0, count * cols).ToArray(), new long[] { count, cols }));
+                labelChunks.Add(tensor(lblBuf.AsSpan(0, count).ToArray()));
+            }
         }
 
         var featureTensor = featureChunks.Count == 1
