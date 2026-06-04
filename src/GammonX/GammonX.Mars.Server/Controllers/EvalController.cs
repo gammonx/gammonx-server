@@ -35,13 +35,15 @@ namespace GammonX.Mars.Server.Controllers
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-                // TODO: weights are obsolete with a loaded neural network
+                var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
+                var contactWeights = EvalWeights.GetContactWeights(request.Modus);
+                var cheapContactWeights = EvalWeights.GetCheapContactWeights(request.Modus);
 
-                EvalWeights.RaceWeights.Validate();
-                EvalWeights.PlakotoContactWeights.Validate();
-                EvalWeights.PlakotoCheapContactWeights.Validate();
+                raceWeights.Validate();
+                contactWeights.Validate();
+                cheapContactWeights.Validate();
 
-                var boardScore = evalService.EvalBoardState(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
+                var boardScore = evalService.EvalBoardState(request, cheapContactWeights, contactWeights, raceWeights);
                 var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -61,11 +63,15 @@ namespace GammonX.Mars.Server.Controllers
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-                EvalWeights.RaceWeights.Validate();
-                EvalWeights.PlakotoContactWeights.Validate();
-                EvalWeights.PlakotoCheapContactWeights.Validate();
+                var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
+                var contactWeights = EvalWeights.GetContactWeights(request.Modus);
+                var cheapContactWeights = EvalWeights.GetCheapContactWeights(request.Modus);
 
-                var bestMove = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+                raceWeights.Validate();
+                contactWeights.Validate();
+                cheapContactWeights.Validate();
+
+                var bestMove = evalService.EvalMoveSequence(request, cheapContactWeights, contactWeights, raceWeights, 20);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload() { MoveSequence = bestMove };

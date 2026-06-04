@@ -54,6 +54,9 @@ namespace GammonX.Mars.NN.Nets
             {
                 GameModus.Plakoto => new PlakotoNet(),
                 GameModus.Fevga => new FevgaNet(),
+                GameModus.Backgammon => new DefaultNet(),
+                GameModus.Tavla => new DefaultNet(),
+                GameModus.Portes => new DefaultNet(),
                 _ => throw new NotSupportedException($"Modus {modus} has no net model.")
             };
             return netModel;

@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Models
@@ -10,6 +11,15 @@ namespace GammonX.Engine.Models
     /// </summary>
     internal sealed class BackgammonBoardModelImpl : BoardBaseImpl, IHomeBarModel, IDoublingCubeModel, IHitModel
     {
+        internal BackgammonBoardModelImpl(BoardModelContract contract)
+        {
+            Fields = contract.Fields;
+            BearOffCountWhite = contract.BearOffCountWhite;
+            BearOffCountBlack = contract.BearOffCountBlack;
+            HomeBarCountWhite = contract.HomeBarCountWhite;
+            HomeBarCountBlack = contract.HomeBarCountBlack;
+        }
+
         public BackgammonBoardModelImpl()
         {
             Fields = new int[24]
