@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Models;
+using GammonX.Engine.Extensions;
 
 using GammonX.Models.Enums;
+using GammonX.Models;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models.gameSession;
@@ -41,69 +43,16 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			if (activeSession.BoardModel is not IDoublingCubeModel doublingCubeModel)
+			if (activeSession.BoardModel is not IDoublingCubeModel)
 				throw new InvalidOperationException("The board model does not support a doubling cube, so no score can be calculated.");
 
-			if (activeSession.BoardModel is not IHomeBarModel homeBarModel)
+			if (activeSession.BoardModel is not IHomeBarModel)
 				throw new InvalidOperationException("The board model does not support a home bar, so no score can be calculated.");
 
 			var board = activeSession.BoardModel;
-			var cubeValue = doublingCubeModel.DoublingCubeValue;
-
-			if (Player1.Id.Equals(playerId))
-			{
-				if (board.BearOffCountWhite != board.WinConditionCount)
-					throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
-
-				// white checker player
-				if (board.BearOffCountBlack == 0 && (homeBarModel.HomeBarCountBlack > 0 || LoserHasCheckersInWinnersHomeBoard(board, true)))
-				{
-					var points = 3 * cubeValue;
-					var result = new GameResultModel(playerId, GameResult.Backgammon, GameResult.LostBackgammon, points);
-					return result;
-				}
-				if (board.BearOffCountBlack == 0)
-				{
-                    var points = 2 * cubeValue;
-                    var result = new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, points);
-					return result;
-				}
-				else
-				{
-                    var points = 1 * cubeValue;
-                    var result = new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, points);
-					return result;
-
-                }
-			}
-			else if (Player2.Id.Equals(playerId))
-			{
-				// black checker player
-				if (board.BearOffCountBlack != board.WinConditionCount)
-					throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
-
-				// white checker player
-				if (board.BearOffCountWhite == 0 && (homeBarModel.HomeBarCountWhite > 0 || LoserHasCheckersInWinnersHomeBoard(board, false)))
-				{
-                    var points = 3 * cubeValue;
-                    var result = new GameResultModel(playerId, GameResult.Backgammon, GameResult.LostBackgammon, points);
-                    return result;
-                }
-				else if (board.BearOffCountWhite == 0)
-				{
-                    var points = 2 * cubeValue;
-                    var result = new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, points);
-                    return result;
-                }
-				else
-				{
-                    var points = 1 * cubeValue;
-                    var result = new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, points);
-                    return result;
-                }
-			}
-
-			throw new InvalidOperationException("Player is not part of this match session.");
+			var isWhite = IsWhite(playerId);
+			var gameResult = board.ToGameResult(playerId, isWhite);
+			return gameResult;
 		}
 
 		// <inheritdoc />
@@ -379,34 +328,6 @@ namespace GammonX.Server.Models
 			else
 			{
 				return false;
-			}
-		}
-
-		private static bool LoserHasCheckersInWinnersHomeBoard(IBoardModel model, bool isWhite)
-		{
-			if (isWhite)
-			{
-				var blackHasCheckersThere = model.Fields
-					.Take(model.HomeRangeWhite)
-					.Any(v => v > 0);
-				return blackHasCheckersThere;
-			}
-			else
-			{
-				if (model.HomeRangeBlack.Start.Value > model.HomeRangeBlack.End.Value)
-				{
-					var whiteHasCheckersThere = model.Fields
-						.Take(new Range(model.HomeRangeBlack.End.Value, model.HomeRangeBlack.Start.Value))
-						.Any(v => v < 0);
-					return whiteHasCheckersThere;
-				}
-				else
-				{
-					var whiteHasCheckersThere = model.Fields
-						.Take(model.HomeRangeBlack)
-						.Any(v => v < 0);
-					return whiteHasCheckersThere;
-				}
 			}
 		}
 

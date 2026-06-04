@@ -28,6 +28,21 @@ namespace GammonX.Mars.Server.Controllers
             return Ok();
         }
 
+        [HttpPost("cube")]
+        public IActionResult Cube([FromBody] EvalCubeRequestContract request)
+        {
+            try
+            {
+                return Ok();
+            }
+            catch (Exception ex) 
+            {
+                var payload = new RequestErrorPayload("CUBE_EVAL_ERROR", ex.Message);
+                var response = new ResponseContract<RequestErrorPayload>("ERROR", payload);
+                return BadRequest(response);
+            }
+        }
+
         [HttpPost("board")]
         public IActionResult Board([FromBody] EvalBoardRequestContract request)
         {

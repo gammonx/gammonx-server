@@ -3,7 +3,6 @@ using GammonX.Mars.Training;
 using GammonX.Models.Enums;
 
 using GammonX.Mars.NN;
-using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
 
 using System.Diagnostics;
@@ -266,7 +265,7 @@ static void RunGenerateTrainingData()
 
     var completed = 0;
     var discarded = 0;
-    var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
+    var allSamples = new List<(float[] Features, float[] Label)>(capacity: totalGames * 40);
     var totalTurnCount = 0L;
     var totalPredVariance = 0.0;
     var predVarianceCount = 0;
@@ -336,8 +335,8 @@ static void RunGenerateTrainingData()
     Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
     Console.WriteLine("Writing CSV files...");
 
-    WriteCsv(outputPath, trainSamples, extractor.FeatureCount);
-    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), valSamples, extractor.FeatureCount);
+    WriteCsv(outputPath, modus, trainSamples, extractor.FeatureCount);
+    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), modus, valSamples, extractor.FeatureCount);
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
@@ -345,15 +344,29 @@ static void RunGenerateTrainingData()
     Console.WriteLine("Complete.");
 }
 
-static void WriteCsv(string path, List<(float[] Features, float Label)> samples, int featureCount)
+static void WriteCsv(string path, GameModus modus, List<(float[] Features, float[] Label)> samples, int featureCount)
 {
     using var writer = new StreamWriter(path);
-    writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + ",label");
+
+    var labelHeaders = (modus == GameModus.Fevga || modus == GameModus.Plakoto)
+        ? "pWin"
+        : "pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss";
+
+    writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + "," + labelHeaders);
+
     foreach (var (features, label) in samples)
     {
         writer.Write(string.Join(",", features.Select(f => f.ToString("G6"))));
         writer.Write(',');
-        writer.WriteLine(label.ToString("G6"));
+        if (modus == GameModus.Fevga || modus == GameModus.Plakoto)
+        {
+            // TODO: add support for fevga/plakoto output labels
+            writer.WriteLine(label[0].ToString("G6"));
+        }
+        else
+        {
+            writer.WriteLine(string.Join(",", label.Select(l => l.ToString("G6"))));
+        }
     }
 }
 

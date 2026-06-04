@@ -5,7 +5,7 @@
 ### NEW
 - Mars Bot
 	- Neural Nets for Backgammon, Tavla, Portes
-	- Replacing the wildbg implementation
+	- Replacing the wildbg implementation, deprecate wildbg
 
 ### FIXES
 - ?

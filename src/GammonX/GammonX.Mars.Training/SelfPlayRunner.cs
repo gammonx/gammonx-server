@@ -10,8 +10,14 @@ using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Training
 {
+    /// <summary>
+    /// Runs a single self-play game and records training samples for each position encountered.
+    /// </summary>
+    /// <param name="Samples">List of (features, label) pairs for each position encountered during the game.</param>
+    /// <param name="TurnCount">The number of turns played in the game.</param>
+    /// <param name="PredictionVariance">The variance of the network's predictions during the game, if available.</param>
     public sealed record SelfPlayRunResult(
-        IReadOnlyList<(float[] Features, float Label)> Samples,
+        IReadOnlyList<(float[] Features, float[] Label)> Samples,
         int TurnCount,
         float? PredictionVariance);
 
@@ -94,7 +100,7 @@ namespace GammonX.Mars.Training
                 {
                     // draw: both mothers pinned, neither player can win
                     // label all recorded positions as 0.5 (half-win) rather than discarding
-                    var drawSamples = _recorder.Finalize(whiteWon: null);
+                    var drawSamples = _recorder.Finalize(GameResult.Draw, GameResult.Draw, true);
                     return new SelfPlayRunResult(drawSamples, turnCount, null);
                 }
             }
@@ -103,16 +109,19 @@ namespace GammonX.Mars.Training
                 return new SelfPlayRunResult([], turnCount, null);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
-            var samples = _recorder.Finalize(whiteWon);
-                        
+            var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
+            // we pass both winner and loser results so the recorder can label each position correctly
+            var samples = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
+
             float? predictionVariance = null;
             if (_neuralEvalService != null)
             {
                 var predictions = _recorder.NetPredictions;
                 if (predictions.Count > 1)
                 {
-                    var mean = predictions.Average();
-                    predictionVariance = predictions.Average(p => (p - mean) * (p - mean));
+                    var pWins = predictions.Select(p => p[0]);
+                    var mean = pWins.Average();
+                    predictionVariance = pWins.Average(p => (p - mean) * (p - mean));
                 }
             }
 

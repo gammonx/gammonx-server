@@ -3,12 +3,17 @@
 
 ## Active
 - next gen mars bots
-- bot services as lambda containers/functions
-- validate start index for fevga/plakoto 
 
 ## TODO
 - bot difficulty levels
-- mars bot eval match equity (points away)
+- bot services as lambda containers/functions
+- validate start index for fevga/plakoto
+- resilience patterns
+    - retry/timeouts
+    - proper healthcheck
+- mars bot MET tables
+    - match equity for all match variants
+- update nn arch of plakoto/fevga to > 5
 - doubling cube to history/stats
 - export matches to sgf/.mat format
 - subscription service (clients ide?)

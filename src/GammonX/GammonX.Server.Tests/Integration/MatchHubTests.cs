@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models;
 using GammonX.Models.Enums;
+
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;

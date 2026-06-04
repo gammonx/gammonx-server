@@ -10,6 +10,14 @@ namespace GammonX.Mars.NN.Nets
     /// <summary>
     /// Encapsulates the neural network architecture for <see cref="GameModus.Backgammon"/>, <see cref="GameModus.Tavla"/> and <see cref="GameModus.Portes"/>.
     /// </summary>
+    /// <remarks>
+    /// We predict 5 output probabilities:
+    /// - P(win)
+    /// - P(gammon win)
+    /// - P(backgammon win)
+    /// - P(gammon loss)
+    /// - P(backgammon loss)
+    /// </remarks>
     /// <seealso cref="INetModel"/>
     public sealed class DefaultNet : Module<Tensor, Tensor>, INetModel
     {
@@ -24,7 +32,7 @@ namespace GammonX.Mars.NN.Nets
             _fc1 = Linear(216, 256);
             _fc2 = Linear(256, 128);
             _fc3 = Linear(128, 64);
-            _fc4 = Linear(64, 1);
+            _fc4 = Linear(64, 5);
             // we randomly zero 10% of the neurons during training process to prevent overfitting
             // we do not apply it in eval process
             _drop = Dropout(p: 0.1);

@@ -1,6 +1,6 @@
 ﻿using GammonX.Models.Enums;
 
-namespace GammonX.Server.Models
+namespace GammonX.Models
 {
     /// <summary>
     /// Provides the information on how a game concluded for the winning and losing player.

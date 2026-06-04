@@ -22,8 +22,10 @@ public static class NetTrainer
         int earlyStoppingPatience = 25,
         bool shuffleLabels = false)
     {
-        var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath);
-        var (valFeatures, valLabels) = LoadCsv(valCsvPath);
+        // TODO: can be removed once plakoto/fevga supports 5 outputs
+        var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
+        var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath, labelCount);
+        var (valFeatures, valLabels) = LoadCsv(valCsvPath, labelCount);
 
         if (shuffleLabels)
         {
@@ -126,15 +128,13 @@ public static class NetTrainer
         return totalLoss / batches;
     }
 
-    private static (Tensor features, Tensor labels) LoadCsv(string path)
+    private static (Tensor features, Tensor labels) LoadCsv(string path, int labelCount)
     {
-        // we stream the CSV and fill tensors in chunks to avoid holding all raw strings in memory
         int cols;
         using (var headerReader = new StreamReader(path))
         {
             var header = headerReader.ReadLine()!;
-            // last column is always a label
-            cols = header.Split(',').Length - 1;
+            cols = header.Split(',').Length - labelCount;
         }
 
         const int chunkSize = 500_000;
@@ -143,13 +143,12 @@ public static class NetTrainer
 
         using (var reader = new StreamReader(path))
         {
-            // we skip header
             _ = reader.ReadLine();
 
             while (!reader.EndOfStream)
             {
                 var featBuf = new float[chunkSize * cols];
-                var lblBuf = new float[chunkSize];
+                var lblBuf = new float[chunkSize * labelCount];
                 var count = 0;
 
                 while (count < chunkSize && !reader.EndOfStream)
@@ -160,7 +159,7 @@ public static class NetTrainer
 
                     var span = line.AsSpan();
                     var colIndex = 0;
-                    var expectedCols = cols + 1;
+                    var expectedCols = cols + labelCount;
 
                     while (!span.IsEmpty && colIndex < expectedCols)
                     {
@@ -172,7 +171,7 @@ public static class NetTrainer
                         if (colIndex < cols)
                             featBuf[count * cols + colIndex] = value;
                         else
-                            lblBuf[count] = value;
+                            lblBuf[count * labelCount + (colIndex - cols)] = value;
 
                         colIndex++;
                         span = commaPos >= 0 ? span[(commaPos + 1)..] : [];
@@ -190,8 +189,9 @@ public static class NetTrainer
                 if (count == 0)
                     break;
 
-                featureChunks.Add(tensor(featBuf.AsSpan(0, count * cols).ToArray(), new long[] { count, cols }));
-                labelChunks.Add(tensor(lblBuf.AsSpan(0, count).ToArray()));
+                featureChunks.Add(tensor(featBuf.AsSpan(0, count * cols).ToArray(), [count, cols]));
+                labelChunks.Add(tensor(lblBuf.AsSpan(0, count * labelCount).ToArray(),
+                    labelCount == 1 ? [count] : [count, labelCount]));
             }
         }
 
@@ -206,17 +206,13 @@ public static class NetTrainer
         foreach (var t in featureChunks)
         {
             if (!ReferenceEquals(t, featureTensor))
-            {
                 t.Dispose();
-            }
         }
 
         foreach (var t in labelChunks)
         {
             if (!ReferenceEquals(t, labelTensor))
-            {
                 t.Dispose();
-            }
         }
 
         return (featureTensor, labelTensor);
@@ -231,8 +227,11 @@ public static class NetTrainer
     private static void PrintLabelStats(string path, string name)
     {
         var lines = File.ReadAllLines(path);
+        // we read the first label column (pWin), which is right after the features
+        var headerCols = lines[0].Split(',');
+        var featureCols = headerCols.Count(h => h.StartsWith('f'));
         var labels = lines.Skip(1)
-                          .Select(l => float.Parse(l.Split(',')[^1]))
+                          .Select(l => float.Parse(l.Split(',')[featureCols], System.Globalization.CultureInfo.InvariantCulture))
                           .ToArray();
 
         var mean = labels.Average();

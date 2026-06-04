@@ -21,7 +21,7 @@ namespace GammonX.Mars.Server.Services
     /// </summary>
     public sealed class BatchedNeuralEvalService : INeuralEvalService, IHostedService, IDisposable
     {
-        private readonly record struct InferenceRequest(float[] Vec, TaskCompletionSource<float> Result);
+        private readonly record struct InferenceRequest(float[] Vec, TaskCompletionSource<float[]> Result);
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
@@ -67,10 +67,10 @@ namespace GammonX.Mars.Server.Services
         }
 
         // <inheritdoc />
-        public float Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var vec = _extractor.Extract(model, board, isWhite);
-            var tcs = new TaskCompletionSource<float>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
             // TryWrite will not block here: the channel is bounded but large relative to batch size;
             // under sustained overload the channel's Wait mode applies back-pressure.
             _channel.Writer.TryWrite(new InferenceRequest(vec, tcs));
@@ -138,7 +138,7 @@ namespace GammonX.Mars.Server.Services
                 batch[i].Vec.CopyTo(flat, i * featureCount);
             }
 
-            // one forward pass for all positions in the batch: [N, featureCount] > [N]
+            // one forward pass for all positions in the batch: [N, featureCount] > [N, outputCount]
             using var input = tensor(flat, [batch.Count, featureCount]);
             using var _ = no_grad();
             using var output = _netModel.Forward(input);
@@ -146,8 +146,15 @@ namespace GammonX.Mars.Server.Services
             // we fan results back out, row i is independent of all other rows
             for (var i = 0; i < batch.Count; i++)
             {
-                using var scalar = output[i];
-                batch[i].Result.TrySetResult(scalar.item<float>());
+                using var row = output[i];
+                var result = row.data<float>().ToArray();
+                // we normalize single-output nets
+                if (result.Length == 1)
+                {
+                    // TODO: can be removed once plakoto/fevga supports 5 outputs
+                    result = [result[0], 0f, 0f, 0f, 0f];
+                }
+                batch[i].Result.TrySetResult(result);
             }
         }
 

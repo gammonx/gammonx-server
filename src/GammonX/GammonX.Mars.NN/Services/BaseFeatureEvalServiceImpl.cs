@@ -5,6 +5,7 @@ using GammonX.Mars.NN.Features;
 using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using System.Buffers;
 
@@ -15,14 +16,29 @@ namespace GammonX.Mars.NN.Services
     {
         private readonly INeuralEvalService _neuralEvalService;
 
+        protected abstract IBoardService BoardService { get; }
+
+        protected RaceFeature RaceFeature { get; } = new();
+
         protected BaseFeatureEvalServiceImpl(INeuralEvalService neuralEvalService)
         {
             _neuralEvalService = neuralEvalService;
         }
 
-        protected abstract IBoardService BoardService { get; }
+        // <inheritdoc />
+        public bool EvalCube(EvalCubeRequestContract contract, ContactWeightModel cheapContactWeight, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        {
+            var boardContract = contract.Board;
+            var board = BoardService.CreateBoard(boardContract);
+            var isWhite = contract.IsWhite;
 
-        protected RaceFeature RaceFeature { get; } = new();
+            if (board is IDoublingCubeModel cubeModel)
+            {
+                return false;
+            }
+
+            throw new InvalidDataException($"Game modus '{contract.Modus.GetName()}' does not support doubling cube evaluation.");
+        }
 
         // <inheritdoc />
         public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
@@ -34,8 +50,18 @@ namespace GammonX.Mars.NN.Services
             var isRace = RaceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            var score = _neuralEvalService?.Predict(NormalizedEvalResultModel.From(eval), board, isWhite) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
-            return score;
+            double pWin;
+            if (_neuralEvalService != null)
+            {
+                var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
+                pWin = predictions[0];
+            }
+            else
+            {
+                pWin = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+            }
+            
+            return pWin;
         }
 
         // <inheritdoc />
@@ -119,7 +145,16 @@ namespace GammonX.Mars.NN.Services
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(board, isWhite, false);
                 var evalModel = NormalizedEvalResultModel.From(eval);
-                var score = _neuralEvalService?.Predict(evalModel, board, isWhite) ?? EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                double pWin;
+                if (_neuralEvalService != null)
+                {
+                    var predictions = _neuralEvalService.Predict(evalModel, board, isWhite);
+                    pWin = predictions[0];
+                }
+                else
+                {
+                    pWin = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                }
 
                 var reversedMoveSeq = moveSeq.DeepClone();
                 reversedMoveSeq.Moves.Reverse();
@@ -129,7 +164,7 @@ namespace GammonX.Mars.NN.Services
                     BoardService.UndoMove(board, undoMove, isWhite);
                 }
 
-                var evalResult = new FinalEvalResult(score, moveSeq, evalModel);
+                var evalResult = new FinalEvalResult(pWin, moveSeq, evalModel);
                 evals.Add(evalResult);
             }
 
@@ -176,6 +211,6 @@ namespace GammonX.Mars.NN.Services
 
         protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace);
 
-        protected abstract EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace);
+        protected abstract EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace);        
     }
 }
