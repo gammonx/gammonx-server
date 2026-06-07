@@ -41,7 +41,6 @@ namespace GammonX.Mars.NN.Services
             int pointsAwayOpp,
             int cubeValue)
         {
-            // TODO test
             // we determine match score after each outcome
             var pa = pointsAway;
             var paOpp = pointsAwayOpp;

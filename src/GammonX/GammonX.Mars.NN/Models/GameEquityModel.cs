@@ -8,32 +8,32 @@
         /// <summary>
         /// Gets the probability of winning the game with a single point.
         /// </summary>
-        public double WinSingleP { get; private set; }
+        public double WinSingleP { get; }
 
         /// <summary>
         /// Gets the probability of winning the game with a gammon.
         /// </summary>
-        public double WinGammonP { get; private set; }
+        public double WinGammonP { get; }
 
         /// <summary>
         /// Gets the probability of winning the game with a backgammon.
         /// </summary>
-        public double WinBackgammonP { get; private set; }
+        public double WinBackgammonP { get; }
 
         /// <summary>
         /// Gets the probability of losing the game with a single point.
         /// </summary>
-        public double LoseSingleP { get; private set; }
+        public double LoseSingleP { get; }
 
         /// <summary>
         /// Gets the probability of losing the game with a gammon.
         /// </summary>
-        public double LoseGammonP { get; private set; }
+        public double LoseGammonP { get; }
 
         /// <summary>
         /// Gets the probability of losing the game with a backgammon.
         /// </summary>
-        public double LoseBackgammonP { get; private set; }
+        public double LoseBackgammonP { get; }
 
         /// <summary>
         /// Gets the computed game equity.

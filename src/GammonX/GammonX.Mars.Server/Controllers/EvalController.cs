@@ -42,7 +42,7 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var cubeAction = evalService.EvalCube(request, cheapContactWeights, contactWeights, raceWeights);
+                var cubeAction = evalService.EvalCube(request);
                 var payload = new CubeEvalPayload { CubeAction = cubeAction };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
