@@ -6,6 +6,7 @@
 - Mars Bot
 	- Neural Nets for Backgammon, Tavla, Portes
 	- Replacing the wildbg implementation
+	- gen9 plakoto/fevga bot
 
 ### FIXES
 - ?
