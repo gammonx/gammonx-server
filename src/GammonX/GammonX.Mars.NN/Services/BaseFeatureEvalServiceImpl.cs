@@ -26,15 +26,50 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public bool EvalCube(EvalCubeRequestContract contract, ContactWeightModel cheapContactWeight, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public CubeAction EvalCube(EvalCubeRequestContract contract)
         {
+            if (_neuralEvalService == null)
+                throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
+
+            // TODO test
             var boardContract = contract.Board;
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;
 
-            if (board is IDoublingCubeModel cubeModel)
+            if (board is IDoublingCubeModel cubeModel && _neuralEvalService != null)
             {
-                return false;
+                var isRace = RaceFeature.Eval(board, isWhite);
+                var eval = CalculateEvalModel(board, isWhite, isRace);
+
+                var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
+                // we calculate the game equity
+                var outcome = new GameOutcomeModel(predictions);
+                var equityModel = new GameEquityModel(outcome);
+
+                // we calculate match equity for the active cube value
+                var equityNoDouble = MatchEquityCalculator.CalculateEquity(
+                    equityModel,
+                    contract.PointsAwayPlayer,
+                    contract.PointsAwayOpp,
+                    cubeModel.DoublingCubeValue);
+                // we calculate the match equity for a double and the opponent passes
+                var equityPass = MatchEquityCalculator.GetMET(
+                    contract.PointsAwayPlayer - cubeModel.DoublingCubeValue,
+                    contract.PointsAwayOpp);
+                // we calculate the match equity for a double and the opponent accepts/takes
+                var equityTake = MatchEquityCalculator.CalculateEquity(
+                    equityModel,
+                    contract.PointsAwayPlayer,
+                    contract.PointsAwayOpp,
+                    cubeModel.DoublingCubeValue * 2);
+
+                if (equityTake <= equityNoDouble)
+                    return CubeAction.NoDouble;
+
+                if (equityPass - equityTake > 0.05)
+                    return CubeAction.TooGood;
+
+                return CubeAction.Double;
             }
 
             throw new InvalidDataException($"Game modus '{contract.Modus.GetName()}' does not support doubling cube evaluation.");
@@ -50,18 +85,30 @@ namespace GammonX.Mars.NN.Services
             var isRace = RaceFeature.Eval(board, isWhite);
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
-            double pWin;
+            double score;
             if (_neuralEvalService != null)
             {
                 var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
-                pWin = predictions[0];
+                if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
+                {
+                    // TODO: enable full GAME equity predictions for plakoto/fevga
+                    // TODO: currently on WinP
+                    score = predictions[0];
+                }
+                else
+                {
+                    // TODO: calculate GAME equity and rank based on this if available
+                    var outcome = new GameOutcomeModel(predictions);
+                    var equityModel = new GameEquityModel(outcome);
+                    score = equityModel.Equity;
+                }
             }
             else
             {
-                pWin = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             }
             
-            return pWin;
+            return score;
         }
 
         // <inheritdoc />
@@ -110,8 +157,8 @@ namespace GammonX.Mars.NN.Services
             }
         }
 
-        private IEnumerable<FinalEvalResult> GetCandidatesByFullEval
-            (IBoardModel board,
+        private IEnumerable<FinalEvalResult> GetCandidatesByFullEval(
+            IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
             ArraySegment<CheapEvalResult> candidates,
@@ -145,15 +192,28 @@ namespace GammonX.Mars.NN.Services
                 // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(board, isWhite, false);
                 var evalModel = NormalizedEvalResultModel.From(eval);
-                double pWin;
+                double score;
                 if (_neuralEvalService != null)
                 {
                     var predictions = _neuralEvalService.Predict(evalModel, board, isWhite);
-                    pWin = predictions[0];
+                    if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
+                    {
+                        // TODO: enable full GAME equity predictions for plakoto/fevga
+                        // TODO: currently on WinP
+                        score = predictions[0];
+                    }
+                    else
+                    {
+                        // TODO: calculate GAME equity and rank based on this if available
+                        var outcome = new GameOutcomeModel(predictions);
+                        var equityModel = new GameEquityModel(outcome);
+                        score = equityModel.Equity;
+                    }
                 }
                 else
                 {
-                    pWin = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                    // TODO: plakoto/fevga must support match equity scoring
+                    score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
                 }
 
                 var reversedMoveSeq = moveSeq.DeepClone();
@@ -164,7 +224,7 @@ namespace GammonX.Mars.NN.Services
                     BoardService.UndoMove(board, undoMove, isWhite);
                 }
 
-                var evalResult = new FinalEvalResult(pWin, moveSeq, evalModel);
+                var evalResult = new FinalEvalResult(score, moveSeq, evalModel);
                 evals.Add(evalResult);
             }
 

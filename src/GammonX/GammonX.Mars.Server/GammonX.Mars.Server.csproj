@@ -35,10 +35,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Folder Include="Contracts\" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<EmbeddedResource Include="NeuralNets\Backgammon\training_net.dat" />
 		<EmbeddedResource Include="NeuralNets\Fevga\training_net.dat" />
 		<EmbeddedResource Include="NeuralNets\Plakoto\training_net.dat" />

@@ -3,6 +3,7 @@
 using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Services
 {
@@ -15,15 +16,8 @@ namespace GammonX.Mars.NN.Services
         /// Evaluates the cube decision for the match state in <paramref name="contract"/>.
         /// </summary>
         /// <param name="contract">Match state to evaluate</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
-        /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Race position weights.</param>
-        /// <returns>True if the cube should be offered, otherwise false.</returns>
-        bool EvalCube(
-            EvalCubeRequestContract contract,
-            ContactWeightModel cheapContactWeight,
-            ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights);
+        /// <returns>Cube action to take based on the evaluation.</returns>
+        CubeAction EvalCube(EvalCubeRequestContract contract);
 
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in

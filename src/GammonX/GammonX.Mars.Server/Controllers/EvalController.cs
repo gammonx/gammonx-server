@@ -4,7 +4,6 @@ using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
 
 using GammonX.Mars.Server.Contracts;
-
 using GammonX.Models.Contracts;
 
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +32,20 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
-                return Ok();
+                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
+
+                var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
+                var contactWeights = EvalWeights.GetContactWeights(request.Modus);
+                var cheapContactWeights = EvalWeights.GetCheapContactWeights(request.Modus);
+
+                raceWeights.Validate();
+                contactWeights.Validate();
+                cheapContactWeights.Validate();
+
+                var cubeAction = evalService.EvalCube(request, cheapContactWeights, contactWeights, raceWeights);
+                var payload = new CubeEvalPayload { CubeAction = cubeAction };
+                var response = new ResponseContract<CubeEvalPayload>("OK", payload);
+                return Ok(response);
             }
             catch (Exception ex) 
             {

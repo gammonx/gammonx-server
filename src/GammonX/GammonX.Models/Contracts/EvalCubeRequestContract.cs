@@ -15,5 +15,23 @@ namespace GammonX.Models.Contracts
 
         [DataMember(Name = "board", IsRequired = true)]
         public BoardModelContract Board { get; set; } = new BoardModelContract();
+
+        /// <summary>
+        /// Gets or sets the amount of points the current player needs to win the match
+        /// </summary>
+        [DataMember(Name = "pointsAwayPlayer", IsRequired = true)]
+        public int PointsAwayPlayer { get; set; }
+
+        /// <summary>
+        /// Gets or sets the amount of points the opponent needs to win the match
+        /// </summary>
+        [DataMember(Name = "pointsAwayOpp", IsRequired = true)]
+        public int PointsAwayOpp { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the match length.
+        /// </summary>
+        [DataMember(Name = "matchLength", IsRequired = true)]
+        public int MatchLength { get; set; }
     }
 }
