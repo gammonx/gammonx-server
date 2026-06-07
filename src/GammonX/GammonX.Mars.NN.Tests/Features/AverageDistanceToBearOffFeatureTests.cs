@@ -2,16 +2,16 @@
 
 using GammonX.Mars.NN.Features;
 
-using GammonX.Mars.Server.Tests.Data;
+using GammonX.Mars.NN.Tests.Data;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Newtonsoft.Json;
 
-namespace GammonX.Mars.Server.Tests.Features
+namespace GammonX.Mars.NN.Tests.Features
 {
-    public class AverageGapSizeFeatureTests
+    public class AverageDistanceToBearOffFeatureTests
     {
         [Fact]
         public void CanEvalPlakotoBoard1()
@@ -21,11 +21,11 @@ namespace GammonX.Mars.Server.Tests.Features
             Assert.NotNull(boardContract);
             var board = boardService.CreateBoard(boardContract);
 
-            var feature = new AverageGapSizeFeature();
+            var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(2, whiteResult);
+            Assert.Equal(22.33, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(2, blackResult);
+            Assert.Equal(22.33, blackResult, 2);
         }
 
         [Fact]
@@ -36,11 +36,11 @@ namespace GammonX.Mars.Server.Tests.Features
             Assert.NotNull(boardContract);
             var board = boardService.CreateBoard(boardContract);
 
-            var feature = new AverageGapSizeFeature();
+            var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(0.4, whiteResult);
+            Assert.Equal(20.80, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(0.16666666666666666, blackResult);
+            Assert.Equal(19.27, blackResult, 2);
         }
 
         [Fact]
@@ -51,11 +51,11 @@ namespace GammonX.Mars.Server.Tests.Features
             Assert.NotNull(boardContract);
             var board = boardService.CreateBoard(boardContract);
 
-            var feature = new AverageGapSizeFeature();
+            var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(0, whiteResult);
+            Assert.Equal(23.0, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(0, blackResult);
+            Assert.Equal(0.0, blackResult, 2);
         }
     }
 }

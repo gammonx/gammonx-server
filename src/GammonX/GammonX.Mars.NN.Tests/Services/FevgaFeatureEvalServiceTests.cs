@@ -1,10 +1,9 @@
 ﻿using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
 
-using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
 
-using GammonX.Mars.Server.Tests.Data;
+using GammonX.Mars.NN.Tests.Data;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -13,7 +12,7 @@ using Newtonsoft.Json;
 
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 
-namespace GammonX.Mars.Server.Tests.Services
+namespace GammonX.Mars.NN.Tests.Services
 {
     public class FevgaFeatureEvalServiceTests
     {
@@ -214,6 +213,27 @@ namespace GammonX.Mars.Server.Tests.Services
 
             Assert.True(resultBlack > 0.5);
             Assert.True(resultWhite < -0.25);
+        }
+
+        [Fact]
+        public void CannotEvalCube()
+        {
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBlackWonBoard);
+            Assert.NotNull(boardContract);
+
+            var evalService = new FevgaFeatureEvalService(null);
+
+            EvalCubeRequestContract request = new EvalCubeRequestContract()
+            {
+                Board = boardContract,
+                Modus = GameModus.Fevga,
+                IsWhite = false,
+                MatchLength = 2,
+                PointsAwayOpp = 1,
+                PointsAwayPlayer = 1
+            };
+
+            Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
         }
     }
 }

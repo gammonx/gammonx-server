@@ -31,7 +31,6 @@ namespace GammonX.Mars.NN.Services
             if (_neuralEvalService == null)
                 throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
 
-            // TODO test
             var boardContract = contract.Board;
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;

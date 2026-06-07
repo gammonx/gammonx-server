@@ -2,14 +2,14 @@
 
 using GammonX.Mars.NN.Features;
 
-using GammonX.Mars.Server.Tests.Data;
+using GammonX.Mars.NN.Tests.Data;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Newtonsoft.Json;
 
-namespace GammonX.Mars.Server.Tests.Features
+namespace GammonX.Mars.NN.Tests.Features
 {
     public class MaxPrimeLengthFeatureTests
     {

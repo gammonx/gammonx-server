@@ -25,23 +25,32 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Data\NeuralNets\Backgammon\" />
     <Folder Include="Data\NeuralNets\Fevga\" />
+    <Folder Include="Data\NeuralNets\Plakoto\" />
+    <Folder Include="Data\NeuralNets\Portes\" />
+    <Folder Include="Data\NeuralNets\Tavla\" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Data\NeuralNets\Backgammon\training_net.dat">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\README.md" Link="Data\NeuralNets\Backgammon\README.md" />
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\training_net.dat" Link="Data\NeuralNets\Backgammon\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Data\NeuralNets\Fevga\training_net.dat">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Fevga\README.md" Link="Data\NeuralNets\Fevga\README.md" />
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Fevga\training_net.dat" Link="Data\NeuralNets\Fevga\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Data\NeuralNets\Plakoto\training_net.dat">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\README.md" Link="Data\NeuralNets\Plakoto\README.md" />
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\training_net.dat" Link="Data\NeuralNets\Plakoto\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Data\NeuralNets\Portes\training_net.dat">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Portes\README.md" Link="Data\NeuralNets\Portes\README.md" />
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Portes\training_net.dat" Link="Data\NeuralNets\Portes\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="Data\NeuralNets\Tavla\training_net.dat">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\README.md" Link="Data\NeuralNets\Tavla\README.md" />
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\training_net.dat" Link="Data\NeuralNets\Tavla\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

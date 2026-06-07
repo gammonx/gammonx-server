@@ -7,7 +7,7 @@ using GammonX.Mars.NN;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Server.Tests
+namespace GammonX.Mars.NN.Tests
 {
     public class SelfPlayRunnerTests
     {

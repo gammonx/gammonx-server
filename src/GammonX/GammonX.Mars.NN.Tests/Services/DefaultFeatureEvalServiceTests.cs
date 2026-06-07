@@ -1,13 +1,12 @@
 ﻿using GammonX.Engine.Services;
 using GammonX.Engine.Extensions;
 
-using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Server.Tests.Services
+namespace GammonX.Mars.NN.Tests.Services
 {
     public class DefaultFeatureEvalServiceTests
     {
