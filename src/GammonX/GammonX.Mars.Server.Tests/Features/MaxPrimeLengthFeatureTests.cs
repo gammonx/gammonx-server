@@ -27,5 +27,23 @@ namespace GammonX.Mars.Server.Tests.Features
             var blackResult = feature.Eval(board, false);
             Assert.Equal(4, blackResult);
         }
+
+        [Theory]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Backgammon)]
+        public void CanEvalDefaultBoard1(GameModus modus)
+        {
+            var boardService = BoardServiceFactory.Create(modus);
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.DefaultBoard1);
+            Assert.NotNull(boardContract);
+            var board = boardService.CreateBoard(boardContract);
+
+            var feature = new MaxPrimeLengthFeature();
+            var whiteResult = feature.Eval(board, true);
+            Assert.Equal(3, whiteResult);
+            var blackResult = feature.Eval(board, false);
+            Assert.Equal(3, blackResult);
+        }
     }
 }

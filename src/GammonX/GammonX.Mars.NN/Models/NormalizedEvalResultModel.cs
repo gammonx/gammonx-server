@@ -74,7 +74,7 @@
 
         /// <summary>
         /// Gets the normalized pipcount difference of the player.
-        /// Range: [0, 1], where 0 is max disadvantage, 0 equal pip count and 1 is max advantage.
+        /// Range: [-1, 1], where -1 is max disadvantage, 0 equal pip count and 1 is max advantage.
         /// </summary>
         /// <remarks>
         /// Returns a positive value if the player is ahead and a negative value if the player is behind.

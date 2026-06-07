@@ -1,5 +1,6 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Models
@@ -11,6 +12,15 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal sealed class PortesBoardModelImpl : BoardBaseImpl, IHomeBarModel, IHitModel
     {
+        internal PortesBoardModelImpl(BoardModelContract contract)
+        {
+            Fields = contract.Fields;
+            BearOffCountWhite = contract.BearOffCountWhite;
+            BearOffCountBlack = contract.BearOffCountBlack;
+            HomeBarCountWhite = contract.HomeBarCountWhite;
+            HomeBarCountBlack = contract.HomeBarCountBlack;
+        }
+
         public PortesBoardModelImpl()
         {
             Fields = new int[24]

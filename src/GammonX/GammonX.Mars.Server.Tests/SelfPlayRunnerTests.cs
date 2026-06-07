@@ -3,7 +3,6 @@ using GammonX.Engine.Extensions;
 
 using GammonX.Mars.NN.Services;
 using GammonX.Mars.NN;
-using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -15,6 +14,9 @@ namespace GammonX.Mars.Server.Tests
         [Theory]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
         public void LinearModelBotCanPlayAgainstItself(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
@@ -46,9 +48,9 @@ namespace GammonX.Mars.Server.Tests
 
                 var result = evalService.EvalMoveSequence(
                     evalRequest,
-                    CheapContactWeightsForModus(modus),
-                    ContactWeightsForModus(modus),
-                    EvalWeights.RaceWeights,
+                    EvalWeights.GetCheapContactWeights(modus),
+                    EvalWeights.GetContactWeights(modus),
+                    EvalWeights.GetRaceWeights(modus),
                     20);
 
                 if (result.Moves.Count != 0)
@@ -72,6 +74,9 @@ namespace GammonX.Mars.Server.Tests
         [Theory]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
         public void NeuralNetBotCanPlayAgainstItself(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
@@ -105,9 +110,9 @@ namespace GammonX.Mars.Server.Tests
 
                 var result = evalService.EvalMoveSequence(
                     evalRequest,
-                    CheapContactWeightsForModus(modus),
-                    ContactWeightsForModus(modus),
-                    EvalWeights.RaceWeights,
+                    EvalWeights.GetCheapContactWeights(modus),
+                    EvalWeights.GetContactWeights(modus),
+                    EvalWeights.GetRaceWeights(modus),
                     20);
 
                 if (result.Moves.Count != 0)
@@ -126,26 +131,6 @@ namespace GammonX.Mars.Server.Tests
 
             Assert.True(board.BearOffCountBlack == board.WinConditionCount || board.BearOffCountWhite == board.WinConditionCount);
             Assert.True(board.PipCountBlack == 0 || board.PipCountWhite == 0);
-        }
-
-        private static ContactWeightModel ContactWeightsForModus(GameModus modus)
-        {
-            return modus switch
-            {
-                GameModus.Plakoto => EvalWeights.PlakotoContactWeights,
-                GameModus.Fevga => EvalWeights.FevgaContactWeights,
-                _ => throw new InvalidOperationException($"Modus {modus} has no contact weights.")
-            };
-        }
-
-        private static ContactWeightModel CheapContactWeightsForModus(GameModus modus)
-        {
-            return modus switch
-            {
-                GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
-                GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
-                _ => throw new InvalidOperationException($"Modus {modus} has no contact weights.")
-            };
         }
     }
 }

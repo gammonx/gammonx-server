@@ -5,6 +5,9 @@ using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Services
 {
+    /// <summary>
+    /// Provides an interface for extracting normalized feature vectors from evaluation results and board states for use as input to neural networks.
+    /// </summary>
     public interface IFeatureVectorExtractor
     {
         /// <summary>
@@ -32,6 +35,9 @@ namespace GammonX.Mars.NN.Services
             {
                 GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
                 GameModus.Fevga => new FevgaFeatureVectorExtractor(),
+                GameModus.Backgammon => new DefaultFeatureVectorExtractor(),
+                GameModus.Tavla => new DefaultFeatureVectorExtractor(),
+                GameModus.Portes => new DefaultFeatureVectorExtractor(),
                 _ => throw new NotSupportedException($"Modus {modus} has no feature vector extractor.")
             };
         }

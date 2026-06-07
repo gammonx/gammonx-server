@@ -39,5 +39,11 @@
         public const string FevgaBoard3 = "{\"fields\":[1,-1,1,0,2,-14,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":11,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
 
         #endregion Test Fevga Boards
+
+        #region Default Boards
+
+        public const string DefaultBoard1 = "{\"fields\":[-1,-2,0,-2,-2,-2,0,-1,0,0,0,0,2,2,2,1,0,3,3,2,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":5,\"homebarCountBlack\":0}";
+
+        #endregion
     }
 }

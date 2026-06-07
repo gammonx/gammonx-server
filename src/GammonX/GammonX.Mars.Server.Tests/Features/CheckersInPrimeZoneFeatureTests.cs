@@ -72,5 +72,21 @@ namespace GammonX.Mars.Server.Tests.Features
             var blackResult = feature.Eval(board, false);
             Assert.Equal(0, blackResult);
         }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        public void CanEvalDefaultBoard1(GameModus modus)
+        {
+            var boardService = BoardServiceFactory.Create(modus);
+            var board = boardService.CreateBoard();
+
+            var feature = new CheckersInPrimeZoneFeature();
+            var whiteResult = feature.Eval(board, true);
+            Assert.Equal(8, whiteResult);
+            var blackResult = feature.Eval(board, false);
+            Assert.Equal(8, blackResult);
+        }
     }
 }
