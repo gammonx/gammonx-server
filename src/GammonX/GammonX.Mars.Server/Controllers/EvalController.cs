@@ -101,7 +101,7 @@ namespace GammonX.Mars.Server.Controllers
                 var bestMove = evalService.EvalMoveSequence(request, cheapContactWeights, contactWeights, raceWeights, 150);
                 if (bestMove != null)
                 {
-                    var payload = new MoveEvalPayload() { MoveSequence = bestMove };
+                    var payload = new MoveEvalPayload { MoveSequence = bestMove };
                     var response = new ResponseContract<MoveEvalPayload>("OK", payload);
                     return Ok(response);
                 }

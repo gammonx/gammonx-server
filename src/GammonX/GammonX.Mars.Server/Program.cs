@@ -125,3 +125,6 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
 app.Run();
+
+// we require this for web application factory tests
+public partial class Program { }

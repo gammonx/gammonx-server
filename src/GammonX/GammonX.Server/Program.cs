@@ -167,5 +167,5 @@ Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetE
 
 app.Run();
 
-// we require this for webapplication factory tests
+// we require this for web application factory tests
 public partial class Program { }
