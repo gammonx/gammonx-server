@@ -2,7 +2,6 @@
 using GammonX.Engine.Extensions;
 
 using GammonX.Mars.NN.Services;
-using GammonX.Mars.NN;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;

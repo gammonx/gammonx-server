@@ -1,10 +1,17 @@
-﻿using GammonX.Engine.Services;
-using GammonX.Engine.Extensions;
+﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
+using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
+using GammonX.Mars.NN.Tests.Data;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
+
+using Moq;
+
+using Newtonsoft.Json;
 
 namespace GammonX.Mars.NN.Tests.Services
 {
@@ -203,6 +210,162 @@ namespace GammonX.Mars.NN.Tests.Services
             invertedBlack = invertedBlack.OrderBy(m => m.From).ThenBy(m => m.To);
             var sortedWhite = resultWhite.Moves.OrderBy(m => m.From).ThenBy(m => m.To);
             Assert.Equal(sortedWhite, invertedBlack);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        public void CannotEvalCube(GameModus modus)
+        {
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.DefaultBoard1);
+            Assert.NotNull(boardContract);
+
+            var evalService = new DefaultFeatureEvalService(default(INeuralEvalService)!, modus);
+
+            EvalCubeRequestContract request = new EvalCubeRequestContract()
+            {
+                Board = boardContract,
+                Modus = modus,
+                IsWhite = false,
+                MatchLength = 2,
+                PointsAwayOpp = 1,
+                PointsAwayPlayer = 1
+            };
+
+            Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
+        }
+
+        [Fact]
+        public void EvalCubeReturnsNoDoubleWhenTakeEquityNotBetter()
+        {
+            var neural = new Mock<INeuralEvalService>();
+
+            neural.Setup(x => x.Predict(
+                    It.IsAny<NormalizedEvalResultModel>(),
+                    It.IsAny<IBoardModel>(),
+                    It.IsAny<bool>()))
+                .Returns(new []
+                {
+                    0.50f, // win
+                    0.01f, // gammon win
+                    0.00f, // bg win
+                    0.01f, // gammon loss
+                    0.00f  // bg loss
+                });
+
+            var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
+
+            var result = service.EvalCube(CreateRequest());
+
+            Assert.Equal(CubeAction.NoDouble, result);
+        }
+
+        [Fact]
+        public void EvalCubeReturnsTooGoodWhenPositonIsStrong()
+        {
+            var neural = new Mock<INeuralEvalService>();
+
+            neural.Setup(x => x.Predict(
+                    It.IsAny<NormalizedEvalResultModel>(),
+                    It.IsAny<IBoardModel>(),
+                    It.IsAny<bool>()))
+                .Returns(new []
+                {
+                    0.75f, // win
+                    0.20f,
+                    0.05f,
+                    0.05f,
+                    0.00f
+                });
+
+            var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
+
+            var result = service.EvalCube(CreateRequest());
+
+            Assert.Equal(CubeAction.TooGood, result);
+        }
+
+        [Fact]
+        public void EvalCubeReturnsDoubleWhenPassEquityMuchHigherThanTake()
+        {
+            var neural = new Mock<INeuralEvalService>();
+
+            neural.Setup(x => x.Predict(
+                    It.IsAny<NormalizedEvalResultModel>(),
+                    It.IsAny<IBoardModel>(),
+                    It.IsAny<bool>()))
+                .Returns(new []
+                {
+                    0.99f, // win
+                    0.90f, // gammon win
+                    0.50f, // bg win
+                    0.00f,
+                    0.00f
+                });
+
+            var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
+
+            var result = service.EvalCube(CreateRequest());
+
+            Assert.Equal(CubeAction.Double, result);
+        }
+
+        [Fact]
+        public void EvalCubeReturnsNoDoubleWhenOpponentWouldBeCrushedByPass()
+        {
+            var neural = new Mock<INeuralEvalService>();
+
+            neural.Setup(x => x.Predict(
+                    It.IsAny<NormalizedEvalResultModel>(),
+                    It.IsAny<IBoardModel>(),
+                    It.IsAny<bool>()))
+                .Returns(new float[]
+                {
+                    0.99f, // win
+                    0.90f,
+                    0.50f,
+                    0.00f,
+                    0.00f
+                });
+
+            var service = new DefaultFeatureEvalService(
+                neural.Object,
+                GameModus.Backgammon);
+
+            var request = new EvalCubeRequestContract
+            {
+                Modus = GameModus.Backgammon,
+                IsWhite = true,
+                MatchLength = 3,
+                PointsAwayPlayer = 1,
+                PointsAwayOpp = 1,
+                Board = new BoardModelContract
+                {
+                    Fields = new int[24],
+                    DoublingCubeValue = 1
+                }
+            };
+
+            var result = service.EvalCube(request);
+
+            Assert.Equal(CubeAction.No, result);
+        }
+
+        private static EvalCubeRequestContract CreateRequest()
+        {
+            return new EvalCubeRequestContract
+            {
+                Modus = GameModus.Backgammon,
+                IsWhite = true,
+                MatchLength = 7,
+                PointsAwayPlayer = 4,
+                PointsAwayOpp = 4,
+                Board = new BoardModelContract
+                {
+                    Fields = new int[24],
+                    DoublingCubeValue = 1
+                }
+            };
         }
     }
 }

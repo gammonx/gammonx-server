@@ -45,28 +45,39 @@ namespace GammonX.Mars.NN.Services
                 var outcome = new GameOutcomeModel(predictions);
                 var equityModel = new GameEquityModel(outcome);
 
-                // we calculate match equity for the active cube value
-                var equityNoDouble = MatchEquityCalculator.CalculateEquity(
+                // we calculate current match equity
+                var noDouble = MatchEquityCalculator.CalculateEquity(
                     equityModel,
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp,
                     cubeModel.DoublingCubeValue);
-                // we calculate the match equity for a double and the opponent passes
-                var equityPass = MatchEquityCalculator.GetMET(
+                // we calculate the match equity if double is passed
+                var doublePass = MatchEquityCalculator.CalculateEquity(
+                    equityModel,
                     contract.PointsAwayPlayer - cubeModel.DoublingCubeValue,
-                    contract.PointsAwayOpp);
-                // we calculate the match equity for a double and the opponent accepts/takes
-                var equityTake = MatchEquityCalculator.CalculateEquity(
+                    contract.PointsAwayOpp,
+                    cubeModel.DoublingCubeValue);
+                // we calculate match equity if double is accepted
+                var doubleTake = MatchEquityCalculator.CalculateEquity(
                     equityModel,
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp,
                     cubeModel.DoublingCubeValue * 2);
 
-                if (equityTake <= equityNoDouble)
+                if (doubleTake <= noDouble)
+                {
+                    // we are losing equity by offering a double if opponent takes or passes
                     return CubeAction.NoDouble;
+                }
 
-                if (equityPass - equityTake > 0.05)
+                var volatility = Math.Abs(equityModel.WinSingleP - 0.5) + equityModel.WinGammonP + equityModel.LoseGammonP;
+
+                if (doublePass >= doubleTake && volatility > 0.2)
+                {
+                    // we expect the opponent to pass if we double, and we have a strong enough board
+                    // to win by a gammon or backgammon.
                     return CubeAction.TooGood;
+                }
 
                 return CubeAction.Double;
             }
@@ -91,12 +102,12 @@ namespace GammonX.Mars.NN.Services
                 if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
                 {
                     // TODO: enable full GAME equity predictions for plakoto/fevga
-                    // TODO: currently on WinP
+                    // we just return pure single win probability for now
                     score = predictions[0];
                 }
                 else
                 {
-                    // TODO: calculate GAME equity and rank based on this if available
+                    // we calculate game equity by outcome probabilities
                     var outcome = new GameOutcomeModel(predictions);
                     var equityModel = new GameEquityModel(outcome);
                     score = equityModel.Equity;
@@ -198,12 +209,12 @@ namespace GammonX.Mars.NN.Services
                     if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
                     {
                         // TODO: enable full GAME equity predictions for plakoto/fevga
-                        // TODO: currently on WinP
+                        // we just return pure single win probability for now
                         score = predictions[0];
                     }
                     else
                     {
-                        // TODO: calculate GAME equity and rank based on this if available
+                        // we calculate game equity by outcome probabilities
                         var outcome = new GameOutcomeModel(predictions);
                         var equityModel = new GameEquityModel(outcome);
                         score = equityModel.Equity;
@@ -211,7 +222,7 @@ namespace GammonX.Mars.NN.Services
                 }
                 else
                 {
-                    // TODO: plakoto/fevga must support match equity scoring
+                    // we calculate score by linear weighting model
                     score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
                 }
 

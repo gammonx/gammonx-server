@@ -55,12 +55,11 @@ namespace GammonX.Engine.Extensions
 
         public static GameResultModel ToGameResult(this IBoardModel board, Guid winnerId, bool isWhite)
         {
-            // TODO: unit tests
             var bearOffCountPlayer = isWhite ? board.BearOffCountWhite : board.BearOffCountBlack;
             if (bearOffCountPlayer != board.WinConditionCount)
                 throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
 
-            // support for backgammon, gammon and doubling cubes (e.g. backgammon)
+            // we support backgammon, gammon and doubling cubes (e.g. in game modus backgammon)
             if (board is IDoublingCubeModel cubeModel && board is IHomeBarModel homeBarModel)
             {
                 var cubeValue = cubeModel.DoublingCubeValue;

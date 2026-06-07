@@ -1357,6 +1357,7 @@ namespace GammonX.Server
 
         private async Task SendMatchState(string serverEventName, IMatchSessionModel match)
         {
+            // TODO: async task not blocking response
             // we put the results in the work queue if applicable
             await ProcessMatchResultsAsync(match, serverEventName);
 
