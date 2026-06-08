@@ -16,6 +16,7 @@ Console.WriteLine("  2  Train Mode");
 Console.WriteLine("  3  Shuffle Mode");
 Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
+Console.WriteLine("  6  Tournament Mode against wildbg");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -39,6 +40,10 @@ else if (modeInput == "4")
 else if (modeInput == "5")
 {
     RunTournament();
+}
+else if (modeInput == "6")
+{
+    RunBotServiceTournament();
 }
 else
 {
@@ -116,6 +121,29 @@ static void RunTournament()
     var raceWeights = EvalWeights.GetRaceWeights(modus);
 
     var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights);
+
+    TournamentRunner.PrintReport(result);
+}
+
+static void RunBotServiceTournament()
+{
+    Console.WriteLine();
+
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] { GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
+    var totalGames = PromptInt("Total games", 1000);
+
+    if (!File.Exists(modelAPath))
+    {
+        Console.WriteLine($"Model A not found: {modelAPath}"); return;
+    }
+
+    var contactWeights = EvalWeights.GetContactWeights(modus);
+    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
+    var raceWeights = EvalWeights.GetRaceWeights(modus);
+
+    var result = TournamentRunner.Run(modus, modelAPath, null, totalGames, contactWeights, cheapContactWeights, raceWeights);
 
     TournamentRunner.PrintReport(result);
 }

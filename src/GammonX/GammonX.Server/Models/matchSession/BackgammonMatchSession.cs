@@ -99,7 +99,7 @@ namespace GammonX.Server.Models
 
 		protected override bool IsCommandCallValid(Guid callingPlayerId, string calledCommand)
 		{
-			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand).ToList();
+			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand).ToList();
 			if (CanExecuteOfferDoubleCommand(callingPlayerId))
 			{
 				availableCommands.Add(ServerCommands.OfferDoubleCommand);
@@ -173,7 +173,7 @@ namespace GammonX.Server.Models
 			{
 				_doubleCubeOfferPlayerId = callingPlayerId;
 				doublingCubeGameSession.DoubleOffered(callingPlayerId);
-				_lastExecutedCommand = ServerCommands.OfferDoubleCommand;
+				LastExecutedCommand = ServerCommands.OfferDoubleCommand;
 			}
 			else
 			{
@@ -237,7 +237,7 @@ namespace GammonX.Server.Models
 
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
-			_lastExecutedCommand = ServerCommands.AcceptDoubleCommand;
+			LastExecutedCommand = ServerCommands.AcceptDoubleCommand;
 			doublingCubeGameSession.DoubleAccepted(callingPlayerId);
 		}
 
@@ -289,7 +289,7 @@ namespace GammonX.Server.Models
 
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
-			_lastExecutedCommand = ServerCommands.DeclineDoubleCommand;
+			LastExecutedCommand = ServerCommands.DeclineDoubleCommand;
 			doublingCubeGameSession.DoubleDeclined(callingPlayerId);
 		}
 
@@ -340,7 +340,7 @@ namespace GammonX.Server.Models
 				return false;
 			}
 
-			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
+			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand);
 
 			if (Player1.Id.Equals(callingPlayerId)
 				&& activeSession.ActivePlayer == Player1.Id

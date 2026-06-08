@@ -10,6 +10,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
 		<ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
+		<ProjectReference Include="..\GammonX.Server.Tests\GammonX.Server.Tests.csproj" />
+		<ProjectReference Include="..\GammonX.Server\GammonX.Server.csproj" />
 	</ItemGroup>
 
 </Project>

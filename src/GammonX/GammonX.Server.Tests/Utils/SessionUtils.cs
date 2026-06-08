@@ -9,7 +9,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Utils
 {
-	internal static class SessionUtils
+	public static class SessionUtils
 	{
 		public static void InjectDiceServiceMock(this IGameSessionModel model, IDiceService diceService)
 		{

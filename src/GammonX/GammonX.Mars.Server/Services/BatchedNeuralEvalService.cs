@@ -88,11 +88,18 @@ namespace GammonX.Mars.Server.Services
         // <inheritdoc />
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            await _cts.CancelAsync();
-            _channel.Writer.Complete();
-            if (_workerTask is not null)
+            try
             {
-                await _workerTask.ConfigureAwait(false);
+                await _cts.CancelAsync();
+                _channel.Writer.Complete();
+                if (_workerTask != null)
+                {
+                    await _workerTask.ConfigureAwait(false);
+                }
+            }
+            catch (ChannelClosedException)
+            {
+                // pass
             }
         }
 

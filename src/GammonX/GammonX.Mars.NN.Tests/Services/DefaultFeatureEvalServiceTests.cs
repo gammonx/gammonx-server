@@ -319,7 +319,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
                     It.IsAny<bool>()))
-                .Returns(new float[]
+                .Returns(new []
                 {
                     0.99f, // win
                     0.90f,
@@ -348,7 +348,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var result = service.EvalCube(request);
 
-            Assert.Equal(CubeAction.No, result);
+            Assert.Equal(CubeAction.NoDouble, result);
         }
 
         private static EvalCubeRequestContract CreateRequest()

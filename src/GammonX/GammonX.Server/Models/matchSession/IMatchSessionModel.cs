@@ -168,7 +168,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns the game session for the given <paramref name="gameRound"/>.
 		/// </summary>
-		/// <param name="gameRound">Game round.</param>
+		/// <param name="gameRound">Game round. 1-based index.</param>
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
 

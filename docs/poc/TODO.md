@@ -5,6 +5,8 @@
 - next gen mars bots
 
 ## TODO
+- upgrade to net10
+    - unify nuget package version > build props
 - bot difficulty levels
 - bot services as lambda containers/functions
 - validate start index for fevga/plakoto

@@ -1,7 +1,5 @@
 ﻿using GammonX.Models.Contracts;
 
-using GammonX.Server.Contracts;
-
 using Newtonsoft.Json;
 
 namespace GammonX.Server.Bot
@@ -25,7 +23,7 @@ namespace GammonX.Server.Bot
             ArgumentNullException.ThrowIfNull(parameters.Rolls);
             ArgumentNullException.ThrowIfNull(parameters.Modus);
 
-            var uri = new Uri($"api/eval/move", UriKind.Relative);
+            var uri = new Uri("api/eval/move", UriKind.Relative);
 
             using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
             try
@@ -47,13 +45,45 @@ namespace GammonX.Server.Bot
             return moveEvalResponse;
         }
 
+        public async Task<ResponseContract<CubeEvalPayload>> GetCubeEvalAsync(EvalCubeRequestContract parameters)
+        {
+            ArgumentNullException.ThrowIfNull(parameters);
+            ArgumentNullException.ThrowIfNull(parameters.Board);
+            ArgumentNullException.ThrowIfNull(parameters.IsWhite);
+            ArgumentNullException.ThrowIfNull(parameters.Modus);
+            ArgumentNullException.ThrowIfNull(parameters.PointsAwayOpp);
+            ArgumentNullException.ThrowIfNull(parameters.PointsAwayPlayer);
+            ArgumentNullException.ThrowIfNull(parameters.MatchLength);
+
+            var uri = new Uri("api/eval/cube", UriKind.Relative);
+
+            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
+            try
+            {
+                resp.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex)
+            {
+                var errorResponse = await resp.Content.ReadAsStringAsync();
+                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+            }
+
+            var response = await resp.Content.ReadAsStringAsync();
+            var cubeEvalResponse = JsonConvert.DeserializeObject<ResponseContract<CubeEvalPayload>>(response);
+
+            if (cubeEvalResponse == null)
+                throw new BadHttpRequestException(response);
+
+            return cubeEvalResponse;
+        }
+
         public async Task<ResponseContract<BoardEvalPayload>> GetBoardEvalAsync(EvalBoardRequestContract parameters)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.Modus);
 
-            var uri = new Uri($"api/eval/board", UriKind.Relative);
+            var uri = new Uri("api/eval/board", UriKind.Relative);
 
             using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
             try

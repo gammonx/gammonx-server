@@ -19,7 +19,7 @@ namespace GammonX.Server.Models
 		private readonly IGameSessionModel[] _gameSessions;
 		private readonly IGameSessionFactory _gameSessionFactory;
 
-		protected string _lastExecutedCommand = string.Empty;
+		protected string LastExecutedCommand = string.Empty;
 
         // <inheritdoc />
         public Guid Id { get; }
@@ -101,7 +101,7 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("Both players are already assigned to this match session.");
 			}
 
-			_lastExecutedCommand = ServerCommands.JoinMatchCommand;
+			LastExecutedCommand = ServerCommands.JoinMatchCommand;
 		}
 
 		// <inheritdoc />
@@ -114,7 +114,7 @@ namespace GammonX.Server.Models
                 throw new InvalidOperationException($"The given command '{ServerCommands.StartMatchCommand}' is not in the list of allowed commands.");
             }
             var startedGame = StartGame(callingPlayerId);
-            _lastExecutedCommand = ServerCommands.StartMatchCommand;
+            LastExecutedCommand = ServerCommands.StartMatchCommand;
             return startedGame;
         }
 
@@ -144,7 +144,7 @@ namespace GammonX.Server.Models
                 throw new InvalidOperationException($"The given command '{ServerCommands.StartGameCommand}' is not in the list of allowed commands.");
             }
             var startedGame = StartGame(callingPlayerId);
-            _lastExecutedCommand = ServerCommands.StartGameCommand;
+            LastExecutedCommand = ServerCommands.StartGameCommand;
             return startedGame;
         }
 
@@ -171,7 +171,7 @@ namespace GammonX.Server.Models
 
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.RollDices(callingPlayerId, isWhite);
-			_lastExecutedCommand = ServerCommands.RollCommand;
+			LastExecutedCommand = ServerCommands.RollCommand;
 		}
 
 		// <inheritdoc />
@@ -197,7 +197,7 @@ namespace GammonX.Server.Models
 
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.MoveCheckers(callingPlayerId, from, to, isWhite);
-			_lastExecutedCommand = ServerCommands.MoveCommand;
+			LastExecutedCommand = ServerCommands.MoveCommand;
 
 			if (GameOver(callingPlayerId, out var result))
 			{
@@ -237,7 +237,7 @@ namespace GammonX.Server.Models
 
 			var isWhite = IsWhite(callingPlayerId);
 			activeSession.UndoLastMove(callingPlayerId, isWhite);
-			_lastExecutedCommand = ServerCommands.UndoMoveCommand;
+			LastExecutedCommand = ServerCommands.UndoMoveCommand;
 		}
 
 		// <inheritdoc />
@@ -307,7 +307,7 @@ namespace GammonX.Server.Models
 
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			activeSession.NextTurn(otherPlayerId);
-			_lastExecutedCommand = ServerCommands.EndTurnCommand;
+			LastExecutedCommand = ServerCommands.EndTurnCommand;
 		}
 
 		// <inheritdoc />
@@ -333,7 +333,7 @@ namespace GammonX.Server.Models
 			activeSession.StopGame(result);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
-			_lastExecutedCommand = ServerCommands.ResignGameCommand;
+			LastExecutedCommand = ServerCommands.ResignGameCommand;
 		}
 
 		// <inheritdoc />
@@ -359,7 +359,7 @@ namespace GammonX.Server.Models
                     if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
                     {
                         gameSession ??= GetOrCreateGameSession(i + 1);
-						// we need to award the other player atleast 1 more point than the resigning player
+						// we need to award the other player at least 1 more point than the resigning player
 						var minDifference = activePlayer.Points + 1 - otherPlayer.Points;
 						var resignGamePoints = CalculateResignGamePoints();
 						var pointsToAward = Math.Max(resignGamePoints, minDifference);
@@ -384,7 +384,7 @@ namespace GammonX.Server.Models
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
 
-			_lastExecutedCommand = ServerCommands.ResignMatchCommand;
+			LastExecutedCommand = ServerCommands.ResignMatchCommand;
 		}
 
 		// <inheritdoc />
@@ -419,7 +419,7 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
+			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand);
 			if (Player1.Id.Equals(callingPlayerId))
 			{
 				return activeSession.ToPayload(callingPlayerId, allowedCommands, false);
@@ -442,7 +442,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public EventMatchStatePayload ToPayload(Guid callingPlayerId)
 		{
-			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
+			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand);
 			var payload = new EventMatchStatePayload()
 			{
 				Id = Id,
@@ -517,7 +517,7 @@ namespace GammonX.Server.Models
 
 		protected virtual bool IsCommandCallValid(Guid callingPlayerId, string calledCommand)
 		{
-			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, _lastExecutedCommand);
+			var availableCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand);
 			if (availableCommands.Contains(calledCommand))
 			{
 				return true;

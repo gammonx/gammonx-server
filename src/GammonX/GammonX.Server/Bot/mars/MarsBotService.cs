@@ -4,8 +4,8 @@ using GammonX.Engine.Models;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
-using GammonX.Server.Contracts;
 using GammonX.Server.Models;
+using GammonX.Server.Services;
 
 namespace GammonX.Server.Bot
 {
@@ -28,12 +28,7 @@ namespace GammonX.Server.Bot
                 if (gameSession == null)
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
-                var gameModus = gameSession.Modus;
-
-                if (gameModus != GameModus.Plakoto && gameModus != GameModus.Fevga)
-                {
-                    throw new InvalidOperationException("Use wildbg bot service instead");
-                }
+                var modus = gameSession.Modus;
 
                 // bot plays with black checkers
                 var isWhite = IsWhite(matchSession, playerId);
@@ -42,17 +37,16 @@ namespace GammonX.Server.Bot
 
                 EvalMoveRequestContract parameters = new EvalMoveRequestContract
                 {
-                    Modus = gameModus,
+                    Modus = modus,
                     Board = boardContract,
                     Rolls = rolls,
                     IsWhite = isWhite
                 };
 
                 var client = new MarsClient(_httpClient);
-                ResponseContract<MoveEvalPayload>? result = null;
                 try
                 {
-                    result = await client.GetMoveEvalAsync(parameters);
+                    var result = await client.GetMoveEvalAsync(parameters);
                     var moveSeq = result.Payload.MoveSequence;
                     return moveSeq;
                 }
@@ -70,15 +64,95 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
         {
-            throw new InvalidOperationException("Mars bot does not support accepting doubles.");
+            try
+            {
+                var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                if (gameSession == null)
+                    throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+                var modus = gameSession.Modus;
+
+                // bot plays with black checkers
+                var isWhite = IsWhite(matchSession, playerId);
+                var boardContract = gameSession.BoardModel.ToContract(false);
+
+                var matchLength = matchSession.Type.GetMaxPoints();
+                EvalCubeRequestContract parameters = new EvalCubeRequestContract
+                {
+                    Board = boardContract,
+                    IsWhite = isWhite,
+                    Modus = modus,
+                    MatchLength = matchLength,
+                    PointsAwayPlayer = matchSession.PointsAway(playerId),
+                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId))
+                };
+
+                var client = new MarsClient(_httpClient);
+                try
+                {
+                    var result = await client.GetCubeEvalAsync(parameters);
+                    var cubeAction = result.Payload.CubeAction;
+                    return cubeAction == CubeAction.Double;
+                }
+                catch (Exception)
+                {
+                    // debugging purposes only
+                    throw;
+                }
+            }
+            catch (Exception)
+            {
+                // debugging purposes only
+                throw;
+            }
         }
 
         // <inheritdoc />
-        public Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
         {
-            throw new InvalidOperationException("Mars bot does not support accepting doubles.");
+            try
+            {
+                var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                if (gameSession == null)
+                    throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+
+                var modus = gameSession.Modus;
+
+                // bot plays with black checkers
+                var isWhite = IsWhite(matchSession, playerId);
+                var boardContract = gameSession.BoardModel.ToContract(false);
+
+                var matchLength = matchSession.Type.GetMaxPoints();
+                EvalCubeRequestContract parameters = new EvalCubeRequestContract
+                {
+                    Board = boardContract,
+                    IsWhite = isWhite,
+                    Modus = modus,
+                    MatchLength = matchLength,
+                    PointsAwayPlayer = matchSession.PointsAway(playerId),
+                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId))
+                };
+
+                var client = new MarsClient(_httpClient);
+                try
+                {
+                    var result = await client.GetCubeEvalAsync(parameters);
+                    var cubeAction = result.Payload.CubeAction;
+                    return cubeAction == CubeAction.Double;
+                }
+                catch (Exception)
+                {
+                    // debugging purposes only
+                    throw;
+                }
+            }
+            catch (Exception)
+            {
+                // debugging purposes only
+                throw;
+            }
         }
 
         private static bool IsWhite(IMatchSessionModel matchSession, Guid playerId)
@@ -92,6 +166,19 @@ namespace GammonX.Server.Bot
                 return false;
             }
             throw new InvalidOperationException("Player is not part of this match session.");
+        }
+
+        private static Guid GetOtherPlayerId(IMatchSessionModel matchSession, Guid callingPlayerId)
+        {
+            if (matchSession.Player1.Id.Equals(callingPlayerId))
+            {
+                return matchSession.Player2.Id;
+            }
+            if (matchSession.Player2.Id.Equals(callingPlayerId))
+            {
+                return matchSession.Player1.Id;
+            }
+            throw new InvalidOperationException("The calling player is not part of the match session.");
         }
     }
 }

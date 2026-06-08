@@ -1,7 +1,5 @@
 ﻿using GammonX.Server.Models;
 
-using GammonX.Models.Enums;
-
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Services
