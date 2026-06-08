@@ -21,7 +21,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 namespace GammonX.Mars.Training
 {
     public sealed record TournamentGameResult(
-        bool WhiteWon, 
+        bool WhiteWon,
         int TurnCount,
         bool Discarded);
 
@@ -76,8 +76,8 @@ namespace GammonX.Mars.Training
             Parallel.For(
                 0,
                 totalGames,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-                async void (i) =>
+                new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                (i) =>
                 {
                     try
                     {
@@ -86,12 +86,11 @@ namespace GammonX.Mars.Training
                         TournamentGameResult? result = null;
                         if (serviceB != null)
                         {
-                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights,
-                                cheapContactWeights, raceWeights);
+                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
                         }
                         else
                         {
-                            result = await PlayAgainstBotServiceGameAsync(modus, serviceA, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                            result = PlayAgainstBotServiceGame(modus, serviceA, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
                         }
 
                         lock (lockObj)
@@ -218,7 +217,7 @@ namespace GammonX.Mars.Training
             return new TournamentGameResult(whiteWon, turnCount, false);
         }
 
-        private static async Task<TournamentGameResult> PlayAgainstBotServiceGameAsync(
+        private static TournamentGameResult PlayAgainstBotServiceGame(
             GameModus modus,
             INeuralEvalService neuralService,
             bool modelIsWhite,
@@ -262,7 +261,6 @@ namespace GammonX.Mars.Training
                 otherPlayerId = evalPlayerId;
             }
 
-            var isWhite = true;
             const int maxTurns = 250;
             var turnCount = 0;
 
@@ -271,66 +269,63 @@ namespace GammonX.Mars.Training
             var board = gameSession.BoardModel;
 
             // we only play the first game of the match (only portes can be played for tavli)
-            while (!gameSession.GameOver(isWhite) && turnCount < maxTurns)
+            turnCount++;
+
+            do
             {
                 turnCount++;
-
-                do
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
                 {
-                    if (gameSession.Phase == GamePhase.WaitingForRoll)
-                    {
-                        matchSession.RollDices(activePlayerId);
-                    }
-
-                    MoveSequenceModel nextMoves;
-                    if (activePlayerId == wildbgPlayerId)
-                    {
-                        // wildbg turn
-                        nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId);
-                    }
-                    else
-                    {
-                        // eval service turn
-                        var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
-                        var evalRequest = new EvalMoveRequestContract
-                        {
-                            Board = board.ToContract(false),
-                            IsWhite = isWhite,
-                            Modus = modus,
-                            Rolls = rolls
-                        };
-                        nextMoves = evalService.EvalMoveSequence(
-                            evalRequest,
-                            cheapContactWeights,
-                            contactWeights,
-                            raceWeights,
-                            50);
-                    }
-
-                    var hasWon = false;
-                    foreach (var nextMove in nextMoves.Moves)
-                    {
-                        hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
-                        if (hasWon)
-                            break;
-                    }
-
-                    if (!hasWon)
-                    {
-                        matchSession.EndTurn(activePlayerId);
-                        activePlayerId = otherPlayerId;
-                        otherPlayerId = activePlayerId == evalPlayerId ? wildbgPlayerId : evalPlayerId;
-                    }
-
-                    isWhite = !isWhite;
+                    matchSession.RollDices(activePlayerId);
                 }
-                while (!gameSession.GameOver(isWhite));
 
-                isWhite = !isWhite;
+                MoveSequenceModel nextMoves;
+                if (activePlayerId == wildbgPlayerId)
+                {
+                    // wildbg turn
+                    nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    // eval service turn
+                    var isWhite = matchSession.Player1.Id == evalPlayerId;
+                    var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
+                    var evalRequest = new EvalMoveRequestContract
+                    {
+                        Board = board.ToContract(false),
+                        IsWhite = isWhite,
+                        Modus = modus,
+                        Rolls = rolls
+                    };
+                    nextMoves = evalService.EvalMoveSequence(
+                        evalRequest,
+                        cheapContactWeights,
+                        contactWeights,
+                        raceWeights,
+                        50);
+                }
 
-                if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
-                    return new TournamentGameResult(false, turnCount, false);
+                var hasWon = false;
+                foreach (var nextMove in nextMoves.Moves)
+                {
+                    hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
+                    if (hasWon)
+                        break;
+                }
+
+                if (!hasWon)
+                {
+                    matchSession.EndTurn(activePlayerId);
+                    activePlayerId = otherPlayerId;
+                    otherPlayerId = activePlayerId == evalPlayerId ? wildbgPlayerId : evalPlayerId;
+                }
+                else
+                {
+                    // we only support the first game of a match (cash game)
+                    break;
+                }
             }
+            while (turnCount < maxTurns);
 
             if (turnCount >= maxTurns)
                 return new TournamentGameResult(false, turnCount, true);
@@ -430,7 +425,7 @@ namespace GammonX.Mars.Training
                 >= 2.58 => $"p<0.01  (z={z:F2}) — significant",
                 >= 1.96 => $"p<0.05  (z={z:F2}) — significant",
                 >= 1.65 => $"p<0.10  (z={z:F2}) — marginal",
-                _ =>       $"p>0.10  (z={z:F2}) — not significant"
+                _ => $"p>0.10  (z={z:F2}) — not significant"
             };
         }
 
