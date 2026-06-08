@@ -26,14 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\NeuralNets\Backgammon\" />
-    <Folder Include="Data\NeuralNets\Fevga\" />
-    <Folder Include="Data\NeuralNets\Plakoto\" />
-    <Folder Include="Data\NeuralNets\Portes\" />
-    <Folder Include="Data\NeuralNets\Tavla\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\README.md" Link="Data\NeuralNets\Backgammon\README.md" />
     <None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\training_net.dat" Link="Data\NeuralNets\Backgammon\training_net.dat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
