@@ -44,7 +44,7 @@ namespace GammonX.Mars.NN.Models
                 {
                     // we want to return a random move from the better half (first and second quartile)
                     var startIndex = 0;
-                    var endIndex = Math.Min(3 * quarterCount, this.Count);
+                    var endIndex = Math.Min(2 * quarterCount, this.Count);
                     var moveSeqIndex = Random.Shared.Next(startIndex, endIndex - 1);
                     return this[moveSeqIndex]?.MoveSequence ?? new MoveSequenceModel();
                 }

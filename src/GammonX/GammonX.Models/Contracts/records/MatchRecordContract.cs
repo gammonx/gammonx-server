@@ -2,6 +2,8 @@
 
 using System.Runtime.Serialization;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Models.Contracts
 {
 	/// <summary>
@@ -23,12 +25,15 @@ namespace GammonX.Models.Contracts
 		public MatchVariant Variant { get; set; } = MatchVariant.Unknown;
 
 		[DataMember(Name = "Type")]
-		public Enums.MatchType Type { get; set; } = Enums.MatchType.Unknown;
+		public MatchType Type { get; set; } = MatchType.Unknown;
 
 		[DataMember(Name = "Modus")]
 		public MatchModus Modus { get; set; } = MatchModus.Unknown;
 
-		[DataMember(Name = "MatchHistory")]
+		[DataMember(Name = "BotLevel")]
+		public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
+
+        [DataMember(Name = "MatchHistory")]
 		public string MatchHistory { get; set; } = string.Empty;
 
 		[DataMember(Name = "Format")]

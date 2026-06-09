@@ -570,7 +570,7 @@ namespace GammonX.Server.Tests.Integration
         [InlineData(MatchVariant.Tavli, MatchType.SevenPointGame)]
         public async Task MatchHubCanPlayPlayerVsBotMatch(MatchVariant variant, MatchType type)
         {
-            var queueKey = new QueueKey(variant, MatchModus.Bot, type);
+            var queueKey = new QueueKey(variant, MatchModus.Bot, type, BotLevel.Hard);
             var playerId = Guid.NewGuid();
             var matchId = await CreatePlayerVsBotMatchLobbyAsync(queueKey, playerId);
             var matchIdStr = matchId.ToString();
@@ -881,7 +881,7 @@ namespace GammonX.Server.Tests.Integration
             Guid player1Id,
             Guid player2Id)
         {
-            var queueKey = new QueueKey(variant, modus, type);
+            var queueKey = new QueueKey(variant, modus, type, BotLevel.Hard);
             var matchId = await CreatePlayerVsPlayerMatchLobbyAsync(queueKey, player1Id, player2Id);
             var matchIdStr = matchId.ToString();
             var matchService = GetService(modus);

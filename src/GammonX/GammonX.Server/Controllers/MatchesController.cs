@@ -33,7 +33,7 @@ namespace GammonX.Server.Controllers
         {
             try
             {
-                // TODO: we set botlevel to exper until client can control it
+                // TODO: we set botlevel to hard until client can control it
                 var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, BotLevel.Hard);
                 var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(queueKey.MatchModus);
                 var queueEntry = await matchMakingService.JoinQueueAsync(req.PlayerId, queueKey);

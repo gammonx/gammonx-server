@@ -116,6 +116,7 @@ namespace GammonX.Models.Tests
                 Modus = MatchModus.Normal,
                 Type = MatchType.CashGame,
                 Variant = MatchVariant.Tavli,
+                BotLevel = BotLevel.Hard,
                 Games = new GameRecordContract[] { gameRecord },
                 Format = HistoryFormat.MAT,
                 MatchHistory = matchHistory
@@ -152,6 +153,7 @@ namespace GammonX.Models.Tests
             Assert.Equal(MatchModus.Normal, matchRecord.Modus);
             Assert.Equal(MatchType.CashGame, matchRecord.Type);
             Assert.Equal(MatchVariant.Tavli, matchRecord.Variant);
+            Assert.Equal(BotLevel.Hard, matchRecord.BotLevel);
             Assert.Equal(HistoryFormat.MAT, matchRecord.Format);
             Assert.StartsWith(";[Match '888a356e-e09f-4a0f-b909-581f1ffb167e']", matchRecord.MatchHistory);
 

@@ -55,6 +55,13 @@ namespace GammonX.Engine.Extensions
 
         public static GameResultModel ToGameResult(this IBoardModel board, Guid winnerId, bool isWhite)
         {
+            if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
+            {
+                // if both players hit heir opponents mother checker
+                // the game ends in a tie and concluded with 0 points
+                return GameResultModel.Draw();
+            }
+
             var bearOffCountPlayer = isWhite ? board.BearOffCountWhite : board.BearOffCountBlack;
             if (bearOffCountPlayer != board.WinConditionCount)
                 throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
@@ -84,12 +91,6 @@ namespace GammonX.Engine.Extensions
                     return result;
 
                 }
-            }
-            else if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
-            {
-                // if both players hit heir opponents mother checker
-                // the game ends in a tie and concluded with 0 points
-                return GameResultModel.Draw();
             }
             // support for gammon wins (e.g. tavli and tavla)
             else

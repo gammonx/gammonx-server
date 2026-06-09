@@ -112,7 +112,7 @@ namespace GammonX.Server.Tests
 		{
 			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
 			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
-			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame);
+			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame, BotLevel.Hard);
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 
 			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
@@ -128,7 +128,7 @@ namespace GammonX.Server.Tests
 		{
 			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
 			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
-			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame);
+			var queueKey = new QueueKey(MatchVariant.Backgammon, modus, MatchType.CashGame, BotLevel.Hard);
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 			// join queue
 			await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
@@ -147,7 +147,7 @@ namespace GammonX.Server.Tests
             var player2Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
             var player1 = CreatePlayer(player1Id, MatchVariant.Tavli, MatchModus.Ranked);
             var player2 = CreatePlayer(player2Id, MatchVariant.Tavli, MatchModus.Ranked);
-            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
             var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Ranked);
             // join queue and fetch rating
             await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);

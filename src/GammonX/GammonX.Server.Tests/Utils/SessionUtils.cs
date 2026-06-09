@@ -61,7 +61,7 @@ namespace GammonX.Server.Tests.Utils
 		public static (Guid, IMatchSessionModel) CreateHeadToHeadMatchSession(MatchVariant variant, MatchType matchType, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Normal, matchType);
+			var queueKey = new QueueKey(variant, MatchModus.Normal, matchType, BotLevel.Hard);
 			var session = factory.Create(matchId, queueKey);
 			return ( matchId, session );
 		}
@@ -69,7 +69,7 @@ namespace GammonX.Server.Tests.Utils
 		public static (Guid, IMatchSessionModel) CreateHeadToBotMatchSession(MatchVariant variant, MatchType type, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Bot, type);
+			var queueKey = new QueueKey(variant, MatchModus.Bot, type, BotLevel.Hard);
 			var session = factory.Create(matchId, queueKey);
 			return (matchId, session);
 		}

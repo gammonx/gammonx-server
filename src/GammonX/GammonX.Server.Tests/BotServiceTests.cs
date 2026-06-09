@@ -245,7 +245,15 @@ namespace GammonX.Server.Tests
                         {
                             cubeSession.DeclineDouble(otherPlayerId);
                             Assert.Equal(activePlayerId, gameSession.ActivePlayer);
-                            break;
+                            if (!matchSession.IsMatchOver())
+                            {
+                                matchSession.Player1.AcceptNextGame();
+                                matchSession.Player2.AcceptNextGame();
+                                Assert.True(matchSession.CanStartNextGame());
+                                matchSession.StartNextGame(activePlayerId);
+                                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -497,7 +505,15 @@ namespace GammonX.Server.Tests
                         {
                             cubeSession.DeclineDouble(otherPlayerId);
                             Assert.Equal(activePlayerId, gameSession.ActivePlayer);
-                            break;
+                            if (!matchSession.IsMatchOver())
+                            {
+                                matchSession.Player1.AcceptNextGame();
+                                matchSession.Player2.AcceptNextGame();
+                                Assert.True(matchSession.CanStartNextGame());
+                                matchSession.StartNextGame(activePlayerId);
+                                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                                continue;
+                            }
                         }
                     }
                 }

@@ -57,6 +57,8 @@ namespace GammonX.DynamoDb.Items
 
 		public MatchType Type { get; set; } = MatchType.Unknown;
 
+		public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
+
 		public DateTime StartedAt { get; set; } = DateTime.UtcNow;
 
 		public DateTime EndedAt { get; set; } = DateTime.UtcNow;

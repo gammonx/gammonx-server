@@ -49,6 +49,7 @@ namespace GammonX.Lambda.Tests.Contracts
                 Variant = MatchVariant.Backgammon,
                 Type = MatchType.SevenPointGame,
                 Modus = MatchModus.Ranked,
+                BotLevel = BotLevel.Hard,
             };
 
             var history = new FakeMatchHistory
@@ -66,6 +67,7 @@ namespace GammonX.Lambda.Tests.Contracts
             Assert.Equal(playerId, item.PlayerId);
             Assert.Equal(contract.Modus, item.Modus);
             Assert.Equal(contract.Variant, item.Variant);
+            Assert.Equal(contract.BotLevel, item.BotLevel);
             Assert.Equal(contract.Type, item.Type);
             Assert.Equal(contract.Result, item.Result);
 
@@ -150,7 +152,8 @@ namespace GammonX.Lambda.Tests.Contracts
                 Variant = MatchVariant.Backgammon,
                 Type = MatchType.SevenPointGame,
                 Modus = MatchModus.Ranked,
-                Result = MatchResult.Lost
+                Result = MatchResult.Lost,
+                BotLevel = BotLevel.Hard
             };
 
             var item = contract.ToMatch(new FakeMatchHistory());
@@ -192,7 +195,8 @@ namespace GammonX.Lambda.Tests.Contracts
                 Modus = MatchModus.Ranked,
                 Result = MatchResult.Won,
                 Variant = MatchVariant.Backgammon,
-                Type = MatchType.SevenPointGame
+                Type = MatchType.SevenPointGame,
+                BotLevel = BotLevel.Hard
             };
 
             var history = new Mock<IParsedMatchHistory>();
@@ -224,6 +228,7 @@ namespace GammonX.Lambda.Tests.Contracts
             Assert.Equal(contract.Result, result.Result);
             Assert.Equal(contract.Variant, result.Variant);
             Assert.Equal(contract.Type, result.Type);
+            Assert.Equal(contract.BotLevel, result.BotLevel);
             Assert.Equal(5, result.Points);
             Assert.Equal(TimeSpan.FromMinutes(10), result.Duration);
             Assert.Equal(2.5, result.AvgDoubleDices);
@@ -329,7 +334,8 @@ namespace GammonX.Lambda.Tests.Contracts
                 Modus = MatchModus.Unknown,
                 Result = MatchResult.Unknown,
                 Variant = MatchVariant.Unknown,
-                Type = MatchType.Unknown
+                Type = MatchType.Unknown,
+                BotLevel = BotLevel.Unknown
             };
 
             var history = new Mock<IParsedMatchHistory>();

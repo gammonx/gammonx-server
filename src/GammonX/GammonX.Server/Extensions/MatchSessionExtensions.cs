@@ -32,6 +32,7 @@ namespace GammonX.Server.Extensions
                 Modus = match.Modus,
                 Variant = match.Variant,
                 Type = match.Type,
+                BotLevel = match.BotLevel,
                 Games = gameRecords,
                 MatchHistory = matchHistoryStr ?? string.Empty,
                 Format = HistoryFormat.MAT,
