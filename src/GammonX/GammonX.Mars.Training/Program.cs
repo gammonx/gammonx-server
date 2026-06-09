@@ -388,7 +388,7 @@ static void WriteCsv(string path, GameModus modus, List<(float[] Features, float
         writer.Write(',');
         if (modus == GameModus.Fevga || modus == GameModus.Plakoto)
         {
-            // TODO: add support for fevga/plakoto output labels
+            // TODO: enable full GAME equity predictions for plakoto/fevga
             writer.WriteLine(label[0].ToString("G6"));
         }
         else

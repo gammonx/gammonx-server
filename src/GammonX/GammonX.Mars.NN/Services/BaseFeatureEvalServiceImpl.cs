@@ -147,8 +147,7 @@ namespace GammonX.Mars.NN.Services
             if (legalMovesSeq.Length == 0)
                 return [];
 
-            // we first compute cheap features to rank candidates, avoiding the expensive
-            // e.g. ContactProbabilityFeature which internally explores all 21 dice combinations.
+            // we first compute features based on linear weighting to rank candidates
             var pool = ArrayPool<CheapEvalResult>.Shared;
             var candidates = GetCandidatesByCheapScore(board, legalMovesSeq, isWhite, cheapContactWeights, raceWeights, pool);
             try

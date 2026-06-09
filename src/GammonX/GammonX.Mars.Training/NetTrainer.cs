@@ -22,7 +22,7 @@ public static class NetTrainer
         int earlyStoppingPatience = 25,
         bool shuffleLabels = false)
     {
-        // TODO: can be removed once plakoto/fevga supports 5 outputs
+        // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
         var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath, labelCount);
         var (valFeatures, valLabels) = LoadCsv(valCsvPath, labelCount);

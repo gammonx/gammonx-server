@@ -158,7 +158,7 @@ namespace GammonX.Mars.Server.Services
                 // we normalize single-output nets
                 if (result.Length == 1)
                 {
-                    // TODO: can be removed once plakoto/fevga supports 5 outputs
+                    // TODO: enable full GAME equity predictions for plakoto/fevga
                     result = [result[0], 0f, 0f, 0f, 0f];
                 }
                 batch[i].Result.TrySetResult(result);
