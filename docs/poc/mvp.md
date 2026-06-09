@@ -30,7 +30,7 @@
 - default match variant
 
 ### Play Screen
-- bot difficulty (easy, normal, hard)
+- bot level (easy, normal, hard)
 - header bar
     - name
     - leader board button

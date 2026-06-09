@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using Newtonsoft.Json;
 
@@ -22,6 +23,11 @@ namespace GammonX.Server.Bot
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.Rolls);
             ArgumentNullException.ThrowIfNull(parameters.Modus);
+
+            if (parameters.BotLevel == BotLevel.Unknown)
+            {
+                throw new ArgumentException("BotLevel cannot be Unknown.", nameof(parameters));
+            }
 
             var uri = new Uri("api/eval/move", UriKind.Relative);
 
@@ -54,6 +60,11 @@ namespace GammonX.Server.Bot
             ArgumentNullException.ThrowIfNull(parameters.PointsAwayOpp);
             ArgumentNullException.ThrowIfNull(parameters.PointsAwayPlayer);
             ArgumentNullException.ThrowIfNull(parameters.MatchLength);
+
+            if (parameters.BotLevel == BotLevel.Unknown)
+            {
+                throw new ArgumentException("BotLevel cannot be Unknown.", nameof(parameters));
+            }
 
             var uri = new Uri("api/eval/cube", UriKind.Relative);
 

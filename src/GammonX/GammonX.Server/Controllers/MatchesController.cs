@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
 using GammonX.Server.Models;
@@ -32,7 +33,8 @@ namespace GammonX.Server.Controllers
         {
             try
             {
-                var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType);
+                // TODO: we set botlevel to exper until client can control it
+                var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, BotLevel.Hard);
                 var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(queueKey.MatchModus);
                 var queueEntry = await matchMakingService.JoinQueueAsync(req.PlayerId, queueKey);
                 var payload = queueEntry.ToPayload();

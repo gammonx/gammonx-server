@@ -28,6 +28,10 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public CubeAction EvalCube(EvalCubeRequestContract contract)
         {
+            // TODO: return 2 cube decisions
+            // one if a double should be accepted
+            // one if a double should be offered
+
             if (_neuralEvalService == null)
                 throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
 
@@ -125,17 +129,11 @@ namespace GammonX.Mars.NN.Services
         public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
             var evalMoves = EvalMoveSequenceForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates);
-
-            if (evalMoves.Length != 0)
-            {
-                return evalMoves.First().Move;
-            }
-
-            return new MoveSequenceModel();
+            return evalMoves.Select(contract.BotLevel);
         }
 
         // <inheritdoc />
-        public FinalEvalResult[] EvalMoveSequenceForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public FinalEvalResultModels EvalMoveSequenceForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -145,7 +143,7 @@ namespace GammonX.Mars.NN.Services
             var legalMovesSeq = BoardService.GetLegalMoveSequences(board, isWhite, rolls);
 
             if (legalMovesSeq.Length == 0)
-                return [];
+                return new FinalEvalResultModels();
 
             // we first compute features based on linear weighting to rank candidates
             var pool = ArrayPool<CheapEvalResult>.Shared;
@@ -158,7 +156,7 @@ namespace GammonX.Mars.NN.Services
                 var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Count);
 
                 var evalResult = GetCandidatesByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
-                return evalResult.ToArray();
+                return new FinalEvalResultModels(evalResult);
             }
             finally
             {
@@ -166,7 +164,7 @@ namespace GammonX.Mars.NN.Services
             }
         }
 
-        private IEnumerable<FinalEvalResult> GetCandidatesByFullEval(
+        private IEnumerable<FinalEvalResultModel> GetCandidatesByFullEval(
             IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
@@ -175,7 +173,7 @@ namespace GammonX.Mars.NN.Services
             RaceWeightModel raceWeights,
             int evalCount)
         {
-            var evals = new List<FinalEvalResult>();
+            var evals = new List<FinalEvalResultModel>();
 
             for (int i = 0; i < evalCount; i++)
             {
@@ -187,7 +185,7 @@ namespace GammonX.Mars.NN.Services
                     // race score were already calculated
                     if (evals.Count == 0 || candidates[i].CheapScore > evals[0].Score)
                     {
-                        var cheapEvalResultResult = new FinalEvalResult(candidates[i].CheapScore, moveSeq, candidates[i].EvalResult);
+                        var cheapEvalResultResult = new FinalEvalResultModel(candidates[i].CheapScore, moveSeq, candidates[i].EvalResult);
                         evals.Add(cheapEvalResultResult);
                     }
                     continue;
@@ -233,7 +231,7 @@ namespace GammonX.Mars.NN.Services
                     BoardService.UndoMove(board, undoMove, isWhite);
                 }
 
-                var evalResult = new FinalEvalResult(score, moveSeq, evalModel);
+                var evalResult = new FinalEvalResultModel(score, moveSeq, evalModel);
                 evals.Add(evalResult);
             }
 

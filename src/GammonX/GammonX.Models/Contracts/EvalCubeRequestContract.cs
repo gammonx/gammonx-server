@@ -33,5 +33,8 @@ namespace GammonX.Models.Contracts
         /// </summary>
         [DataMember(Name = "matchLength", IsRequired = true)]
         public int MatchLength { get; set; }
+
+        [DataMember(Name = "botLevel", IsRequired = true)]
+        public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
     }
 }

@@ -48,7 +48,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
 
             EvalWeights.PlakotoContactWeights.Validate();
@@ -101,7 +102,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -111,7 +113,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
-                IsWhite = false
+                IsWhite = false,
+                BotLevel = BotLevel.Hard
             };
             var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultBlack);
@@ -138,7 +141,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -167,7 +171,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2, roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -220,7 +225,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 MatchLength = 2,
                 PointsAwayOpp = 1,
-                PointsAwayPlayer = 1
+                PointsAwayPlayer = 1,
+                BotLevel = BotLevel.Hard
             };
 
             Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));

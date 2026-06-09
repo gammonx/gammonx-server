@@ -61,7 +61,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -71,7 +72,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = false
+                IsWhite = false,
+                BotLevel = BotLevel.Hard
             };
             var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
@@ -126,7 +128,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -136,7 +139,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = false
+                IsWhite = false,
+                BotLevel = BotLevel.Hard
             };
             var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
@@ -191,7 +195,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = true
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
             };
             var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
@@ -201,7 +206,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
-                IsWhite = false
+                IsWhite = false,
+                BotLevel = BotLevel.Hard
             };
             var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
@@ -229,7 +235,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 MatchLength = 2,
                 PointsAwayOpp = 1,
-                PointsAwayPlayer = 1
+                PointsAwayPlayer = 1,
+                BotLevel = BotLevel.Hard
             };
 
             Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
@@ -343,7 +350,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 {
                     Fields = new int[24],
                     DoublingCubeValue = 1
-                }
+                },
+                BotLevel = BotLevel.Hard
             };
 
             var result = service.EvalCube(request);

@@ -4,12 +4,13 @@
 
 ### NEW
 - Mars Bot
-	- Neural Nets for Backgammon, Tavla, Portes
+	- Neural Nets for Backgammon, Tavla, Portes (gen2)
 	- Replacing the wildbg implementation, deprecate wildbg
 	- gen9 plakoto/fevga bot
+- Bot levels (easy, normal, hard)
 
 ### FIXES
-- ?
+- error in match/game processing does not block match flow
 
 ## 28.05.2026
 

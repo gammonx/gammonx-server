@@ -61,24 +61,13 @@ namespace GammonX.Mars.NN.Services
         /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
-        FinalEvalResult[] EvalMoveSequenceForTraining(
+        FinalEvalResultModels EvalMoveSequenceForTraining(
             EvalMoveRequestContract contract,
             ContactWeightModel cheapContactWeight,
             ContactWeightModel contactWeights,
             RaceWeightModel raceWeights,
             int maxCandidates);
     }
-
-    /// <summary>
-    /// Provides the final evaluation results for all move explored.
-    /// </summary>
-    /// <param name="Score">Evaluated score.</param>
-    /// <param name="Move">Evaluated move.</param>
-    /// <param name="EvalResult">Normalized evaluation result.</param>
-    public record FinalEvalResult(
-        double Score,
-        MoveSequenceModel Move,
-        NormalizedEvalResultModel EvalResult);
 
     /// <summary>
     /// Provides the cheap evaluation results for a list of legal move sequences.

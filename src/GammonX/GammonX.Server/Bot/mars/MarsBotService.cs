@@ -40,7 +40,8 @@ namespace GammonX.Server.Bot
                     Modus = modus,
                     Board = boardContract,
                     Rolls = rolls,
-                    IsWhite = isWhite
+                    IsWhite = isWhite,
+                    BotLevel = matchSession.BotLevel,
                 };
 
                 var client = new MarsClient(_httpClient);
@@ -68,6 +69,10 @@ namespace GammonX.Server.Bot
         {
             try
             {
+                // TODO: return 2 cube decisions
+                // one if a double should be accepted
+                // one if a double should be offered
+
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
@@ -86,7 +91,8 @@ namespace GammonX.Server.Bot
                     Modus = modus,
                     MatchLength = matchLength,
                     PointsAwayPlayer = matchSession.PointsAway(playerId),
-                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId))
+                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId)),
+                    BotLevel = matchSession.BotLevel,
                 };
 
                 var client = new MarsClient(_httpClient);
@@ -114,6 +120,10 @@ namespace GammonX.Server.Bot
         {
             try
             {
+                // TODO: return 2 cube decisions
+                // one if a double should be accepted
+                // one if a double should be offered
+
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
@@ -132,7 +142,8 @@ namespace GammonX.Server.Bot
                     Modus = modus,
                     MatchLength = matchLength,
                     PointsAwayPlayer = matchSession.PointsAway(playerId),
-                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId))
+                    PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId)),
+                    BotLevel = matchSession.BotLevel,
                 };
 
                 var client = new MarsClient(_httpClient);

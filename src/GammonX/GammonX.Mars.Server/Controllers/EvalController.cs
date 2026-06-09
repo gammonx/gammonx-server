@@ -4,7 +4,9 @@ using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
 
 using GammonX.Mars.Server.Contracts;
+
 using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,6 +34,15 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
+                // TODO: return 2 cube decisions
+                // one if a double should be accepted
+                // one if a double should be offered
+
+                if (request.BotLevel == BotLevel.Unknown)
+                {
+                    throw new ArgumentException("BotLevel cannot be Unknown.", nameof(request));
+                }
+
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
                 var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
@@ -88,6 +99,11 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
+                if (request.BotLevel == BotLevel.Unknown)
+                {
+                    throw new ArgumentException("BotLevel cannot be Unknown.", nameof(request));
+                }
+
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
                 var raceWeights = EvalWeights.GetRaceWeights(request.Modus);

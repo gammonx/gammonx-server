@@ -84,11 +84,11 @@ namespace GammonX.Mars.Server.Tests.Controller
             if (!isWhite)
             {
                 // black has stronger board
-                Assert.InRange(boardEval.Payload.EvalScore, 1.0, 1.5);
+                Assert.InRange(boardEval.Payload.EvalScore, 1.2, 1.7);
             }
             else
             {
-                Assert.InRange(boardEval.Payload.EvalScore, -1.0, -0.5);
+                Assert.InRange(boardEval.Payload.EvalScore, -1.5, -1.0);
             }
         }
 
@@ -146,7 +146,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
-                Rolls = new[] { 2, 1 }
+                Rolls = new[] { 2, 1 },
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
@@ -193,7 +194,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
-                Rolls = new[] { 2, 1 }
+                Rolls = new[] { 2, 1 },
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
@@ -207,10 +209,10 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.Equal(2, moveEval.Payload.MoveSequence.Moves.Count);
             if (!isWhite)
             {
-                Assert.Equal(17, moveEval.Payload.MoveSequence.Moves[0].From);
-                Assert.Equal(15, moveEval.Payload.MoveSequence.Moves[0].To);
-                Assert.Equal(19, moveEval.Payload.MoveSequence.Moves[1].From);
-                Assert.Equal(18, moveEval.Payload.MoveSequence.Moves[1].To);
+                Assert.Equal(18, moveEval.Payload.MoveSequence.Moves[0].From);
+                Assert.Equal(16, moveEval.Payload.MoveSequence.Moves[0].To);
+                Assert.Equal(16, moveEval.Payload.MoveSequence.Moves[1].From);
+                Assert.Equal(15, moveEval.Payload.MoveSequence.Moves[1].To);
             }
             else
             {
@@ -236,7 +238,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
-                Rolls = new[] { 2, 1 }
+                Rolls = new[] { 2, 1 },
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
@@ -284,7 +287,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 IsWhite = isWhite,
                 MatchLength = 1,
                 PointsAwayOpp = 1,
-                PointsAwayPlayer = 1
+                PointsAwayPlayer = 1,
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest);
@@ -327,7 +331,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 IsWhite = isWhite,
                 MatchLength = 1,
                 PointsAwayOpp = 1,
-                PointsAwayPlayer = 1
+                PointsAwayPlayer = 1,
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest);

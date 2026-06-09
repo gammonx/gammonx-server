@@ -11,6 +11,9 @@ namespace GammonX.Server.Bot
 	/// <summary>
 	/// Made uses of the open source wildbg bot in order to calculate the match equity.
 	/// </summary>
+	/// <remarks>
+	/// The wildbg service implementation does not support the <see cref="BotLevel"/>. It always returns the "best" decision available.
+	/// </remarks>
 	/// <seealso cref="https://github.com/carsten-wenderdel/wildbg"/>
 	public class WildbgBotService : IBotService
 	{

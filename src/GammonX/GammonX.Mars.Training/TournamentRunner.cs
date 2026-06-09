@@ -185,7 +185,8 @@ namespace GammonX.Mars.Training
                     Board = board.ToContract(false),
                     IsWhite = isWhite,
                     Modus = modus,
-                    Rolls = rolls
+                    Rolls = rolls,
+                    BotLevel = BotLevel.Hard
                 };
 
                 // we let model A play white on even numbers and model B play white on odd numbers
@@ -197,7 +198,7 @@ namespace GammonX.Mars.Training
                     cheapContactWeights,
                     contactWeights,
                     raceWeights,
-                    50);
+                    150);
 
                 foreach (var move in result.Moves)
                 {
@@ -295,14 +296,15 @@ namespace GammonX.Mars.Training
                         Board = board.ToContract(false),
                         IsWhite = isWhite,
                         Modus = modus,
-                        Rolls = rolls
+                        Rolls = rolls,
+                        BotLevel = BotLevel.Hard
                     };
                     nextMoves = evalService.EvalMoveSequence(
                         evalRequest,
                         cheapContactWeights,
                         contactWeights,
                         raceWeights,
-                        50);
+                        150);
                 }
 
                 var hasWon = false;

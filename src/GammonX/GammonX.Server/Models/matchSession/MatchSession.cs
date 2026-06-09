@@ -36,6 +36,9 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public MatchType Type { get; }
 
+        // <inheritdoc />
+        public BotLevel BotLevel { get; }
+
 		// <inheritdoc />
 		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
 
@@ -61,6 +64,7 @@ namespace GammonX.Server.Models
 			Variant = queueKey.MatchVariant;
 			Modus = queueKey.MatchModus;
 			Type = queueKey.MatchType;
+			BotLevel = queueKey.BotLevel;
 			_rounds = GetGameModusList(queueKey.MatchType);
 			_gameSessions = new IGameSessionModel[_rounds.Length];
 			_gameSessionFactory = gameSessionFactory;

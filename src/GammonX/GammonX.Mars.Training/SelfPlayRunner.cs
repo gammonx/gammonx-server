@@ -63,7 +63,8 @@ namespace GammonX.Mars.Training
                     Board = board.ToContract(false),
                     IsWhite = isWhite,
                     Modus = _modus,
-                    Rolls = rolls
+                    Rolls = rolls,
+                    BotLevel = BotLevel.Hard
                 };
 
                 var result = evalService.EvalMoveSequenceForTraining(
@@ -71,9 +72,9 @@ namespace GammonX.Mars.Training
                     cheapContactWeights,
                     contactWeights,
                     raceWeights,
-                    50);
+                    150);
 
-                if (result.Length != 0)
+                if (result.Count != 0)
                 {
                     // we use epsilon-greediness to occasionally pick a random legal move
                     // for exploration and increase the diversity of training samples
@@ -83,10 +84,10 @@ namespace GammonX.Mars.Training
                     var resultToPlay = effectiveEpsilon > 0f
                         && _neuralEvalService != null
                         && Random.Shared.NextSingle() < effectiveEpsilon
-                            ? result[Random.Shared.Next(result.Length)]
+                            ? result[Random.Shared.Next(result.Count)]
                             : result[0]; // best move sequences
 
-                    foreach (var move in resultToPlay.Move.Moves)
+                    foreach (var move in resultToPlay.MoveSequence.Moves)
                     {
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                     }
