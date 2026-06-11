@@ -33,7 +33,7 @@ namespace GammonX.Models.Contracts
 		public int DoublingCubeValue { get; set; }
 
 		[DataMember(Name = "doublingCubeOwner", IsRequired = false, EmitDefaultValue = false)]
-		public bool DoublingCubeOwner { get; set; }
+		public bool? DoublingCubeOwner { get; set; }
 
 		public BoardModelContract()
 		{

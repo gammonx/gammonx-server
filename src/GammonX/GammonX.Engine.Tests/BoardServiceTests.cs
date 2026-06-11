@@ -49,7 +49,7 @@ namespace GammonX.Engine.Tests
 			var doublingCubeModel = boardModel as IDoublingCubeModel;
             Assert.NotNull(doublingCubeModel);
             Assert.Equal(1, doublingCubeModel.DoublingCubeValue);
-            Assert.False(doublingCubeModel.DoublingCubeOwner);
+            Assert.Null(doublingCubeModel.DoublingCubeOwner);
             var blockModel = boardModel as IPinModel;
             Assert.Null(blockModel);
         }

@@ -12,10 +12,14 @@ namespace GammonX.Engine.Models
         int DoublingCubeValue { get; }
 
         /// <summary>
+        /// Gets or sets a boolean indicating the cube ownership.
+        /// </summary>
+        /// <remarks>
         /// Returns true if black is the owner of the doubling cube.
         /// Returns false if white is the owner of the doubling cube.
-        /// </summary>
-        bool DoublingCubeOwner { get; set; }
+        /// Returns null if the doubling cube is owned by both players.
+        /// </remarks>
+        bool? DoublingCubeOwner { get; set; }
 
 		/// <summary>
 		/// The doubling coube offer is accepted by the opponent.

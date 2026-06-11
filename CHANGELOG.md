@@ -7,10 +7,12 @@
 	- Neural Nets for Backgammon, Tavla, Portes (gen2)
 	- Replacing the wildbg implementation, deprecate wildbg
 	- gen9 plakoto/fevga bot
+	- introduce cube eval to mars bot
 - Bot levels (easy, normal, hard)
 
 ### FIXES
 - error in match/game processing does not block match flow
+- properly display cube state at the start of a game/match
 
 ## 28.05.2026
 

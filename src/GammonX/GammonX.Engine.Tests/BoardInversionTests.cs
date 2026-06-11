@@ -22,7 +22,7 @@ namespace GammonX.Engine.Tests
 
 			if (boardModel is IDoublingCubeModel doublingCubeModel)
 			{
-				Assert.False(doublingCubeModel.DoublingCubeOwner);
+				Assert.Null(doublingCubeModel.DoublingCubeOwner);
 			}
 
 			if (boardModel is IHomeBarModel homeBarModel && homeBarModel.CanSendToHomeBar)
@@ -41,7 +41,7 @@ namespace GammonX.Engine.Tests
 
 			if (inverted is IDoublingCubeModel invertedDoublingCubeModel)
 			{
-				Assert.True(invertedDoublingCubeModel.DoublingCubeOwner);
+				Assert.Null(invertedDoublingCubeModel.DoublingCubeOwner);
 			}
 
 			if (inverted is IHomeBarModel invertedHomeBarModel && invertedHomeBarModel.CanSendToHomeBar)

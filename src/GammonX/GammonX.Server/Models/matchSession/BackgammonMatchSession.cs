@@ -348,12 +348,12 @@ namespace GammonX.Server.Models
 				&& activeSession.Phase == GamePhase.WaitingForRoll)
 			{
 				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
-				if (doublingCubeModel.DoublingCubeValue == 1)
+				if (!doublingCubeModel.DoublingCubeOwner.HasValue)
 				{
 					return true;
 				}
 				// Afterwards only the cube owner can offer one
-				else if (doublingCubeModel.DoublingCubeOwner)
+				else if (doublingCubeModel.DoublingCubeOwner.Value)
 				{
 					return true;
 				}
@@ -364,13 +364,13 @@ namespace GammonX.Server.Models
 					&& activeSession.Phase == GamePhase.WaitingForRoll)
 			{
 				// If no double was offered yet, every player can offer it at the start of his turn and before he made his roll
-				if (doublingCubeModel.DoublingCubeValue == 1)
+				if (!doublingCubeModel.DoublingCubeOwner.HasValue)
 				{
 					return true;
 				}
 				// Afterwards only the cube owner can offer one
 				// We need to invert the model for player 2 (black)
-				else if (!doublingCubeModel.DoublingCubeOwner)
+				else if (!doublingCubeModel.DoublingCubeOwner.Value)
 				{
 					return true;
 				}

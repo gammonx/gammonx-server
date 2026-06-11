@@ -88,13 +88,13 @@ namespace GammonX.Engine.Models
 		public int DoublingCubeValue { get; private set; } = 1;
 
         // <inheritdoc />
-        public bool DoublingCubeOwner { get; set; } = false;
+        public bool? DoublingCubeOwner { get; set; } = null;
 
 		// <inheritdoc />
 		public void AcceptDoublingCubeOffer(bool isWhite)
 		{
             var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
-			if (owner && DoublingCubeValue > 1)
+			if (owner.HasValue && owner.Value && DoublingCubeValue > 1)
             {
                 throw new InvalidOperationException("Doubling offer can only be accepted by a non owner of the doubling cube");
             }
@@ -103,7 +103,16 @@ namespace GammonX.Engine.Models
                 if (DoublingCubeValue < 64)
                 {
                     DoublingCubeValue *= 2;
-                    DoublingCubeOwner = !DoublingCubeOwner;
+                    if (DoublingCubeOwner.HasValue)
+                    {
+                        DoublingCubeOwner = !DoublingCubeOwner;
+                    }
+                    else
+                    {
+                        // at start the doubling cube is owned by both players
+                        // we look at the doubling cube ownership always from whites perspective
+                        DoublingCubeOwner = isWhite;
+                    }
                 }
                 else
                 {
@@ -116,7 +125,7 @@ namespace GammonX.Engine.Models
 		public bool CanOfferDoublingCube(bool isWhite)
         {
 			var owner = isWhite ? DoublingCubeOwner : !DoublingCubeOwner;
-			return (DoublingCubeValue < 64 && owner) || DoublingCubeValue == 1;
+			return (DoublingCubeValue < 64 && owner.HasValue && owner.Value) || DoublingCubeValue == 1;
         }
 
         // <inheritdoc />
