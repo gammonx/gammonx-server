@@ -234,7 +234,7 @@ namespace GammonX.Server.Tests
                         Assert.Equal(activePlayerId, gameSession.ActivePlayer);
                         cubeSession.OfferDouble(activePlayerId);
                         Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
-                        var shouldAccept = await botService.ShouldAcceptDouble(matchSession, otherPlayerId);
+                        var shouldAccept = await botService.ShouldTakeDouble(matchSession, otherPlayerId);
                         if (shouldAccept)
                         {
                             cubeSession.AcceptDouble(otherPlayerId);
@@ -494,7 +494,7 @@ namespace GammonX.Server.Tests
                         Assert.Equal(activePlayerId, gameSession.ActivePlayer);
                         cubeSession.OfferDouble(activePlayerId);
                         Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
-                        var shouldAccept = await activeBotService.ShouldAcceptDouble(matchSession, otherPlayerId);
+                        var shouldAccept = await activeBotService.ShouldTakeDouble(matchSession, otherPlayerId);
                         if (shouldAccept)
                         {
                             cubeSession.AcceptDouble(otherPlayerId);

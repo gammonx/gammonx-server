@@ -16,8 +16,8 @@ namespace GammonX.Mars.NN.Services
         /// Evaluates the cube decision for the match state in <paramref name="contract"/>.
         /// </summary>
         /// <param name="contract">Match state to evaluate</param>
-        /// <returns>Cube action to take based on the evaluation.</returns>
-        CubeAction EvalCube(EvalCubeRequestContract contract);
+        /// <returns>Cube actions to take based on the evaluation.</returns>
+        (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract);
 
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in

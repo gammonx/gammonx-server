@@ -34,10 +34,6 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
-                // TODO: return 2 cube decisions
-                // one if a double should be accepted
-                // one if a double should be offered
-
                 if (request.BotLevel == BotLevel.Unknown)
                 {
                     throw new ArgumentException("BotLevel cannot be Unknown.", nameof(request));
@@ -53,8 +49,8 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var cubeAction = evalService.EvalCube(request);
-                var payload = new CubeEvalPayload { CubeAction = cubeAction };
+                var (shouldOffer, shouldTake) = evalService.EvalCube(request);
+                var payload = new CubeEvalPayload { ShouldOffer = shouldOffer, ShouldTake = shouldTake };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
             }

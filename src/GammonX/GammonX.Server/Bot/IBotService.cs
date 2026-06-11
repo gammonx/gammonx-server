@@ -26,7 +26,7 @@ namespace GammonX.Server.Bot
 		/// <param name="matchSession">Match session providing the board state.</param>
 		/// <param name="playerId">Calling player id.</param>
 		/// <returns>True if double should be accepted. Otherwise, false.</returns>
-		Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId);
+		Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId);
 
 		/// <summary>
 		/// Evalaute if the bot should offer a double to the opponent.

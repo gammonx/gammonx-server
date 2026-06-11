@@ -15,5 +15,17 @@
         /// because the opponent is at risk to give away more points (e.g. in a gammon or backgammon loss).
         /// </summary>
         TooGood = 2,
+        /// <summary>
+        /// The player got offered a double by the opponent and should accept it, because declining would lower the match equity.
+        /// </summary>
+        Take = 3,
+        /// <summary>
+        /// The player got offered a double by the opponent and should decline it, because accepting would lower the match equity.
+        /// </summary>
+        Pass = 4,
+        /// <summary>
+        /// Default value.
+        /// </summary>
+        Unknown = 99
     }
 }

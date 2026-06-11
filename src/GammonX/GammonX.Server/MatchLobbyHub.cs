@@ -1096,7 +1096,7 @@ namespace GammonX.Server
             if (matchSession is IDoubleCubeMatchSession)
             {
                 var botService = GetBotService();
-                var shouldAccept = await botService.ShouldAcceptDouble(matchSession, botPlayerId);
+                var shouldAccept = await botService.ShouldTakeDouble(matchSession, botPlayerId);
                 return shouldAccept;
             }
             else

@@ -26,12 +26,8 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public CubeAction EvalCube(EvalCubeRequestContract contract)
+        public (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract)
         {
-            // TODO: return 2 cube decisions
-            // one if a double should be accepted
-            // one if a double should be offered
-
             if (_neuralEvalService == null)
                 throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
 
@@ -68,22 +64,36 @@ namespace GammonX.Mars.NN.Services
                     contract.PointsAwayOpp,
                     cubeModel.DoublingCubeValue * 2);
 
+                CubeAction shouldTake;
+                CubeAction shouldAccept;
+
+                var volatility = Math.Abs(equityModel.WinSingleP - 0.5) + equityModel.WinGammonP + equityModel.LoseGammonP;
                 if (doubleTake <= noDouble)
                 {
                     // we are losing equity by offering a double if opponent takes or passes
-                    return CubeAction.NoDouble;
+                    shouldTake = CubeAction.NoDouble;
                 }
-
-                var volatility = Math.Abs(equityModel.WinSingleP - 0.5) + equityModel.WinGammonP + equityModel.LoseGammonP;
-
-                if (doublePass >= doubleTake && volatility > 0.2)
+                else if (doublePass >= doubleTake && volatility > 0.2)
                 {
                     // we expect the opponent to pass if we double, and we have a strong enough board
                     // to win by a gammon or backgammon.
-                    return CubeAction.TooGood;
+                    shouldTake = CubeAction.TooGood;
+                }
+                else
+                {
+                    shouldTake = CubeAction.Double;
                 }
 
-                return CubeAction.Double;
+                if (doubleTake > doublePass)
+                {
+                    shouldAccept = CubeAction.Take;
+                }
+                else
+                {
+                    shouldAccept = CubeAction.Pass;
+                }
+
+                return new(shouldTake, shouldAccept);
             }
 
             throw new InvalidDataException($"Game modus '{contract.Modus.GetName()}' does not support doubling cube evaluation.");
@@ -121,7 +131,7 @@ namespace GammonX.Mars.NN.Services
             {
                 score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
             }
-            
+
             return score;
         }
 
@@ -278,6 +288,6 @@ namespace GammonX.Mars.NN.Services
 
         protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace);
 
-        protected abstract EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace);        
+        protected abstract EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace);
     }
 }

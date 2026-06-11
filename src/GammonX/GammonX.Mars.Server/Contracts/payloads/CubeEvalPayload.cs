@@ -8,7 +8,10 @@ namespace GammonX.Mars.Server.Contracts
     [DataContract]
     public class CubeEvalPayload : ResponsePayload
     {
-        [DataMember(Name = "cubeAction", IsRequired = true)]
-        public CubeAction CubeAction { get; set; }
+        [DataMember(Name = "shouldOffer", IsRequired = true)]
+        public CubeAction ShouldOffer { get; set; }
+
+        [DataMember(Name = "shouldTake", IsRequired = true)]
+        public CubeAction ShouldTake { get; set; }
     }
 }

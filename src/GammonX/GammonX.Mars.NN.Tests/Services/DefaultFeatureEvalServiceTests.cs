@@ -262,9 +262,10 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
-            var result = service.EvalCube(CreateRequest());
+            var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
-            Assert.Equal(CubeAction.NoDouble, result);
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
+            Assert.Equal(CubeAction.Pass, shouldTake);
         }
 
         [Fact]
@@ -287,9 +288,10 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
-            var result = service.EvalCube(CreateRequest());
+            var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
-            Assert.Equal(CubeAction.TooGood, result);
+            Assert.Equal(CubeAction.TooGood, shouldOffer);
+            Assert.Equal(CubeAction.Pass, shouldTake);
         }
 
         [Fact]
@@ -312,9 +314,10 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
-            var result = service.EvalCube(CreateRequest());
+            var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
-            Assert.Equal(CubeAction.Double, result);
+            Assert.Equal(CubeAction.Double, shouldOffer);
+            Assert.Equal(CubeAction.Take, shouldTake);
         }
 
         [Fact]
@@ -354,9 +357,10 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            var result = service.EvalCube(request);
+            var (shouldOffer, shouldTake) = service.EvalCube(request);
 
-            Assert.Equal(CubeAction.NoDouble, result);
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
+            Assert.Equal(CubeAction.Pass, shouldTake);
         }
 
         private static EvalCubeRequestContract CreateRequest()

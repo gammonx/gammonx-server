@@ -300,11 +300,11 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.IsType<CubeEvalPayload>(cubeEval.Payload);
             if (!isWhite)
             {
-                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.CubeAction);
+                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.ShouldOffer);
             }
             else
             {
-                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.CubeAction);
+                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.ShouldOffer);
             }
         }
 

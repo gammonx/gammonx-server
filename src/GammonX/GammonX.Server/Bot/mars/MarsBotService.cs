@@ -65,14 +65,10 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public async Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
         {
             try
             {
-                // TODO: return 2 cube decisions
-                // one if a double should be accepted
-                // one if a double should be offered
-
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
@@ -99,8 +95,8 @@ namespace GammonX.Server.Bot
                 try
                 {
                     var result = await client.GetCubeEvalAsync(parameters);
-                    var cubeAction = result.Payload.CubeAction;
-                    return cubeAction == CubeAction.Double;
+                    var cubeAction = result.Payload;
+                    return cubeAction.ShouldTake == CubeAction.Take;
                 }
                 catch (Exception)
                 {
@@ -120,10 +116,6 @@ namespace GammonX.Server.Bot
         {
             try
             {
-                // TODO: return 2 cube decisions
-                // one if a double should be accepted
-                // one if a double should be offered
-
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
@@ -150,8 +142,8 @@ namespace GammonX.Server.Bot
                 try
                 {
                     var result = await client.GetCubeEvalAsync(parameters);
-                    var cubeAction = result.Payload.CubeAction;
-                    return cubeAction == CubeAction.Double;
+                    var cubeAction = result.Payload;
+                    return cubeAction.ShouldOffer == CubeAction.Double;
                 }
                 catch (Exception)
                 {
