@@ -166,10 +166,23 @@ namespace GammonX.Mars.NN.Tests.Services
         {
             var equityPass =
                 MatchEquityCalculator.GetMET(
-                    whiteAway: 1 - 1,
-                    blackAway: 7);
+                    playerAway: 1 - 1,
+                    opponentAway: 7);
 
             Assert.Equal(1.0, equityPass);
+        }
+
+        [Fact]
+        public void ZeroPointsAwayReturnsProperResult()
+        {
+            var opponentWon = MatchEquityCalculator.GetMET(1, 0);
+            Assert.Equal(0.0, opponentWon);
+            var playerWon = MatchEquityCalculator.GetMET(0, 1);
+            Assert.Equal(1.0, playerWon);
+            var playerLostEquity = MatchEquityCalculator.CalculateEquity(null!, 1, 0, 1);
+            Assert.Equal(0.0, playerLostEquity);
+            var playerWonEquity = MatchEquityCalculator.CalculateEquity(null!, 0, 1, 1);
+            Assert.Equal(1.0, playerWonEquity);
         }
 
         [Fact]

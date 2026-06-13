@@ -45,55 +45,64 @@ namespace GammonX.Mars.NN.Services
                 var outcome = new GameOutcomeModel(predictions);
                 var equityModel = new GameEquityModel(outcome);
 
-                // we calculate current match equity
+                var cubeValue = cubeModel.DoublingCubeValue;
+
+                // match equity without doubling (game continues at current cube value)
                 var noDouble = MatchEquityCalculator.CalculateEquity(
                     equityModel,
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp,
-                    cubeModel.DoublingCubeValue);
-                // we calculate the match equity if double is passed
-                var doublePass = MatchEquityCalculator.CalculateEquity(
-                    equityModel,
-                    contract.PointsAwayPlayer - cubeModel.DoublingCubeValue,
-                    contract.PointsAwayOpp,
-                    cubeModel.DoublingCubeValue);
-                // we calculate match equity if double is accepted
+                    cubeValue);
+                // match equity if player doubles and opponent passes (game ends, player wins cube value)
+                var equityIfOppPasses = MatchEquityCalculator.GetMET(
+                    contract.PointsAwayPlayer - cubeValue,
+                    contract.PointsAwayOpp);
+                // match equity if opponent doubles and player passes (game ends, opponent wins cube value)
+                var equityIfPlayerPasses = MatchEquityCalculator.GetMET(
+                    contract.PointsAwayPlayer,
+                    contract.PointsAwayOpp - cubeValue);
+                // match equity if double is offered and accepted (game continues at doubled cube)
                 var doubleTake = MatchEquityCalculator.CalculateEquity(
                     equityModel,
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp,
-                    cubeModel.DoublingCubeValue * 2);
+                    cubeValue * 2);
 
+                CubeAction shouldOffer;
                 CubeAction shouldTake;
-                CubeAction shouldAccept;
 
-                var volatility = Math.Abs(equityModel.WinSingleP - 0.5) + equityModel.WinGammonP + equityModel.LoseGammonP;
-                if (doubleTake <= noDouble)
+                // we expect the opponent takes if their equity from taking >= their equity from passing:
+                if (doubleTake <= equityIfOppPasses)
                 {
-                    // we are losing equity by offering a double if opponent takes or passes
-                    shouldTake = CubeAction.NoDouble;
-                }
-                else if (doublePass >= doubleTake && volatility > 0.2)
-                {
-                    // we expect the opponent to pass if we double, and we have a strong enough board
-                    // to win by a gammon or backgammon.
-                    shouldTake = CubeAction.TooGood;
+                    // we expect opponent would take, players equity after doubling = doubleTake
+                    shouldOffer = doubleTake > noDouble ? CubeAction.Double : CubeAction.NoDouble;
                 }
                 else
                 {
-                    shouldTake = CubeAction.Double;
+                    // we expect opponent would pass
+                    if (noDouble > equityIfOppPasses)
+                    {
+                        // we expect playing on for gammon/backgammon is better than forcing a pass
+                        shouldOffer = CubeAction.TooGood;
+                    }
+                    else
+                    {
+                        // we expect forcing a pass is better than playing on
+                        shouldOffer = CubeAction.Double;
+                    }
                 }
 
-                if (doubleTake > doublePass)
+                // we expect the player takes if their equity from taking >= their equity from passing
+                if (doubleTake >= equityIfPlayerPasses)
                 {
-                    shouldAccept = CubeAction.Take;
+                    shouldTake = CubeAction.Take;
                 }
                 else
                 {
-                    shouldAccept = CubeAction.Pass;
+                    shouldTake = CubeAction.Pass;
                 }
 
-                return new(shouldTake, shouldAccept);
+                return new(shouldOffer, shouldTake);
             }
 
             throw new InvalidDataException($"Game modus '{contract.Modus.GetName()}' does not support doubling cube evaluation.");

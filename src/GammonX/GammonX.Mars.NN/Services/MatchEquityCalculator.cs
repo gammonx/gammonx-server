@@ -13,8 +13,11 @@ namespace GammonX.Mars.NN.Services
         /// Gets the match equity table (MET) for a 15-point match. The rows represent the points away for the player to win,
         /// </summary>
         /// <remarks>
-        /// y-axis: points away for the player to win (0 to 14)
-        /// x-axis: points away for the opponent to win (0 to 14)
+        /// y-axis: points away for the player to win (1 to 15)
+        /// x-axis: points away for the opponent to win (1 to 15)
+        /// MET[ROW, COLUMN]
+        /// MET[2, 4] returns 0.66
+        /// MET[4, 2] returns 0.34
         /// </remarks>
         private static readonly double[,] MET =
         {
@@ -41,6 +44,10 @@ namespace GammonX.Mars.NN.Services
             int pointsAwayOpp,
             int cubeValue)
         {
+            // if points are 0 or less, the match is already lost
+            if (pointsAway <= 0) return 1.0;
+            if (pointsAwayOpp <= 0) return 0.0;
+
             // we determine match score after each outcome
             var pa = pointsAway;
             var paOpp = pointsAwayOpp;
@@ -59,6 +66,7 @@ namespace GammonX.Mars.NN.Services
                 model.WinSingleP * GetMET(paWin, paOpp)
                 + model.WinGammonP * GetMET(paGammonWin, paOpp)
                 + model.WinBackgammonP * GetMET(paBgWin, paOpp)
+                // from opponents perspective
                 + model.LoseSingleP * GetMET(pa, paOppWin)
                 + model.LoseGammonP * GetMET(pa, paOppGammonWin)
                 + model.LoseBackgammonP * GetMET(pa, paOppBgWin);
@@ -66,15 +74,15 @@ namespace GammonX.Mars.NN.Services
             return equity;
         }
 
-        public static double GetMET(int whiteAway, int blackAway)
+        public static double GetMET(int playerAway, int opponentAway)
         {
-            if (whiteAway <= 0) return 1.0;
-            if (blackAway <= 0) return 0.0;
+            if (playerAway <= 0) return 1.0;
+            if (opponentAway <= 0) return 0.0;
 
-            whiteAway = Math.Min(whiteAway, 15);
-            blackAway = Math.Min(blackAway, 15);
+            playerAway = Math.Min(playerAway, 15);
+            opponentAway = Math.Min(opponentAway, 15);
 
-            return MET[whiteAway - 1, blackAway - 1];
+            return MET[playerAway - 1, opponentAway - 1];
         }
     }
 }

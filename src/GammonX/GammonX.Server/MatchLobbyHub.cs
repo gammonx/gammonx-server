@@ -1360,7 +1360,8 @@ namespace GammonX.Server
             // we put the results in the work queue if applicable
             EnqueueResultsForProcessing(match, serverEventName);
 
-            // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function) 
+            // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
+            // TODO: client requests last - 1 rating period and current rating > difference = rating gain
 
             var payloadPlayer1 = match.ToPayload(match.Player1.Id);
             var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);

@@ -242,8 +242,24 @@ namespace GammonX.Mars.NN.Tests.Services
             Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
         }
 
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        public void BotMustAcceptDouble(GameModus modus)
+        {
+            var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
+
+            var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestMustOfferDouble);
+            Assert.NotNull(evalCubeReq);
+
+            var (shouldOffer, shouldTake) = evalService.EvalCube(evalCubeReq);
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
+            Assert.Equal(CubeAction.Take, shouldTake);
+        }
+
         [Fact]
-        public void EvalCubeReturnsNoDoubleWhenTakeEquityNotBetter()
+        public void EvalCubeReturnsNoDoubleWhenTakeIsJustSlightlyBetter()
         {
             var neural = new Mock<INeuralEvalService>();
 
@@ -265,11 +281,11 @@ namespace GammonX.Mars.NN.Tests.Services
             var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
-            Assert.Equal(CubeAction.Pass, shouldTake);
+            Assert.Equal(CubeAction.Take, shouldTake);
         }
 
         [Fact]
-        public void EvalCubeReturnsTooGoodWhenPositonIsStrong()
+        public void EvalCubeReturnsDoubleWhenOppPassesAndPassEquityBetterThanNoDouble()
         {
             var neural = new Mock<INeuralEvalService>();
 
@@ -290,12 +306,14 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
-            Assert.Equal(CubeAction.TooGood, shouldOffer);
-            Assert.Equal(CubeAction.Pass, shouldTake);
+            // At 4-away 4-away: equityIfOppPasses (0.59) > noDouble (0.566)
+            // Opponent would pass, and the pass equity exceeds no-double equity → Double
+            Assert.Equal(CubeAction.Double, shouldOffer);
+            Assert.Equal(CubeAction.Take, shouldTake);
         }
 
         [Fact]
-        public void EvalCubeReturnsDoubleWhenPassEquityMuchHigherThanTake()
+        public void EvalCubeReturnsTooGoodWhenPlayingOnForGammonBeatsForcingPass()
         {
             var neural = new Mock<INeuralEvalService>();
 
@@ -316,12 +334,14 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var (shouldOffer, shouldTake) = service.EvalCube(CreateRequest());
 
-            Assert.Equal(CubeAction.Double, shouldOffer);
+            // At 4-away 4-away: noDouble (0.744) > equityIfOppPasses (0.59)
+            // Opponent would pass, but playing on for gammon/backgammon is even better → TooGood
+            Assert.Equal(CubeAction.TooGood, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
 
         [Fact]
-        public void EvalCubeReturnsNoDoubleWhenOpponentWouldBeCrushedByPass()
+        public void EvalCubeReturnsNoDoubleAtDoubleMatchPoint()
         {
             var neural = new Mock<INeuralEvalService>();
 
@@ -359,8 +379,10 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var (shouldOffer, shouldTake) = service.EvalCube(request);
 
+            // At double match point (1-away, 1-away): doubleTake = noDouble = WinP
+            // Doubling has no equity benefit since any win wins the match regardless of cube
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
-            Assert.Equal(CubeAction.Pass, shouldTake);
+            Assert.Equal(CubeAction.Take, shouldTake);
         }
 
         private static EvalCubeRequestContract CreateRequest()

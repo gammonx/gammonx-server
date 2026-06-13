@@ -23,7 +23,7 @@ namespace GammonX.Server.Services
 			{
 				MatchType.FivePointGame => 5,
 				MatchType.SevenPointGame => 7,
-				MatchType.CashGame => 0,
+				MatchType.CashGame => 1,
 				_ => throw new NotSupportedException($"The given match type '{type}' is not supported."),
 			};
 		}

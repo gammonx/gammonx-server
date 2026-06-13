@@ -1,6 +1,6 @@
 # Changelog
 
-## 01.06.2026
+## 13.06.2026
 
 ### NEW
 - Mars Bot

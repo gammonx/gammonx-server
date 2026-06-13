@@ -407,6 +407,11 @@ namespace GammonX.Server.Models
 		{
 			var maxPoints = Type.GetMaxPoints();
 			var player = GetPlayer(callingPlayerId);
+			if (Type == MatchType.CashGame)
+			{
+				// in a cash game, the players are always 1 point away from winning it
+				return 1;
+			}
 			return maxPoints - player.Points;
 		}
 

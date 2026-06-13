@@ -7,6 +7,10 @@
 ## TODO
 - upgrade to net10
     - unify nuget package version > build props
+- doubling cube to history/stats
+- async game/match/rating stat processing by client
+    - prepare api gateway
+    - client side workflow
 - bot services as lambda containers/functions
 - validate start index for fevga/plakoto
 - resilience patterns
@@ -15,7 +19,6 @@
 - mars bot MET tables
     - match equity for all match variants
 - update nn arch of plakoto/fevga to > 5
-- doubling cube to history/stats
 - export matches to sgf/.mat format
 - subscription service (clients ide?)
 - match equity/stats after match :: win percentage to user
