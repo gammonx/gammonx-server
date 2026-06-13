@@ -53,8 +53,8 @@ namespace GammonX.Server.Tests.Integration
             var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
             var player1 = new JoinRequest(_player1Id, variant, MatchModus.Normal, MatchType.CashGame);
-            var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
-            var resultJson1 = await response1.Content.ReadAsStringAsync();
+            var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
+            var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
             var joinPayload1 = joinResponse1?.Payload;
             Assert.NotNull(joinPayload1);
@@ -67,8 +67,8 @@ namespace GammonX.Server.Tests.Integration
                 .Build();
 
             var player2 = new JoinRequest(_player2Id, variant, MatchModus.Normal, MatchType.CashGame);
-            var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
-            var resultJson2 = await response2.Content.ReadAsStringAsync();
+            var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2, TestContext.Current.CancellationToken);
+            var resultJson2 = await response2.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var joinResponse2 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson2);
             var joinPayload2 = joinResponse2?.Payload;
             Assert.NotNull(joinPayload2);
@@ -314,16 +314,16 @@ namespace GammonX.Server.Tests.Integration
                 }
             });
 
-            await player1Connection.StartAsync();
-            await player2Connection.StartAsync();
+            await player1Connection.StartAsync(TestContext.Current.CancellationToken);
+            await player2Connection.StartAsync(TestContext.Current.CancellationToken);
 
             // join the match
-            await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString());
-            await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player2.PlayerId.ToString());
+            await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
+            await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player2.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
             while (!player1MatchStarted || !player2MatchStarted)
             {
-                await Task.Delay(100);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
             }
 
             Assert.True(player1MatchStarted);
@@ -332,24 +332,24 @@ namespace GammonX.Server.Tests.Integration
             Assert.Equal(1, player2MatchStartCount);
 
             // start the match and roll their opening dice (should be equal)
-            await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
-            await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
+            await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
+            await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
 
             while (!player1MatchWaiting)
             {
-                await Task.Delay(100);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
             }
 
             Assert.True(player1MatchWaiting);
 
             while (player1MatchStartCount == 1 || player2MatchStartCount == 1)
             {
-                await Task.Delay(100);
+                await Task.Delay(100, TestContext.Current.CancellationToken);
             }
 
             // start the match a second time
-            await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
-            await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
+            await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
+            await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
 
             // both player had to start the match twice due to forced re-roll
             Assert.Equal(2, player1MatchStartCount);

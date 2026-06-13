@@ -58,8 +58,8 @@ namespace GammonX.Server.Tests.Integration
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
 			var player1 = new JoinRequest(_player1Id, MatchVariant.Tavli, modus, MatchType.CashGame);
-			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
-			var resultJson1 = await response1.Content.ReadAsStringAsync();
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
+			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
@@ -72,8 +72,8 @@ namespace GammonX.Server.Tests.Integration
 				.Build();
 
 			var player2 = new JoinRequest(_player2Id, MatchVariant.Tavli, modus, MatchType.CashGame);
-			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
-			var resultJson2 = await response2.Content.ReadAsStringAsync();
+			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2, TestContext.Current.CancellationToken);
+			var resultJson2 = await response2.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse2 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);
@@ -460,69 +460,69 @@ namespace GammonX.Server.Tests.Integration
 				});
 			});
 
-			await player1Connection.StartAsync();
-			await player2Connection.StartAsync();
+			await player1Connection.StartAsync(TestContext.Current.CancellationToken);
+			await player2Connection.StartAsync(TestContext.Current.CancellationToken);
 
 			// join the match
-			await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString());
-			await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player2.PlayerId.ToString());
+			await player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
+			await player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId, player2.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// start the match and first game
-			await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
-			await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId);
+			await player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, TestContext.Current.CancellationToken);
+			await player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId, TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// player 1 does not have to roll his dices on the first game
 
 			// player 1 moves first checker and wins the first game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite, TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// start game round 2
-			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
-			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
+			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId, TestContext.Current.CancellationToken);
+			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId, TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// player 1 rolls the dice
-			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId);
+			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId, TestContext.Current.CancellationToken);
 
-			await Task.Delay(1500);
+			await Task.Delay(1500, TestContext.Current.CancellationToken);
 
 			// player 1 moves first checker and wins the second game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite, TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// start game round 3
-			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
-			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId);
+			await player1Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId, TestContext.Current.CancellationToken);
+			await player2Connection.InvokeAsync(ServerCommands.StartGameCommand, matchId, TestContext.Current.CancellationToken);
 
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			// player 1 rolls the dice
-			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId);
+			await player1Connection.InvokeAsync(ServerCommands.RollCommand, matchId, TestContext.Current.CancellationToken);
 
-			await Task.Delay(1500);
+			await Task.Delay(1500, TestContext.Current.CancellationToken);
 
 			// player 1 moves first checker and wins the third game
-			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite);
+			await player1Connection.InvokeAsync(ServerCommands.MoveCommand, matchId, 23, BoardPositions.BearOffWhite, TestContext.Current.CancellationToken);
 
 			// match ended
-			await Task.Delay(500);
+			await Task.Delay(500, TestContext.Current.CancellationToken);
 
 			while (!matchEndedForPlayer1 || !matchEndedForPlayer2)
 			{
-				await Task.Delay(200);
+				await Task.Delay(200, TestContext.Current.CancellationToken);
 			}
 
 			while (!player1MustDisconnect || !player2MustDisconnect)
 			{
-				await Task.Delay(200);
+				await Task.Delay(200, TestContext.Current.CancellationToken);
 			}
 
 			Assert.Equal(HubConnectionState.Disconnected, player1Connection.State);
