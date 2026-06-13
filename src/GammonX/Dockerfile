@@ -1,8 +1,8 @@
 #####################################################
-### SERVER CONTAINER (.NET 8)
+### SERVER CONTAINER (.NET 10)
 #####################################################
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS server-image
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS server-image
 ARG BUILD_CONFIGURATION=Release
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /app
@@ -16,7 +16,7 @@ RUN addgroup --gid ${APP_GID} appgroup \
  && adduser --disabled-password --gecos "" --uid ${APP_UID} --g ${APP_GID} appuser \
  && chown -R appuser:appgroup /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS server-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS server-build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Server/GammonX.Server.csproj", "GammonX.Server/"]
@@ -85,7 +85,7 @@ ENTRYPOINT ["dotnet", "GammonX.Mars.Server.dll"]
 ### LAMBDA CONTAINER
 #####################################################
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS lambda-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS lambda-build
 ARG BUILD_CONFIGURATION=Release
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /src
