@@ -110,6 +110,7 @@ namespace GammonX.Lambda.Tests.Sqs
                 Variant = Models.Enums.MatchVariant.Tavli,
                 Modus = Models.Enums.MatchModus.Normal,
                 Type = Models.Enums.MatchType.CashGame,
+                BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
                 Games = new[] { wonPortesGame, wonPlakotoGame, wonFevgaGame }
@@ -122,6 +123,7 @@ namespace GammonX.Lambda.Tests.Sqs
                 Variant = Models.Enums.MatchVariant.Tavli,
                 Modus = Models.Enums.MatchModus.Normal,
                 Type = Models.Enums.MatchType.CashGame,
+                BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
                 Games = new[] { lostPortesGame, lostPlakotoGame, lostFevgaGame }

@@ -25,16 +25,15 @@ namespace GammonX.Mars.NN.Services
         private readonly AverageGapSizeFeature _averageGapSizeFeature = new AverageGapSizeFeature();
         private readonly CheckersInPrimeZoneFeature _checkersInPrimeZoneFeature = new CheckersInPrimeZoneFeature();
 
+        // <inheritdoc />
         protected override IBoardService BoardService { get; }
 
-
-        public FevgaFeatureEvalService(
-            [FromKeyedServices(GameModus.Fevga)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
+        public FevgaFeatureEvalService([FromKeyedServices(GameModus.Fevga)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Fevga);
-            //_primeProbabilityFeature = new PrimeProbabilityFeature(BoardService);
         }
 
+        // <inheritdoc />
         protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
             EvalResultModel eval;
@@ -80,12 +79,13 @@ namespace GammonX.Mars.NN.Services
             return eval;
         }
 
+        // <inheritdoc />
         protected override EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
             EvalResultModel eval;
             if (isRace)
             {
-                // skip expensive probability features in race positions
+                // skip expensive features in race positions
                 eval = new EvalResultModel()
                 {
                     Race = true,

@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Mars.NN.Features
 {
     /// <summary>
@@ -13,27 +15,56 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            if (board.Modus == GameModus.Fevga)
             {
-                var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
-                if (whitePositions.Count != 0)
+                // fevga has a different behavior and start board layout
+                if (isWhite)
                 {
-                    var primeZone = board.StartRangeBlack.Start.Value..(board.StartRangeBlack.End.Value + 6);
-                    var primeCheckers = whitePositions.Where(wp => wp.Index >= primeZone.Start.Value && wp.Index <= primeZone.End.Value);
-                    return Math.Abs(primeCheckers.Sum(pc => pc.Item));
+                    var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
+                    if (whitePositions.Count != 0)
+                    {
+                        var primeZone = board.StartRangeBlack.Start.Value..(board.StartRangeBlack.End.Value + 6);
+                        var primeCheckers = whitePositions.Where(wp => wp.Index >= primeZone.Start.Value && wp.Index <= primeZone.End.Value);
+                        return Math.Abs(primeCheckers.Sum(pc => pc.Item));
+                    }
+                    return 0;
                 }
-                return 0;
+                else
+                {
+                    var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
+                    if (blackPositions.Count != 0)
+                    {
+                        var primeZone = board.StartRangeWhite.Start.Value..(board.StartRangeWhite.End.Value + 6);
+                        var primeCheckers = blackPositions.Where(bp => bp.Index >= primeZone.Start.Value && bp.Index <= primeZone.End.Value);
+                        return primeCheckers.Sum(pc => pc.Item);
+                    }
+                    return 0;
+                }
             }
             else
             {
-                var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
-                if (blackPositions.Count != 0)
+                if (isWhite)
                 {
-                    var primeZone = board.StartRangeWhite.Start.Value..(board.StartRangeWhite.End.Value + 6);
-                    var primeCheckers = blackPositions.Where(bp => bp.Index >= primeZone.Start.Value && bp.Index <= primeZone.End.Value);
-                    return primeCheckers.Sum(pc => pc.Item);
+                    var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
+                    if (whitePositions.Count != 0)
+                    {
+                        var primeZone = (board.StartRangeWhite.End.Value + 1)..(board.StartRangeBlack.End.Value - 1);
+                        var primeCheckers = whitePositions.Where(wp => wp.Index >= primeZone.Start.Value && wp.Index <= primeZone.End.Value);
+                        return Math.Abs(primeCheckers.Sum(pc => pc.Item));
+                    }
+                    return 0;
                 }
-                return 0;
+                else
+                {
+                    var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
+                    if (blackPositions.Count != 0)
+                    {
+                        var primeZone = (board.StartRangeWhite.End.Value + 1)..(board.StartRangeBlack.End.Value - 1);
+                        var primeCheckers = blackPositions.Where(bp => bp.Index >= primeZone.Start.Value && bp.Index <= primeZone.End.Value);
+                        return primeCheckers.Sum(pc => pc.Item);
+                    }
+                    return 0;
+                }
             }
         }
     }

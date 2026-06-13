@@ -2,6 +2,8 @@
 
 using GammonX.Server.Contracts;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Models
 {
 	/// <summary>
@@ -32,7 +34,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the type of the match determining the winning condition.
 		/// </summary>
-		GammonX.Models.Enums.MatchType Type { get; }
+		MatchType Type { get; }
+
+        /// <summary>
+        /// Gets the bot level if this match session is played against a bot. Otherwise, <see cref="BotLevel.Unknown"/>.
+        /// </summary>
+        BotLevel BotLevel { get; }
 
 		/// <summary>
 		/// Gets the player 1.
@@ -168,7 +175,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns the game session for the given <paramref name="gameRound"/>.
 		/// </summary>
-		/// <param name="gameRound">Game round.</param>
+		/// <param name="gameRound">Game round. 1-based index.</param>
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
 

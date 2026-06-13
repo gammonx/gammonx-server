@@ -1,6 +1,5 @@
-﻿using GammonX.Models.Enums;
-
-using GammonX.Server.Models;
+﻿using GammonX.Models;
+using GammonX.Models.Enums;
 
 namespace GammonX.Server.Tests
 {

@@ -24,7 +24,7 @@ namespace GammonX.Server.Tests.Match
 		public void MatchSessionCreated(MatchVariant variant, GameModus gameModusToExpect)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Normal, MatchType.CashGame);
+			var queueKey = new QueueKey(variant, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 			var session = _matchSessionFactory.Create(matchId, queueKey);
 			Assert.NotNull(session);
 			Assert.Equal(matchId, session.Id);
@@ -728,7 +728,7 @@ namespace GammonX.Server.Tests.Match
 		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
 		public void MatchSessionHandleDifferentConfigurations(MatchVariant variant, MatchModus modus, MatchType type)
 		{
-			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
+			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type, BotLevel.Hard));
 			Assert.NotNull(matchSession);
 			Assert.Equal(variant, matchSession.Variant);
 			Assert.Equal(modus, matchSession.Modus);
@@ -817,7 +817,7 @@ namespace GammonX.Server.Tests.Match
 		[InlineData(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame)]
 		public void MatchSessionReturnsProperHistory(MatchVariant variant, MatchModus modus, MatchType type)
 		{
-			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type));
+			var matchSession = _matchSessionFactory.Create(Guid.NewGuid(), new QueueKey(variant, modus, type, BotLevel.Hard));
 			Assert.NotNull(matchSession);
 
 			var player1Id = Guid.NewGuid();

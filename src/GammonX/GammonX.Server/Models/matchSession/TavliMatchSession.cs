@@ -1,6 +1,7 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.Extensions;
 
 using GammonX.Models.Enums;
+using GammonX.Models;
 
 using GammonX.Server.Services;
 
@@ -37,47 +38,11 @@ namespace GammonX.Server.Models
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
-			// if both players hit heir opponents mother checker
-			// the game ends in a tie and concluded with 0 points
-			if (activeSession.BoardModel is IPinModel pinModel && pinModel.BothMothersArePinned)
-			{
-                return GameResultModel.Draw();
-			}
-
-			if (Player1.Id.Equals(playerId))
-			{
-				if (activeSession.BoardModel.BearOffCountWhite != activeSession.BoardModel.WinConditionCount)
-					throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
-
-				// white checker player
-				if (activeSession.BoardModel.BearOffCountBlack == 0)
-				{
-                    return new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, 2);
-                }
-				else
-				{
-                    return new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, 1);
-                }
-			}
-			else if (Player2.Id.Equals(playerId))
-			{
-				// black checker player
-				if (activeSession.BoardModel.BearOffCountBlack != activeSession.BoardModel.WinConditionCount)
-					throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
-
-				// white checker player
-				if (activeSession.BoardModel.BearOffCountWhite == 0)
-				{
-                    return new GameResultModel(playerId, GameResult.Gammon, GameResult.LostGammon, 2);
-                }
-				else
-				{
-                    return new GameResultModel(playerId, GameResult.Single, GameResult.LostSingle, 1);
-                }
-			}
-
-			throw new InvalidOperationException("Player is not part of this match session.");
-		}
+            var board = activeSession.BoardModel;
+            var isWhite = IsWhite(playerId);
+            var gameResult = board.ToGameResult(playerId, isWhite);
+            return gameResult;
+        }
 
 		// <inheritdoc />
 		protected override int CalculateResignGamePoints()

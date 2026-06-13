@@ -30,7 +30,7 @@
         public int? StartDiceRoll { get; private set; } = null;
 
         /// <summary>
-        /// Gets a boolean indicaitng if the the given player already accepted the next game.
+        /// Gets a boolean indicating if the given player already accepted the next game.
         /// </summary>
         public bool NextGameAccepted { get; private set; } = false;
 

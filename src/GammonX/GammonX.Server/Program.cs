@@ -78,22 +78,29 @@ builder.Services.AddSingleton<ICancellationTokenService, CancellationTokenServic
 builder.Services.Configure<BotServiceOptions>(
     builder.Configuration.GetSection("BOT_SERVICE"));
 
-builder.Services.AddHttpClient(WellKnownBotServices.WildBg, (sp, client) =>
+var botServiceOptions = builder.Configuration.GetSection("BOT_SERVICE").Get<BotServiceOptions>();
+if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.WildBg))
 {
-    var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-    client.BaseAddress = new Uri(options.WildBg);
-    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-});
-builder.Services.AddHttpClient(WellKnownBotServices.Mars, (sp, client) =>
-{
-    var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-    client.BaseAddress = new Uri(options.Mars);
-    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-});
-builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.WildBg, (sp, _) =>
+    builder.Services.AddHttpClient(WellKnownBotServices.WildBg, (sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+        client.BaseAddress = new Uri(options.WildBg);
+        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+    });
+    builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.WildBg, (sp, _) =>
     new WildbgBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.WildBg)));
-builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, (sp, _) =>
-    new MarsBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.Mars)));
+}
+if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.Mars))
+{
+    builder.Services.AddHttpClient(WellKnownBotServices.Mars, (sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
+        client.BaseAddress = new Uri(options.Mars);
+        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+    });
+    builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, (sp, _) =>
+        new MarsBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.Mars)));
+}
 // -------------------------------------------------------------------------------
 // AUTHENTICATION + AUTHORIZATION SETUP
 // -------------------------------------------------------------------------------
@@ -131,7 +138,7 @@ var app = builder.Build();
 // we validate bot service URLs eagerly so a missing env var surfaces at startup rather than mid-game when the first bot move is requested.
 var botOptions = app.Services.GetRequiredService<IOptions<BotServiceOptions>>().Value;
 if (string.IsNullOrEmpty(botOptions.WildBg))
-    throw new InvalidOperationException("BOT_SERVICE__WILDBG is not configured. Set the environment variable before starting the server.");
+    Log.Warning("BOT_SERVICE__WILDBG is not configured");
 if (string.IsNullOrEmpty(botOptions.Mars))
     throw new InvalidOperationException("BOT_SERVICE__MARS is not configured. Set the environment variable before starting the server.");
 // -------------------------------------------------------------------------------
@@ -167,5 +174,5 @@ Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetE
 
 app.Run();
 
-// we require this for webapplication factory tests
+// we require this for web application factory tests
 public partial class Program { }

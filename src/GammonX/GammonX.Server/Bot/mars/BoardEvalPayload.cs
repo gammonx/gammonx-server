@@ -2,7 +2,7 @@
 
 using System.Runtime.Serialization;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Server.Bot
 {
     [DataContract]
     public class BoardEvalPayload : ResponsePayload

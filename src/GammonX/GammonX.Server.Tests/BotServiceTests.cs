@@ -2,6 +2,7 @@
 
 using GammonX.Models.Enums;
 
+using GammonX.Server.Bot;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
@@ -31,7 +32,7 @@ namespace GammonX.Server.Tests
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, type, matchFactory);
-            var botService = BotUtils.GetBotService(modus);
+            var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
             Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
             matchSession.Player1.AcceptNextGame();
@@ -111,7 +112,7 @@ namespace GammonX.Server.Tests
                 {
                     matchSession.RollDices(activePlayerId);
                 }
-                var botService = BotUtils.GetBotService(gameSession.Modus);
+                var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
                 var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
                 var hasWon = false;
                 foreach (var nextMove in nextMoves.Moves)
@@ -151,7 +152,7 @@ namespace GammonX.Server.Tests
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
 
-            var botService = BotUtils.GetBotService(GameModus.Backgammon);
+            var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
@@ -172,7 +173,7 @@ namespace GammonX.Server.Tests
             gameSession.BoardModel.BearOffChecker(true, 8);
             gameSession.BoardModel.BearOffChecker(false, 11);
 
-            gameSession.SetDiceRolls(new int[] { 5, 6 }, true);
+            gameSession.SetDiceRolls(new [] { 5, 6 }, true);
 
             var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
             var legalMoveSeq = boardService.GetLegalMoveSequences(gameSession.BoardModel, true, 5, 6);
@@ -203,7 +204,7 @@ namespace GammonX.Server.Tests
             Assert.True(matchSession.Player1.IsBot);
             Assert.True(matchSession.Player2.IsBot);
 
-            var botService = BotUtils.GetBotService(modus);
+            var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
@@ -233,7 +234,7 @@ namespace GammonX.Server.Tests
                         Assert.Equal(activePlayerId, gameSession.ActivePlayer);
                         cubeSession.OfferDouble(activePlayerId);
                         Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
-                        var shouldAccept = await botService.ShouldAcceptDouble(matchSession, otherPlayerId);
+                        var shouldAccept = await botService.ShouldTakeDouble(matchSession, otherPlayerId);
                         if (shouldAccept)
                         {
                             cubeSession.AcceptDouble(otherPlayerId);
@@ -244,7 +245,15 @@ namespace GammonX.Server.Tests
                         {
                             cubeSession.DeclineDouble(otherPlayerId);
                             Assert.Equal(activePlayerId, gameSession.ActivePlayer);
-                            break;
+                            if (!matchSession.IsMatchOver())
+                            {
+                                matchSession.Player1.AcceptNextGame();
+                                matchSession.Player2.AcceptNextGame();
+                                Assert.True(matchSession.CanStartNextGame());
+                                matchSession.StartNextGame(activePlayerId);
+                                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                                continue;
+                            }
                         }
                     }
                 }
@@ -385,10 +394,10 @@ namespace GammonX.Server.Tests
         {
             var fields = RandomBoardGenerator.GenerateRandomFields(
                 24, 15, 15,
-                out int bearOffBlack,
-                out int bearOffWhite,
-                out int barBlack,
-                out int barWhite,
+                out var bearOffBlack,
+                out var bearOffWhite,
+                out var barBlack,
+                out var barWhite,
                 seed
             );
 
@@ -398,7 +407,7 @@ namespace GammonX.Server.Tests
             var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, MatchType.CashGame, matchFactory);
             Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
 
-            var botService = BotUtils.GetBotService(modus);
+            var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
@@ -414,12 +423,7 @@ namespace GammonX.Server.Tests
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
             matchSession.RollDices(botPlayer2Id);
             var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
-            var canMove = true;
-
-            if (nextMoveSeq.Moves.Count == 0)
-            {
-                canMove = false;
-            }
+            var canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
             {
@@ -431,12 +435,7 @@ namespace GammonX.Server.Tests
             // white checker bot moves second
             matchSession.RollDices(botPlayer1Id);
             nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
-            canMove = true;
-
-            if (nextMoveSeq.Moves.Count == 0)
-            {
-                canMove = false;
-            }
+            canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
             {
@@ -444,6 +443,121 @@ namespace GammonX.Server.Tests
             }
             Assert.False(canMove);
             matchSession.EndTurn(botPlayer1Id);
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.CashGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.FivePointGame)]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, MatchType.SevenPointGame)]
+        public async Task MarsCanPlayAgainstWildBg(MatchVariant variant, GameModus modus, MatchType type)
+        {
+            var diceFactory = new DiceServiceFactory();
+            var gameSessionFactory = new GameSessionFactory(diceFactory);
+            var matchFactory = new MatchSessionFactory(gameSessionFactory);
+            var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
+            var cubeSession = matchSession as IDoubleCubeMatchSession;
+            Assert.NotNull(cubeSession);
+            Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
+            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.True(matchSession.Player1.IsBot);
+            Assert.True(matchSession.Player2.IsBot);
+
+            var marsBot = BotUtils.GetBotService(WellKnownBotServices.Mars);
+            var wildbgBot = BotUtils.GetBotService(WellKnownBotServices.WildBg);
+
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+
+            var botPlayer1Id = matchSession.Player1.Id;
+            var botPlayer2Id = matchSession.Player2.Id;
+            var activePlayerId = botPlayer1Id;
+            var otherPlayerId = botPlayer2Id;
+            var activeBotService = marsBot;
+            var doubleAccepted = false;
+
+            Assert.Equal(modus, matchSession.GetGameModus());
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+            matchSession.StartMatch(activePlayerId);
+
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+            do
+            {
+                if (cubeSession.CanOfferDouble(activePlayerId))
+                {
+                    var shouldOffer = await activeBotService.ShouldOfferDouble(matchSession, activePlayerId);
+                    if (shouldOffer)
+                    {
+                        gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                        Assert.NotNull(gameSession);
+                        Assert.Equal(activePlayerId, gameSession.ActivePlayer);
+                        cubeSession.OfferDouble(activePlayerId);
+                        Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
+                        var shouldAccept = await activeBotService.ShouldTakeDouble(matchSession, otherPlayerId);
+                        if (shouldAccept)
+                        {
+                            cubeSession.AcceptDouble(otherPlayerId);
+                            Assert.Equal(activePlayerId, gameSession.ActivePlayer);
+                            doubleAccepted = true;
+                        }
+                        else
+                        {
+                            cubeSession.DeclineDouble(otherPlayerId);
+                            Assert.Equal(activePlayerId, gameSession.ActivePlayer);
+                            if (!matchSession.IsMatchOver())
+                            {
+                                matchSession.Player1.AcceptNextGame();
+                                matchSession.Player2.AcceptNextGame();
+                                Assert.True(matchSession.CanStartNextGame());
+                                matchSession.StartNextGame(activePlayerId);
+                                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                                continue;
+                            }
+                        }
+                    }
+                }
+                Assert.NotNull(gameSession);
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
+                {
+                    matchSession.RollDices(activePlayerId);
+                }
+                var nextMoves = await activeBotService.GetNextMovesAsync(matchSession, activePlayerId);
+                var hasWon = false;
+                foreach (var nextMove in nextMoves.Moves)
+                {
+                    hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
+                    if (hasWon)
+                        break;
+                }
+
+                if (!hasWon)
+                {
+                    matchSession.EndTurn(activePlayerId);
+                    activePlayerId = otherPlayerId;
+                    otherPlayerId = activePlayerId == botPlayer1Id ? botPlayer2Id : botPlayer1Id;
+                    activeBotService = activePlayerId == botPlayer1Id ? marsBot : wildbgBot;
+                }
+                else if (!matchSession.IsMatchOver())
+                {
+                    matchSession.Player1.AcceptNextGame();
+                    matchSession.Player2.AcceptNextGame();
+                    matchSession.StartNextGame(activePlayerId);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                }
+            }
+            while (!matchSession.IsMatchOver());
+
+            Assert.True(matchSession.IsMatchOver());
+            Assert.False(matchSession.CanStartNextGame());
+            gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+            Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+            Assert.True(matchSession.Player1.Points > 0 || matchSession.Player2.Points > 0);
+            if (doubleAccepted)
+            {
+                Assert.True(matchSession.Player1.Points > 1 || matchSession.Player2.Points > 1);
+            }
         }
     }
 }

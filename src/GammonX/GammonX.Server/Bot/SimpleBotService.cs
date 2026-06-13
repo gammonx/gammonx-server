@@ -24,7 +24,7 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public Task<bool> ShouldAcceptDouble(IMatchSessionModel matchSession, Guid playerId)
+		public Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
 		{
 			return Task.FromResult(false);
 		}

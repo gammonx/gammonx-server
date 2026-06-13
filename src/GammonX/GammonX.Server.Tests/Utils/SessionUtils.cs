@@ -9,7 +9,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Utils
 {
-	internal static class SessionUtils
+	public static class SessionUtils
 	{
 		public static void InjectDiceServiceMock(this IGameSessionModel model, IDiceService diceService)
 		{
@@ -61,7 +61,7 @@ namespace GammonX.Server.Tests.Utils
 		public static (Guid, IMatchSessionModel) CreateHeadToHeadMatchSession(MatchVariant variant, MatchType matchType, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Normal, matchType);
+			var queueKey = new QueueKey(variant, MatchModus.Normal, matchType, BotLevel.Hard);
 			var session = factory.Create(matchId, queueKey);
 			return ( matchId, session );
 		}
@@ -69,7 +69,7 @@ namespace GammonX.Server.Tests.Utils
 		public static (Guid, IMatchSessionModel) CreateHeadToBotMatchSession(MatchVariant variant, MatchType type, IMatchSessionFactory factory)
 		{
 			var matchId = Guid.NewGuid();
-			var queueKey = new QueueKey(variant, MatchModus.Bot, type);
+			var queueKey = new QueueKey(variant, MatchModus.Bot, type, BotLevel.Hard);
 			var session = factory.Create(matchId, queueKey);
 			return (matchId, session);
 		}

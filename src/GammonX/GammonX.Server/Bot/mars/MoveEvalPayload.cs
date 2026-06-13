@@ -1,9 +1,10 @@
 ﻿using GammonX.Engine.Models;
+
 using GammonX.Models.Contracts;
 
 using System.Runtime.Serialization;
 
-namespace GammonX.Server.Contracts
+namespace GammonX.Server.Bot
 {
     [DataContract]
     public class MoveEvalPayload : ResponsePayload

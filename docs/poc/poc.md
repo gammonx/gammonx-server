@@ -44,7 +44,8 @@ The player with the given `playerId` joins the match queue depending on the give
     "playerId": "fdd907ca-794a-43f4-83e6-cadfabc57c45",
     "matchVariant": 2,
     "matchModus": 0,
-    "matchType": 2
+    "matchType": 2,
+    "botLevel": 0,
 }
 ```
 - WellknownMatchVariant > [Link](../../src/GammonX/GammonX.Server/Models/Enums.cs)

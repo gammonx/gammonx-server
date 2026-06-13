@@ -4,14 +4,15 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
 {
-	/// <summary>
-	/// REST Join request for a match lobby.
-	/// </summary>
-	/// <param name="PlayerId">Player who joins the matchmaking process.</param>
-	/// <param name="MatchVariant">Match queue to join.</param>
-	/// <param name="MatchModus">Match modus to join.</param>
-	/// <param name="MatchType">Match type to play.</param>
-	public record JoinRequest(Guid PlayerId, MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType);
+    /// <summary>
+    /// REST Join request for a match lobby.
+    /// </summary>
+    /// <param name="PlayerId">Player who joins the matchmaking process.</param>
+    /// <param name="MatchVariant">Match queue to join.</param>
+    /// <param name="MatchModus">Match modus to join.</param>
+    /// <param name="MatchType">Match type to play.</param>
+    /// <param name="BotLevel">Bot level to play against. Only relevant for bot queues, ignored otherwise.</param>
+    public record JoinRequest(Guid PlayerId, MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType, BotLevel BotLevel = BotLevel.Unknown);
 
 	/// <summary>
 	/// REST Status match lobby request.
@@ -20,13 +21,14 @@ namespace GammonX.Server.Models
 	/// <param name="MatchModus">Match modus which determines the queue type.</param>
 	public record StatusRequest(Guid PlayerId, MatchModus MatchModus);
 
-	/// <summary>
-	/// Unique ID of a queue entry.
-	/// </summary>
-	/// <param name="MatchVariant">Match variant.</param>
-	/// <param name="MatchModus">Match type.</param>
-	/// <param name="MatchType">Match type to play.</param>
-	public record QueueKey(MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType);
+    /// <summary>
+    /// Unique ID of a queue entry.
+    /// </summary>
+    /// <param name="MatchVariant">Match variant.</param>
+    /// <param name="MatchModus">Match type.</param>
+    /// <param name="MatchType">Match type to play.</param>
+    /// <param name="BotLevel">Bot level to play against. Only relevant for bot queues, ignored otherwise.</param>
+    public record QueueKey(MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType, BotLevel BotLevel = BotLevel.Unknown);
 
     /// <summary>
     /// Internal queue entry for a player in the matchmaking queue.

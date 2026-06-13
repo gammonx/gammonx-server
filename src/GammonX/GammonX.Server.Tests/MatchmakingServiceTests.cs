@@ -50,7 +50,7 @@ namespace GammonX.Server.Tests
             matcher.AddService(MatchModus.Normal, normalMatcher);
             matcher.AddService(MatchModus.Bot, botMatcher);
 
-            var queueKey = new QueueKey(variant, modus, type);
+            var queueKey = new QueueKey(variant, modus, type, BotLevel.Hard);
 
             const int playerCount = 100;
 
@@ -136,7 +136,7 @@ namespace GammonX.Server.Tests
             matcher.AddService(MatchModus.Normal, normalMatcher);
             matcher.AddService(MatchModus.Bot, botMatcher);
 
-            var queueKey = new QueueKey(variant, modus, type);
+            var queueKey = new QueueKey(variant, modus, type, BotLevel.Hard);
 
             var initialEntries = Enumerable.Range(0, 20)
                 .Select(_ => CreateQueueEntry(queueKey, 1500))
@@ -179,7 +179,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
 
             var oldPlayer = CreateQueueEntry(queueKey, 1200);
             oldPlayer.EnqueuedAtUtc = DateTime.UtcNow.AddSeconds(-60);
@@ -202,7 +202,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
             var entry = CreateQueueEntry(queueKey, 1200);
             var lastSeenUtc = entry.LastSeenUtc;
             matcher.Enqueue(entry);
@@ -217,7 +217,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
             var entry = CreateQueueEntry(queueKey, 1200);
             matcher.Enqueue(entry);
 
@@ -238,7 +238,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
             var playerId = Guid.NewGuid();
 
             var entry1 = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 1500);
@@ -258,7 +258,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue single player
             var entry = CreateQueueEntry(queueKey, 1500);
@@ -279,7 +279,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue 10 players
             for (int i = 0; i < 10; i++)
@@ -302,7 +302,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue 4 players
             for (int i = 0; i < 4; i++)
@@ -337,7 +337,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
 
             var entry1 = CreateQueueEntry(queueKey, rating1);
             entry1.EnqueuedAtUtc = DateTime.UtcNow.AddSeconds(-secondsWaiting);
@@ -380,7 +380,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue old player with rating 1500
             var oldPlayer = CreateQueueEntry(queueKey, 1500);
@@ -407,7 +407,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue two old players with different ratings
             var oldPlayer1 = CreateQueueEntry(queueKey, 1500);
@@ -434,7 +434,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var normalMatcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             //we enqueue 4 players
             var players = Enumerable.Range(0, 4)
@@ -467,7 +467,7 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue 7 players (odd number)
             for (int i = 0; i < 7; i++)
@@ -497,8 +497,8 @@ namespace GammonX.Server.Tests
             composite.AddService(MatchModus.Normal, normalMatcher);
             composite.AddService(MatchModus.Bot, botMatcher);
 
-            var queueKeyNormal = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
-            var queueKeyBot = new QueueKey(MatchVariant.Backgammon, MatchModus.Bot, MatchType.CashGame);
+            var queueKeyNormal = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
+            var queueKeyBot = new QueueKey(MatchVariant.Backgammon, MatchModus.Bot, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue 2 normal and 2 bot players
             composite.Enqueue(CreateQueueEntry(queueKeyNormal, 1500));
@@ -518,8 +518,8 @@ namespace GammonX.Server.Tests
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new NormalMatchmakingService(playerConnRepo);
-            var queueKeyBackgammon = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
-            var queueKeyTavla = new QueueKey(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame);
+            var queueKeyBackgammon = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
+            var queueKeyTavla = new QueueKey(MatchVariant.Tavla, MatchModus.Normal, MatchType.CashGame, BotLevel.Hard);
 
             // we enqueue 2 backgammon and 2 tavla players
             matcher.Enqueue(CreateQueueEntry(queueKeyBackgammon, 1500));

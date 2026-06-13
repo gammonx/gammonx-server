@@ -3,7 +3,6 @@ using GammonX.Mars.Training;
 using GammonX.Models.Enums;
 
 using GammonX.Mars.NN;
-using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
 
 using System.Diagnostics;
@@ -17,6 +16,7 @@ Console.WriteLine("  2  Train Mode");
 Console.WriteLine("  3  Shuffle Mode");
 Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
+Console.WriteLine("  6  Tournament Mode against wildbg");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -41,6 +41,10 @@ else if (modeInput == "5")
 {
     RunTournament();
 }
+else if (modeInput == "6")
+{
+    RunBotServiceTournament();
+}
 else
 {
     Console.WriteLine("Invalid selection. Exiting.");
@@ -54,7 +58,8 @@ static void RunTrainModel()
 {
     Console.WriteLine();
 
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
 
@@ -74,7 +79,8 @@ static void RunNoiseDiagnostic()
     // we check based on a random label distribution if the given feature set have any predictive power
     // if the noise diagnostic loss gap compared to a real run is greater than 0.3 then the features have predictive capacity.
     // if it is less than that, then the feature sets hold no or to little positional information.
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
 
@@ -94,7 +100,8 @@ static void RunTournament()
 {
     Console.WriteLine();
 
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
     var totalGames = PromptInt("Total games", 1000);
@@ -109,11 +116,34 @@ static void RunTournament()
         Console.WriteLine($"Model B not found: {modelBPath}"); return;
     }
 
-    var contactWeights = GetContactWeights(modus);
-    var cheapContactWeights = GetCheapContactWeights(modus);
-    var raceWeights = GetRaceWeights(modus);
+    var contactWeights = EvalWeights.GetContactWeights(modus);
+    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
+    var raceWeights = EvalWeights.GetRaceWeights(modus);
 
     var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights);
+
+    TournamentRunner.PrintReport(result);
+}
+
+static void RunBotServiceTournament()
+{
+    Console.WriteLine();
+
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] { GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
+    var totalGames = PromptInt("Total games", 1000);
+
+    if (!File.Exists(modelAPath))
+    {
+        Console.WriteLine($"Model A not found: {modelAPath}"); return;
+    }
+
+    var contactWeights = EvalWeights.GetContactWeights(modus);
+    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
+    var raceWeights = EvalWeights.GetRaceWeights(modus);
+
+    var result = TournamentRunner.Run(modus, modelAPath, null, totalGames, contactWeights, cheapContactWeights, raceWeights);
 
     TournamentRunner.PrintReport(result);
 }
@@ -231,7 +261,8 @@ static void RunGenerateTrainingData()
 {
     Console.WriteLine();
 
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga }, GameModus.Plakoto);
+    // backgammon, tavla and portes share the same neural net and feature tensors
+    var modus = PromptEnum("Game modus", new[] {GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
     var modelPath = PromptString("Model path. Leave blank for linear.", "");
@@ -243,9 +274,9 @@ static void RunGenerateTrainingData()
     Console.WriteLine();
 
     var extractor = GetFeatureVectorExtractor(modus);
-    var contactWeights = GetContactWeights(modus);
-    var cheapContactWeights = GetCheapContactWeights(modus);
-    var raceWeights = GetRaceWeights(modus);
+    var contactWeights = EvalWeights.GetContactWeights(modus);
+    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
+    var raceWeights = EvalWeights.GetRaceWeights(modus);
 
     var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
     INeuralEvalService neuralEvalService = null!;
@@ -262,7 +293,7 @@ static void RunGenerateTrainingData()
 
     var completed = 0;
     var discarded = 0;
-    var allSamples = new List<(float[] Features, float Label)>(capacity: totalGames * 40);
+    var allSamples = new List<(float[] Features, float[] Label)>(capacity: totalGames * 40);
     var totalTurnCount = 0L;
     var totalPredVariance = 0.0;
     var predVarianceCount = 0;
@@ -332,8 +363,8 @@ static void RunGenerateTrainingData()
     Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
     Console.WriteLine("Writing CSV files...");
 
-    WriteCsv(outputPath, trainSamples, extractor.FeatureCount);
-    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), valSamples, extractor.FeatureCount);
+    WriteCsv(outputPath, modus, trainSamples, extractor.FeatureCount);
+    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), modus, valSamples, extractor.FeatureCount);
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
@@ -341,15 +372,29 @@ static void RunGenerateTrainingData()
     Console.WriteLine("Complete.");
 }
 
-static void WriteCsv(string path, List<(float[] Features, float Label)> samples, int featureCount)
+static void WriteCsv(string path, GameModus modus, List<(float[] Features, float[] Label)> samples, int featureCount)
 {
     using var writer = new StreamWriter(path);
-    writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + ",label");
+
+    var labelHeaders = (modus == GameModus.Fevga || modus == GameModus.Plakoto)
+        ? "pWin"
+        : "pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss";
+
+    writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + "," + labelHeaders);
+
     foreach (var (features, label) in samples)
     {
         writer.Write(string.Join(",", features.Select(f => f.ToString("G6"))));
         writer.Write(',');
-        writer.WriteLine(label.ToString("G6"));
+        if (modus == GameModus.Fevga || modus == GameModus.Plakoto)
+        {
+            // TODO: enable full GAME equity predictions for plakoto/fevga
+            writer.WriteLine(label[0].ToString("G6"));
+        }
+        else
+        {
+            writer.WriteLine(string.Join(",", label.Select(l => l.ToString("G6"))));
+        }
     }
 }
 
@@ -394,45 +439,15 @@ static string PromptString(string label, string defaultValue)
 
 #region Helpers
 
-static ContactWeightModel GetContactWeights(GameModus modus)
-{
-    var contactWeights = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.PlakotoContactWeights,
-        GameModus.Fevga => EvalWeights.FevgaContactWeights,
-        _ => throw new NotSupportedException()
-    };
-    return contactWeights;
-}
-
-static ContactWeightModel GetCheapContactWeights(GameModus modus)
-{
-    var cheapContactWeights = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.PlakotoCheapContactWeights,
-        GameModus.Fevga => EvalWeights.FevgaCheapContactWeights,
-        _ => throw new NotSupportedException()
-    };
-    return cheapContactWeights;
-}
-
-static RaceWeightModel GetRaceWeights(GameModus modus)
-{
-    var raceWeights = modus switch
-    {
-        GameModus.Plakoto => EvalWeights.RaceWeights,
-        GameModus.Fevga => EvalWeights.RaceWeights,
-        _ => throw new NotSupportedException()
-    };
-    return raceWeights;
-}
-
 static IFeatureVectorExtractor GetFeatureVectorExtractor(GameModus modus)
 {
     IFeatureVectorExtractor extractor = modus switch
     {
         GameModus.Plakoto => new PlakotoFeatureVectorExtractor(),
         GameModus.Fevga => new FevgaFeatureVectorExtractor(),
+        GameModus.Backgammon => new DefaultFeatureVectorExtractor(),
+        GameModus.Tavla => new DefaultFeatureVectorExtractor(),
+        GameModus.Portes => new DefaultFeatureVectorExtractor(),
         _ => throw new NotSupportedException($"Modus {modus} has no feature extractor.")
     };
     return extractor;

@@ -105,7 +105,7 @@ namespace GammonX.Server.Tests.Queue
             var gameFactory = new GameSessionFactory(diceFactory);
             var factory = new MatchSessionFactory(gameFactory);
 
-            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame);
+            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.CashGame, BotLevel.Hard);
             var match = factory.Create(Guid.NewGuid(), queueKey);
 
             var player1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");

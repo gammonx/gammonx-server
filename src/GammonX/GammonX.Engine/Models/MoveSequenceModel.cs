@@ -17,7 +17,7 @@ namespace GammonX.Engine.Models
 		/// Gets a list of plays. Contains 4 moves for a pasch and 2 moves for 2 different dice values.
 		/// </summary>
 		[DataMember(Name = "moves")]
-		public List<MoveModel> Moves { get; } = new();
+		public List<MoveModel> Moves { get; set; } = new();
 
 		/// <summary>
 		/// Gets a list of used dices in order to execute <see cref="Moves"/>.

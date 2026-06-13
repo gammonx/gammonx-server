@@ -16,7 +16,7 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - GAME_SERVICE__BASEPATH=/game
       - BOT_SERVICE__MARS=http://mars-service:8083/bot/mars/
-      - BOT_SERVICE__WILDBG=http://wildbg-service:8082/bot/wildbg/
+      # - BOT_SERVICE__WILDBG=http://wildbg-service:8082/bot/wildbg/
       - BOT_SERVICE__TIMEOUTSECONDS=5
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug

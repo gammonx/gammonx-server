@@ -3,6 +3,7 @@
 using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Services
 {
@@ -11,6 +12,13 @@ namespace GammonX.Mars.NN.Services
     /// </summary>
     public interface IFeatureEvalService
     {
+        /// <summary>
+        /// Evaluates the cube decision for the match state in <paramref name="contract"/>.
+        /// </summary>
+        /// <param name="contract">Match state to evaluate</param>
+        /// <returns>Cube actions to take based on the evaluation.</returns>
+        (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract);
+
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in
         /// <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.
@@ -53,7 +61,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
-        FinalEvalResult[] EvalMoveSequenceForTraining(
+        FinalEvalResultModels EvalMoveSequenceForTraining(
             EvalMoveRequestContract contract,
             ContactWeightModel cheapContactWeight,
             ContactWeightModel contactWeights,
@@ -62,16 +70,12 @@ namespace GammonX.Mars.NN.Services
     }
 
     /// <summary>
-    /// Provides the final evaluation results for all move explored.
+    /// Provides the cheap evaluation results for a list of legal move sequences.
     /// </summary>
-    /// <param name="Score">Evaluated score.</param>
-    /// <param name="Move">Evaluated move.</param>
-    /// <param name="EvalResult">Eval result.</param>
-    public record FinalEvalResult(
-        double Score,
-        MoveSequenceModel Move,
-        NormalizedEvalResultModel EvalResult);
-
+    /// <param name="CheapScore">Calculated cheap score.</param>
+    /// <param name="Index">Index of the move sequence.</param>
+    /// <param name="IsRace">Indicates if the move is a race move.</param>
+    /// <param name="EvalResult">Normalized evaluation result.</param>
     public record CheapEvalResult(
         double CheapScore,
         int Index,
@@ -79,7 +83,7 @@ namespace GammonX.Mars.NN.Services
         NormalizedEvalResultModel EvalResult)
     {
         /// <summary>
-        /// Sorts by <see cref="CheapEvalResult.CheapScore"/> descending — highest score first.
+        /// Sorts by <see cref="CheapScore"/> descending — highest score first.
         /// </summary>
         public sealed class DescendingComparer : IComparer<CheapEvalResult>
         {
@@ -91,8 +95,7 @@ namespace GammonX.Mars.NN.Services
             }
 
             // <inheritdoc />
-            public int Compare(CheapEvalResult? x, CheapEvalResult? y)
-                => y!.CheapScore.CompareTo(x!.CheapScore);
+            public int Compare(CheapEvalResult? x, CheapEvalResult? y) => y!.CheapScore.CompareTo(x!.CheapScore);
         }
     }
 }

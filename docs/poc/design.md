@@ -75,7 +75,7 @@
 
 #### Bot Play Screen
 - As popup (x to close, cancel or submit to play)
-- Select bot difficulty
+- Select bot level
 - Select match modus (cash game, 5point game, 7point game)
 - If submitted directly to board screen
 
