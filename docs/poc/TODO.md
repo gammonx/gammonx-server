@@ -2,11 +2,10 @@
 - see changelog 
 
 ## Active
-- next gen mars bots
+- upgrade to net10
+- unify nuget package version > build props
 
 ## TODO
-- upgrade to net10
-    - unify nuget package version > build props
 - doubling cube to history/stats
 - async game/match/rating stat processing by client
     - prepare api gateway
@@ -16,15 +15,14 @@
 - resilience patterns
     - retry/timeouts
     - proper healthcheck
+- make game service stateless
+    - or sticky sessions for clients?
 - mars bot MET tables
     - match equity for all match variants
 - update nn arch of plakoto/fevga to > 5
 - export matches to sgf/.mat format
 - subscription service (clients ide?)
 - match equity/stats after match :: win percentage to user
-- auth/user account > how to identify premium accounts?
-    - authentication with api gateway
-    - authorization required
 
 ## Open Points
 - tournament mode

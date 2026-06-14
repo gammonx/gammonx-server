@@ -1,5 +1,15 @@
 # Changelog
 
+## 14.06.2026
+
+### NEW
+- upgraded all projects to net10
+- unified package reference managment into build props
+- upgraded game service and lambda container image to net10
+
+### FIXES
+- patched some package references with known vulnerabilities
+
 ## 13.06.2026
 
 ### NEW

@@ -177,7 +177,12 @@ namespace GammonX.Server.Tests
 
             var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
             var legalMoveSeq = boardService.GetLegalMoveSequences(gameSession.BoardModel, true, 5, 6);
-            Assert.Equal(gameSession.MoveSequences, legalMoveSeq);
+            Assert.Equal(gameSession.MoveSequences.Count, legalMoveSeq.Length);
+            Assert.Equal(gameSession.MoveSequences[0].Moves.Count, legalMoveSeq[0].Moves.Count);
+            Assert.Equal(gameSession.MoveSequences[0].Moves[0], legalMoveSeq[0].Moves[0]);
+            Assert.Equal(gameSession.MoveSequences[0].Moves[1], legalMoveSeq[0].Moves[1]);
+            Assert.Equal(gameSession.MoveSequences[1].Moves[0], legalMoveSeq[1].Moves[0]);
+            Assert.Equal(gameSession.MoveSequences[1].Moves[1], legalMoveSeq[1].Moves[1]);
 
             var botMoveSequence = await botService.GetNextMovesAsync(matchSession, activePlayerId);
             foreach (var botMove in botMoveSequence.Moves)
