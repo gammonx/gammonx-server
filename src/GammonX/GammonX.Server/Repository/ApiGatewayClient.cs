@@ -35,5 +35,24 @@ namespace GammonX.Server.Repository
                 return null;
             } 
         }
+
+        // <inheritdoc />
+        public async Task<PlayerGamesResponseContract?> GetPlayersGames(Guid playerId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var url = $"players/{playerId}/games";
+                using var response = await _client.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+                var games = JsonConvert.DeserializeObject<PlayerGamesResponseContract>(responseJson);
+                return games;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, $"An error occurred while requesting games for '{playerId}'");
+                return null;
+            }
+        }
     }
 }

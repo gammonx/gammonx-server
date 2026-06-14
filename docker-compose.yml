@@ -89,6 +89,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
     networks:
     - gammonx-network   
 
@@ -106,6 +107,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=GAME_COMPLETED
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -131,6 +133,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=MATCH_COMPELTED
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -156,6 +159,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=PLAYER_CREATED
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -181,6 +185,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=STATS_UPDATED
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -206,6 +211,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=RATING_UPDATED
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -231,6 +237,7 @@ services:
     environment:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
       - AWS_LAMBDA_FUNCTION_NAME=API_GATEWAY_HANDLER
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
@@ -247,6 +254,8 @@ services:
     environment:
       - SERVICES=sqs,lambda,apigateway
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=30
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true,
       - AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000
       - AWS__AWS_ACCESS_KEY_ID=local
       - AWS__AWS_SECRET_ACCESS_KEY=local
