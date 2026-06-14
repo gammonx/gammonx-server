@@ -23,9 +23,6 @@
 - export matches to sgf/.mat format
 - subscription service (clients ide?)
 - match equity/stats after match :: win percentage to user
-- auth/user account > how to identify premium accounts?
-    - authentication with api gateway
-    - authorization required
 
 ## Open Points
 - tournament mode

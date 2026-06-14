@@ -20,6 +20,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS server-build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Server/GammonX.Server.csproj", "GammonX.Server/"]
+COPY ["src/GammonX/Directory.Build.props", "GammonX.Server/"]
 RUN dotnet restore "./GammonX.Server/GammonX.Server.csproj"
 COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Server"
@@ -62,6 +63,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS mars-server-build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Mars.Server/GammonX.Mars.Server.csproj", "GammonX.Mars.Server/"]
+COPY ["src/GammonX/Directory.Build.props", "GammonX.Mars.Server/"]
 RUN dotnet restore "./GammonX.Mars.Server/GammonX.Mars.Server.csproj"
 COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Mars.Server"
@@ -90,6 +92,7 @@ ARG BUILD_CONFIGURATION=Release
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Lambda/GammonX.Lambda.csproj", "GammonX.Lambda/"]
+COPY ["src/GammonX/Directory.Build.props", "GammonX.Lambda/"]
 RUN dotnet restore "./GammonX.Lambda/GammonX.Lambda.csproj"
 COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Lambda"
