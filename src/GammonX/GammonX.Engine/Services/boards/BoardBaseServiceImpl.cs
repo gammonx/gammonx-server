@@ -155,6 +155,14 @@ namespace GammonX.Engine.Services
             editableHistory.Add(rollEvent);
         }
 
+        // <inheritdoc />
+        public void AddCubeEventToHistory(IBoardModel model, bool isWhite, CubeAction cubeAction)
+        {
+            var cubeEvent = HistoryEventFactory.CreateCubeEvent(isWhite, cubeAction);
+            var editableHistory = (IEditableBoardHistory)model.History;
+            editableHistory.Add(cubeEvent);
+        }
+
         /// <summary>
         /// Evaluates all proper <c>from</c> checker fields for the given player and board.
         /// </summary>

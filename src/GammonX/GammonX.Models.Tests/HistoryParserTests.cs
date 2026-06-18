@@ -1,6 +1,7 @@
 ﻿using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 using GammonX.Models.History;
+using GammonX.Models.History.MAT;
 
 namespace GammonX.Models.Tests
 {
@@ -138,6 +139,46 @@ namespace GammonX.Models.Tests
             Assert.Equal(45, game.TurnCount(blackPlayer));
             var duration = expEndedAt - expStartAt;
             Assert.Equal(duration, game.Duration());
+        }
+
+        [Fact]
+        public void MATBackgammonGameIsParsedProperly()
+        {
+            var parser = HistoryParserFactory.Create<IGameHistoryParser>(HistoryFormat.MAT);
+
+            var historyPath = Path.Combine("Data", "BackgammonGameHistory.txt");
+            var history = File.ReadAllText(historyPath);
+
+            var game = parser.ParseGame(history);
+
+            var whitePlayer = Guid.Parse("7b717dc4-11d3-4a9e-b102-d62f23f03af8");
+            var blackPlayer = Guid.Parse("9d0bde9e-6d4b-43d9-8889-60ec55095d09");
+
+            var expStartAt = DateTimeHelper.ParseFlexible("14/06/2026 19:40:35");
+            var expEndedAt = DateTimeHelper.ParseFlexible("14/06/2026 19:40:37");
+
+            Assert.NotNull(game);
+            Assert.Equal(HistoryFormat.MAT, game.Format);
+            Assert.Equal(whitePlayer, game.Winner);
+            Assert.Equal(4, game.Points);
+            Assert.Equal(expStartAt, game.StartedAt);
+            Assert.Equal(expEndedAt, game.EndedAt);
+            Assert.Equal(GameModus.Backgammon, game.Modus);
+            var duration = expEndedAt - expStartAt;
+            Assert.Equal(duration, game.Duration());
+
+            var cubeEvents = game.Events.OfType<MatCubeEvent>().ToList();
+            Assert.Equal(4, cubeEvents.Count);
+            Assert.Equal(2, cubeEvents.Count(ce => ce.Action == CubeAction.Offer));
+            Assert.Equal(2, cubeEvents.Count(ce => ce.Action == CubeAction.Take));
+            Assert.Equal(0, game.DoubleOfferCount(whitePlayer));
+            Assert.Equal(2, game.DoubleOfferCount(blackPlayer));
+        }
+
+        [Fact]
+        public void MATBackgammonMatchIsParsedProperly()
+        {
+            // TODO
         }
     }
 }

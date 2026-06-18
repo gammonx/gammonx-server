@@ -26,7 +26,8 @@ namespace GammonX.Models.History.MAT
 		// <inheritdoc />
 		public DateTime EndedAt { get; set; }
 
-		public List<IMatEvent> Events { get; set; } = [];
+        // <inheritdoc />
+        public List<IMatEvent> Events { get; set; } = [];
 
 		// <inheritdoc />
 		public HistoryFormat Format => HistoryFormat.MAT;
@@ -43,8 +44,17 @@ namespace GammonX.Models.History.MAT
 			return doubleDiceCount;
 		}
 
-		// <inheritdoc />
-		public TimeSpan Duration()
+        // <inheritdoc />
+        public int DoubleOfferCount(Guid playerId)
+        {
+            int doubleOfferCount = Events
+                .OfType<MatCubeEvent>()
+                .Count(e => e.PlayerId == playerId && e.Action == CubeAction.Double);
+            return doubleOfferCount;
+        }
+
+        // <inheritdoc />
+        public TimeSpan Duration()
 		{
 			return EndedAt - StartedAt;
 		}
@@ -89,4 +99,13 @@ namespace GammonX.Models.History.MAT
 
 		public int? To { get; set; } = null;
 	}
+
+    // <inheritdoc />
+    public class MatCubeEvent : IMatEvent
+    {
+        // <inheritdoc />
+        public Guid PlayerId { get; set; } = Guid.Empty;
+
+        public CubeAction Action { get; set; } = CubeAction.Unknown;
+    }
 }

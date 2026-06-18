@@ -24,6 +24,10 @@
         /// </summary>
         Pass = 4,
         /// <summary>
+        /// The player offered his opponent a double and is waiting for the opponent to either <see cref="Take"/> or <see cref="Pass"/> the double.
+        /// </summary>
+        Offer = 5,
+        /// <summary>
         /// Default value.
         /// </summary>
         Unknown = 99

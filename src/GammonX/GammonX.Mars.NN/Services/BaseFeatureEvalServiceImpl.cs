@@ -93,7 +93,7 @@ namespace GammonX.Mars.NN.Services
                 }
 
                 // we expect the player takes if their equity from taking >= their equity from passing
-                if (doubleTake >= equityIfPlayerPasses)
+                if (doubleTake >= equityIfPlayerPasses || cubeValue >= contract.PointsAwayPlayer)
                 {
                     shouldTake = CubeAction.Take;
                 }

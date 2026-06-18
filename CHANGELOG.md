@@ -1,5 +1,13 @@
 # Changelog
 
+## 15.06.2026
+
+### NEW
+- cube actions as history events
+
+### FIXES
+- double offer is always passed in match play after first game?
+
 ## 14.06.2026
 
 ### NEW
