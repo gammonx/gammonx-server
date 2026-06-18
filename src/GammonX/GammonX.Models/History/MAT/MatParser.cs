@@ -17,6 +17,9 @@ namespace GammonX.Models.History.MAT
 		[GeneratedRegex(@"^(White|Black) Move ([a-zA-Z0-9]+)/([a-zA-Z0-9]+)$", RegexOptions.Compiled)]
 		protected partial Regex MoveRegex();
 
+		[GeneratedRegex(@"^(White|Black) Cube (Offer|Take|Pass)$", RegexOptions.Compiled)]
+		protected partial Regex CubeActionRegex();
+
 		// <inheritdoc />
 		public IParsedMatchHistory ParseMatch(string content)
 		{
@@ -79,7 +82,13 @@ namespace GammonX.Models.History.MAT
 					game.Events.Add(move);
 					continue;
 				}
-			}
+
+				if (TryParseCubeAction(game, line, out var cubeEvent))
+                {
+                    game.Events.Add(cubeEvent);
+                    continue;
+                }
+            }
 
 			return game;
 		}
@@ -161,6 +170,24 @@ namespace GammonX.Models.History.MAT
 			};
 
 			return true;
+		}
+
+		private bool TryParseCubeAction(MATGameHistory game, string line, out MatCubeEvent cubeEvent)
+		{
+			cubeEvent = null!;
+			var m = CubeActionRegex().Match(line);
+			if (!m.Success) return false;
+
+            string playerColor = m.Groups[1].Value;
+            var playerId = MapPlayerId(game, playerColor);
+			
+            cubeEvent = new MatCubeEvent
+            {
+                PlayerId = playerId,
+                Action = Enum.Parse<CubeAction>(m.Groups[2].Value)
+            };
+
+            return true;
 		}
 
 		private static int ParseFieldIndex(string input, bool isWhite)

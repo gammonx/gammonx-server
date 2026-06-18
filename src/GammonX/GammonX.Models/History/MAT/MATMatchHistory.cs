@@ -57,7 +57,11 @@ namespace GammonX.Models.History.MAT
 		// <inheritdoc />
 		public double AvgDoubleOfferCount(Guid playerId)
 		{
-			// TODO: write as history event
+			var doubleOfferAmount = Games.Sum(g => g.DoubleOfferCount(playerId));
+			if (doubleOfferAmount > 0)
+			{
+				return (double)doubleOfferAmount / Games.Count;
+			}
 			return 0.0;
 		}
 

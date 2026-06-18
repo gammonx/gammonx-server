@@ -12,13 +12,14 @@ namespace GammonX.Server.Models
 	// <inheritdoc />
 	public class GameSessionImpl : IGameSessionModel
 	{
-		private readonly IBoardService _boardService;
 		private IDiceService _diceService;
 
 		private readonly Stack<MoveModel> _activeUndoStack = new();
 
-		// <inheritdoc />
-		public GameModus Modus { get; private set; }
+        protected readonly IBoardService BoardService;
+
+        // <inheritdoc />
+        public GameModus Modus { get; private set; }
 
 		// <inheritdoc />
 		public Guid MatchId { get; }
@@ -61,9 +62,9 @@ namespace GammonX.Server.Models
 
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{
-			_boardService = boardService;
+			BoardService = boardService;
 			_diceService = diceService;
-			BoardModel = _boardService.CreateBoard();
+			BoardModel = BoardService.CreateBoard();
 			MatchId = matchId;
 			Modus = modus;
 			Id = Guid.NewGuid();
@@ -134,7 +135,7 @@ namespace GammonX.Server.Models
                 Phase = GamePhase.WaitingForEndTurn;
             }
 
-            _boardService.AddRollEventToHistory(BoardModel, isWhite, rolls);
+            BoardService.AddRollEventToHistory(BoardModel, isWhite, rolls);
         }
 
         // <inheritdoc />
@@ -179,7 +180,7 @@ namespace GammonX.Server.Models
 
                 foreach (var move in playedMoves)
                 {
-                    _boardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
+                    BoardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
                     _activeUndoStack.Push(move);
                 }
 
@@ -221,7 +222,7 @@ namespace GammonX.Server.Models
 					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move)
 					{
                         // we reverse the move direction in order to undo the last move
-                        _boardService.UndoMove(BoardModel, lastMove, isWhite);
+                        BoardService.UndoMove(BoardModel, lastMove, isWhite);
                         var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
 						DiceRolls.UndoDiceRoll(roll, bearOffMove);
 						var remainingRolls = DiceRolls.GetRemainingRolls();
@@ -335,7 +336,7 @@ namespace GammonX.Server.Models
 
 		private void CalculateLegalMoveSequences(bool isWhite, int[] rolls)
 		{
-			var legalMoves = _boardService.GetLegalMoveSequences(BoardModel, isWhite, rolls);
+			var legalMoves = BoardService.GetLegalMoveSequences(BoardModel, isWhite, rolls);
 			MoveSequences = new MoveSequences();
 			MoveSequences.AddRange(legalMoves);
 		}

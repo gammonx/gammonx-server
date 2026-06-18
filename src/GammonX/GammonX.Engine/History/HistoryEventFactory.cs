@@ -1,5 +1,7 @@
 ﻿using GammonX.Engine.Models;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Engine.History
 {
 	public static class HistoryEventFactory
@@ -22,6 +24,12 @@ namespace GammonX.Engine.History
 			var hitEventValue = new HitEventValueImpl(from, isWhite);
 			return new HistoryEventImpl(HistoryEventType.Hit, hitEventValue, isWhite);
 		}
+
+		public static IHistoryEvent CreateCubeEvent(bool isWhite, CubeAction cubeAction)
+		{
+			var cubeEventValue = new CubeEventValueImpl(cubeAction);
+            return new HistoryEventImpl(HistoryEventType.Cube, cubeEventValue, isWhite);
+        }
 	}
 
 	public static class BoardHistoryFactory

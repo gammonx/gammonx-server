@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Enums;
+using GammonX.Models.History.MAT;
 
 namespace GammonX.Models.History
 {
@@ -33,9 +34,14 @@ namespace GammonX.Models.History
 		DateTime EndedAt { get; }
 
 		/// <summary>
-		/// Gets the modus of the played game.
+		/// Gets or sets a list of game session events.
 		/// </summary>
-		GameModus Modus { get; }
+        List<IMatEvent> Events { get; set; }
+
+        /// <summary>
+        /// Gets the modus of the played game.
+        /// </summary>
+        GameModus Modus { get; }
 
 		/// <summary>
 		/// Calculates the amount of double dices for the given player.
@@ -44,12 +50,19 @@ namespace GammonX.Models.History
 		/// <returns>Returns amount of double dices</returns>
 		int DoubleDiceCount(Guid playerId);
 
-		/// <summary>
-		/// Calculates the amount of turns for the given player.
-		/// </summary>
-		/// <param name="playerId">Player id.</param>
-		/// <returns>Returns the turn count.</returns>
-		int TurnCount(Guid playerId);
+        /// <summary>
+        /// Calculates the amount of double offers for the given player.
+        /// </summary>
+        /// <param name="playerId">Player id.</param>
+        /// <returns>Returns the amount of double offers.</returns>
+        int DoubleOfferCount(Guid playerId);
+
+        /// <summary>
+        /// Calculates the amount of turns for the given player.
+        /// </summary>
+        /// <param name="playerId">Player id.</param>
+        /// <returns>Returns the turn count.</returns>
+        int TurnCount(Guid playerId);
 
 		/// <summary>
 		/// Calculates the game duration.
