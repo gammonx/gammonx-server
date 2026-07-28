@@ -36,12 +36,12 @@ public static class NetTrainer
 
         var model = NetModelFactory.Create(modus);
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
-        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.75);
+        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.66);
         var loss = BCELoss();
 
         Console.WriteLine($"Train={trainFeatures.shape[0]}  Val={valFeatures.shape[0]}");
-        PrintLabelStats(trainCsvPath, "train");
-        PrintLabelStats(valCsvPath, "val");
+        PrintLabelStats(trainLabels, "train");
+        PrintLabelStats(valLabels, "val");
 
         var bestValLoss = float.MaxValue;
         var epochsWithoutImprovement = 0;
@@ -224,21 +224,19 @@ public static class NetTrainer
         return labels.index_select(0, idx);
     }
 
-    private static void PrintLabelStats(string path, string name)
+    private static void PrintLabelStats(Tensor labels, string name)
     {
-        var lines = File.ReadAllLines(path);
-        // we read the first label column (pWin), which is right after the features
-        var headerCols = lines[0].Split(',');
-        var featureCols = headerCols.Count(h => h.StartsWith('f'));
-        var labels = lines.Skip(1)
-                          .Select(l => float.Parse(l.Split(',')[featureCols], System.Globalization.CultureInfo.InvariantCulture))
-                          .ToArray();
+        var n = labels.shape[0];
+        // we select the first label column (pWin); labels is 1-D when labelCount==1
+        using var pWin = labels.dim() > 1 ? labels.select(1, 0) : null;
+        var col = pWin ?? labels;
 
-        var mean = labels.Average();
-        var min = labels.Min();
-        var max = labels.Max();
-        var near05 = labels.Count(l => Math.Abs(l - 0.5f) < 0.05f) / (float)labels.Length;
+        var mean = col.mean().item<float>();
+        var min = col.min().item<float>();
+        var max = col.max().item<float>();
+        using var near05Mask = col.sub(0.5f).abs().lt(0.05f);
+        var near05 = near05Mask.to(ScalarType.Float32).mean().item<float>();
 
-        Console.WriteLine($"[{name}] n={labels.Length}  mean={mean:F4}  min={min:F4}  max={max:F4}  near-0.5={near05:P1}");
+        Console.WriteLine($"[{name}] n={n}  mean={mean:F4}  min={min:F4}  max={max:F4}  near-0.5={near05:P1}");
     }
 }

@@ -39,14 +39,14 @@ namespace GammonX.Mars.NN.Services
         /// weights in <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.
         /// </summary>
         /// <param name="contract">Contains board state and rolls.</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
+        /// <param name="cheapContactWeights">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>Best rated move sequence.</returns>
-        MoveSequenceModel EvalMoveSequence(
+        MoveSequenceModel EvalMoveSequences(
             EvalMoveRequestContract contract,
-            ContactWeightModel cheapContactWeight,
+            ContactWeightModel cheapContactWeights,
             ContactWeightModel contactWeights,
             RaceWeightModel raceWeights,
             int maxCandidates);
@@ -56,17 +56,36 @@ namespace GammonX.Mars.NN.Services
         /// Intended for self-play training data collection only, slower but unbiased.
         /// </summary>
         /// <param name="contract">Contains board state and rolls.</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
+        /// <param name="cheapContactWeights">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="raceWeights">Race position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
-        FinalEvalResultModels EvalMoveSequenceForTraining(
+        FinalEvalResultModels EvalMoveSequencesForTraining(
             EvalMoveRequestContract contract,
-            ContactWeightModel cheapContactWeight,
+            ContactWeightModel cheapContactWeights,
             ContactWeightModel contactWeights,
             RaceWeightModel raceWeights,
             int maxCandidates);
+
+        /// <summary>
+        /// Evaluates the given <param name="contract"></param> with a predefined <param name="moveSequence"></param> and
+        /// calculates the eval result for the final board state after applying the move sequence.
+        /// </summary>
+        /// <param name="contract">Contains the board state.</param>
+        /// <param name="isWhite">Indicates if the player is white.</param>
+        /// <param name="moveSequence">The sequence of moves to evaluate.</param>
+        /// <param name="cheapContactWeights">Cheap contact position weights to prefilter.</param>
+        /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="raceWeights">Race position weights.</param>
+        /// <returns></returns>
+        FinalEvalResultModel EvalMoveSequence(
+            BoardModelContract contract,
+            bool isWhite,
+            MoveSequenceModel moveSequence,
+            ContactWeightModel cheapContactWeights,
+            ContactWeightModel contactWeights,
+            RaceWeightModel raceWeights);
     }
 
     /// <summary>

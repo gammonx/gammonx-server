@@ -64,7 +64,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -75,7 +75,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultBlack = evalService.EvalMoveSequences(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -131,7 +131,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -142,7 +142,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultBlack = evalService.EvalMoveSequences(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -198,7 +198,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -209,7 +209,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
+            var resultBlack = evalService.EvalMoveSequences(requestBlack, cheapContactWeights, contactWeights, raceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));

@@ -1,6 +1,4 @@
-﻿using GammonX.Models.Enums;
-
-using GammonX.Server.Bot;
+﻿using GammonX.Server.Bot;
 
 namespace GammonX.Server.Tests.Utils
 {

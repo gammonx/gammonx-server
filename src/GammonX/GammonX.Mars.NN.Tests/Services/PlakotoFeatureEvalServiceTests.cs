@@ -57,7 +57,7 @@ namespace GammonX.Mars.NN.Tests.Services
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService(null);
-            var result = evalService.EvalMoveSequence(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var result = evalService.EvalMoveSequences(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
 
             Assert.NotNull(result);
         }
@@ -105,7 +105,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -116,7 +116,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultBlack = evalService.EvalMoveSequences(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -144,7 +144,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -174,7 +174,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
             Assert.NotNull(resultWhite);
         }
 

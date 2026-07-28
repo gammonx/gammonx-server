@@ -145,14 +145,14 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequence(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public MoveSequenceModel EvalMoveSequences(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
-            var evalMoves = EvalMoveSequenceForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates);
+            var evalMoves = EvalMoveSequencesForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates);
             return evalMoves.Select(contract.BotLevel);
         }
 
         // <inheritdoc />
-        public FinalEvalResultModels EvalMoveSequenceForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public FinalEvalResultModels EvalMoveSequencesForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -176,6 +176,31 @@ namespace GammonX.Mars.NN.Services
 
                 var evalResult = GetCandidatesByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
                 return new FinalEvalResultModels(evalResult);
+            }
+            finally
+            {
+                pool.Return(candidates.Array!);
+            }
+        }
+
+        // <inheritdoc />
+        public FinalEvalResultModel EvalMoveSequence(
+            BoardModelContract contract,
+            bool isWhite,
+            MoveSequenceModel moveSequence,
+            ContactWeightModel cheapContactWeights,
+            ContactWeightModel contactWeights,
+            RaceWeightModel raceWeights)
+        {
+            var board = BoardService.CreateBoard(contract);
+            var moveSequences = new[] { moveSequence };
+            var pool = ArrayPool<CheapEvalResult>.Shared;
+            var candidates = GetCandidatesByCheapScore(board, moveSequences, isWhite, cheapContactWeights, raceWeights, pool);
+            try
+            {
+                const int evalCount = 1;
+                var evalResult = GetCandidatesByFullEval(board, moveSequences, isWhite, candidates, contactWeights, raceWeights, evalCount);
+                return evalResult.First();
             }
             finally
             {

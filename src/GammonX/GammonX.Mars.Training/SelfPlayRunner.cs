@@ -8,6 +8,15 @@ using GammonX.Mars.NN.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using GammonX.Server.Bot;
+using GammonX.Server.Models;
+using GammonX.Server.Services;
+using GammonX.Server.Tests.Utils;
+
+using Xunit;
+
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Mars.Training
 {
     /// <summary>
@@ -67,7 +76,7 @@ namespace GammonX.Mars.Training
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequenceForTraining(
+                var result = evalService.EvalMoveSequencesForTraining(
                     evalRequest,
                     cheapContactWeights,
                     contactWeights,
@@ -114,19 +123,198 @@ namespace GammonX.Mars.Training
             // we pass both winner and loser results so the recorder can label each position correctly
             var samples = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
 
+            var predictionVariance = ComputePredVariance();
+
+            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
+        }
+
+        public SelfPlayRunResult RunAgainstBotServiceGame(
+            GameModus modus,
+            bool evalPlayerIsWhite,
+            ContactWeightModel contactWeights,
+            ContactWeightModel cheapContactWeights,
+            RaceWeightModel raceWeights)
+        {
+            // TODO: enable cube play for backgammon
+            var diceFactory = new DiceServiceFactory();
+            var gameSessionFactory = new GameSessionFactory(diceFactory);
+            var matchFactory = new MatchSessionFactory(gameSessionFactory);
+            var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(From(modus), MatchType.CashGame, matchFactory);
+
+            // eval service to test
+            var evalService = FeatureEvalServiceFactory.Create(modus, _neuralEvalService!);
+            // bot service to play against
+            var wildBgService = BotUtils.GetBotService(WellKnownBotServices.WildBg);
+
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+
+            var evalPlayerId = evalPlayerIsWhite ? matchSession.Player1.Id : matchSession.Player2.Id;
+            var wildbgPlayerId = evalPlayerIsWhite ? matchSession.Player2.Id : matchSession.Player1.Id;
+
+            matchSession.Player1.AcceptNextGame();
+            matchSession.Player2.AcceptNextGame();
+
+            var activePlayerId = Guid.Empty;
+            var otherPlayerId = Guid.Empty;
+
+            if (evalPlayerIsWhite)
+            {
+                matchSession.StartMatch(evalPlayerId);
+                activePlayerId = evalPlayerId;
+                otherPlayerId = wildbgPlayerId;
+            }
+            else
+            {
+                matchSession.StartMatch(wildbgPlayerId);
+                activePlayerId = wildbgPlayerId;
+                otherPlayerId = evalPlayerId;
+            }
+
+            const int maxTurns = 250;
+            var turnCount = 0;
+
+            var gameSession = matchSession.GetGameSession(1);
+            Assert.NotNull(gameSession);
+            var board = gameSession.BoardModel;
+
+            // we only play the first game of the match (only portes can be played for tavli)
+            turnCount++;
+
+            do
+            {
+                turnCount++;
+                var isWhite = activePlayerId == evalPlayerId
+                    ? evalPlayerIsWhite
+                    : !evalPlayerIsWhite;
+
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
+                {
+                    matchSession.RollDices(activePlayerId);
+                }
+
+                MoveSequenceModel nextMoves;
+                FinalEvalResultModel? evalResultModel = null;
+                if (activePlayerId == wildbgPlayerId)
+                {
+                    // wildbg turn
+                    nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
+                    var boardContract = board.ToContract(false);
+                    evalResultModel = evalService.EvalMoveSequence(boardContract, isWhite, nextMoves, cheapContactWeights, contactWeights, raceWeights);
+                }
+                else
+                {
+                    // eval service turn
+                    var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
+                    var evalRequest = new EvalMoveRequestContract
+                    {
+                        Board = board.ToContract(false),
+                        IsWhite = isWhite,
+                        Modus = modus,
+                        Rolls = rolls,
+                        BotLevel = BotLevel.Hard
+                    };
+                    var result = evalService.EvalMoveSequencesForTraining(
+                        evalRequest,
+                        cheapContactWeights,
+                        contactWeights,
+                        raceWeights,
+                        150);
+
+                    if (result.Count != 0)
+                    {
+                        // we use epsilon-greediness to occasionally pick a random legal move
+                        // for exploration and increase the diversity of training samples
+                        // we can start with a higher epsilon in the early turns and decrease it as the game progresses
+                        var effectiveEpsilon = turnCount <= 20 ? 0.25f : 0.05f;
+
+                        evalResultModel = effectiveEpsilon > 0f
+                                          && _neuralEvalService != null
+                                          && Random.Shared.NextSingle() < effectiveEpsilon
+                            ? result[Random.Shared.Next(result.Count)]
+                            : result[0]; // best move sequences
+
+                        nextMoves = evalResultModel.MoveSequence;
+                    }
+                    else
+                    {
+                        nextMoves = new MoveSequenceModel();
+                    }
+                }
+
+                var hasWon = false;
+                foreach (var nextMove in nextMoves.Moves)
+                {
+                    hasWon = matchSession.MoveCheckers(activePlayerId, nextMove.From, nextMove.To);
+                    if (hasWon)
+                        break;
+                }
+
+                if (evalResultModel != null)
+                {
+                    // we must record after the moves were made
+                    _recorder.RecordPosition(evalResultModel.EvalResult, board, isWhite);
+                }
+
+                if (!hasWon)
+                {
+                    matchSession.EndTurn(activePlayerId);
+                    activePlayerId = otherPlayerId;
+                    otherPlayerId = activePlayerId == evalPlayerId ? wildbgPlayerId : evalPlayerId;
+                }
+                else
+                {
+                    // we only support the first game of a match (cash game)
+                    break;
+                }
+            }
+            while (turnCount < maxTurns);
+
+            if (turnCount >= maxTurns)
+                return new SelfPlayRunResult([], turnCount, null);
+
+            var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
+            var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
+            // we pass both winner and loser results so the recorder can label each position correctly
+            var samples = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
+
+            var predictionVariance = ComputePredVariance();
+
+            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
+        }
+
+        private float? ComputePredVariance()
+        {
             float? predictionVariance = null;
             if (_neuralEvalService != null)
             {
                 var predictions = _recorder.NetPredictions;
                 if (predictions.Count > 1)
                 {
-                    var pWins = predictions.Select(p => p[0]);
+                    var pWins = predictions.Select(p => p[0]).ToList();
                     var mean = pWins.Average();
                     predictionVariance = pWins.Average(p => (p - mean) * (p - mean));
                 }
             }
 
-            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
+            return predictionVariance;
+        }
+
+        private static MatchVariant From(GameModus modus)
+        {
+            switch (modus)
+            {
+                case GameModus.Backgammon:
+                    return MatchVariant.Backgammon;
+                case GameModus.Fevga:
+                case GameModus.Plakoto:
+                case GameModus.Portes:
+                    return MatchVariant.Tavli;
+                case GameModus.Tavla:
+                    return MatchVariant.Tavla;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(modus), modus, null);
+            }
         }
     }
 }

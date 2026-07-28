@@ -59,7 +59,7 @@ static void RunTrainModel()
     Console.WriteLine();
 
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
 
@@ -80,7 +80,7 @@ static void RunNoiseDiagnostic()
     // if the noise diagnostic loss gap compared to a real run is greater than 0.3 then the features have predictive capacity.
     // if it is less than that, then the feature sets hold no or to little positional information.
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
 
@@ -101,7 +101,7 @@ static void RunTournament()
     Console.WriteLine();
 
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", new[] { GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
     var totalGames = PromptInt("Total games", 1000);
@@ -130,7 +130,7 @@ static void RunBotServiceTournament()
     Console.WriteLine();
 
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", new[] { GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
     var totalGames = PromptInt("Total games", 1000);
 
@@ -262,7 +262,7 @@ static void RunGenerateTrainingData()
     Console.WriteLine();
 
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", new[] {GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes }, GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
     var modelPath = PromptString("Model path. Leave blank for linear.", "");
@@ -270,7 +270,7 @@ static void RunGenerateTrainingData()
     // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
     // we also expect near-0.5 positions to increase above 0.0%
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
-
+    var playAgainstBotService = PromptBool("Play against wildbg bot", false);
     Console.WriteLine();
 
     var extractor = GetFeatureVectorExtractor(modus);
@@ -309,11 +309,21 @@ static void RunGenerateTrainingData()
         0,
         totalGames,
         new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-        (_) =>
+        (i) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
             var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
-            var result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
+
+            SelfPlayRunResult result;
+            if (playAgainstBotService)
+            {
+                var modelIsWhite = i % 2 == 0;
+                result = runner.RunAgainstBotServiceGame(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
+            }
+            else
+            {
+                result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
+            }
 
             lock (lockObj)
             {
@@ -433,6 +443,19 @@ static string PromptString(string label, string defaultValue)
     Console.Write($"{label} [{defaultValue}]: ");
     var input = Console.ReadLine()?.Trim();
     return string.IsNullOrEmpty(input) ? defaultValue : input;
+}
+
+static bool PromptBool(string label, bool defaultValue)
+{
+    Console.Write($"{label} yes/no [{(defaultValue ? "YES" : "NO")}]: ");
+    var input = Console.ReadLine()?.Trim().ToLower();
+    if (string.IsNullOrEmpty(input))
+        return defaultValue;
+    if (input == "y" || input == "yes")
+        return true;
+    if (input == "n" || input == "no")
+        return false;
+    return defaultValue;
 }
 
 #endregion Prompt Helpers

@@ -110,7 +110,7 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequence(request, cheapContactWeights, contactWeights, raceWeights, 150);
+                var bestMove = evalService.EvalMoveSequences(request, cheapContactWeights, contactWeights, raceWeights, 150);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };

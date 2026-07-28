@@ -47,7 +47,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequence(
+                var result = evalService.EvalMoveSequences(
                     evalRequest,
                     EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
@@ -110,7 +110,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequence(
+                var result = evalService.EvalMoveSequences(
                     evalRequest,
                     EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
@@ -175,7 +175,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequence(
+                var result = evalService.EvalMoveSequences(
                     evalRequest,
                     EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
@@ -241,7 +241,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequence(
+                var result = evalService.EvalMoveSequences(
                     evalRequest,
                     EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
@@ -359,7 +359,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequence(
+                var result = evalService.EvalMoveSequences(
                     evalMoveReq,
                     EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),

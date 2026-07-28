@@ -193,7 +193,7 @@ namespace GammonX.Mars.Training
                 // we want to eliminate any first-mover advantage by alternating colors every game
                 var activeService = (isWhite == modelAIsWhite) ? evalServiceA : evalServiceB;
 
-                var result = activeService.EvalMoveSequence(
+                var result = activeService.EvalMoveSequences(
                     evalRequest,
                     cheapContactWeights,
                     contactWeights,
@@ -299,7 +299,7 @@ namespace GammonX.Mars.Training
                         Rolls = rolls,
                         BotLevel = BotLevel.Hard
                     };
-                    nextMoves = evalService.EvalMoveSequence(
+                    nextMoves = evalService.EvalMoveSequences(
                         evalRequest,
                         cheapContactWeights,
                         contactWeights,

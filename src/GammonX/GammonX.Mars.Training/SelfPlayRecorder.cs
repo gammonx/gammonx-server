@@ -113,16 +113,26 @@ namespace GammonX.Mars.Training
 
                 // near the end we trust terminal
                 // early we trust next-state bootstrap (try to exclude noisy game start)
-                int stepsFromEnd = T - 1 - t;
-                float decay = MathF.Pow(_lambda, stepsFromEnd);
+                var stepsFromEnd = T - 1 - t;
+                var decay = MathF.Pow(_lambda, stepsFromEnd);
 
                 // we make next-state network prediction from the same players perspective
                 // if no future same-player position exists (last 2 turns), bootstrap from terminal
-                float bootstrap = (t + 2 < T)
-                    ? _positions[t + 2].NetPrediction[0]
+                // we instead  of t+2, find next position with same isWhite
+                var nextSamePlayer = -1;
+                for (var k = t + 1; k < T; k++)
+                {
+                    if (_positions[k].IsWhite == isWhite)
+                    {
+                        nextSamePlayer = k;
+                        break;
+                    }
+                }
+                var bootstrap = nextSamePlayer >= 0
+                    ? _positions[nextSamePlayer].NetPrediction[0]
                     : pWin;
 
-                float label = decay * pWin + (1f - decay) * bootstrap;
+                var label = decay * pWin + (1f - decay) * bootstrap;
                 result.Add((features, [label, pGammonWin, pBackgammonWin, pGammonLoss, pBackgammonLoss]));
             }
 
