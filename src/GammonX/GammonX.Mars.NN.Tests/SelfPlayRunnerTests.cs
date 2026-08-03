@@ -7,6 +7,8 @@ using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 using GammonX.Engine.Models;
 
+using static TorchSharp.torch;
+
 namespace GammonX.Mars.NN.Tests
 {
     public class SelfPlayRunnerTests
@@ -83,7 +85,8 @@ namespace GammonX.Mars.NN.Tests
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
@@ -146,7 +149,8 @@ namespace GammonX.Mars.NN.Tests
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
@@ -212,7 +216,8 @@ namespace GammonX.Mars.NN.Tests
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
@@ -274,7 +279,8 @@ namespace GammonX.Mars.NN.Tests
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 

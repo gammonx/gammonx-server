@@ -16,6 +16,8 @@ using GammonX.Server.Tests.Utils;
 
 using Xunit;
 
+using static TorchSharp.torch;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Mars.Training
@@ -51,12 +53,13 @@ namespace GammonX.Mars.Training
             var modelBLabel = Path.GetFileNameWithoutExtension(modelBPath);
 
             Console.WriteLine($"Loading model A: {modelAPath}");
-            var serviceA = NeuralEvalService.Load(modus, modelAPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var serviceA = NeuralEvalService.Load(modus, modelAPath, device);
             INeuralEvalService? serviceB = null;
             if (!string.IsNullOrEmpty(modelBPath))
             {
                 Console.WriteLine($"Loading model B: {modelBPath}");
-                serviceB = NeuralEvalService.Load(modus, modelBPath);
+                serviceB = NeuralEvalService.Load(modus, modelBPath, device);
             }
 
             var modelAWins = 0;

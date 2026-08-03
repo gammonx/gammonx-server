@@ -26,11 +26,12 @@ namespace GammonX.Mars.NN.Services
             _extractor = extractor;
         }
 
-        public static INeuralEvalService Load(GameModus modus, string modelPath)
+        public static INeuralEvalService Load(GameModus modus, string modelPath, Device device)
         {
             lock (InferLock)
             {
-                var net = NetModelFactory.Create(modus);
+                // we only support CPU based models for now in production
+                var net = NetModelFactory.Create(modus, device);
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
                 net.Load(modelPath);
                 net.Eval();
@@ -43,7 +44,7 @@ namespace GammonX.Mars.NN.Services
         /// <c>NeuralNets/{modus}/training_net.dat</c> in the calling assembly.
         /// Returns <c>null</c> if no embedded resource exists for the given modus.
         /// </summary>
-        public static INeuralEvalService LoadEmbedded(GameModus modus)
+        public static INeuralEvalService LoadEmbedded(GameModus modus, Device device)
         {
             var assembly = typeof(NeuralEvalService).Assembly;
             var resourceName = $"GammonX.Mars.Server.NeuralNets.{modus}.training_net.dat";
@@ -56,7 +57,8 @@ namespace GammonX.Mars.NN.Services
 
             lock (InferLock)
             {
-                var net = NetModelFactory.Create(modus);
+                // we only support CPU based models for now in production
+                var net = NetModelFactory.Create(modus, device);
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
                 net.LoadFromStream(stream);
                 net.Eval();

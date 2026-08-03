@@ -59,7 +59,9 @@ namespace GammonX.Mars.Server.Services
                 return null;
             }
 
-            var net = NetModelFactory.Create(modus);
+            // we only support CPU based models for now in production
+            var device = cuda.is_available() ? CUDA : CPU;
+            var net = NetModelFactory.Create(modus, device);
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.LoadFromStream(stream);
             net.Eval();

@@ -22,6 +22,8 @@ namespace GammonX.Mars.NN.Nets
         void Train();
 
         IEnumerable<Parameter> GetParameters();
+
+        void MoveTo(Device device);
     }
 
     public static class NetModelExtensions
@@ -48,15 +50,15 @@ namespace GammonX.Mars.NN.Nets
 
     public static class NetModelFactory
     {
-        public static INetModel Create(GameModus modus)
+        public static INetModel Create(GameModus modus, Device device)
         {
             INetModel netModel = modus switch
             {
-                GameModus.Plakoto => new PlakotoNet(),
-                GameModus.Fevga => new FevgaNet(),
-                GameModus.Backgammon => new DefaultNet(),
-                GameModus.Tavla => new DefaultNet(),
-                GameModus.Portes => new DefaultNet(),
+                GameModus.Plakoto => new PlakotoNet(device),
+                GameModus.Fevga => new FevgaNet(device),
+                GameModus.Backgammon => new DefaultNet(device),
+                GameModus.Tavla => new DefaultNet(device),
+                GameModus.Portes => new DefaultNet(device),
                 _ => throw new NotSupportedException($"Modus {modus} has no net model.")
             };
             return netModel;

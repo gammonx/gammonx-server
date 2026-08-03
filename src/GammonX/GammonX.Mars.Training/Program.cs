@@ -1,11 +1,10 @@
-using GammonX.Mars.Training;
-
-using GammonX.Models.Enums;
-
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
-
+using GammonX.Mars.Training;
+using GammonX.Models.Enums;
 using System.Diagnostics;
+using TorchSharp;
+using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
 Console.WriteLine("  GammonX Mars — Training Console");
@@ -63,11 +62,16 @@ static void RunTrainModel()
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
 
+    // we assume that a batch size of 4096 takes up 10MB
+    // 81_920 takes up about 700MB of GPU memory
+    const int batchSize = 81_920;
+
     NetTrainer.Train(
         modus,
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
-        outputModelPath: outputModelPath);
+        outputModelPath: outputModelPath,
+        batchSize: batchSize);
 }
 
 #endregion Train Model
@@ -154,6 +158,10 @@ static void RunBotServiceTournament()
 
 static void RunShuffleCsv()
 {
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
+    // TODO: enable full GAME equity predictions for plakoto/fevga
+    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+
     // we shuffle all inputs training data to create new CSV files which can be used for combined training
     Console.WriteLine();
     Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
@@ -182,75 +190,97 @@ static void RunShuffleCsv()
     var defaultOutput = inputPaths.Count == 1 ? inputPaths[0] : "merged.csv";
     var outputPath = PromptString("Output CSV path", defaultOutput);
 
-    Console.WriteLine($"Reading {inputPaths.Count} file(s)...");
+    Console.WriteLine($"Indexing {inputPaths.Count} file(s)...");
     string? header = null;
-    var allRows = new List<string>();
+    var rowIndices = new List<(int fileIndex, long offset, int totalRows, int featureCols)>();
+    var fileIndex = 0;
 
     foreach (var path in inputPaths)
     {
-        var lines = File.ReadAllLines(path);
-        if (lines.Length < 2)
+        var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        if (header == null)
         {
-            Console.WriteLine($"  Skipping empty file: {path}");
-            continue;
+            // We expect that all given files share the same header
+            header = rowIndex.header;
         }
-
-        // validate headers match when merging multiple files
-        if (header is null)
-        {
-            header = lines[0];
-        }
-        else if (lines[0] != header)
-        {
-            Console.WriteLine($"  Header mismatch in {path} — skipping.");
-            continue;
-        }
-
-        allRows.AddRange(lines[1..]);
-        Console.WriteLine($"  Loaded {lines.Length - 1:N0} rows from {Path.GetFileName(path)}");
+        var index = fileIndex;
+        var offsetIndex = rowIndex.offsets.Select(os => (index, os, rowIndex.totalRows, rowIndex.featureCols));
+        rowIndices.AddRange(offsetIndex);
+        fileIndex++;
+        Console.WriteLine($"  Indexed {rowIndex.totalRows:N0} rows from {Path.GetFileName(path)}");
     }
 
-    if (allRows.Count == 0)
+    if (rowIndices.Count == 0)
     {
         Console.WriteLine("No rows loaded.");
         return;
     }
 
-    Console.WriteLine($"Total rows: {allRows.Count:N0}. Shuffling...");
-    var rows = allRows.ToArray();
+    // We shuffle the index array in-place (Fisher-Yates)
+    Console.WriteLine($"Total rows: {rowIndices.Count:N0}. Shuffling index...");
+    var indices = rowIndices.ToArray();
     var rng = Random.Shared;
-    for (int i = rows.Length - 1; i > 0; i--)
+    for (var i = indices.Length - 1; i > 0; i--)
     {
-        int j = rng.Next(i + 1);
-        (rows[i], rows[j]) = (rows[j], rows[i]);
+        var j = rng.Next(i + 1);
+        (indices[i], indices[j]) = (indices[j], indices[i]);
     }
 
-    int splitIndex = (int)(rows.Length * 0.85);
-    var trainRows = rows[..splitIndex];
-    var valRows = rows[splitIndex..];
-
-    Console.WriteLine($"Train={trainRows.Length:N0}  Validation={valRows.Length:N0}");
+    var splitIndex = (int)(indices.Length * 0.85);
+    Console.WriteLine($"Train={splitIndex:N0}  Validation={indices.Length - splitIndex:N0}");
     Console.WriteLine("Writing CSV files...");
 
     var valPath = Path.ChangeExtension(outputPath, ".val.csv");
 
-    using (var writer = new StreamWriter(outputPath))
+    // We keep all input file streams open for random-access reading
+    var streams = new FileStream[inputPaths.Count];
+    var readers = new StreamReader[inputPaths.Count];
+    try
     {
-        writer.WriteLine(header);
-        foreach (var row in trainRows)
-            writer.WriteLine(row);
-    }
+        for (var f = 0; f < inputPaths.Count; f++)
+        {
+            streams[f] = new FileStream(inputPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
+            readers[f] = new StreamReader(streams[f]);
+        }
 
-    using (var writer = new StreamWriter(valPath))
+        if (string.IsNullOrEmpty(header))
+        {
+            Console.WriteLine("No or empty header row was detected");
+        }
+
+        WriteShuffledCsv(outputPath, header!, rowIndices[..splitIndex], streams, readers);
+        WriteShuffledCsv(valPath, header!, rowIndices[splitIndex..], streams, readers);
+    }
+    finally
     {
-        writer.WriteLine(header);
-        foreach (var row in valRows)
-            writer.WriteLine(row);
+        for (var f = 0; f < inputPaths.Count; f++)
+        {
+            readers[f].Dispose();
+            streams[f].Dispose();
+        }
     }
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {valPath}");
     Console.WriteLine("Complete.");
+}
+
+static void WriteShuffledCsv(string outputPath, string header, List<(int fileIndex, long offset, int totalRows, int featureCols)> rowIndices, FileStream[] streams, StreamReader[] readers)
+{
+    using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8, bufferSize: 1 << 16);
+    writer.WriteLine(header);
+
+    foreach (var rowIndex in rowIndices)
+    {
+        var stream = streams[rowIndex.fileIndex];
+        var reader = readers[rowIndex.fileIndex];
+
+        stream.Seek(rowIndex.offset, SeekOrigin.Begin);
+        reader.DiscardBufferedData();
+        var line = reader.ReadLine();
+        if (line is not null)
+            writer.WriteLine(line);
+    }
 }
 
 #endregion Shuffle CSV
@@ -283,7 +313,8 @@ static void RunGenerateTrainingData()
 
     if (useNeuralEval)
     {
-        neuralEvalService = NeuralEvalService.Load(modus, modelPath);
+        var device = cuda.is_available() ? CUDA : CPU;
+        neuralEvalService = NeuralEvalService.Load(modus, modelPath, device);
         Console.WriteLine($"Loaded model: {modelPath}");
     }
     else

@@ -24,43 +24,56 @@ public static class NetTrainer
     {
         // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
-        var (trainFeatures, trainLabels) = LoadCsv(trainCsvPath, labelCount);
-        var (valFeatures, valLabels) = LoadCsv(valCsvPath, labelCount);
 
+        var (trainOffsets, trainRowCount, featureCols, _) = CsvBatchEnumerator.BuildRowIndex(trainCsvPath, labelCount);
+        var (valOffsets, valRowCount, _, _) = CsvBatchEnumerator.BuildRowIndex(valCsvPath, labelCount);
+
+        var device = cuda.is_available() ? CUDA : CPU;
+        Console.WriteLine($"Device: {device}");
+
+        int[]? labelPermutation = null;
         if (shuffleLabels)
         {
             Console.WriteLine("WARNING: label shuffling enabled, not a real training run.");
-            trainLabels = ShuffleLabels(trainLabels);
-            valLabels = ShuffleLabels(valLabels);
+            labelPermutation = Enumerable.Range(0, trainRowCount).OrderBy(_ => Random.Shared.Next()).ToArray();
         }
 
-        var model = NetModelFactory.Create(modus);
+        var model = NetModelFactory.Create(modus, device);
+        model.MoveTo(device);
+
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
         var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.66);
         var loss = BCELoss();
 
-        Console.WriteLine($"Train={trainFeatures.shape[0]}  Val={valFeatures.shape[0]}");
-        PrintLabelStats(trainLabels, "train");
-        PrintLabelStats(valLabels, "val");
+        Console.WriteLine($"Train={trainRowCount}  Val={valRowCount}");
+        // TODO: reactivate
+        // PrintLabelStats(trainCsvPath, trainOffsets, featureCols, "train");
+        // PrintLabelStats(valCsvPath, valOffsets, featureCols, "val");
+
+        var valOrder = Enumerable.Range(0, valRowCount).ToArray();
+        int[]? valLabelPerm = shuffleLabels
+            ? Enumerable.Range(0, valRowCount).OrderBy(_ => Random.Shared.Next()).ToArray()
+            : null;
 
         var bestValLoss = float.MaxValue;
         var epochsWithoutImprovement = 0;
         var bestEpoch = 0;
-            
+
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
-            // we shuffle training indices each epoch for better convergence
-            using var trainIdx = randperm(trainFeatures.shape[0]);
-            using var shuffledFeatures = trainFeatures.index_select(0, trainIdx);
-            using var shuffledLabels = trainLabels.index_select(0, trainIdx);
+            // We shuffle training row order each epoch for better convergence
+            var trainOrder = Enumerable.Range(0, trainRowCount).OrderBy(_ => Random.Shared.Next()).ToArray();
+
+            var trainBatches = new CsvBatchEnumerator(trainCsvPath, batchSize, labelCount, featureCols, trainOffsets, trainOrder, device, labelPermutation);
+            var valBatches = new CsvBatchEnumerator(valCsvPath, batchSize, labelCount, featureCols, valOffsets, valOrder, device, valLabelPerm);
 
             model.Train();
-            var trainLoss = RunEpoch(model, optimizer, loss, shuffledFeatures, shuffledLabels, batchSize, train: true);
+            var trainLoss = RunEpochStreaming(model, optimizer, loss, trainBatches, true);
 
             model.Eval();
             float valLoss;
             using (no_grad())
-                valLoss = RunEpoch(model, optimizer, loss, valFeatures, valLabels, batchSize, train: false);
+                valLoss = RunEpochStreaming(model, optimizer, loss, valBatches, false);
 
             var currentLr = optimizer.ParamGroups.First().LearningRate;
 
@@ -69,7 +82,6 @@ public static class NetTrainer
                 bestValLoss = valLoss;
                 bestEpoch = epoch;
                 epochsWithoutImprovement = 0;
-                // save only the best
                 model.Save(outputModelPath);
             }
             else
@@ -92,151 +104,84 @@ public static class NetTrainer
         Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5})");
     }
         
-    private static float RunEpoch(
+    private static float RunEpochStreaming(
         INetModel model,
         optim.Optimizer optimizer,
         Loss<Tensor, Tensor, Tensor> loss,
-        Tensor features,
-        Tensor labels,
-        int batchSize,
+        IEnumerable<(Tensor features, Tensor labels)> batches,
         bool train)
     {
-        var n = features.shape[0];
         var totalLoss = 0f;
-        var batches = 0;
+        var batchCount = 0;
 
-        for (var start = 0; start < n; start += batchSize)
+        foreach (var (xBatch, yBatch) in batches)
         {
-            var end = Math.Min(start + batchSize, n);
-            using var xBatch = features.narrow(0, start, end - start);
-            using var yBatch = labels.narrow(0, start, end - start);
-
-            using var pred = model.Forward(xBatch);
-            using var l = loss.forward(pred, yBatch);
-
-            if (train)
+            using (xBatch)
+            using (yBatch)
             {
-                optimizer.zero_grad();
-                l.backward();
-                optimizer.step();
-            }
+                using var pred = model.Forward(xBatch);
+                using var l = loss.forward(pred, yBatch);
 
-            totalLoss += l.item<float>();
-            batches++;
-        }
-
-        return totalLoss / batches;
-    }
-
-    private static (Tensor features, Tensor labels) LoadCsv(string path, int labelCount)
-    {
-        int cols;
-        using (var headerReader = new StreamReader(path))
-        {
-            var header = headerReader.ReadLine()!;
-            cols = header.Split(',').Length - labelCount;
-        }
-
-        const int chunkSize = 500_000;
-        var featureChunks = new List<Tensor>();
-        var labelChunks = new List<Tensor>();
-
-        using (var reader = new StreamReader(path))
-        {
-            _ = reader.ReadLine();
-
-            while (!reader.EndOfStream)
-            {
-                var featBuf = new float[chunkSize * cols];
-                var lblBuf = new float[chunkSize * labelCount];
-                var count = 0;
-
-                while (count < chunkSize && !reader.EndOfStream)
+                if (train)
                 {
-                    var line = reader.ReadLine();
-                    if (line == null)
-                        break;
-
-                    var span = line.AsSpan();
-                    var colIndex = 0;
-                    var expectedCols = cols + labelCount;
-
-                    while (!span.IsEmpty && colIndex < expectedCols)
-                    {
-                        var commaPos = span.IndexOf(',');
-                        var field = commaPos >= 0 ? span[..commaPos] : span;
-
-                        var value = float.Parse(field, System.Globalization.CultureInfo.InvariantCulture);
-
-                        if (colIndex < cols)
-                            featBuf[count * cols + colIndex] = value;
-                        else
-                            lblBuf[count * labelCount + (colIndex - cols)] = value;
-
-                        colIndex++;
-                        span = commaPos >= 0 ? span[(commaPos + 1)..] : [];
-                    }
-
-                    if (colIndex != expectedCols)
-                    {
-                        Console.WriteLine($"Skipping row: expected {expectedCols} columns, got {colIndex}");
-                        continue;
-                    }
-
-                    count++;
+                    optimizer.zero_grad();
+                    l.backward();
+                    optimizer.step();
                 }
 
-                if (count == 0)
-                    break;
-
-                featureChunks.Add(tensor(featBuf.AsSpan(0, count * cols).ToArray(), [count, cols]));
-                labelChunks.Add(tensor(lblBuf.AsSpan(0, count * labelCount).ToArray(),
-                    labelCount == 1 ? [count] : [count, labelCount]));
+                totalLoss += l.item<float>();
+                batchCount++;
             }
         }
 
-        var featureTensor = featureChunks.Count == 1
-            ? featureChunks[0]
-            : cat(featureChunks, dim: 0);
-
-        var labelTensor = labelChunks.Count == 1
-            ? labelChunks[0]
-            : cat(labelChunks, dim: 0);
-
-        foreach (var t in featureChunks)
-        {
-            if (!ReferenceEquals(t, featureTensor))
-                t.Dispose();
-        }
-
-        foreach (var t in labelChunks)
-        {
-            if (!ReferenceEquals(t, labelTensor))
-                t.Dispose();
-        }
-
-        return (featureTensor, labelTensor);
+        return totalLoss / batchCount;
     }
 
-    private static Tensor ShuffleLabels(Tensor labels)
+    private static void PrintLabelStats(string csvPath, long[] offsets, int featureCols, string name)
     {
-        using var idx = randperm(labels.shape[0]);
-        return labels.index_select(0, idx);
-    }
+        var count = 0;
+        var sum = 0.0;
+        var min = float.MaxValue;
+        var max = float.MinValue;
+        var near05Count = 0;
 
-    private static void PrintLabelStats(Tensor labels, string name)
-    {
-        var n = labels.shape[0];
-        // we select the first label column (pWin); labels is 1-D when labelCount==1
-        using var pWin = labels.dim() > 1 ? labels.select(1, 0) : null;
-        var col = pWin ?? labels;
+        using var stream = new FileStream(csvPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using var reader = new StreamReader(stream);
 
-        var mean = col.mean().item<float>();
-        var min = col.min().item<float>();
-        var max = col.max().item<float>();
-        using var near05Mask = col.sub(0.5f).abs().lt(0.05f);
-        var near05 = near05Mask.to(ScalarType.Float32).mean().item<float>();
+        for (var i = 0; i < offsets.Length; i++)
+        {
+            stream.Seek(offsets[i], SeekOrigin.Begin);
+            reader.DiscardBufferedData();
+            var line = reader.ReadLine();
+            if (line == null) 
+                continue;
 
-        Console.WriteLine($"[{name}] n={n}  mean={mean:F4}  min={min:F4}  max={max:F4}  near-0.5={near05:P1}");
+            // We skip feature columns, read first label (pWin)
+            var span = line.AsSpan();
+            var colIndex = 0;
+            while (!span.IsEmpty && colIndex < featureCols)
+            {
+                var commaPos = span.IndexOf(',');
+                colIndex++;
+                span = commaPos >= 0 ? span[(commaPos + 1)..] : [];
+            }
+
+            var labelComma = span.IndexOf(',');
+            var field = labelComma >= 0 ? span[..labelComma] : span;
+            var value = float.Parse(field, System.Globalization.CultureInfo.InvariantCulture);
+
+            sum += value;
+            if (value < min) 
+                min = value;
+            if (value > max)
+                max = value;
+            if (Math.Abs(value - 0.5f) < 0.05f) 
+                near05Count++;
+            count++;
+        }
+
+        var mean = sum / count;
+        var near05 = near05Count / (float)count;
+        Console.WriteLine($"[{name}] n={count}  mean={mean:F4}  min={min:F4}  max={max:F4}  near-0.5={near05:P1}");
     }
 }

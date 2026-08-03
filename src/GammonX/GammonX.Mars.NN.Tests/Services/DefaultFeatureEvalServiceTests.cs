@@ -13,6 +13,8 @@ using Moq;
 
 using Newtonsoft.Json;
 
+using static TorchSharp.torch;
+
 namespace GammonX.Mars.NN.Tests.Services
 {
     public class DefaultFeatureEvalServiceTests
@@ -247,7 +249,8 @@ namespace GammonX.Mars.NN.Tests.Services
         public void BotMustAcceptDouble(GameModus modus)
         {
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var device = cuda.is_available() ? CUDA : CPU;
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
 
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestMustOfferDouble);
