@@ -5,6 +5,8 @@ using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Enums;
 
+using TorchSharp;
+
 namespace GammonX.Mars.Training
 {
     /// <summary>

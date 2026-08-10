@@ -2,12 +2,13 @@ using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
 using GammonX.Mars.Training;
 using GammonX.Models.Enums;
+
 using System.Diagnostics;
-using TorchSharp;
+
 using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
-Console.WriteLine("  GammonX Mars — Training Console");
+Console.WriteLine("  GammonX Mars ï¿½ Training Console");
 Console.WriteLine("===========================================");
 Console.WriteLine();
 Console.WriteLine("  1  Self play Mode");
@@ -61,17 +62,19 @@ static void RunTrainModel()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
-
-    // we assume that a batch size of 4096 takes up 10MB
-    // 81_920 takes up about 700MB of GPU memory
-    const int batchSize = 81_920;
+    // we assume that a batch size of 4096 takes up 10MB of GPU RAM
+    var batchSize = PromptInt("Batch size", 40960);
+    var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
+    var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
 
     NetTrainer.Train(
         modus,
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
         outputModelPath: outputModelPath,
-        batchSize: batchSize);
+        batchSize: batchSize,
+        producerCount: producerCount,
+        queueCapacity: queueCapacity);
 }
 
 #endregion Train Model
@@ -134,7 +137,7 @@ static void RunBotServiceTournament()
     Console.WriteLine();
 
     // backgammon, tavla and portes share the same neural net and feature tensors
-    var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
+    var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
     var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
     var totalGames = PromptInt("Total games", 1000);
 
@@ -197,12 +200,16 @@ static void RunShuffleCsv()
 
     foreach (var path in inputPaths)
     {
-        var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        var rowIndex = BinaryBatchEnumerator.BuildRowIndex(path, labelCount);
         if (header == null)
         {
-            // We expect that all given files share the same header
             header = rowIndex.header;
         }
+        else if (!string.Equals(header, rowIndex.header, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"Header mismatch: {Path.GetFileName(path)} does not match the first input file.");
+        }
+
         var index = fileIndex;
         var offsetIndex = rowIndex.offsets.Select(os => (index, os, rowIndex.totalRows, rowIndex.featureCols));
         rowIndices.AddRange(offsetIndex);
@@ -248,8 +255,8 @@ static void RunShuffleCsv()
             Console.WriteLine("No or empty header row was detected");
         }
 
-        WriteShuffledCsv(outputPath, header!, rowIndices[..splitIndex], streams, readers);
-        WriteShuffledCsv(valPath, header!, rowIndices[splitIndex..], streams, readers);
+        WriteShuffledCsv(outputPath, header!, indices[..splitIndex], streams, readers);
+        WriteShuffledCsv(valPath, header!, indices[splitIndex..], streams, readers);
     }
     finally
     {
@@ -265,11 +272,12 @@ static void RunShuffleCsv()
     Console.WriteLine("Complete.");
 }
 
-static void WriteShuffledCsv(string outputPath, string header, List<(int fileIndex, long offset, int totalRows, int featureCols)> rowIndices, FileStream[] streams, StreamReader[] readers)
+static void WriteShuffledCsv(string outputPath, string header, (int fileIndex, long offset, int totalRows, int featureCols)[] rowIndices, FileStream[] streams, StreamReader[] readers)
 {
     using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8, bufferSize: 1 << 16);
     writer.WriteLine(header);
 
+    var count = 0;
     foreach (var rowIndex in rowIndices)
     {
         var stream = streams[rowIndex.fileIndex];
@@ -279,8 +287,13 @@ static void WriteShuffledCsv(string outputPath, string header, List<(int fileInd
         reader.DiscardBufferedData();
         var line = reader.ReadLine();
         if (line is not null)
+        {
             writer.WriteLine(line);
+            count++;
+        }
     }
+
+    Console.WriteLine($"Written {count:N0} rows to {outputPath}");
 }
 
 #endregion Shuffle CSV
@@ -311,9 +324,10 @@ static void RunGenerateTrainingData()
     var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
     INeuralEvalService neuralEvalService = null!;
 
+    var device = cuda.is_available() ? CUDA : CPU;
+
     if (useNeuralEval)
     {
-        var device = cuda.is_available() ? CUDA : CPU;
         neuralEvalService = NeuralEvalService.Load(modus, modelPath, device);
         Console.WriteLine($"Loaded model: {modelPath}");
     }

@@ -10,6 +10,9 @@
 		<PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.15" />
 		<PackageReference Include="Microsoft.ML" Version="5.0.0" />
 		<PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
+		<!-- We use the GPU based package for training -->
+		<!--<PackageReference Include="TorchSharp-cuda-windows" Version="0.106.0" />-->
+		<!-- We use the CPU based package for deployment -->
 		<PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
 		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
 	</ItemGroup>

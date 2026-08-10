@@ -1,4 +1,3 @@
-using Amazon.Auth.AccessControlPolicy;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Globalization;

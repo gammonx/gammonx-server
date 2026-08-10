@@ -19,11 +19,13 @@ namespace GammonX.Mars.NN.Services
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
+        private readonly Device _device;
 
-        private NeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor)
+        private NeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, Device device)
         {
             _netModel = netModel;
             _extractor = extractor;
+            _device = device;
         }
 
         public static INeuralEvalService Load(GameModus modus, string modelPath, Device device)
@@ -35,7 +37,7 @@ namespace GammonX.Mars.NN.Services
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
                 net.Load(modelPath);
                 net.Eval();
-                return new NeuralEvalService(net, extractor);
+                return new NeuralEvalService(net, extractor, device);
             }
         }
 
@@ -62,7 +64,7 @@ namespace GammonX.Mars.NN.Services
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
                 net.LoadFromStream(stream);
                 net.Eval();
-                return new NeuralEvalService(net, extractor);
+                return new NeuralEvalService(net, extractor, device);
             }
         }
 
@@ -72,7 +74,7 @@ namespace GammonX.Mars.NN.Services
             var vec = _extractor.Extract(model, board, isWhite);
             lock (InferLock)
             {
-                using var raw   = tensor(vec);
+                using var raw   = tensor(vec, device: _device);
                 using var input = raw.unsqueeze(0);
                 using var _ = no_grad();
                 using var output = _netModel.Forward(input);
