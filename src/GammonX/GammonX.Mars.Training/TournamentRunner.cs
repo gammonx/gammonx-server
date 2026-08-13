@@ -27,6 +27,10 @@ namespace GammonX.Mars.Training
         int TurnCount,
         bool Discarded);
 
+    public readonly record struct BotPlayerAssignment(
+        Guid ModelPlayerId,
+        Guid WildBgPlayerId);
+
     public sealed record TournamentResult(
         string ModelALabel,
         string ModelBLabel,
@@ -40,6 +44,13 @@ namespace GammonX.Mars.Training
 
     public static class TournamentRunner
     {
+        public static BotPlayerAssignment AssignBotPlayers(Guid player1Id, Guid player2Id, bool modelIsWhite)
+        {
+            return modelIsWhite
+                ? new BotPlayerAssignment(player1Id, player2Id)
+                : new BotPlayerAssignment(player2Id, player1Id);
+        }
+
         public static TournamentResult Run(
             GameModus modus,
             string modelAPath,
@@ -72,8 +83,8 @@ namespace GammonX.Mars.Training
 
             Console.WriteLine();
             Console.WriteLine($"Starting tournament: {totalGames} games  modus={modus}");
-            Console.WriteLine($"  Model A (white): {modelALabel}");
-            Console.WriteLine($"  Model B (black): {modelBLabel ?? "wildbg"}");
+            Console.WriteLine($"  Model A: {modelALabel}");
+            Console.WriteLine($"  Model B: {modelBLabel ?? "wildbg"}");
             Console.WriteLine();
 
             Parallel.For(
@@ -138,7 +149,12 @@ namespace GammonX.Mars.Training
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"  Error during tournament: {ex.Message}");
+                        lock (lockObj)
+                        {
+                            discarded++;
+                        }
+
+                        Console.WriteLine($"  Error during tournament (discarded): {ex.Message}");
                     }
                 });
 
@@ -182,6 +198,8 @@ namespace GammonX.Mars.Training
                 rolls = rolls[0] == rolls[1]
                     ? [rolls[0], rolls[0], rolls[0], rolls[0]]
                     : [rolls[0], rolls[1]];
+                // We append the roll event because the turn number depends on it
+                boardService.AddRollEventToHistory(board, isWhite, rolls);
 
                 var evalRequest = new EvalMoveRequestContract
                 {
@@ -243,11 +261,12 @@ namespace GammonX.Mars.Training
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
 
-            var evalPlayerId = matchSession.Player1.Id;
-            var wildbgPlayerId = matchSession.Player2.Id;
-
-            matchSession.Player1.AcceptNextGame();
-            matchSession.Player2.AcceptNextGame();
+            var assignment = AssignBotPlayers(
+                matchSession.Player1.Id,
+                matchSession.Player2.Id,
+                modelIsWhite);
+            var evalPlayerId = assignment.ModelPlayerId;
+            var wildbgPlayerId = assignment.WildBgPlayerId;
 
             var activePlayerId = Guid.Empty;
             var otherPlayerId = Guid.Empty;
@@ -272,9 +291,6 @@ namespace GammonX.Mars.Training
             Assert.NotNull(gameSession);
             var board = gameSession.BoardModel;
 
-            // we only play the first game of the match (only portes can be played for tavli)
-            turnCount++;
-
             do
             {
                 turnCount++;
@@ -292,7 +308,7 @@ namespace GammonX.Mars.Training
                 else
                 {
                     // eval service turn
-                    var isWhite = matchSession.Player1.Id == evalPlayerId;
+                    var isWhite = modelIsWhite;
                     var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
                     var evalRequest = new EvalMoveRequestContract
                     {
@@ -409,7 +425,7 @@ namespace GammonX.Mars.Training
                 var last10 = result.ModelAWinRateHistory.TakeLast(10).ToList();
                 var last10Avg = last10.Average();
                 var last10Std = Math.Sqrt(last10.Average(x => (x - last10Avg) * (x - last10Avg)));
-                Console.WriteLine($"  Win rate last 10 checkpoints: {last10Avg:P2} ± {last10Std:P2}");
+                Console.WriteLine($"  Win rate last 10 checkpoints: {last10Avg:P2} ï¿½ {last10Std:P2}");
             }
 
             Console.WriteLine();
@@ -426,11 +442,11 @@ namespace GammonX.Mars.Training
             var z = Math.Abs((p - 0.5) / Math.Sqrt(0.25 / total));
             return z switch
             {
-                >= 3.29 => $"p<0.001 (z={z:F2}) — highly significant",
-                >= 2.58 => $"p<0.01  (z={z:F2}) — significant",
-                >= 1.96 => $"p<0.05  (z={z:F2}) — significant",
-                >= 1.65 => $"p<0.10  (z={z:F2}) — marginal",
-                _ => $"p>0.10  (z={z:F2}) — not significant"
+                >= 3.29 => $"p<0.001 (z={z:F2}) ï¿½ highly significant",
+                >= 2.58 => $"p<0.01  (z={z:F2}) ï¿½ significant",
+                >= 1.96 => $"p<0.05  (z={z:F2}) ï¿½ significant",
+                >= 1.65 => $"p<0.10  (z={z:F2}) ï¿½ marginal",
+                _ => $"p>0.10  (z={z:F2}) ï¿½ not significant"
             };
         }
 

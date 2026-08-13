@@ -66,6 +66,8 @@ namespace GammonX.Mars.Training
                 rolls = rolls[0] == rolls[1]
                     ? [rolls[0], rolls[0], rolls[0], rolls[0]]
                     : [rolls[0], rolls[1]];
+                // We append the roll event because the turn number depends on it
+                boardService.AddRollEventToHistory(board, isWhite, rolls);
 
                 var evalRequest = new EvalMoveRequestContract
                 {
@@ -152,9 +154,6 @@ namespace GammonX.Mars.Training
             var evalPlayerId = evalPlayerIsWhite ? matchSession.Player1.Id : matchSession.Player2.Id;
             var wildbgPlayerId = evalPlayerIsWhite ? matchSession.Player2.Id : matchSession.Player1.Id;
 
-            matchSession.Player1.AcceptNextGame();
-            matchSession.Player2.AcceptNextGame();
-
             var activePlayerId = Guid.Empty;
             var otherPlayerId = Guid.Empty;
 
@@ -177,9 +176,6 @@ namespace GammonX.Mars.Training
             var gameSession = matchSession.GetGameSession(1);
             Assert.NotNull(gameSession);
             var board = gameSession.BoardModel;
-
-            // we only play the first game of the match (only portes can be played for tavli)
-            turnCount++;
 
             do
             {

@@ -23,37 +23,37 @@ namespace GammonX.Mars.NN.Services
             // we always extract the feature vectors from whites perspective
             var boardCopy = isWhite ? board : board.InvertBoard();
 
-            var turnNumber = boardCopy.History.Events.Count(e => e.Type == HistoryEventType.Roll);
+            var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
 
             List<float> features =
             [
                 // self-crafted structural features
-                isWhite ? (float)model.MaxPrimeLengthPlayer : (float)model.MaxPrimeLengthOpp,
-                isWhite ? (float)model.MaxPrimeLengthOpp : (float)model.MaxPrimeLengthPlayer,
-                isWhite ? (float)model.HomebarCountPlayer : (float)model.HomebarCountOpp,
-                isWhite ? (float)model.HomebarCountOpp : (float)model.HomebarCountPlayer,
-                isWhite ? (float)model.BlotCount : (float)model.BlotCountOpp,
-                isWhite ? (float)model.BlotCountOpp : (float)model.BlotCount,
-                isWhite ? (float)model.AnchorCountInFrontPlayer : (float)model.AnchorCountInFrontOpp,
-                isWhite ? (float)model.AnchorCountInFrontOpp : (float)model.AnchorCountInFrontPlayer,
-                isWhite ? (float)model.AverageStackHeightPlayer : (float)model.AverageStackHeightOpp,
-                isWhite ? (float)model.AverageStackHeightOpp : (float)model.AverageStackHeightPlayer,
-                isWhite ? (float)model.AverageDistanceToBearOffPlayer : (float)model.AverageDistanceToBearOffOpp,
-                isWhite ? (float)model.AverageDistanceToBearOffOpp : (float)model.AverageDistanceToBearOffPlayer,
-                isWhite ? (float)model.AverageGapSizePlayer : (float)model.AverageGapSizeOpp,
-                isWhite ? (float)model.AverageGapSizeOpp  : (float)model.AverageGapSizePlayer,
-                isWhite ? (float)model.CheckersInPrimeZonePlayer : (float)model.CheckersInPrimeZoneOpp,
-                isWhite ? (float)model.CheckersInPrimeZoneOpp : (float)model.CheckersInPrimeZonePlayer,
+                (float)model.MaxPrimeLengthPlayer,
+                (float)model.MaxPrimeLengthOpp,
+                (float)model.HomebarCountPlayer,
+                (float)model.HomebarCountOpp,
+                (float)model.BlotCount,
+                (float)model.BlotCountOpp,
+                (float)model.AnchorCountInFrontPlayer,
+                (float)model.AnchorCountInFrontOpp,
+                (float)model.AverageStackHeightPlayer,
+                (float)model.AverageStackHeightOpp,
+                (float)model.AverageDistanceToBearOffPlayer,
+                (float)model.AverageDistanceToBearOffOpp,
+                (float)model.AverageGapSizePlayer,
+                (float)model.AverageGapSizeOpp,
+                (float)model.CheckersInPrimeZonePlayer,
+                (float)model.CheckersInPrimeZoneOpp,
                 // race features
-                isWhite ? (float)model.PipToBearOff : (float)model.PipToBearOffOpp,
-                isWhite ? (float)model.PipToBearOffOpp : (float)model.PipToBearOff,
-                isWhite ? (float)model.PipDifference  : -(float)model.PipDifference,
+                (float)model.PipToBearOff,
+                (float)model.PipToBearOffOpp,
+                (float)model.PipDifference,
                 // race feature flag
                 model.Race ? 1f : 0f,
                 // raw board feature tensors
-                isWhite ? 1f : 0f,
-                isWhite ? boardCopy.BearOffCountWhite / 15f : boardCopy.BearOffCountBlack / 15f,
-                isWhite ? boardCopy.BearOffCountBlack / 15f : boardCopy.BearOffCountWhite / 15f,
+                0f,
+                boardCopy.BearOffCountWhite / 15f,
+                boardCopy.BearOffCountBlack / 15f,
                 turnNumber / 100f,
             ];
 

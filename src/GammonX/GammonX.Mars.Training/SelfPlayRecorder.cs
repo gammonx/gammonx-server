@@ -16,7 +16,7 @@ namespace GammonX.Mars.Training
     /// </summary>
     public sealed class SelfPlayRecorder
     {
-        public const float DefaultLambda = 0.7f;
+        public const float DefaultLambda = 1.0f;
 
         private readonly IFeatureVectorExtractor _extractor;
         private readonly INeuralEvalService? _neuralEvalService; // null = generation 0
