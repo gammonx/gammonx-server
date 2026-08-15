@@ -11,12 +11,13 @@ Console.WriteLine("===========================================");
 Console.WriteLine("  GammonX Mars � Training Console");
 Console.WriteLine("===========================================");
 Console.WriteLine();
-Console.WriteLine("  1  Self play Mode");
+Console.WriteLine("  1  Generate Training Data");
 Console.WriteLine("  2  Train Mode");
 Console.WriteLine("  3  Shuffle Mode");
 Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
 Console.WriteLine("  6  Tournament Mode against wildbg");
+Console.WriteLine("  7  Rebuild TD targets from trajectory sidecars");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -44,6 +45,10 @@ else if (modeInput == "5")
 else if (modeInput == "6")
 {
     RunBotServiceTournament();
+}
+else if (modeInput == "7")
+{
+    RunRebuildTdTargets();
 }
 else
 {
@@ -112,6 +117,8 @@ static void RunTournament()
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
     var totalGames = PromptInt("Total games", 1000);
+    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
     if (!File.Exists(modelAPath))
     {
@@ -127,7 +134,7 @@ static void RunTournament()
     var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
     var raceWeights = EvalWeights.GetRaceWeights(modus);
 
-    var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights);
+    var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -149,8 +156,10 @@ static void RunBotServiceTournament()
     var contactWeights = EvalWeights.GetContactWeights(modus);
     var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
     var raceWeights = EvalWeights.GetRaceWeights(modus);
+    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
-    var result = TournamentRunner.Run(modus, modelAPath, null, totalGames, contactWeights, cheapContactWeights, raceWeights);
+    var result = TournamentRunner.Run(modus, modelAPath, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -195,7 +204,27 @@ static void RunShuffleCsv()
 
     Console.WriteLine($"Indexing {inputPaths.Count} file(s)...");
     string? header = null;
-    var rowIndices = new List<(int fileIndex, long offset, int totalRows, int featureCols)>();
+    string? trajectoryHeader = null;
+    var trajectoryPaths = inputPaths.Select(path => Path.ChangeExtension(path, ".trajectory.csv")).ToArray();
+    var trajectorySidecarsPresent = trajectoryPaths.Any(File.Exists);
+    if (trajectorySidecarsPresent && trajectoryPaths.Any(path => !File.Exists(path)))
+        throw new InvalidDataException("Either all input trajectory sidecars must exist or none may exist.");
+    if (!trajectorySidecarsPresent)
+    {
+        Console.WriteLine("Game-grouped shuffle requires a matching .trajectory.csv for every input CSV.");
+        return;
+    }
+
+    var gameMetadataPaths = inputPaths
+        .Select(GetGameMetadataPath)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    if (trajectorySidecarsPresent && gameMetadataPaths.Any(path => !File.Exists(path)))
+        throw new InvalidDataException("Trajectory sidecars require a matching .games.csv file for every input.");
+
+    var rowIndices = new List<(int fileIndex, long offset, int rowNumber)>();
+    var rowGameIds = new List<Guid>();
+    var trajectoryOffsets = new List<long[]>();
     var fileIndex = 0;
 
     foreach (var path in inputPaths)
@@ -210,9 +239,30 @@ static void RunShuffleCsv()
             throw new InvalidDataException($"Header mismatch: {Path.GetFileName(path)} does not match the first input file.");
         }
 
-        var index = fileIndex;
-        var offsetIndex = rowIndex.offsets.Select(os => (index, os, rowIndex.totalRows, rowIndex.featureCols));
-        rowIndices.AddRange(offsetIndex);
+        if (trajectorySidecarsPresent)
+        {
+            var trajectoryIndex = BinaryBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
+            if (trajectoryHeader == null)
+                trajectoryHeader = trajectoryIndex.header;
+            else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
+                throw new InvalidDataException($"Trajectory header mismatch: {Path.GetFileName(trajectoryPaths[fileIndex])} does not match the first input sidecar.");
+
+            if (trajectoryIndex.totalRows != rowIndex.totalRows)
+                throw new InvalidDataException($"Trajectory row count mismatch for {Path.GetFileName(path)}.");
+
+            trajectoryOffsets.Add(trajectoryIndex.offsets);
+
+            var gameIds = TrajectoryCsvReader.ReadGameIds(trajectoryPaths[fileIndex]);
+            if (gameIds.Count != rowIndex.totalRows)
+                throw new InvalidDataException($"Trajectory game ID count mismatch for {Path.GetFileName(path)}.");
+
+            for (var rowNumber = 0; rowNumber < rowIndex.offsets.Length; rowNumber++)
+            {
+                rowIndices.Add((fileIndex, rowIndex.offsets[rowNumber], rowNumber));
+                rowGameIds.Add(gameIds[rowNumber]);
+            }
+        }
+
         fileIndex++;
         Console.WriteLine($"  Indexed {rowIndex.totalRows:N0} rows from {Path.GetFileName(path)}");
     }
@@ -223,18 +273,14 @@ static void RunShuffleCsv()
         return;
     }
 
-    // We shuffle the index array in-place (Fisher-Yates)
-    Console.WriteLine($"Total rows: {rowIndices.Count:N0}. Shuffling index...");
-    var indices = rowIndices.ToArray();
-    var rng = Random.Shared;
-    for (var i = indices.Length - 1; i > 0; i--)
-    {
-        var j = rng.Next(i + 1);
-        (indices[i], indices[j]) = (indices[j], indices[i]);
-    }
-
-    var splitIndex = (int)(indices.Length * 0.85);
-    Console.WriteLine($"Train={splitIndex:N0}  Validation={indices.Length - splitIndex:N0}");
+    Console.WriteLine($"Total rows: {rowIndices.Count:N0}. Shuffling by game...");
+    var rowOrder = Enumerable.Range(0, rowIndices.Count).ToArray();
+    var split = GameGroupedShuffler.SplitByGame(
+        rowOrder,
+        rowIndex => rowGameIds[rowIndex],
+        trainFraction: 0.85,
+        Random.Shared);
+    Console.WriteLine($"Train={split.Training.Count:N0}  Validation={split.Validation.Count:N0}");
     Console.WriteLine("Writing CSV files...");
 
     var valPath = Path.ChangeExtension(outputPath, ".val.csv");
@@ -242,12 +288,20 @@ static void RunShuffleCsv()
     // We keep all input file streams open for random-access reading
     var streams = new FileStream[inputPaths.Count];
     var readers = new StreamReader[inputPaths.Count];
+    var trajectoryStreams = trajectorySidecarsPresent ? new FileStream[inputPaths.Count] : [];
+    var trajectoryReaders = trajectorySidecarsPresent ? new StreamReader[inputPaths.Count] : [];
     try
     {
         for (var f = 0; f < inputPaths.Count; f++)
         {
             streams[f] = new FileStream(inputPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
             readers[f] = new StreamReader(streams[f]);
+
+            if (trajectorySidecarsPresent)
+            {
+                trajectoryStreams[f] = new FileStream(trajectoryPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
+                trajectoryReaders[f] = new StreamReader(trajectoryStreams[f]);
+            }
         }
 
         if (string.IsNullOrEmpty(header))
@@ -255,8 +309,16 @@ static void RunShuffleCsv()
             Console.WriteLine("No or empty header row was detected");
         }
 
-        WriteShuffledCsv(outputPath, header!, indices[..splitIndex], streams, readers);
-        WriteShuffledCsv(valPath, header!, indices[splitIndex..], streams, readers);
+        WriteShuffledCsv(outputPath, header!, split.Training, rowIndices, streams, readers);
+        WriteShuffledCsv(valPath, header!, split.Validation, rowIndices, streams, readers);
+
+        if (trajectorySidecarsPresent)
+        {
+            var trajectoryOutputPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+            var trajectoryValPath = Path.ChangeExtension(valPath, ".trajectory.csv");
+            WriteShuffledCsv(trajectoryOutputPath, trajectoryHeader!, split.Training, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
+            WriteShuffledCsv(trajectoryValPath, trajectoryHeader!, split.Validation, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
+        }
     }
     finally
     {
@@ -264,26 +326,55 @@ static void RunShuffleCsv()
         {
             readers[f].Dispose();
             streams[f].Dispose();
+
+            if (trajectorySidecarsPresent)
+            {
+                trajectoryReaders[f].Dispose();
+                trajectoryStreams[f].Dispose();
+            }
         }
+    }
+
+    if (trajectorySidecarsPresent)
+    {
+        var gamesOutputPath = Path.ChangeExtension(outputPath, ".games.csv");
+        MergeGameMetadataCsv(gameMetadataPaths, gamesOutputPath);
     }
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {valPath}");
+    if (trajectorySidecarsPresent)
+    {
+        Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".trajectory.csv")}");
+        Console.WriteLine($"Written: {Path.ChangeExtension(valPath, ".trajectory.csv")}");
+        Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".games.csv")}");
+    }
     Console.WriteLine("Complete.");
 }
 
-static void WriteShuffledCsv(string outputPath, string header, (int fileIndex, long offset, int totalRows, int featureCols)[] rowIndices, FileStream[] streams, StreamReader[] readers)
+static void WriteShuffledCsv(
+    string outputPath,
+    string header,
+    IReadOnlyList<int> rowOrder,
+    IReadOnlyList<(int fileIndex, long offset, int rowNumber)> rowIndices,
+    FileStream[] streams,
+    StreamReader[] readers,
+    IReadOnlyList<long[]>? alternateOffsets = null)
 {
     using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8, bufferSize: 1 << 16);
     writer.WriteLine(header);
 
     var count = 0;
-    foreach (var rowIndex in rowIndices)
+    foreach (var rowOrderIndex in rowOrder)
     {
+        var rowIndex = rowIndices[rowOrderIndex];
         var stream = streams[rowIndex.fileIndex];
         var reader = readers[rowIndex.fileIndex];
 
-        stream.Seek(rowIndex.offset, SeekOrigin.Begin);
+        var offset = alternateOffsets is null
+            ? rowIndex.offset
+            : alternateOffsets[rowIndex.fileIndex][rowIndex.rowNumber];
+        stream.Seek(offset, SeekOrigin.Begin);
         reader.DiscardBufferedData();
         var line = reader.ReadLine();
         if (line is not null)
@@ -296,7 +387,115 @@ static void WriteShuffledCsv(string outputPath, string header, (int fileIndex, l
     Console.WriteLine($"Written {count:N0} rows to {outputPath}");
 }
 
+static void MergeGameMetadataCsv(IReadOnlyList<string> inputPaths, string outputPath)
+{
+    const string expectedHeader = "gameId,totalTurns,whiteWon,winnerResult,loserResult";
+    var gameIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8);
+    writer.WriteLine(expectedHeader);
+
+    foreach (var path in inputPaths)
+    {
+        using var reader = new StreamReader(path);
+        var header = reader.ReadLine();
+        if (header != expectedHeader)
+            throw new InvalidDataException($"Unexpected game metadata header in '{path}'.");
+
+        string? line;
+        var lineNumber = 1;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var columns = line.Split(',');
+            if (columns.Length != 5 || !gameIds.Add(columns[0]))
+                throw new InvalidDataException($"Duplicate or malformed game metadata row {lineNumber} in '{path}'.");
+
+            writer.WriteLine(line);
+        }
+    }
+}
+
+static string GetGameMetadataPath(string csvPath)
+{
+    var directory = Path.GetDirectoryName(csvPath);
+    var fileName = Path.GetFileNameWithoutExtension(csvPath);
+    if (fileName.EndsWith(".val", StringComparison.OrdinalIgnoreCase))
+        fileName = fileName[..^4];
+
+    return Path.Combine(directory ?? string.Empty, $"{fileName}.games.csv");
+}
+
 #endregion Shuffle CSV
+
+#region Rebuild TD Targets
+
+static void RunRebuildTdTargets()
+{
+    Console.WriteLine();
+
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
+    var trainingCsvPath = PromptString("Input training CSV path", "training_data.csv");
+    var validationCsvPath = PromptString("Input validation CSV path", Path.ChangeExtension(trainingCsvPath, ".val.csv"));
+    var trajectoryCsvPath = PromptString("Input trajectory sidecar path", Path.ChangeExtension(trainingCsvPath, ".trajectory.csv"));
+    var validationTrajectoryCsvPath = PromptString("Input validation trajectory sidecar path", Path.ChangeExtension(validationCsvPath, ".trajectory.csv"));
+    var gamesCsvPath = PromptString("Input games metadata path", Path.ChangeExtension(trainingCsvPath, ".games.csv"));
+    var outputPath = PromptString("Output CSV path", "training_data.td.csv");
+    var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
+    var gamma = PromptFloat("TD-gamma", 1.0f);
+    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+
+    if (!File.Exists(trainingCsvPath)
+        || !File.Exists(validationCsvPath)
+        || !File.Exists(trajectoryCsvPath)
+        || !File.Exists(validationTrajectoryCsvPath)
+        || !File.Exists(gamesCsvPath))
+    {
+        Console.WriteLine("Training/validation CSV, trajectory sidecar, or games metadata file was not found.");
+        return;
+    }
+
+    var trainingRows = TrajectoryCsvReader.ReadRows(trainingCsvPath, trajectoryCsvPath, labelCount);
+    var validationRows = TrajectoryCsvReader.ReadRows(validationCsvPath, validationTrajectoryCsvPath, labelCount);
+    var games = TrajectoryCsvReader.ReadGames(gamesCsvPath);
+    var rebuiltRows = TrajectoryTargetBuilder.Recalculate(
+        trainingRows.Concat(validationRows),
+        games,
+        lambda,
+        gamma,
+        labelCount == 1 ? 1 : 5);
+    var rebuiltTrainingRows = rebuiltRows.Take(trainingRows.Count).ToList();
+    var rebuiltValidationRows = rebuiltRows.Skip(trainingRows.Count).ToList();
+    var featureCount = rebuiltTrainingRows.Count == 0 ? 0 : rebuiltTrainingRows[0].Position.Features.Length;
+
+    if (featureCount == 0)
+    {
+        Console.WriteLine("No trajectory rows were loaded.");
+        return;
+    }
+
+    var validationOutputPath = Path.ChangeExtension(outputPath, ".val.csv");
+    WriteCsv(outputPath, modus, rebuiltTrainingRows, featureCount);
+    WriteCsv(validationOutputPath, modus, rebuiltValidationRows, featureCount);
+    var trajectoryTrainPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+    TrajectoryCsvWriter.WritePositions(trajectoryTrainPath, rebuiltTrainingRows);
+    var trajectoryValpath = Path.ChangeExtension(validationOutputPath, ".trajectory.csv");
+    TrajectoryCsvWriter.WritePositions(trajectoryValpath, rebuiltValidationRows);
+    var gamesPath = Path.ChangeExtension(outputPath, ".games.csv");
+    TrajectoryCsvWriter.WriteGames(gamesPath, games);
+
+    Console.WriteLine($"Rebuilt {rebuiltRows.Count:N0} labels with lambda={lambda} gamma={gamma}.");
+    Console.WriteLine($"Written: {outputPath}");
+    Console.WriteLine($"Written: {validationOutputPath}");
+    Console.WriteLine($"Written: {trajectoryTrainPath}");
+    Console.WriteLine($"Written: {trajectoryValpath}");
+    Console.WriteLine($"Written: {gamesPath}");
+}
+
+#endregion Rebuild TD Targets
 
 #region Generate Training Data
 
@@ -314,6 +513,8 @@ static void RunGenerateTrainingData()
     // we also expect near-0.5 positions to increase above 0.0%
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
     var playAgainstBotService = PromptBool("Play against wildbg bot", false);
+    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var processCount = PromptInt("Process count", Environment.ProcessorCount);
     Console.WriteLine();
 
     var extractor = GetFeatureVectorExtractor(modus);
@@ -325,10 +526,13 @@ static void RunGenerateTrainingData()
     INeuralEvalService neuralEvalService = null!;
 
     var device = cuda.is_available() ? CUDA : CPU;
+    Console.WriteLine($"Device: {device}");
 
     if (useNeuralEval)
     {
-        neuralEvalService = NeuralEvalService.Load(modus, modelPath, device);
+        neuralEvalService = BatchedNeuralEvalService.Load(modus, modelPath, device, evalBatchSize);
+        // we expect the background process to be terminated if the parent process closes
+        ((BatchedNeuralEvalService)neuralEvalService).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
         Console.WriteLine($"Loaded model: {modelPath}");
     }
     else
@@ -338,7 +542,8 @@ static void RunGenerateTrainingData()
 
     var completed = 0;
     var discarded = 0;
-    var allSamples = new List<(float[] Features, float[] Label)>(capacity: totalGames * 40);
+    var allSamples = new List<TrainingDataRow>(capacity: totalGames * 40);
+    var completedGames = new List<GameMetadata>(capacity: totalGames);
     var totalTurnCount = 0L;
     var totalPredVariance = 0.0;
     var predVarianceCount = 0;
@@ -353,7 +558,7 @@ static void RunGenerateTrainingData()
     Parallel.For(
         0,
         totalGames,
-        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+        new ParallelOptions { MaxDegreeOfParallelism = processCount },
         (i) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
@@ -374,13 +579,24 @@ static void RunGenerateTrainingData()
             {
                 totalTurnCount += result.TurnCount;
 
-                if (result.Samples.Count == 0)
+                if (result.Samples.Count == 0
+                    || result.Trajectory is null
+                    || result.Trajectory.Positions.Count != result.Samples.Count)
                 {
                     discarded++;
                 }
                 else
                 {
-                    allSamples.AddRange(result.Samples);
+                    for (var sampleIndex = 0; sampleIndex < result.Samples.Count; sampleIndex++)
+                    {
+                        var position = result.Trajectory.Positions[sampleIndex];
+                        allSamples.Add(new TrainingDataRow(
+                            result.Trajectory.GameId,
+                            position,
+                            result.Samples[sampleIndex].Label));
+                    }
+
+                    completedGames.Add(result.Trajectory.Metadata);
                     completed++;
 
                     if (result.PredictionVariance.HasValue)
@@ -402,32 +618,40 @@ static void RunGenerateTrainingData()
     if (predVarianceCount > 0)
         Console.WriteLine($"Avg pred variance: {totalPredVariance / predVarianceCount:F5}  (over {predVarianceCount} completed games)");
 
-    Console.WriteLine("Shuffling...");
+    Console.WriteLine("Shuffling by game...");
 
-    var rng = Random.Shared;
-    for (var i = allSamples.Count - 1; i > 0; i--)
-    {
-        var j = rng.Next(i + 1);
-        (allSamples[i], allSamples[j]) = (allSamples[j], allSamples[i]);
-    }
-
-    var splitIndex = (int)(allSamples.Count * 0.85);
-    var trainSamples = allSamples[..splitIndex];
-    var valSamples = allSamples[splitIndex..];
+    var split = GameGroupedShuffler.SplitByGame(
+        allSamples,
+        sample => sample.GameId,
+        trainFraction: 0.85,
+        Random.Shared);
+    var trainSamples = split.Training;
+    var valSamples = split.Validation;
 
     Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
     Console.WriteLine("Writing CSV files...");
 
     WriteCsv(outputPath, modus, trainSamples, extractor.FeatureCount);
-    WriteCsv(Path.ChangeExtension(outputPath, ".val.csv"), modus, valSamples, extractor.FeatureCount);
+    var valPath = Path.ChangeExtension(outputPath, ".val.csv");
+    WriteCsv(valPath, modus, valSamples, extractor.FeatureCount);
+
+    var trajectoryPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+    var valTrajectoryPath = Path.ChangeExtension(valPath, ".trajectory.csv");
+    var gamesPath = Path.ChangeExtension(outputPath, ".games.csv");
+    TrajectoryCsvWriter.WritePositions(trajectoryPath, trainSamples);
+    TrajectoryCsvWriter.WritePositions(valTrajectoryPath, valSamples);
+    TrajectoryCsvWriter.WriteGames(gamesPath, completedGames);
 
     Console.WriteLine($"Written: {outputPath}");
-    Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".val.csv")}");
-    Console.WriteLine($"Elapsed: {stopwatch.Elapsed:dd\\:hh\\:mm\\:ss}");
+    Console.WriteLine($"Written: {valPath}");
+    Console.WriteLine($"Written: {trajectoryPath}");
+    Console.WriteLine($"Written: {valTrajectoryPath}");
+    Console.WriteLine($"Written: {gamesPath}");
+    Console.WriteLine($@"Elapsed: {stopwatch.Elapsed:dd\:hh\:mm\:ss}");
     Console.WriteLine("Complete.");
 }
 
-static void WriteCsv(string path, GameModus modus, List<(float[] Features, float[] Label)> samples, int featureCount)
+static void WriteCsv(string path, GameModus modus, IReadOnlyList<TrainingDataRow> samples, int featureCount)
 {
     using var writer = new StreamWriter(path);
 
@@ -437,18 +661,18 @@ static void WriteCsv(string path, GameModus modus, List<(float[] Features, float
 
     writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + "," + labelHeaders);
 
-    foreach (var (features, label) in samples)
+    foreach (var sample in samples)
     {
-        writer.Write(string.Join(",", features.Select(f => f.ToString("G6"))));
+        writer.Write(string.Join(",", sample.Position.Features.Select(f => f.ToString("G6"))));
         writer.Write(',');
         if (modus == GameModus.Fevga || modus == GameModus.Plakoto)
         {
             // TODO: enable full GAME equity predictions for plakoto/fevga
-            writer.WriteLine(label[0].ToString("G6"));
+            writer.WriteLine(sample.Label[0].ToString("G6"));
         }
         else
         {
-            writer.WriteLine(string.Join(",", label.Select(l => l.ToString("G6"))));
+            writer.WriteLine(string.Join(",", sample.Label.Select(l => l.ToString("G6"))));
         }
     }
 }

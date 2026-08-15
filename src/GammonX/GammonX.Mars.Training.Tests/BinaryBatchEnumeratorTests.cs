@@ -69,6 +69,31 @@ public sealed class BinaryBatchEnumeratorTests
         }
     }
 
+    [Fact]
+    public void SidecarFileDoesNotChangeOrdinaryTrainingCsvLayout()
+    {
+        var csvPath = CreateTempPath(".csv");
+        var binaryPath = CreateTempPath(".bin");
+        var sidecarPath = Path.ChangeExtension(csvPath, ".trajectory.csv");
+        try
+        {
+            File.WriteAllText(csvPath, "f0,f1,pWin\n1,10,0.25\n");
+            File.WriteAllText(sidecarPath, "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss\n" +
+                $"{Guid.NewGuid():D},0,1,1,0.5,0,0,0,0\n");
+
+            var (featureCount, rowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(csvPath, binaryPath, labelCount: 1);
+
+            Assert.Equal(2, featureCount);
+            Assert.Equal(1, rowCount);
+        }
+        finally
+        {
+            DeleteIfExists(csvPath);
+            DeleteIfExists(binaryPath);
+            DeleteIfExists(sidecarPath);
+        }
+    }
+
     [Theory]
     [InlineData("1,2")]
     [InlineData("1,2,0.5,extra")]

@@ -28,7 +28,8 @@ namespace GammonX.Mars.Training
     public sealed record SelfPlayRunResult(
         IReadOnlyList<(float[] Features, float[] Label)> Samples,
         int TurnCount,
-        float? PredictionVariance);
+        float? PredictionVariance,
+        GameTrajectory? Trajectory = null);
 
     public sealed class SelfPlayRunner
     {
@@ -66,6 +67,7 @@ namespace GammonX.Mars.Training
                 rolls = rolls[0] == rolls[1]
                     ? [rolls[0], rolls[0], rolls[0], rolls[0]]
                     : [rolls[0], rolls[1]];
+
                 // We append the roll event because the turn number depends on it
                 boardService.AddRollEventToHistory(board, isWhite, rolls);
 
@@ -105,6 +107,11 @@ namespace GammonX.Mars.Training
 
                     _recorder.RecordPosition(resultToPlay.EvalResult, board, isWhite);
                 }
+                else
+                {
+                    var passEval = evalService.EvalPositionForTraining(board.ToContract(false), isWhite);
+                    _recorder.RecordPosition(passEval, board, isWhite);
+                }
 
                 isWhite = !isWhite;
 
@@ -112,8 +119,8 @@ namespace GammonX.Mars.Training
                 {
                     // draw: both mothers pinned, neither player can win
                     // label all recorded positions as 0.5 (half-win) rather than discarding
-                    var drawSamples = _recorder.Finalize(GameResult.Draw, GameResult.Draw, true);
-                    return new SelfPlayRunResult(drawSamples, turnCount, null);
+                    var finalizedDraw = _recorder.Finalize(GameResult.Draw, GameResult.Draw, true);
+                    return new SelfPlayRunResult(finalizedDraw.Samples, turnCount, null, finalizedDraw.Trajectory);
                 }
             }
 
@@ -123,11 +130,11 @@ namespace GammonX.Mars.Training
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
             // we pass both winner and loser results so the recorder can label each position correctly
-            var samples = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
+            var finalized = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
 
             var predictionVariance = ComputePredVariance();
 
-            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
+            return new SelfPlayRunResult(finalized.Samples, turnCount, predictionVariance, finalized.Trajectory);
         }
 
         public SelfPlayRunResult RunAgainstBotServiceGame(
@@ -137,7 +144,6 @@ namespace GammonX.Mars.Training
             ContactWeightModel cheapContactWeights,
             RaceWeightModel raceWeights)
         {
-            // TODO: enable cube play for backgammon
             var diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
@@ -234,6 +240,8 @@ namespace GammonX.Mars.Training
                     }
                     else
                     {
+                        var passEval = evalService.EvalPositionForTraining(board.ToContract(false), isWhite);
+                        evalResultModel = new FinalEvalResultModel(0, new MoveSequenceModel(), passEval);
                         nextMoves = new MoveSequenceModel();
                     }
                 }
@@ -246,11 +254,8 @@ namespace GammonX.Mars.Training
                         break;
                 }
 
-                if (evalResultModel != null)
-                {
-                    // we must record after the moves were made
-                    _recorder.RecordPosition(evalResultModel.EvalResult, board, isWhite);
-                }
+                // we must record after the moves were made
+                _recorder.RecordPosition(evalResultModel.EvalResult, board, isWhite);
 
                 if (!hasWon)
                 {
@@ -272,11 +277,11 @@ namespace GammonX.Mars.Training
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
             // we pass both winner and loser results so the recorder can label each position correctly
-            var samples = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
+            var finalized = _recorder.Finalize(gameResult.WinnerResult, gameResult.LoserResult, whiteWon);
 
             var predictionVariance = ComputePredVariance();
 
-            return new SelfPlayRunResult(samples, turnCount, predictionVariance);
+            return new SelfPlayRunResult(finalized.Samples, turnCount, predictionVariance, finalized.Trajectory);
         }
 
         private float? ComputePredVariance()

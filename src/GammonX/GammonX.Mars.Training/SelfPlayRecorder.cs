@@ -5,8 +5,6 @@ using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Enums;
 
-using TorchSharp;
-
 namespace GammonX.Mars.Training
 {
     /// <summary>
@@ -19,9 +17,17 @@ namespace GammonX.Mars.Training
         public const float DefaultLambda = 1.0f;
 
         private readonly IFeatureVectorExtractor _extractor;
-        private readonly INeuralEvalService? _neuralEvalService; // null = generation 0
+        private readonly INeuralEvalService? _neuralEvalService; // null = linear training weights
         private readonly float _lambda;
-        private readonly List<(float[] Features, bool IsWhite, float[] NetPrediction)> _positions = [];
+        private readonly List<TrajectoryPosition> _positions = [];
+
+        public Guid GameId { get; } = Guid.NewGuid();
+
+        /// <summary>
+        /// Returns the raw network predictions collected during the game.
+        /// Only meaningful when a neural eval service is present; otherwise all values are 0.5.
+        /// </summary>
+        public IReadOnlyList<float[]> NetPredictions => [.. _positions.Select(p => p.Prediction)];
 
         public SelfPlayRecorder(IFeatureVectorExtractor extractor, INeuralEvalService? neuralEvalService = null, float lambda = DefaultLambda)
         {
@@ -43,14 +49,8 @@ namespace GammonX.Mars.Training
             var features = _extractor.Extract(model, board, isWhite);
             // we store the networks current prediction for this state (0.5 if no net yet)
             var netPred = _neuralEvalService?.Predict(model, board, isWhite) ?? [0.5f, 0.0f, 0.0f, 0.0f, 0.0f];
-            _positions.Add((features, isWhite, netPred));
+            _positions.Add(new TrajectoryPosition(_positions.Count, isWhite, features, netPred));
         }
-
-        /// <summary>
-        /// Returns the raw network predictions collected during the game.
-        /// Only meaningful when a neural eval service is present; otherwise all values are 0.5.
-        /// </summary>
-        public IReadOnlyList<float[]> NetPredictions => _positions.Select(p => p.NetPrediction).ToList();
 
         /// <summary>
         /// Finalizes the recording and returns all (features, label) training samples.
@@ -59,86 +59,30 @@ namespace GammonX.Mars.Training
         /// <param name="winnerResult">The result from the winner's perspective.</param>
         /// <param name="loserResult">The result from the loser's perspective.</param>
         /// <param name="whiteWon">Whether white won the game.</param>
-        public IReadOnlyList<(float[] Features, float[] Label)> Finalize(GameResult winnerResult, GameResult loserResult, bool whiteWon)
+        public (GameTrajectory Trajectory, IReadOnlyList<(float[] Features, float[] Label)> Samples) Finalize(GameResult winnerResult, GameResult loserResult, bool whiteWon)
         {
-            int T = _positions.Count;
-            var result = new List<(float[] Features, float[] Label)>(T);
+            if (_positions.Count == 0)
+                return (CreateTrajectory(winnerResult, loserResult, whiteWon), []);
 
-            for (int t = 0; t < T; t++)
-            {
-                var (features, isWhite, _) = _positions[t];
+            var trajectory = CreateTrajectory(winnerResult, loserResult, whiteWon);
+            var labels = ForwardViewTdCalculator.Calculate(trajectory, _lambda);
+            var samples = trajectory.Positions
+                .Select((position, index) => (position.Features, labels[index]))
+                .ToList();
+            return (trajectory, samples);
+        }
 
-                // we determine this positions outcome from the active players perspective
-                bool activePlayerWon = isWhite == whiteWon;
-                var gameResult = activePlayerWon ? winnerResult : loserResult;
-
-                var pWin = gameResult switch
+        private GameTrajectory CreateTrajectory(GameResult winnerResult, GameResult loserResult, bool whiteWon)
+        {
+            var positions = _positions
+                .Select((position, index) => position with
                 {
-                    GameResult.Single => 1.0f,
-                    GameResult.Gammon => 1.0f,
-                    GameResult.Backgammon => 1.0f,
-                    GameResult.DoubleDeclined => 1.0f,
-                    GameResult.Resign => 1.0f,
-                    GameResult.Draw => 0.5f,
-                    _ => 0.0f
-                };
-                var pGammonWin = gameResult switch
-                {
-                    GameResult.Gammon => 1.0f,
-                    GameResult.Backgammon => 1.0f,
-                    GameResult.DoubleDeclined => 1.0f,
-                    GameResult.Resign => 1.0f,
-                    GameResult.Draw => 0.5f,
-                    _ => 0.0f
-                };
-                var pBackgammonWin = gameResult switch
-                {
-                    GameResult.Backgammon => 1.0f,
-                    GameResult.Draw => 0.5f,
-                    _ => 0.0f
-                };
-                var pGammonLoss = gameResult switch
-                {
-                    GameResult.LostGammon => 1.0f,
-                    GameResult.LostBackgammon => 1.0f,
-                    GameResult.LostDoubleDeclined => 1.0f,
-                    GameResult.LostResign => 1.0f,
-                    GameResult.Draw => 0.5f,
-                    _ => 0.0f
-                };
-                var pBackgammonLoss = gameResult switch
-                {
-                    GameResult.LostBackgammon => 1.0f,
-                    GameResult.Draw => 0.5f,
-                    _ => 0.0f
-                };
+                    TurnIndex = index,
+                    IsTerminal = index == _positions.Count - 1
+                })
+                .ToArray();
 
-                // near the end we trust terminal
-                // early we trust next-state bootstrap (try to exclude noisy game start)
-                var stepsFromEnd = T - 1 - t;
-                var decay = MathF.Pow(_lambda, stepsFromEnd);
-
-                // we make next-state network prediction from the same players perspective
-                // if no future same-player position exists (last 2 turns), bootstrap from terminal
-                // we instead  of t+2, find next position with same isWhite
-                var nextSamePlayer = -1;
-                for (var k = t + 1; k < T; k++)
-                {
-                    if (_positions[k].IsWhite == isWhite)
-                    {
-                        nextSamePlayer = k;
-                        break;
-                    }
-                }
-                var bootstrap = nextSamePlayer >= 0
-                    ? _positions[nextSamePlayer].NetPrediction[0]
-                    : pWin;
-
-                var label = decay * pWin + (1f - decay) * bootstrap;
-                result.Add((features, [label, pGammonWin, pBackgammonWin, pGammonLoss, pBackgammonLoss]));
-            }
-
-            return result;
+            return new GameTrajectory(GameId, positions, winnerResult, loserResult, whiteWon);
         }
     }
 }

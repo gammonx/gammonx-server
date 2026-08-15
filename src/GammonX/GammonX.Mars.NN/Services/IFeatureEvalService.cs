@@ -69,6 +69,12 @@ namespace GammonX.Mars.NN.Services
             int maxCandidates);
 
         /// <summary>
+        /// Calculates the normalized position values for a turn without requiring a legal move.
+        /// Used to preserve pass turns in training trajectories.
+        /// </summary>
+        NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract board, bool isWhite);
+
+        /// <summary>
         /// Evaluates the given <param name="contract"></param> with a predefined <param name="moveSequence"></param> and
         /// calculates the eval result for the final board state after applying the move sequence.
         /// </summary>

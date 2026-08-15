@@ -20,9 +20,8 @@ namespace GammonX.Mars.NN.Nets
             _fc2 = Linear(256, 128, true, device);
             _fc3 = Linear(128, 64, true, device);
             _fc4 = Linear(64, 1, true, device);
-            // we randomly zero 10% of the neurons during training process to prevent overfitting
-            // we do not apply it in eval process
-            _drop = Dropout(p: 0.1);
+            // increase p if model is overfitting
+            _drop = Dropout(p: 0.0);
             RegisterComponents();
         }
 

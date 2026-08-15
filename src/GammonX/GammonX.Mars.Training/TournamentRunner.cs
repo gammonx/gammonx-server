@@ -58,19 +58,21 @@ namespace GammonX.Mars.Training
             int totalGames,
             ContactWeightModel contactWeights,
             ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+            RaceWeightModel raceWeights,
+            int evalBatchSize,
+            int processCount)
         {
             var modelALabel = Path.GetFileNameWithoutExtension(modelAPath);
             var modelBLabel = Path.GetFileNameWithoutExtension(modelBPath);
 
             Console.WriteLine($"Loading model A: {modelAPath}");
             var device = cuda.is_available() ? CUDA : CPU;
-            var serviceA = NeuralEvalService.Load(modus, modelAPath, device);
+            var serviceA = BatchedNeuralEvalService.Load(modus, modelAPath, device, evalBatchSize);
             INeuralEvalService? serviceB = null;
             if (!string.IsNullOrEmpty(modelBPath))
             {
                 Console.WriteLine($"Loading model B: {modelBPath}");
-                serviceB = NeuralEvalService.Load(modus, modelBPath, device);
+                serviceB = BatchedNeuralEvalService.Load(modus, modelBPath, device, evalBatchSize);
             }
 
             var modelAWins = 0;
@@ -90,7 +92,7 @@ namespace GammonX.Mars.Training
             Parallel.For(
                 0,
                 totalGames,
-                new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                new ParallelOptions { MaxDegreeOfParallelism = processCount },
                 (i) =>
                 {
                     try

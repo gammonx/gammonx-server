@@ -35,7 +35,7 @@ namespace GammonX.Mars.NN.Services
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;
 
-            if (board is IDoublingCubeModel cubeModel && _neuralEvalService != null)
+            if (board is IDoublingCubeModel cubeModel)
             {
                 var isRace = RaceFeature.Eval(board, isWhite);
                 var eval = CalculateEvalModel(board, isWhite, isRace);
@@ -181,6 +181,15 @@ namespace GammonX.Mars.NN.Services
             {
                 pool.Return(candidates.Array!);
             }
+        }
+
+        // <inheritdoc />
+        public NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract boardContract, bool isWhite)
+        {
+            var board = BoardService.CreateBoard(boardContract);
+            var isRace = RaceFeature.Eval(board, isWhite);
+            var eval = CalculateEvalModel(board, isWhite, isRace);
+            return NormalizedEvalResultModel.From(eval);
         }
 
         // <inheritdoc />

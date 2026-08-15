@@ -1,7 +1,8 @@
+using System.Reflection;
+
 using GammonX.Engine.Models;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Enums;
 
@@ -9,9 +10,11 @@ using Serilog;
 
 using System.Threading.Channels;
 
+using Microsoft.Extensions.Hosting;
+
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     /// <summary>
     /// Neural eval service that batches concurrent Predict calls into a single forward pass.
@@ -25,15 +28,17 @@ namespace GammonX.Mars.Server.Services
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
+        private readonly Device _device;
         private readonly Channel<InferenceRequest> _channel;
         private readonly int _maxBatchSize;
         private Task? _workerTask;
         private CancellationTokenSource _cts = new();
 
-        private BatchedNeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, int maxBatchSize)
+        private BatchedNeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, int maxBatchSize, Device device)
         {
             _netModel = netModel;
             _extractor = extractor;
+            _device = device;
             _maxBatchSize = maxBatchSize;
             _channel = Channel.CreateBounded<InferenceRequest>(
                 new BoundedChannelOptions(maxBatchSize * 4)
@@ -44,13 +49,34 @@ namespace GammonX.Mars.Server.Services
         }
 
         /// <summary>
+        /// Loads the model from the given path and starts the background worker.
+        /// </summary>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="modelPath">The path to the model file.</param>
+        /// <param name="device">The device to run the model on.</param>
+        /// <param name="maxBatchSize">The maximum batch size for inference.</param>
+        /// <returns>The loaded <see cref="BatchedNeuralEvalService"/>.</returns>
+        public static INeuralEvalService Load(GameModus modus, string modelPath, Device device, int maxBatchSize = 32)
+        {
+            // we only support CPU based models for now in production
+            var net = NetModelFactory.Create(modus, device);
+            var extractor = FeatureVectorExtractorFactory.Create(modus);
+            net.Load(modelPath);
+            net.Eval();
+            return new BatchedNeuralEvalService(net, extractor, maxBatchSize, device);
+        }
+
+        /// <summary>
         /// Loads the model from an embedded resource at
         /// <c>NeuralNets/{modus}/training_net.dat</c> in the calling assembly.
         /// Returns <c>null</c> if no embedded resource exists for the given modus.
         /// </summary>
-        public static BatchedNeuralEvalService? LoadEmbedded(GameModus modus, int maxBatchSize = 32)
+        /// <param name="assembly">The assembly to load the embedded resource from.</param>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="maxBatchSize">The maximum batch size for inference.</param>
+        /// <returns>The loaded <see cref="BatchedNeuralEvalService"/> or <c>null</c> if no embedded resource exists for the given modus.</returns>
+        public static BatchedNeuralEvalService? LoadEmbedded(Assembly assembly, GameModus modus, int maxBatchSize = 32)
         {
-            var assembly = typeof(BatchedNeuralEvalService).Assembly;
             var resourceName = $"GammonX.Mars.Server.NeuralNets.{modus}.training_net.dat";
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream is null)
@@ -65,7 +91,7 @@ namespace GammonX.Mars.Server.Services
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.LoadFromStream(stream);
             net.Eval();
-            return new BatchedNeuralEvalService(net, extractor, maxBatchSize);
+            return new BatchedNeuralEvalService(net, extractor, maxBatchSize, device);
         }
 
         // <inheritdoc />
@@ -148,7 +174,7 @@ namespace GammonX.Mars.Server.Services
             }
 
             // one forward pass for all positions in the batch: [N, featureCount] > [N, outputCount]
-            using var input = tensor(flat, [batch.Count, featureCount]);
+            using var input = tensor(flat, [batch.Count, featureCount], device: _device);
             using var _ = no_grad();
             using var output = _netModel.Forward(input);
 

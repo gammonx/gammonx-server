@@ -1,4 +1,6 @@
-﻿using GammonX.Engine.Models;
+﻿using System.Reflection;
+
+using GammonX.Engine.Models;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 
@@ -28,6 +30,13 @@ namespace GammonX.Mars.NN.Services
             _device = device;
         }
 
+        /// <summary>
+        /// Loads the model from the given path and starts the background worker.
+        /// </summary>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="modelPath">The path to the model file.</param>
+        /// <param name="device">The device to run the model on.</param>
+        /// <returns>The loaded <see cref="NeuralEvalService"/>.</returns>
         public static INeuralEvalService Load(GameModus modus, string modelPath, Device device)
         {
             lock (InferLock)
@@ -43,12 +52,14 @@ namespace GammonX.Mars.NN.Services
 
         /// <summary>
         /// Loads the model from an embedded resource at
-        /// <c>NeuralNets/{modus}/training_net.dat</c> in the calling assembly.
-        /// Returns <c>null</c> if no embedded resource exists for the given modus.
+        /// <c>NeuralNets/{modus}/training_net.dat</c> in the given assembly.
+        /// <param name="assembly">The assembly to load the embedded resource from.</param>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="device">The device to run the model on.</param>
+        /// <returns><c>null</c> if no embedded resource exists for the given modus.</returns>
         /// </summary>
-        public static INeuralEvalService LoadEmbedded(GameModus modus, Device device)
+        public static INeuralEvalService LoadEmbedded(Assembly assembly, GameModus modus, Device device)
         {
-            var assembly = typeof(NeuralEvalService).Assembly;
             var resourceName = $"GammonX.Mars.Server.NeuralNets.{modus}.training_net.dat";
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)

@@ -1,5 +1,3 @@
-using GammonX.Mars.Training;
-
 namespace GammonX.Mars.Training.Tests;
 
 public sealed class TournamentRunnerTests
