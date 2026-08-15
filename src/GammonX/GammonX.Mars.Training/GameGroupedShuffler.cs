@@ -52,6 +52,25 @@ public static class GameGroupedShuffler
         return new GameGroupedSplit<T>(training, validation);
     }
 
+    public static IReadOnlyList<Guid> SelectGames(
+        IReadOnlyList<Guid> gameIds,
+        int gameCount,
+        Random? random = null)
+    {
+        ArgumentNullException.ThrowIfNull(gameIds);
+
+        if (gameCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(gameCount), gameCount, "The game count cannot be negative.");
+
+        var uniqueGameIds = gameIds.Distinct().ToList();
+        if (gameCount > uniqueGameIds.Count)
+            throw new ArgumentOutOfRangeException(nameof(gameCount), gameCount, "The game count cannot exceed the number of available games.");
+
+        random ??= Random.Shared;
+        Shuffle(uniqueGameIds, random);
+        return uniqueGameIds.Take(gameCount).ToArray();
+    }
+
     private static int FindBestTrainGroupCount<T>(
         IReadOnlyList<Guid> gameIds,
         IReadOnlyDictionary<Guid, List<T>> groupsById,

@@ -68,11 +68,15 @@ namespace GammonX.Mars.Training
             Console.WriteLine($"Loading model A: {modelAPath}");
             var device = cuda.is_available() ? CUDA : CPU;
             var serviceA = BatchedNeuralEvalService.Load(modus, modelAPath, device, evalBatchSize);
+            // we expect the background process to be terminated if the parent process closes
+            ((BatchedNeuralEvalService)serviceA).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             INeuralEvalService? serviceB = null;
             if (!string.IsNullOrEmpty(modelBPath))
             {
                 Console.WriteLine($"Loading model B: {modelBPath}");
                 serviceB = BatchedNeuralEvalService.Load(modus, modelBPath, device, evalBatchSize);
+                // we expect the background process to be terminated if the parent process closes
+                ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
 
             var modelAWins = 0;

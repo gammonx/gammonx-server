@@ -85,7 +85,7 @@ namespace GammonX.Mars.Training
                     cheapContactWeights,
                     contactWeights,
                     raceWeights,
-                    150);
+                    500);
 
                 if (result.Count != 0)
                 {
@@ -221,7 +221,7 @@ namespace GammonX.Mars.Training
                         cheapContactWeights,
                         contactWeights,
                         raceWeights,
-                        150);
+                        500);
 
                     if (result.Count != 0)
                     {

@@ -33,7 +33,7 @@ namespace GammonX.Mars.NN.Nets
             _fc2 = Linear(256, 128, true, device);
             _fc3 = Linear(128, 64, true, device);
             _fc4 = Linear(64, 5, true, device);
-            // increase p if model is overfitting
+            // increase p if model is over fitting
             _drop = Dropout(p: 0.0);
             RegisterComponents();
         }

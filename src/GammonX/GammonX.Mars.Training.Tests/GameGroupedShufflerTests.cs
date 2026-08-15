@@ -126,6 +126,47 @@ public sealed class GameGroupedShufflerTests
         Assert.Empty(split.Validation);
     }
 
+    [Fact]
+    public void SelectGamesReturnsDistinctRequestedCount()
+    {
+        var gameIds = new[]
+        {
+            GuidFromInt(1),
+            GuidFromInt(2),
+            GuidFromInt(1),
+            GuidFromInt(3),
+            GuidFromInt(4)
+        };
+
+        var selected = GameGroupedShuffler.SelectGames(gameIds, 3, new Random(17));
+
+        Assert.Equal(3, selected.Count);
+        Assert.Equal(3, selected.Distinct().Count());
+        Assert.All(selected, gameId => Assert.Contains(gameId, gameIds));
+    }
+
+    [Fact]
+    public void SelectGamesIsRepeatableWithTheSameRandomSeed()
+    {
+        var gameIds = Enumerable.Range(0, 8).Select(GuidFromInt).ToArray();
+
+        var first = GameGroupedShuffler.SelectGames(gameIds, 4, new Random(31));
+        var second = GameGroupedShuffler.SelectGames(gameIds, 4, new Random(31));
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void SelectGamesRejectsCountOutsideAvailableRange()
+    {
+        var gameIds = new[] { GuidFromInt(1), GuidFromInt(2) };
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => GameGroupedShuffler.SelectGames(gameIds, -1, new Random(1)));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => GameGroupedShuffler.SelectGames(gameIds, 3, new Random(1)));
+    }
+
     [Theory]
     [InlineData(0d)]
     [InlineData(1d)]

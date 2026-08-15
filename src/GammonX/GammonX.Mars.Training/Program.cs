@@ -18,6 +18,7 @@ Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
 Console.WriteLine("  6  Tournament Mode against wildbg");
 Console.WriteLine("  7  Rebuild TD targets from trajectory sidecars");
+Console.WriteLine("  8  Select random replay games");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -49,6 +50,10 @@ else if (modeInput == "6")
 else if (modeInput == "7")
 {
     RunRebuildTdTargets();
+}
+else if (modeInput == "8")
+{
+    RunSelectRandomGames();
 }
 else
 {
@@ -431,6 +436,219 @@ static string GetGameMetadataPath(string csvPath)
 
 #endregion Shuffle CSV
 
+#region Select Random Games
+
+static void RunSelectRandomGames()
+{
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
+    // TODO: enable full GAME equity predictions for plakoto/fevga
+    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+
+    Console.WriteLine();
+    Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
+
+    var inputPaths = new List<string>();
+    while (true)
+    {
+        Console.Write($"  Path {inputPaths.Count + 1}: ");
+        var input = Console.ReadLine()?.Trim();
+        if (string.IsNullOrEmpty(input))
+            break;
+        if (!File.Exists(input))
+        {
+            Console.WriteLine($"  File not found, skipping: {input}");
+            continue;
+        }
+        if (inputPaths.Any(path => string.Equals(path, input, StringComparison.OrdinalIgnoreCase)))
+        {
+            Console.WriteLine($"  File already added, skipping: {input}");
+            continue;
+        }
+        inputPaths.Add(input);
+    }
+
+    if (inputPaths.Count == 0)
+    {
+        Console.WriteLine("No valid input files provided.");
+        return;
+    }
+
+    var gameCount = PromptInt("Number of complete games to select", 1_000);
+    if (gameCount <= 0)
+    {
+        Console.WriteLine("The number of games must be greater than zero.");
+        return;
+    }
+
+    var outputPath = PromptString("Output CSV path", "replay.csv");
+    var requestedSeed = PromptOptionalInt("Random seed");
+    var effectiveSeed = requestedSeed ?? Random.Shared.Next();
+    var trajectoryOutputPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+    var gamesOutputPath = Path.ChangeExtension(outputPath, ".games.csv");
+
+    var trajectoryPaths = inputPaths
+        .Select(path => Path.ChangeExtension(path, ".trajectory.csv"))
+        .ToArray();
+    var trajectorySidecarsPresent = trajectoryPaths.All(File.Exists);
+    if (!trajectorySidecarsPresent)
+    {
+        if (trajectoryPaths.Any(File.Exists))
+            throw new InvalidDataException("Either all input trajectory sidecars must exist or none may exist.");
+
+        Console.WriteLine("Replay extraction requires a matching .trajectory.csv for every input CSV.");
+        return;
+    }
+
+    var gameMetadataPaths = inputPaths
+        .Select(GetGameMetadataPath)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    if (gameMetadataPaths.Any(path => !File.Exists(path)))
+        throw new InvalidDataException("Replay extraction requires a matching .games.csv file for every input.");
+
+    var outputPaths = new[] { outputPath, trajectoryOutputPath, gamesOutputPath };
+    if (outputPaths.Distinct(StringComparer.OrdinalIgnoreCase).Count() != outputPaths.Length)
+        throw new InvalidDataException("The output CSV and its sidecar paths must be distinct.");
+
+    var inputRelatedPaths = inputPaths
+        .Concat(trajectoryPaths)
+        .Concat(gameMetadataPaths)
+        .Select(Path.GetFullPath)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    if (outputPaths.Any(path => inputRelatedPaths.Contains(Path.GetFullPath(path))))
+        throw new InvalidDataException("The output CSV or one of its sidecars would overwrite an input file.");
+
+    var gamesById = new Dictionary<Guid, GameMetadata>();
+    foreach (var path in gameMetadataPaths)
+    {
+        foreach (var game in TrajectoryCsvReader.ReadGames(path))
+        {
+            if (!gamesById.TryAdd(game.GameId, game))
+                throw new InvalidDataException($"Game metadata contains duplicate game ID '{game.GameId}'.");
+        }
+    }
+
+    Console.WriteLine($"Indexing {inputPaths.Count} file(s)...");
+    string? header = null;
+    string? trajectoryHeader = null;
+    var rowIndices = new List<(int fileIndex, long offset, int rowNumber)>();
+    var rowGameIds = new List<Guid>();
+    var trajectoryOffsets = new List<long[]>();
+    var rowsByGame = new Dictionary<Guid, List<int>>();
+    var gameSources = new Dictionary<Guid, int>();
+
+    for (var fileIndex = 0; fileIndex < inputPaths.Count; fileIndex++)
+    {
+        var path = inputPaths[fileIndex];
+        var rowIndex = BinaryBatchEnumerator.BuildRowIndex(path, labelCount);
+        if (rowIndex.totalRows == 0)
+            throw new InvalidDataException($"Input CSV '{path}' contains no data rows.");
+
+        if (header == null)
+        {
+            header = rowIndex.header;
+        }
+        else if (!string.Equals(header, rowIndex.header, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"Header mismatch: {Path.GetFileName(path)} does not match the first input file.");
+        }
+
+        var trajectoryIndex = BinaryBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
+        if (trajectoryHeader == null)
+            trajectoryHeader = trajectoryIndex.header;
+        else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
+            throw new InvalidDataException($"Trajectory header mismatch: {Path.GetFileName(trajectoryPaths[fileIndex])} does not match the first input sidecar.");
+
+        if (trajectoryIndex.totalRows != rowIndex.totalRows)
+            throw new InvalidDataException($"Trajectory row count mismatch for {Path.GetFileName(path)}.");
+
+        var gameIds = TrajectoryCsvReader.ReadGameIds(trajectoryPaths[fileIndex]);
+        if (gameIds.Count != rowIndex.totalRows)
+            throw new InvalidDataException($"Trajectory game ID count mismatch for {Path.GetFileName(path)}.");
+
+        trajectoryOffsets.Add(trajectoryIndex.offsets);
+        for (var rowNumber = 0; rowNumber < rowIndex.offsets.Length; rowNumber++)
+        {
+            var gameId = gameIds[rowNumber];
+            if (gameSources.TryGetValue(gameId, out var sourceFileIndex) && sourceFileIndex != fileIndex)
+                throw new InvalidDataException($"Game ID '{gameId}' occurs in multiple input CSV files.");
+
+            gameSources[gameId] = fileIndex;
+            var globalRowIndex = rowIndices.Count;
+            rowIndices.Add((fileIndex, rowIndex.offsets[rowNumber], rowNumber));
+            rowGameIds.Add(gameId);
+
+            if (!rowsByGame.TryGetValue(gameId, out var gameRows))
+            {
+                gameRows = [];
+                rowsByGame.Add(gameId, gameRows);
+            }
+            gameRows.Add(globalRowIndex);
+        }
+
+        Console.WriteLine($"  Indexed {rowIndex.totalRows:N0} rows from {Path.GetFileName(path)}");
+    }
+
+    foreach (var (gameId, gameRows) in rowsByGame)
+    {
+        if (!gamesById.TryGetValue(gameId, out var metadata))
+            throw new InvalidDataException($"No game metadata exists for game ID '{gameId}'.");
+        if (metadata.TotalTurns != gameRows.Count)
+            throw new InvalidDataException($"Game metadata turn count mismatch for game ID '{gameId}': metadata={metadata.TotalTurns}, rows={gameRows.Count}.");
+    }
+
+    var random = new Random(effectiveSeed);
+    var selectedGameIds = GameGroupedShuffler.SelectGames(rowsByGame.Keys.ToArray(), gameCount, random);
+    var selectedRowOrder = selectedGameIds
+        .SelectMany(gameId => rowsByGame[gameId])
+        .ToArray();
+    var selectedGames = selectedGameIds
+        .Select(gameId => gamesById[gameId])
+        .ToArray();
+
+    Console.WriteLine($"Available complete games: {rowsByGame.Count:N0}");
+    Console.WriteLine($"Selected games: {selectedGameIds.Count:N0}");
+    Console.WriteLine($"Selected trajectory rows: {selectedRowOrder.Length:N0}");
+    Console.WriteLine($"Random seed: {effectiveSeed}");
+    Console.WriteLine("Writing replay CSV files...");
+
+    var streams = new FileStream[inputPaths.Count];
+    var readers = new StreamReader[inputPaths.Count];
+    var trajectoryStreams = new FileStream[inputPaths.Count];
+    var trajectoryReaders = new StreamReader[inputPaths.Count];
+    try
+    {
+        for (var fileIndex = 0; fileIndex < inputPaths.Count; fileIndex++)
+        {
+            streams[fileIndex] = new FileStream(inputPaths[fileIndex], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
+            readers[fileIndex] = new StreamReader(streams[fileIndex]);
+            trajectoryStreams[fileIndex] = new FileStream(trajectoryPaths[fileIndex], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
+            trajectoryReaders[fileIndex] = new StreamReader(trajectoryStreams[fileIndex]);
+        }
+
+        WriteShuffledCsv(outputPath, header!, selectedRowOrder, rowIndices, streams, readers);
+        WriteShuffledCsv(trajectoryOutputPath, trajectoryHeader!, selectedRowOrder, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
+        TrajectoryCsvWriter.WriteGames(gamesOutputPath, selectedGames);
+    }
+    finally
+    {
+        for (var fileIndex = 0; fileIndex < inputPaths.Count; fileIndex++)
+        {
+            readers[fileIndex]?.Dispose();
+            streams[fileIndex]?.Dispose();
+            trajectoryReaders[fileIndex]?.Dispose();
+            trajectoryStreams[fileIndex]?.Dispose();
+        }
+    }
+
+    Console.WriteLine($"Written: {outputPath}");
+    Console.WriteLine($"Written: {trajectoryOutputPath}");
+    Console.WriteLine($"Written: {gamesOutputPath}");
+    Console.WriteLine("Complete.");
+}
+
+#endregion Select Random Games
+
 #region Rebuild TD Targets
 
 static void RunRebuildTdTargets()
@@ -705,6 +923,19 @@ static float PromptFloat(string label, float defaultValue)
     Console.Write($"{label} [{defaultValue}]: ");
     var input = Console.ReadLine()?.Trim();
     return float.TryParse(input, out var v) ? v : defaultValue;
+}
+
+static int? PromptOptionalInt(string label)
+{
+    Console.Write($"{label} [random]: ");
+    var input = Console.ReadLine()?.Trim();
+    if (string.IsNullOrEmpty(input))
+        return null;
+    if (int.TryParse(input, out var value))
+        return value;
+
+    Console.WriteLine("Invalid integer. Using a random seed.");
+    return null;
 }
 
 static string PromptString(string label, string defaultValue)
