@@ -66,18 +66,21 @@ fi
 
 build_and_push() {
   local key="$1" suffix="$2" context="$3" dockerfile="$4" target="$5"
+  # Defaults to arm64 (Graviton) for cost. Must match the service's
+  # runtime_platform.cpu_architecture in gammonx-iaas.
+  local platform="${6:-linux/arm64}"
 
   local repo="${APP}-${suffix}-ecrrepo"
   local image="${REGISTRY}/${repo}"
 
   echo ""
-  echo ">> [$key] Building $repo (target=${target:-<default>})"
+  echo ">> [$key] Building $repo (target=${target:-<default>}, platform=${platform})"
 
   # --provenance=false / --sbom=false: AWS Lambda rejects images pushed as an
   # OCI image index, which is what buildx produces when attestations are on.
   # Without these flags, lambda-service pushes fail with "media type ... is not supported".
   local args=(
-    --platform linux/arm64
+    --platform "$platform"
     --provenance=false
     --sbom=false
     --file "$dockerfile"
@@ -108,7 +111,10 @@ if want lambda; then
 fi
 
 if want mars; then
-  build_and_push mars marsservice "$REPO_ROOT" "src/GammonX/Dockerfile" mars-server-final
+  # x86_64, not arm64: TorchSharp-cpu pulls libtorch-cpu, which ships no
+  # libtorch-cpu-linux-arm64 package. Built for arm64 the assembly refuses to
+  # load ("architecture is not compatible") and the server never binds a port.
+  build_and_push mars marsservice "$REPO_ROOT" "src/GammonX/Dockerfile" mars-server-final linux/amd64
 fi
 
 echo ""
