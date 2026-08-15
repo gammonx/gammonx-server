@@ -6,7 +6,7 @@ Backend for playing backgammon-style variants. Consists of several components:
 Generic game engine supporting **Backgammon**, **Tavla**, and **Tavli** (Portes, Plakoto, Fevga). Handles board state, legal move generation, doubling cube, dice rolling (including cryptographically secure dice), and move history. Board services are variant-specific and created via a factory/broker pattern.
 
 ## GammonX.Server
-ASP.NET Core REST API and **SignalR** (WebSocket) server for matchmaking and real-time gameplay. Supports normal, bot, and ranked (rating-based) matchmaking queues. Integrates external bots via HTTP — currently **WildBG** and the internal **Mars** neural net bot.
+ASP.NET Core REST API and **SignalR** (WebSocket) server for matchmaking and real-time gameplay. Supports normal, bot, and ranked (rating-based) matchmaking queues. Bot turns are served over HTTP by the internal **Mars** neural net bot.
 
 Key endpoints:
 - `POST /game/matches/join` — join a matchmaking queue
@@ -41,22 +41,27 @@ Self-trained neural net AI for supported game modi. Feature extraction converts 
 
 ### Start up Game + Bot Service
 - run `git clone gammonx-server`
-- run `git clone gammonx-wildbg`
 - run `cd gammonx-server`
 - run `docker compose up game-service --build`
 - use GammonX API `http://localhost:8080/game/matches/join`
-- wildbg bot API `http://localhost:8082/bot/wildbg/`
+- mars bot API `http://localhost:8083/bot/mars/`
 
 ### Start up Game + Bot + SQS + Lambda Services
 - run `git clone gammonx-server`
-- run `git clone gammonx-wildbg`
 - run `cd gammonx-server`
 - enable `WORK_QUEUE__*` env variables for `game-service` container
 - run `./lambda-zip.sh` in WSL/git bash shell
 - run `docker compose up game-service aws-stack-local --build`
 - run `docker compose up dynamodb-admin` for db access
 - use GammonX API `http://localhost:8080/game/matches/join`
-- wildbg bot API `http://localhost:8082/bot/wildbg/`
+- mars bot API `http://localhost:8083/bot/mars/`
+
+### Run the Mars vs. WildBG Benchmark (optional)
+The game server always plays the mars bot; wildbg is kept only as an external
+yardstick for `BotServiceTests.MarsCanPlayAgainstWildBg`.
+- run `git clone gammonx-wildbg` alongside `gammonx-server`
+- run `docker compose up wildbg-service mars-service --build`
+- run the test suite; the benchmark expects wildbg at `http://localhost:8082/bot/wildbg/`
 
 ### Start up Lambda Container
 - run `cd gammonx-server`

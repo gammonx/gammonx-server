@@ -16,13 +16,10 @@ on:
         required: true
         default: all
         type: choice
-        options: [all, game, lambda, wildbg]
+        options: [all, game, lambda, mars]
 
 env:
   AWS_REGION: eu-central-1
-  # Pinned ref of gammonx-wildbg to check out. Override on dispatch by editing here,
-  # or pin to a tag/sha for reproducible deploys.
-  WILDBG_REF: main
 
 jobs:
   push:
@@ -32,15 +29,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: gammonx-server
-
-      - name: Checkout gammonx-wildbg
-        if: ${{ inputs.service == 'all' || inputs.service == 'wildbg' || github.event_name == 'push' }}
-        uses: actions/checkout@v4
-        with:
-          repository: gammonx/gammonx-wildbg
-          ref: ${{ env.WILDBG_REF }}
-          path: gammonx-wildbg
-          token: ${{ secrets.WILDBG_REPO_TOKEN || github.token }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,5 +45,4 @@ jobs:
         run: |
           scripts/push-images.sh \
             --env "${{ inputs.env || 'dev' }}" \
-            --service "${{ inputs.service || 'all' }}" \
-            --wildbg-path "${{ github.workspace }}/gammonx-wildbg"
+            --service "${{ inputs.service || 'all' }}"
