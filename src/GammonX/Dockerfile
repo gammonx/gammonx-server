@@ -97,6 +97,10 @@ ENTRYPOINT ["dotnet", "GammonX.Mars.Server.dll"]
 ARG TARGETARCH
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS lambda-build
 ARG BUILD_CONFIGURATION=Release
+# Set by buildx from --platform (amd64|arm64). The publish is self-contained, so
+# the RID must track the target image or the binary won't exec -- the lambdas are
+# declared architectures = ["arm64"] in iaas.
+ARG TARGETARCH
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /src
 COPY ["src/GammonX/GammonX.Lambda/GammonX.Lambda.csproj", "GammonX.Lambda/"]
@@ -113,5 +117,9 @@ FROM public.ecr.aws/lambda/provided:al2023 AS lambda-runtime
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
 WORKDIR /var/task
 COPY --from=lambda-build /build /var/task/
-RUN chmod +x /var/task/GammonX.Lambda && ln -s /var/task/GammonX.Lambda /var/task/bootstrap
+# The base image ships /var/runtime/bootstrap as a dispatcher that execs
+# /var/task/bootstrap (or /opt/bootstrap) and errors if neither exists, so hook
+# in there instead of replacing it -- overwriting it fails with "File exists".
+RUN chmod +x /var/task/GammonX.Lambda \
+ && ln -s /var/task/GammonX.Lambda /var/task/bootstrap
 CMD ["bootstrap"]
