@@ -51,6 +51,13 @@ RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
 WORKDIR /app
 EXPOSE 8083
 
+# curl for the HEALTHCHECK below and the ECS container health check in
+# gammonx-iaas. The debian aspnet image ships neither curl nor wget, so without
+# this both probes fall back to a bare TCP connect (or fail outright).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
 # create an unprivileged user
 ARG APP_UID=1001
 ARG APP_GID=1001
@@ -87,6 +94,7 @@ ENTRYPOINT ["dotnet", "GammonX.Mars.Server.dll"]
 ### LAMBDA CONTAINER
 #####################################################
 
+ARG TARGETARCH
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS lambda-build
 ARG BUILD_CONFIGURATION=Release
 RUN echo "BUILD for ${BUILD_CONFIGURATION}..."
@@ -96,12 +104,14 @@ COPY ["src/GammonX/Directory.Build.props", "GammonX.Lambda/"]
 RUN dotnet restore "./GammonX.Lambda/GammonX.Lambda.csproj"
 COPY "src/GammonX/" .
 WORKDIR "/src/GammonX.Lambda"
-RUN dotnet publish -c ${BUILD_CONFIGURATION} -o /build --self-contained true -r linux-x64
+RUN RID="linux-$([ "${TARGETARCH}" = "arm64" ] && echo arm64 || echo x64)" \
+ && echo "publishing for ${RID}" \
+ && dotnet publish -c ${BUILD_CONFIGURATION} -o /build --self-contained true -r "${RID}"
 
 # we use custom runtime container in order to setup DI
 FROM public.ecr.aws/lambda/provided:al2023 AS lambda-runtime
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
 WORKDIR /var/task
 COPY --from=lambda-build /build /var/task/
-RUN ln -s /var/task/GammonX.Lambda /var/runtime/bootstrap
+RUN chmod +x /var/task/GammonX.Lambda && ln -s /var/task/GammonX.Lambda /var/task/bootstrap
 CMD ["bootstrap"]
