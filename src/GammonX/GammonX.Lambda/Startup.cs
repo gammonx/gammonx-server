@@ -77,6 +77,7 @@ namespace GammonX.Lambda
 
 			services.AddKeyedTransient<IApiLambdaHandler, GetPlayerRatingHandler>(typeof(GetPlayerRatingHandler));
 			services.AddKeyedTransient<IApiLambdaHandler, GetPlayerGamesHandler>(typeof(GetPlayerGamesHandler));
+			services.AddKeyedTransient<IApiLambdaHandler, AuthConfigHandler>(typeof(AuthConfigHandler));
 			// -------------------------------------------------------------------------------
 			// DATABASE SETUP
 			// -------------------------------------------------------------------------------
