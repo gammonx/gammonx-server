@@ -111,6 +111,7 @@ namespace GammonX.Lambda.Services
 			{
 				{ ("GET", "/players/{id}/rating/{variant}"), typeof(GetPlayerRatingHandler) },
 				{ ("GET", "/players/{id}/games"), typeof(GetPlayerGamesHandler) },
+				{ ("GET", "/auth/config"), typeof(AuthConfigHandler) },
 			};
     }
 }
