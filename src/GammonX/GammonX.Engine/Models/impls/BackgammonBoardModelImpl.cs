@@ -18,6 +18,8 @@ namespace GammonX.Engine.Models
             BearOffCountBlack = contract.BearOffCountBlack;
             HomeBarCountWhite = contract.HomeBarCountWhite;
             HomeBarCountBlack = contract.HomeBarCountBlack;
+            DoublingCubeValue = contract.DoublingCubeValue;
+            DoublingCubeOwner = contract.DoublingCubeOwner;
         }
 
         public BackgammonBoardModelImpl()
