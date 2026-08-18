@@ -171,8 +171,8 @@ namespace GammonX.Models.Tests
             Assert.Equal(4, cubeEvents.Count);
             Assert.Equal(2, cubeEvents.Count(ce => ce.Action == CubeAction.Offer));
             Assert.Equal(2, cubeEvents.Count(ce => ce.Action == CubeAction.Take));
-            Assert.Equal(0, game.DoubleOfferCount(whitePlayer));
-            Assert.Equal(2, game.DoubleOfferCount(blackPlayer));
+            Assert.Equal(1, game.DoubleOfferCount(whitePlayer));
+            Assert.Equal(1, game.DoubleOfferCount(blackPlayer));
         }
 
         [Fact]

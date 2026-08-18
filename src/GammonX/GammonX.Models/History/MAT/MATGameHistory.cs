@@ -49,7 +49,7 @@ namespace GammonX.Models.History.MAT
         {
             int doubleOfferCount = Events
                 .OfType<MatCubeEvent>()
-                .Count(e => e.PlayerId == playerId && e.Action == CubeAction.Double);
+                .Count(e => e.PlayerId == playerId && e.Action == CubeAction.Offer);
             return doubleOfferCount;
         }
 
