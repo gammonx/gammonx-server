@@ -87,12 +87,7 @@ namespace GammonX.Mars.Training
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequencesForTraining(
-                    evalRequest,
-                    cheapContactWeights,
-                    contactWeights,
-                    raceWeights,
-                    500);
+                var result = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
 
                 if (result.Count != 0)
                 {
@@ -212,7 +207,7 @@ namespace GammonX.Mars.Training
                     // wildbg turn
                     nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
                     var boardContract = board.ToContract(false);
-                    evalResultModel = evalService.EvalMoveSequence(boardContract, isWhite, nextMoves, cheapContactWeights, contactWeights, raceWeights);
+                    evalResultModel = evalService.EvalMoveSequence(boardContract, isWhite, nextMoves, contactWeights);
                 }
                 else
                 {
@@ -226,12 +221,7 @@ namespace GammonX.Mars.Training
                         Rolls = rolls,
                         BotLevel = BotLevel.Hard
                     };
-                    var result = evalService.EvalMoveSequencesForTraining(
-                        evalRequest,
-                        cheapContactWeights,
-                        contactWeights,
-                        raceWeights,
-                        500);
+                    var result = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
 
                     if (result.Count != 0)
                     {
@@ -353,13 +343,7 @@ namespace GammonX.Mars.Training
 
             var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
             // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-            return evalService.EvalMoveSequence(
-                boardContract,
-                isWhite,
-                selectedMove,
-                cheapContactWeights,
-                contactWeights,
-                raceWeights);
+            return evalService.EvalMoveSequence(boardContract, isWhite, selectedMove, contactWeights);
         }
 
         private static MatchVariant From(GameModus modus)

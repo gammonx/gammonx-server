@@ -106,11 +106,11 @@ namespace GammonX.Mars.Training
                         TournamentGameResult? result = null;
                         if (serviceB != null)
                         {
-                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights);
                         }
                         else
                         {
-                            result = PlayAgainstBotServiceGame(modus, serviceA, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                            result = PlayAgainstBotServiceGame(modus, serviceA, modelAIsWhite, contactWeights);
                         }
 
                         lock (lockObj)
@@ -176,14 +176,7 @@ namespace GammonX.Mars.Training
                 winRateHistory);
         }
 
-        private static TournamentGameResult PlayGame(
-            GameModus modus,
-            INeuralEvalService serviceA,
-            INeuralEvalService serviceB,
-            bool modelAIsWhite,
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+        private static TournamentGameResult PlayGame(GameModus modus, INeuralEvalService serviceA, INeuralEvalService serviceB, bool modelAIsWhite, ContactWeightModel contactWeights)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -220,12 +213,7 @@ namespace GammonX.Mars.Training
                 // we want to eliminate any first-mover advantage by alternating colors every game
                 var activeService = (isWhite == modelAIsWhite) ? evalServiceA : evalServiceB;
 
-                var result = activeService.EvalMoveSequences(
-                    evalRequest,
-                    cheapContactWeights,
-                    contactWeights,
-                    raceWeights,
-                    150);
+                var result = activeService.EvalMoveSequences(evalRequest, contactWeights);
 
                 foreach (var move in result.Moves)
                 {
@@ -245,13 +233,7 @@ namespace GammonX.Mars.Training
             return new TournamentGameResult(whiteWon, turnCount, false);
         }
 
-        private static TournamentGameResult PlayAgainstBotServiceGame(
-            GameModus modus,
-            INeuralEvalService neuralService,
-            bool modelIsWhite,
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+        private static TournamentGameResult PlayAgainstBotServiceGame(GameModus modus, INeuralEvalService neuralService, bool modelIsWhite, ContactWeightModel contactWeights)
         {
             // TODO: enable cube play for backgammon
             var diceFactory = new DiceServiceFactory();
@@ -324,12 +306,7 @@ namespace GammonX.Mars.Training
                         Rolls = rolls,
                         BotLevel = BotLevel.Hard
                     };
-                    nextMoves = evalService.EvalMoveSequences(
-                        evalRequest,
-                        cheapContactWeights,
-                        contactWeights,
-                        raceWeights,
-                        150);
+                    nextMoves = evalService.EvalMoveSequences(evalRequest, contactWeights);
                 }
 
                 var hasWon = false;

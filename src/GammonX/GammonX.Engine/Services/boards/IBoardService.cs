@@ -107,8 +107,7 @@ namespace GammonX.Engine.Services
         ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls);
 
 		/// <summary>
-		/// Calculates all legal moves for the given player based on the current board state
-		/// and the given dice rolls.
+		/// Calculates all legal moves for the given player based on the current board state and the given dice rolls.
 		/// </summary>
         /// <remarks>
         /// The moves within a move sequences must not be reordered. They have to be played in the exact same
@@ -120,6 +119,18 @@ namespace GammonX.Engine.Services
 		/// <returns>An array of move sequences.</returns>
 		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
 
+        /// <summary>
+        /// Calculates all legal moves for the given player based on the current board state and the given dice rolls.
+        /// </summary>
+        /// <remarks>
+        /// Only returns move sequences which results in a unique end board state.
+        /// </remarks>
+        /// <param name="model">Board model to operate on.</param>
+        /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
+        /// <param name="rolls">1:n Dice roll values</param>
+        /// <returns>An array of move sequences.</returns>
+        MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
+        
 		/// <summary>
 		/// Explores legal move sequences and invokes the <paramref name="callback"/> for each one.
 		/// Stops exploration early when the callback returns <c>true</c>, indicating satisfaction.

@@ -5,6 +5,8 @@ using GammonX.Models.Enums;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 
+// ReSharper disable NonReadonlyMemberInGetHashCode
+
 namespace GammonX.Engine.Models
 {
 	/// <summary>
@@ -17,19 +19,13 @@ namespace GammonX.Engine.Models
 		/// Gets a list of plays. Contains 4 moves for a pasch and 2 moves for 2 different dice values.
 		/// </summary>
 		[DataMember(Name = "moves")]
-		public List<MoveModel> Moves { get; set; } = new();
+		public List<MoveModel> Moves { get; set; } = [];
 
 		/// <summary>
 		/// Gets a list of used dices in order to execute <see cref="Moves"/>.
 		/// </summary>
 		[IgnoreDataMember]
-		public List<int> UsedDices { get; } = new();
-
-		public string SequenceKey()
-		{
-			var movesPart = string.Join(";", Moves.Select(m => $"{m.From}->{m.To}"));
-			return movesPart;
-		}
+		public List<int> UsedDices { get; } = [];
 
 		public MoveSequenceModel DeepClone()
 		{
@@ -98,13 +94,13 @@ namespace GammonX.Engine.Models
 		/// Gets the from index.
 		/// </summary>
 		[DataMember(Name = "from")]
-		public int From { get; set; } = new();
+		public int From { get; set; }
 
 		/// <summary>
 		/// Gets the to index.
 		/// </summary>
 		[DataMember(Name = "to")]
-		public int To { get; set; } = new();
+		public int To { get; set; }
 
 		public MoveModel(int from, int to)
 		{
@@ -141,7 +137,10 @@ namespace GammonX.Engine.Models
         // <inheritdoc />
         public override int GetHashCode()
         {
-			return base.GetHashCode();
+            var hash = new HashCode();
+			hash.Add(From);
+			hash.Add(To);
+            return hash.ToHashCode();
         }
     }
 }

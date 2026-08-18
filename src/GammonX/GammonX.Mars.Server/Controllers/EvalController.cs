@@ -67,17 +67,10 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
-                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
-
-                var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
+                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus); ;
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
-                var cheapContactWeights = EvalWeights.GetCheapContactWeights(request.Modus);
-
-                raceWeights.Validate();
                 contactWeights.Validate();
-                cheapContactWeights.Validate();
-
-                var boardScore = evalService.EvalBoardState(request, cheapContactWeights, contactWeights, raceWeights);
+                var boardScore = evalService.EvalBoardState(request, contactWeights);
                 var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -102,15 +95,11 @@ namespace GammonX.Mars.Server.Controllers
 
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
 
-                var raceWeights = EvalWeights.GetRaceWeights(request.Modus);
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
-                var cheapContactWeights = EvalWeights.GetCheapContactWeights(request.Modus);
 
-                raceWeights.Validate();
                 contactWeights.Validate();
-                cheapContactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequences(request, cheapContactWeights, contactWeights, raceWeights, 150);
+                var bestMove = evalService.EvalMoveSequences(request, contactWeights);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };

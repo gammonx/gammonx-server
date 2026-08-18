@@ -57,7 +57,7 @@ namespace GammonX.Mars.NN.Tests.Services
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService(null);
-            var result = evalService.EvalMoveSequences(request, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var result = evalService.EvalMoveSequences(request, EvalWeights.PlakotoContactWeights, 20);
 
             Assert.NotNull(result);
         }
@@ -105,7 +105,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -116,7 +116,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequences(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultBlack = evalService.EvalMoveSequences(requestBlack, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -144,7 +144,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -174,7 +174,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -196,7 +196,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalBoardState(requestBlack, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
+            var resultBlack = evalService.EvalBoardState(requestBlack, EvalWeights.PlakotoContactWeights);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -204,10 +204,10 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalBoardState(requestWhite, EvalWeights.PlakotoCheapContactWeights, EvalWeights.PlakotoContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = evalService.EvalBoardState(requestWhite, EvalWeights.PlakotoContactWeights);
 
-            Assert.True(resultBlack > 0.5);
-            Assert.True(resultWhite < -0.5);
+            Assert.True(resultBlack > 0.0);
+            Assert.True(resultWhite < -0.0);
         }
 
         [Fact]

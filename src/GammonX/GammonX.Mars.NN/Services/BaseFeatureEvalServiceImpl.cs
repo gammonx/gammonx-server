@@ -7,8 +7,6 @@ using GammonX.Mars.NN.Models;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
-using System.Buffers;
-
 namespace GammonX.Mars.NN.Services
 {
     // <inheritdoc />
@@ -109,7 +107,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights)
         {
             var boardContract = contract.Board;
             var board = BoardService.CreateBoard(boardContract);
@@ -119,6 +117,7 @@ namespace GammonX.Mars.NN.Services
             var eval = CalculateEvalModel(board, isWhite, isRace);
 
             double score;
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (_neuralEvalService != null)
             {
                 var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
@@ -138,21 +137,21 @@ namespace GammonX.Mars.NN.Services
             }
             else
             {
-                score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
             }
 
             return score;
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequences(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public MoveSequenceModel EvalMoveSequences(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
         {
-            var evalMoves = EvalMoveSequencesForTraining(contract, cheapContactWeights, contactWeights, raceWeights, maxCandidates);
+            var evalMoves = EvalMoveSequencesForTraining(contract, contactWeights, maxCandidates);
             return evalMoves.Select(contract.BotLevel);
         }
 
         // <inheritdoc />
-        public FinalEvalResultModels EvalMoveSequencesForTraining(EvalMoveRequestContract contract, ContactWeightModel cheapContactWeights, ContactWeightModel contactWeights, RaceWeightModel raceWeights, int maxCandidates)
+        public FinalEvalResultModels EvalMoveSequencesForTraining(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -164,23 +163,9 @@ namespace GammonX.Mars.NN.Services
             if (legalMovesSeq.Length == 0)
                 return new FinalEvalResultModels();
 
-            // we first compute features based on linear weighting to rank candidates
-            var pool = ArrayPool<CheapEvalResult>.Shared;
-            var candidates = GetCandidatesByCheapScore(board, legalMovesSeq, isWhite, cheapContactWeights, raceWeights, pool);
-            try
-            {
-                var identicalTopEvalCandidates = candidates.Count(c => Math.Abs(c.CheapScore - candidates[0].CheapScore) < 1e-9);
-                // we want at least all candidates with the same cheap score to be fully evaluated
-                // in this case we overwrite the given maxCandidates count
-                var evalCount = Math.Min(Math.Max(maxCandidates, identicalTopEvalCandidates), candidates.Count);
-
-                var evalResult = GetCandidatesByFullEval(board, legalMovesSeq, isWhite, candidates, contactWeights, raceWeights, evalCount);
-                return new FinalEvalResultModels(evalResult);
-            }
-            finally
-            {
-                pool.Return(candidates.Array!);
-            }
+            var evalCount = Math.Min(maxCandidates ?? legalMovesSeq.Length, legalMovesSeq.Length);
+            var evalResult = GetCandidatesByEval(board, legalMovesSeq, isWhite, contactWeights, evalCount);
+            return new FinalEvalResultModels(evalResult);
         }
 
         // <inheritdoc />
@@ -193,63 +178,33 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public FinalEvalResultModel EvalMoveSequence(
-            BoardModelContract contract,
-            bool isWhite,
-            MoveSequenceModel moveSequence,
-            ContactWeightModel cheapContactWeights,
-            ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights)
+        public FinalEvalResultModel EvalMoveSequence(BoardModelContract contract, bool isWhite, MoveSequenceModel moveSequence, ContactWeightModel contactWeights)
         {
             var board = BoardService.CreateBoard(contract);
             var moveSequences = new[] { moveSequence };
-            var pool = ArrayPool<CheapEvalResult>.Shared;
-            var candidates = GetCandidatesByCheapScore(board, moveSequences, isWhite, cheapContactWeights, raceWeights, pool);
-            try
-            {
-                const int evalCount = 1;
-                var evalResult = GetCandidatesByFullEval(board, moveSequences, isWhite, candidates, contactWeights, raceWeights, evalCount);
-                return evalResult.First();
-            }
-            finally
-            {
-                pool.Return(candidates.Array!);
-            }
+            const int evalCount = 1;
+            var evalResult = GetCandidatesByEval(board, moveSequences, isWhite, contactWeights, evalCount);
+            return evalResult.First();
         }
 
-        private IEnumerable<FinalEvalResultModel> GetCandidatesByFullEval(
+        private IEnumerable<FinalEvalResultModel> GetCandidatesByEval(
             IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
-            ArraySegment<CheapEvalResult> candidates,
             ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights,
             int evalCount)
         {
             var evals = new List<FinalEvalResultModel>();
 
-            for (int i = 0; i < evalCount; i++)
+            for (var idx = 0; idx < evalCount; idx++)
             {
-                var idx = candidates[i].Index;
                 var moveSeq = legalMovesSeq[idx];
-
-                if (candidates[i].IsRace)
-                {
-                    // race score were already calculated
-                    if (evals.Count == 0 || candidates[i].CheapScore > evals[0].Score)
-                    {
-                        var cheapEvalResultResult = new FinalEvalResultModel(candidates[i].CheapScore, moveSeq, candidates[i].EvalResult);
-                        evals.Add(cheapEvalResultResult);
-                    }
-                    continue;
-                }
 
                 foreach (var move in moveSeq.Moves)
                 {
                     BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                 }
 
-                // we now calculate the more expensive contact features
                 var eval = CalculateEvalModel(board, isWhite, false);
                 var evalModel = NormalizedEvalResultModel.From(eval);
                 double score;
@@ -273,7 +228,7 @@ namespace GammonX.Mars.NN.Services
                 else
                 {
                     // we calculate score by linear weighting model
-                    score = EvalScoreCalculator.CalculateScore(eval, contactWeights, raceWeights);
+                    score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
                 }
 
                 var reversedMoveSeq = moveSeq.DeepClone();
@@ -291,46 +246,6 @@ namespace GammonX.Mars.NN.Services
             return evals.OrderByDescending(e => e.Score);
         }
 
-        private ArraySegment<CheapEvalResult> GetCandidatesByCheapScore(
-            IBoardModel board,
-            MoveSequenceModel[] legalMovesSeq,
-            bool isWhite,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights,
-            ArrayPool<CheapEvalResult> pool)
-        {
-            var buffer = pool.Rent(legalMovesSeq.Length);
-            for (int index = 0; index < legalMovesSeq.Length; index++)
-            {
-                var moveSeq = legalMovesSeq[index];
-                foreach (var move in moveSeq.Moves)
-                {
-                    BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
-                }
-
-                var isRace = RaceFeature.Eval(board, isWhite);
-                var eval = CalculateCheapEvalModel(board, isWhite, isRace);
-
-                var reversedMoveSeq = moveSeq.DeepClone();
-                reversedMoveSeq.Moves.Reverse();
-                foreach (var undoMove in reversedMoveSeq.Moves)
-                {
-                    // we manually undo the moves in order to reduce instance allocations
-                    BoardService.UndoMove(board, undoMove, isWhite);
-                }
-
-                var cheapScore = EvalScoreCalculator.CalculateCheapScore(eval, cheapContactWeights, raceWeights);
-                var cheapEvalResult = new CheapEvalResult(cheapScore.Item2, index, isRace, cheapScore.Item1);
-                buffer[index] = cheapEvalResult;
-            }
-
-            // we sort by cheap score descending and only fully evaluate the top N contact candidates.
-            Array.Sort(buffer, 0, legalMovesSeq.Length, CheapEvalResult.DescendingComparer.Instance);
-            return new ArraySegment<CheapEvalResult>(buffer, 0, legalMovesSeq.Length);
-        }
-
         protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace);
-
-        protected abstract EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace);
     }
 }

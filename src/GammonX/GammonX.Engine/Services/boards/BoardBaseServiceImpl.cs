@@ -23,13 +23,18 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public virtual IBoardModel CreateBoard(BoardModelContract contract)
         {
-            throw new NotImplementedException();
+            throw new InvalidOperationException("Cannot create object of abstract class");
         }
 
         // <inheritdoc />
         public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
+            // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
+            var sequences = sequencesByBoardHash
+                .Select(sbbh => sbbh.Item2)
+                .ToHashSet(_moveSequenceModelComparer)
+                .ToList();
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var moves = ConvertToFlattenedMoves(allowed, model, isWhite);
             return moves.Select(m => new ValueTuple<int, int>(m.From, m.To)).ToArray();
@@ -38,7 +43,31 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequences = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
+            // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
+            var sequences = sequencesByBoardHash
+                .Select(sbbh => sbbh.Item2)
+                .ToHashSet(_moveSequenceModelComparer)
+                .ToList();
+            var allowed = FilterSequencesByDiceRules(sequences, rolls);
+            var unique = allowed.ToHashSet(_moveSequenceModelComparer);
+            return unique.ToArray();
+        }
+
+        // <inheritdoc />
+        public MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
+        {
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
+            // We only return move sequences which are unique in their board state when the sequence was played
+            var sequences = new List<MoveSequenceModel>();
+            var seen = new HashSet<int>();
+            foreach (var item in sequencesByBoardHash)
+            {
+                if (seen.Add(item.Item1))
+                {
+                    sequences.Add(item.Item2);
+                }
+            }
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
             return unique.ToArray();
@@ -274,44 +303,6 @@ namespace GammonX.Engine.Services
                 return true;
             return false;
         }
-
-        /// <summary>
-        /// Applies the dice rules to the given legal moves and returns only those moves.
-        /// </summary>
-        /// <param name="legalMoves">Legal moves to evaluate.</param>
-        /// <param name="rolls">Rolled dices.</param>
-        /// <returns>A tuple array containing all legal moves from to.</returns>
-        protected virtual ValueTuple<int, int>[] ApplyDiceRules(ValueTuple<int, int>[] legalMoves, int[] rolls)
-        {
-            // only relevant for two dice rolls
-            if (rolls.Length != 2)
-                return legalMoves;
-
-            int maxRoll = rolls.Max();
-            int combined = rolls.Sum();
-
-            // are there any combined moves (e.g. 0 > 3 for {1,2})
-            var combinedMoves = legalMoves
-                .Where(m => Math.Abs(m.Item2 - m.Item1) == combined)
-                .ToArray();
-
-            if (combinedMoves.Length > 0)
-                return combinedMoves;
-
-            // can the rolls be used individually?
-            bool canUseRoll1 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[0]);
-            bool canUseRoll2 = legalMoves.Any(m => Math.Abs(m.Item2 - m.Item1) == rolls[1]);
-
-            // if both rolls can be used, return all legal moves
-            if (canUseRoll1 && canUseRoll2)
-                return legalMoves;
-
-            // otherwise return only moves with the maximum roll
-            return legalMoves
-                .Where(m => Math.Abs(m.Item2 - m.Item1) == maxRoll)
-                .ToArray();
-        }
-
         protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
             // we check first if the given from to move bears the checker off
@@ -443,29 +434,28 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private List<MoveSequenceModel> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
+        private List<(int, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
         {
             var sortedRolls = rolls.ToList();
             sortedRolls.Sort();
-            var results = new List<MoveSequenceModel>();
-            ExploreBoardRecursively(model, isWhite, sortedRolls, new List<MoveModel>(), new List<int>(), results);
-            return results
-                .ToHashSet(_moveSequenceModelComparer)
-                .ToList();
+            var results = new List<(int, MoveSequenceModel)>();
+            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results);
+            return results;
         }
 
         private void ExploreBoardRecursively(
             IBoardModel board,
             bool isWhite,
             List<int> remainingRolls,
-            IEnumerable<MoveModel> currentMoves,
-            IEnumerable<int> usedDices,
-            List<MoveSequenceModel> results)
+            List<MoveModel> currentMoves,
+            List<int> usedDices,
+            List<(int, MoveSequenceModel)> results)
         {
-            bool anyMovePossible = false;
+            var anyMovePossible = false;
+
             for (int i = 0; i < remainingRolls.Count; i++)
             {
-                int die = remainingRolls[i];
+                var die = remainingRolls[i];
                 // skip duplicate dice values — identical values at adjacent indices
                 // produce identical sub-trees since the remaining rolls stay sorted
                 if (i > 0 && die == remainingRolls[i - 1])
@@ -497,10 +487,13 @@ namespace GammonX.Engine.Services
 
             if (!anyMovePossible && currentMoves.Any())
             {
-                var seq = new MoveSequenceModel();
-                seq.Moves.AddRange(currentMoves);
-                seq.UsedDices.AddRange(usedDices);
-                results.Add(seq);
+                var moveSeq = new MoveSequenceModel();
+                moveSeq.Moves.AddRange(currentMoves);
+                moveSeq.UsedDices.AddRange(usedDices);
+                // TODO: implement proper hash in base models
+                var boardHash = board.Fields.Aggregate(0, HashCode.Combine);
+                // we allow the same end board hash because in some cases we want to return all known move combinations
+                results.Add(new ValueTuple<int, MoveSequenceModel>(boardHash, moveSeq));
             }
         }
 
@@ -599,13 +592,13 @@ namespace GammonX.Engine.Services
             int totalDice = rolls.Length;
             int maxRoll = rolls.Max();
 
-            var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice);
+            var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice).ToList();
             if (usingAll.Any())
                 return usingAll;
 
             // no sequence has used all the dice -> only sequences are allowed that
             // who have used at least the highest die
-            var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll));
+            var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll)).ToList();
             if (usingMax.Any())
                 return usingMax;
             // we return all found moves if the max roll can not be used at all
@@ -680,12 +673,11 @@ namespace GammonX.Engine.Services
             if (partialCombinedMoves)
             {
                 // check individual moves and adopt them if necessary
-                for (int i = 0; i < seq.Moves.Count; i++)
+                foreach (var move in seq.Moves)
                 {
-                    if (initialMovableFields.Contains(seq.Moves[i].From))
+                    if (initialMovableFields.Contains(move.From))
                     {
-                        var m = seq.Moves[i];
-                        set.Add((m.From, m.To));
+                        set.Add((move.From, move.To));
                     }
                 }
             }

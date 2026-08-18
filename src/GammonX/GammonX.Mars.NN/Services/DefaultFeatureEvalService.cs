@@ -44,89 +44,29 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
         {
-            EvalResultModel eval;
-            if (isRace)
+            EvalResultModel eval = new EvalResultModel
             {
-                // skip expensive features in race positions
-                eval = new EvalResultModel()
-                {
-                    Race = true,
-                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
-                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
-                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
-                };
-            }
-            else
-            {
-                eval = new EvalResultModel()
-                {
-                    Race = false,
-                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
-                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
-                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
-                    MaxPrimeLengthPlayer = _maxPrimeLengthFeature.Eval(board, isWhite),
-                    MaxPrimeLengthOpp = _maxPrimeLengthFeature.Eval(board, !isWhite),
-                    HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
-                    HomebarCountOpp = _homebarCountFeature.Eval(board, !isWhite),
-                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
-                    BlotCount = _blotCountFeature.Eval(board, isWhite),
-                    AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
-                    AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
-                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
-                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
-                    AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
-                    AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
-                    AverageGapSizePlayer = _averageGapSizeFeature.Eval(board, isWhite),
-                    AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
-                    CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
-                    CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
-                };
-            }
-
-            return eval;
-        }
-
-        // <inheritdoc />
-        protected override EvalResultModel CalculateCheapEvalModel(IBoardModel board, bool isWhite, bool isRace)
-        {
-            EvalResultModel eval;
-            if (isRace)
-            {
-                // skip expensive probability features in race positions
-                eval = new EvalResultModel()
-                {
-                    Race = true,
-                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
-                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
-                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
-                };
-            }
-            else
-            {
-                eval = new EvalResultModel()
-                {
-                    Race = false,
-                    PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
-                    PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
-                    PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
-                    MaxPrimeLengthPlayer = _maxPrimeLengthFeature.Eval(board, isWhite),
-                    MaxPrimeLengthOpp = _maxPrimeLengthFeature.Eval(board, !isWhite),
-                    HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
-                    HomebarCountOpp = _homebarCountFeature.Eval(board, !isWhite),
-                    BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
-                    BlotCount = _blotCountFeature.Eval(board, isWhite),
-                    AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
-                    AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
-                    AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
-                    AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
-                    AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
-                    AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
-                    AverageGapSizePlayer = _averageGapSizeFeature.Eval(board, isWhite),
-                    AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
-                    CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
-                    CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
-                };
-            }
+                Race = false,
+                PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
+                PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
+                PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
+                MaxPrimeLengthPlayer = _maxPrimeLengthFeature.Eval(board, isWhite),
+                MaxPrimeLengthOpp = _maxPrimeLengthFeature.Eval(board, !isWhite),
+                HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
+                HomebarCountOpp = _homebarCountFeature.Eval(board, !isWhite),
+                BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
+                BlotCount = _blotCountFeature.Eval(board, isWhite),
+                AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
+                AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
+                AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
+                AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
+                AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
+                AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
+                AverageGapSizePlayer = _averageGapSizeFeature.Eval(board, isWhite),
+                AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
+                CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
+                CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
+            };
 
             return eval;
         }

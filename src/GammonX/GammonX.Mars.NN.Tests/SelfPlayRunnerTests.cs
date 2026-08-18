@@ -51,9 +51,7 @@ namespace GammonX.Mars.NN.Tests
 
                 var result = evalService.EvalMoveSequences(
                     evalRequest,
-                    EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
-                    EvalWeights.GetRaceWeights(modus),
                     150);
 
                 if (result.Moves.Count != 0)
@@ -115,9 +113,7 @@ namespace GammonX.Mars.NN.Tests
 
                 var result = evalService.EvalMoveSequences(
                     evalRequest,
-                    EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
-                    EvalWeights.GetRaceWeights(modus),
                     150);
 
                 if (result.Moves.Count != 0)
@@ -181,9 +177,7 @@ namespace GammonX.Mars.NN.Tests
 
                 var result = evalService.EvalMoveSequences(
                     evalRequest,
-                    EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
-                    EvalWeights.GetRaceWeights(modus),
                     150);
 
                 if (result.Moves.Count != 0)
@@ -248,9 +242,7 @@ namespace GammonX.Mars.NN.Tests
 
                 var result = evalService.EvalMoveSequences(
                     evalRequest,
-                    EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
-                    EvalWeights.GetRaceWeights(modus),
                     150);
 
                 if (result.Moves.Count != 0)
@@ -367,9 +359,7 @@ namespace GammonX.Mars.NN.Tests
 
                 var result = evalService.EvalMoveSequences(
                     evalMoveReq,
-                    EvalWeights.GetCheapContactWeights(modus),
                     EvalWeights.GetContactWeights(modus),
-                    EvalWeights.GetRaceWeights(modus),
                     150);
 
                 if (result.Moves.Count != 0)
