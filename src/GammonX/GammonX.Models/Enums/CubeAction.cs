@@ -1,5 +1,8 @@
 ﻿namespace GammonX.Models.Enums
 {
+    /// <summary>
+    /// Provides all well known actions a player can take with the doubling cube in backgammon.
+    /// </summary>
     public enum CubeAction
     {
         /// <summary>
