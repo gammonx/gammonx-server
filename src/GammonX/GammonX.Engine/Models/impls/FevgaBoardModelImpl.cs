@@ -106,6 +106,21 @@ namespace GammonX.Engine.Models
 			}
 			else
 			{
+				// we return 24 if the checker is moved from the homebar (24 magic number, real index is 11) to the bearoff (100 magic number, real index is 12)
+				if (from == BoardPositions.HomeBarBlack && to == BoardPositions.BearOffBlack)
+				{
+					return 25;
+				}
+				// we return 23 if the checker is moved from the first index (12) to the bearoff
+				if (to == BoardPositions.BearOffBlack && from == StartRangeBlack.Start.Value)
+				{
+					return 24;
+				}
+				// we do some magic conversions between wellknown board positions and the actual indices to calculate the roll correctly
+				if (from == BoardPositions.HomeBarBlack)
+				{
+					from = 11;
+				}
 				if (to == BoardPositions.BearOffBlack)
 				{
 					to = HomeRangeBlack.End.Value + 1;
@@ -115,6 +130,7 @@ namespace GammonX.Engine.Models
 				{
 					from = 11;
 				}
+
 				// black moves forward (wraps from 23 -> 0)
 				int roll = (to - from + Fields.Length) % Fields.Length;
 				return roll;
