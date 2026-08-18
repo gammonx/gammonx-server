@@ -18,12 +18,12 @@ public static class NetTrainer
         string trainCsvPath,
         string valCsvPath,
         string outputModelPath,
-        int epochs = 200,
+        int epochs = 100,
         int batchSize = 4096,
         int producerCount = 1,
         int queueCapacity = 2,
         float learningRate = 1.5e-3f,
-        int earlyStoppingPatience = 25,
+        int earlyStoppingPatience = 11,
         bool shuffleLabels = false)
     {
         var trainStopwatch = Stopwatch.StartNew();
@@ -34,11 +34,9 @@ public static class NetTrainer
         // We convert the csv files to a binary format for faster training, and build an index of row offsets for random access
         var trainBinaryPath = $"{Path.GetFileNameWithoutExtension(trainCsvPath)}.bin";
         var (trainFeatureCount, trainRowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(trainCsvPath, trainBinaryPath, labelCount);
-        // var (trainFeatureCount, trainRowCount, _) = new ValueTuple<int, int, string>(216, 35930605 , "");
         
         var valBinaryPath = $"{Path.GetFileNameWithoutExtension(valCsvPath)}.bin";
         var (valFeatureCount, valRowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(valCsvPath, valBinaryPath, labelCount);
-        // var (valFeatureCount, valRowCount, _) = new ValueTuple<int, int, string>(216, 6340696, "");
 
         var device = cuda.is_available() ? CUDA : CPU;
         Console.WriteLine($"Device: {device}");
@@ -54,8 +52,10 @@ public static class NetTrainer
         model.MoveTo(device);
 
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
-        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 20, gamma: 0.66);
+        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 10, gamma: 0.66);
+        // Reduced BCE trains the model; unreduced BCE supplies row-weighted per-head diagnostics.
         var loss = BCELoss();
+        var diagnosticLoss = BCELoss(reduction: Reduction.None);
 
         Console.WriteLine($"Train={trainRowCount}  Val={valRowCount}");
 
@@ -79,18 +79,18 @@ public static class NetTrainer
             var valBatches = new BinaryBatchEnumerator(valBinaryPath, batchSize, labelCount, valFeatureCount, valOrder, device, valLabelPerm, producerCount, queueCapacity);
 
             model.Train();
-            var trainLoss = RunEpochStreaming(model, optimizer, loss, trainBatches, true);
+            var trainMetrics = RunEpochStreaming(model, optimizer, loss, diagnosticLoss, trainBatches, labelCount, true);
 
             model.Eval();
-            float valLoss;
+            EpochMetricsResult valMetrics;
             using (no_grad())
-                valLoss = RunEpochStreaming(model, optimizer, loss, valBatches, false);
+                valMetrics = RunEpochStreaming(model, optimizer, loss, diagnosticLoss, valBatches, labelCount, false);
 
             var currentLr = optimizer.ParamGroups.First().LearningRate;
 
-            if (valLoss < bestValLoss)
+            if (valMetrics.Loss < bestValLoss)
             {
-                bestValLoss = valLoss;
+                bestValLoss = valMetrics.Loss;
                 bestEpoch = epoch;
                 epochsWithoutImprovement = 0;
                 model.Save(outputModelPath);
@@ -102,7 +102,7 @@ public static class NetTrainer
 
             var marker = epoch == bestEpoch ? " OK" : "";
             epochStopwatch.Stop();
-            Console.WriteLine($@"Epoch {epoch,3}/{epochs}  train_loss={trainLoss:F5}  val_loss={valLoss:F5}  lr={currentLr:G3}  elapsed={epochStopwatch.Elapsed:hh\:mm\:ss}{marker}");
+            Console.WriteLine($@"Epoch {epoch,3}/{epochs}  train_loss={trainMetrics.Loss:F5} [{FormatOutputLosses(trainMetrics.PerOutputLosses, labelCount)}]  val_loss={valMetrics.Loss:F5} [{FormatOutputLosses(valMetrics.PerOutputLosses, labelCount)}]  lr={currentLr:G3}  elapsed={epochStopwatch.Elapsed:hh\:mm\:ss}{marker}");
 
             if (epochsWithoutImprovement >= earlyStoppingPatience)
             {
@@ -119,16 +119,16 @@ public static class NetTrainer
         Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5})");
     }
         
-    private static float RunEpochStreaming(
+    private static EpochMetricsResult RunEpochStreaming(
         INetModel model,
         optim.Optimizer optimizer,
         Loss<Tensor, Tensor, Tensor> loss,
+        Loss<Tensor, Tensor, Tensor> diagnosticLoss,
         IEnumerable<(Tensor features, Tensor labels)> batches,
+        int outputCount,
         bool train)
     {
-        var totalLoss = 0f;
-        var batchCount = 0;
-
+        using var metrics = new EpochMetricsAccumulator(outputCount);
         foreach (var (xBatch, yBatch) in batches)
         {
             using (xBatch)
@@ -144,11 +144,26 @@ public static class NetTrainer
                     optimizer.step();
                 }
 
-                totalLoss += l.item<float>();
-                batchCount++;
+                using (no_grad())
+                {
+                    using var batchElementLosses = diagnosticLoss.forward(pred, yBatch);
+                    using var batchLossSums = outputCount == 1
+                        ? batchElementLosses.sum().reshape([1])
+                        : batchElementLosses.sum(dim: 0);
+                    metrics.Add(batchLossSums, yBatch.shape[0]);
+                }
             }
         }
 
-        return totalLoss / batchCount;
+        return metrics.Complete();
+    }
+
+    private static string FormatOutputLosses(IReadOnlyList<float> losses, int outputCount)
+    {
+        string[] names = outputCount == 1
+            ? ["pWin"]
+            : ["pWin", "pGW", "pBgW", "pGL", "pBgL"];
+
+        return string.Join(", ", names.Zip(losses, (name, value) => $"{name}={value:F5}"));
     }
 }

@@ -36,12 +36,19 @@ namespace GammonX.Mars.Training
         private readonly GameModus _modus;
         private readonly SelfPlayRecorder _recorder;
         private readonly INeuralEvalService? _neuralEvalService;
+        private readonly ExplorationOptions _explorationOptions;
 
-        public SelfPlayRunner(SelfPlayRecorder recorder, GameModus modus, INeuralEvalService? neuralService)
+        public SelfPlayRunner(
+            SelfPlayRecorder recorder,
+            GameModus modus,
+            INeuralEvalService? neuralService,
+            ExplorationOptions? explorationOptions = null)
         {
             _recorder = recorder;
             _modus = modus;
             _neuralEvalService = neuralService;
+            _explorationOptions = explorationOptions ?? new ExplorationOptions();
+            _explorationOptions.Validate();
         }
 
         public SelfPlayRunResult Run(
@@ -89,16 +96,18 @@ namespace GammonX.Mars.Training
 
                 if (result.Count != 0)
                 {
-                    // we use epsilon-greediness to occasionally pick a random legal move
-                    // for exploration and increase the diversity of training samples
-                    // we can start with a higher epsilon in the early turns and decrease it as the game progresses
-                    var effectiveEpsilon = turnCount <= 20 ? 0.25f : 0.05f;
-
-                    var resultToPlay = effectiveEpsilon > 0f
-                        && _neuralEvalService != null
-                        && Random.Shared.NextSingle() < effectiveEpsilon
-                            ? result[Random.Shared.Next(result.Count)]
-                            : result[0]; // best move sequences
+                    var resultToPlay = SelectTrainingMove(
+                        evalService,
+                        boardService,
+                        board,
+                        evalRequest.Board,
+                        isWhite,
+                        rolls,
+                        result,
+                        contactWeights,
+                        cheapContactWeights,
+                        raceWeights,
+                        turnCount);
 
                     foreach (var move in resultToPlay.MoveSequence.Moves)
                     {
@@ -148,6 +157,7 @@ namespace GammonX.Mars.Training
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(From(modus), MatchType.CashGame, matchFactory);
+            var boardService = BoardServiceFactory.Create(modus);
 
             // eval service to test
             var evalService = FeatureEvalServiceFactory.Create(modus, _neuralEvalService!);
@@ -225,16 +235,18 @@ namespace GammonX.Mars.Training
 
                     if (result.Count != 0)
                     {
-                        // we use epsilon-greediness to occasionally pick a random legal move
-                        // for exploration and increase the diversity of training samples
-                        // we can start with a higher epsilon in the early turns and decrease it as the game progresses
-                        var effectiveEpsilon = turnCount <= 20 ? 0.25f : 0.05f;
-
-                        evalResultModel = effectiveEpsilon > 0f
-                                          && _neuralEvalService != null
-                                          && Random.Shared.NextSingle() < effectiveEpsilon
-                            ? result[Random.Shared.Next(result.Count)]
-                            : result[0]; // best move sequences
+                        evalResultModel = SelectTrainingMove(
+                            evalService,
+                            boardService,
+                            board,
+                            evalRequest.Board,
+                            isWhite,
+                            rolls,
+                            result,
+                            contactWeights,
+                            cheapContactWeights,
+                            raceWeights,
+                            turnCount);
 
                         nextMoves = evalResultModel.MoveSequence;
                     }
@@ -299,6 +311,55 @@ namespace GammonX.Mars.Training
             }
 
             return predictionVariance;
+        }
+
+        private FinalEvalResultModel SelectTrainingMove(
+            IFeatureEvalService evalService,
+            IBoardService boardService,
+            IBoardModel board,
+            BoardModelContract boardContract,
+            bool isWhite,
+            int[] rolls,
+            FinalEvalResultModels rankedResults,
+            ContactWeightModel contactWeights,
+            ContactWeightModel cheapContactWeights,
+            RaceWeightModel raceWeights,
+            int turnCount)
+        {
+            var topRankedCount = Math.Min(_explorationOptions.TopRankedCount, rankedResults.Count);
+            var choice = RankAwareExplorationPolicy.Select(
+                turnCount,
+                rankedResults.Count,
+                _neuralEvalService != null,
+                Random.Shared.NextSingle(),
+                _explorationOptions);
+
+            if (choice == ExplorationChoice.Ranked)
+            {
+                var randomIndex = Random.Shared.Next(topRankedCount);
+                var rankedIndex = RankAwareExplorationPolicy.GetRankedCandidateIndex(
+                    rankedResults.Count,
+                    randomIndex,
+                    _explorationOptions);
+                return rankedResults[rankedIndex];
+            }
+
+            if (choice == ExplorationChoice.Greedy)
+                return rankedResults[0];
+
+            var legalMoves = boardService.GetLegalMoveSequences(board, isWhite, rolls);
+            if (legalMoves.Length == 0)
+                return rankedResults[0];
+
+            var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
+            // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
+            return evalService.EvalMoveSequence(
+                boardContract,
+                isWhite,
+                selectedMove,
+                cheapContactWeights,
+                contactWeights,
+                raceWeights);
         }
 
         private static MatchVariant From(GameModus modus)
