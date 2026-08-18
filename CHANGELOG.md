@@ -1,12 +1,15 @@
 # Changelog
 
-## 15.06.2026
+## 18.08.2026
 
 ### NEW
 - cube actions as history events
 
 ### FIXES
-- double offer is always passed in match play after first game?
+- fixed cube eval when using nn model
+- fixed some recover roll quirks in the implementation
+- some fixes in cube eval on edge cases (e.g. re-double)
+- fixed backgammon board contract deserialization
 
 ## 14.06.2026
 

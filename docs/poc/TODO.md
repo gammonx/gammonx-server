@@ -2,7 +2,7 @@
 - see changelog 
 
 ## Active
-- doubling cube to history/stats
+- ?
 
 ## TODO
 - async game/match/rating stat processing by client
