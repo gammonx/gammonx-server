@@ -1,9 +1,12 @@
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Data;
 
 public sealed record GameGroupedSplit<T>(
     IReadOnlyList<T> Training,
     IReadOnlyList<T> Validation);
 
+/// <summary>
+/// Helpers to shuffle games grouped by their game id.
+/// </summary>
 public static class GameGroupedShuffler
 {
     public static GameGroupedSplit<T> SplitByGame<T>(

@@ -158,14 +158,15 @@ namespace GammonX.Mars.NN.Services
             var isWhite = contract.IsWhite;
 
             var board = BoardService.CreateBoard(boardContract);
-            var legalMovesSeq = BoardService.GetLegalMoveSequences(board, isWhite, rolls);
+            // we only evaluate move sequences which result in a unique end board state
+            var legalMovesSeq = BoardService.GetUniqueLegalMoveSequences(board, isWhite, rolls);
 
             if (legalMovesSeq.Length == 0)
-                return new FinalEvalResultModels();
+                return [];
 
             var evalCount = Math.Min(maxCandidates ?? legalMovesSeq.Length, legalMovesSeq.Length);
             var evalResult = GetCandidatesByEval(board, legalMovesSeq, isWhite, contactWeights, evalCount);
-            return new FinalEvalResultModels(evalResult);
+            return [.. evalResult];
         }
 
         // <inheritdoc />

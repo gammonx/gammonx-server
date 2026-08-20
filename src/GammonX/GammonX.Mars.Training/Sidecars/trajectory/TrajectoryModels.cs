@@ -1,6 +1,6 @@
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Sidecars;
 
 /// <summary>
 /// Represents a single position in a trajectory.

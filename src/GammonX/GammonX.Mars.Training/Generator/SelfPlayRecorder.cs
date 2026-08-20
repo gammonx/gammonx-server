@@ -2,10 +2,12 @@
 
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
+using GammonX.Mars.Training.Sidecars;
+using GammonX.Mars.Training.Validation;
 
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Training
+namespace GammonX.Mars.Training.Generator
 {
     /// <summary>
     /// Records (features, outcome) pairs during self-play for NN training.
@@ -20,6 +22,7 @@ namespace GammonX.Mars.Training
         private readonly INeuralEvalService? _neuralEvalService; // null = linear training weights
         private readonly float _lambda;
         private readonly List<TrajectoryPosition> _positions = [];
+        private ConstraintMetricsAccumulator? _constraintMetrics;
 
         public Guid GameId { get; } = Guid.NewGuid();
 
@@ -28,6 +31,8 @@ namespace GammonX.Mars.Training
         /// Only meaningful when a neural eval service is present; otherwise all values are 0.5.
         /// </summary>
         public IReadOnlyList<float[]> NetPredictions => [.. _positions.Select(p => p.Prediction)];
+
+        public ConstraintMetricsResult? ConstraintMetrics => _constraintMetrics?.Complete();
 
         public SelfPlayRecorder(IFeatureVectorExtractor extractor, INeuralEvalService? neuralEvalService = null, float lambda = DefaultLambda)
         {
@@ -49,6 +54,10 @@ namespace GammonX.Mars.Training
             var features = _extractor.Extract(model, board, isWhite);
             // we store the networks current prediction for this state (0.5 if no net yet)
             var netPred = _neuralEvalService?.Predict(model, board, isWhite) ?? [0.5f, 0.0f, 0.0f, 0.0f, 0.0f];
+            if (_neuralEvalService != null && netPred.Length == GameOutcomeConstraintValidator.FullHeadCount)
+            {
+                (_constraintMetrics ??= new ConstraintMetricsAccumulator()).AddRow(netPred);
+            }
             _positions.Add(new TrajectoryPosition(_positions.Count, isWhite, features, netPred));
         }
 

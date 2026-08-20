@@ -4,7 +4,7 @@ using System.Globalization;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Data;
 
 /// <summary>
 /// Streams batches of (features, labels) tensors from a CSV file on disk,
@@ -43,9 +43,11 @@ public sealed class CsvBatchEnumerator : IEnumerable<(Tensor features, Tensor la
     }
 
     /// <summary>
-    /// Scans the CSV file once to build a byte-offset index for every data row.
-    /// Uses manual byte-offset tracking because StreamReader buffers ahead of FileStream.Position.
+    /// Builds an index of byte offsets for each row in the CSV file, allowing for random access to rows without loading the entire file into memory.
     /// </summary>
+    /// <param name="path">The path to the CSV file.</param>
+    /// <param name="labelCount">The number of label columns in the CSV file.</param>
+    /// <returns>A tuple containing the array of byte offsets, the total number of rows, the number of feature columns, and the header string.</returns>
     public static (long[] offsets, int totalRows, int featureCols, string header) BuildRowIndex(string path, int labelCount)
     {
         var offsets = new List<long>();
@@ -86,7 +88,7 @@ public sealed class CsvBatchEnumerator : IEnumerable<(Tensor features, Tensor la
 
         var totalRows = _rowOrder.Length;
 
-        // Partition batches across producers: each gets a contiguous range of batch starts
+        // We partition batches across producers: each gets a contiguous range of batch starts
         var allBatchStarts = new List<int>();
         for (var b = 0; b < totalRows; b += _batchSize)
         {
@@ -106,7 +108,7 @@ public sealed class CsvBatchEnumerator : IEnumerable<(Tensor features, Tensor la
 
             producers[p] = Task.Factory.StartNew(() =>
             {
-                // Each producer owns its own buffers and file handles
+                // We expect that each producer owns its own buffers and file handles
                 var featBuf = new float[_batchSize * _featureCols];
                 var lblBuf = new float[_batchSize * _labelCount];
 
@@ -160,20 +162,20 @@ public sealed class CsvBatchEnumerator : IEnumerable<(Tensor features, Tensor la
                     labelReader?.Dispose();
                     labelStream?.Dispose();
 
-                    // Last producer to finish marks the queue complete
+                    // We expect the last producer to finish marks the queue complete
                     if (Interlocked.Decrement(ref remaining) == 0)
                         queue.CompleteAdding();
                 }
             }, TaskCreationOptions.LongRunning);
         }
 
-        // Consumer: yield batches as they become available
+        // We yield batches as they become available
         foreach (var batch in queue.GetConsumingEnumerable())
         {
             yield return batch;
         }
 
-        // Propagate any producer exceptions
+        // We propagate any producer exceptions
         Task.WaitAll(producers);
     }
 

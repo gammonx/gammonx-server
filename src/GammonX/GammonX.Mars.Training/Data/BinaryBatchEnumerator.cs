@@ -28,6 +28,18 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
     private readonly int _producerCount;
     private readonly int _queueCapacity;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BinaryBatchEnumerator"/> class.
+    /// </summary>
+    /// <param name="binaryPath">The path to the binary file containing the dataset.</param>
+    /// <param name="batchSize">The number of samples per batch.</param>
+    /// <param name="labelCount">The number of label (neural net predictions) columns.</param>
+    /// <param name="featureCount">The number of feature (neural net inputs) columns.</param>
+    /// <param name="rowOrder">An array specifying the order in which rows should be accessed.</param>
+    /// <param name="device">The device on which to place the tensors (CPU or CUDA).</param>
+    /// <param name="labelPermutation">An optional array specifying a permutation of the label columns.</param>
+    /// <param name="producerCount">The number of producer threads to use for loading data.</param>
+    /// <param name="queueCapacity">The capacity of the internal queue used for batching.</param>
     public BinaryBatchEnumerator(
         string binaryPath,
         int batchSize,
@@ -36,8 +48,8 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
         int[] rowOrder,
         Device device,
         int[]? labelPermutation = null,
-        int producerCount = 1,
-        int queueCapacity = 2)
+        int producerCount = 32,
+        int queueCapacity = 64)
     {
         _binaryPath = binaryPath;
         _batchSize = batchSize;
@@ -69,13 +81,18 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
 
         using var stream = new FileStream(sourceCsvPath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
         using var reader = new StreamReader(stream);
+        
         // We omit the header from the binary file
         var header = reader.ReadLine();
         if (string.IsNullOrEmpty(header))
+        {
             throw new InvalidDataException($"CSV file '{sourceCsvPath}' has no header row.");
+        }
 
         if (labelCount <= 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(labelCount), labelCount, "The label count must be greater than zero.");
+        }
 
         var expectedColumnCount = header.Split(',').Length;
         if (expectedColumnCount < labelCount)
@@ -88,6 +105,7 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
         var rowCount = 0;
         var physicalLineNumber = 1;
         string? line;
+
         while ((line = reader.ReadLine()) != null)
         {
             physicalLineNumber++;
@@ -128,43 +146,6 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
         Console.WriteLine($"[{name}] n={count}  mean={mean:F4}  min={min:F4}  max={max:F4}  near-0.5={near05:P1}");
 
         return new ValueTuple<int, int, string>(featureCount, rowCount, header);
-    }
-
-    /// <summary>
-    /// Builds an index of byte offsets for each row in the CSV file, allowing for random access to rows without loading the entire file into memory.
-    /// </summary>
-    /// <param name="path">The path to the CSV file.</param>
-    /// <param name="labelCount">The number of label columns in the CSV file.</param>
-    /// <returns>A tuple containing the array of byte offsets, the total number of rows, the number of feature columns, and the header string.</returns>
-    public static (long[] offsets, int totalRows, int featureCols, string header) BuildRowIndex(string path, int labelCount)
-    {
-        var offsets = new List<long>();
-        var encoding = System.Text.Encoding.UTF8;
-        var newLineBytes = DetectNewLineByteCount(path);
-
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
-        using var reader = new StreamReader(stream, encoding);
-
-        var header = reader.ReadLine()!;
-        var featureCols = header.Split(',').Length - labelCount;
-
-        var byteOffset = DetectBomLength(path) + encoding.GetByteCount(header) + newLineBytes;
-
-        while (!reader.EndOfStream)
-        {
-            var line = reader.ReadLine();
-            if (!string.IsNullOrEmpty(line))
-            {
-                offsets.Add(byteOffset);
-                byteOffset += encoding.GetByteCount(line) + newLineBytes;
-            }
-            else
-            {
-                byteOffset += newLineBytes;
-            }
-        }
-
-        return (offsets.ToArray(), offsets.Count, featureCols, header);
     }
 
     // <inheritdoc />
@@ -329,31 +310,5 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
                 throw new InvalidDataException($"Training label at row {rowIndex}, column {labelIndex} must be finite and in [0, 1], but was {value.ToString(CultureInfo.InvariantCulture)}.");
             }
         }
-    }
-
-    private static long DetectBomLength(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        Span<byte> buf = stackalloc byte[4];
-        var read = stream.Read(buf);
-        if (read >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF) return 3; // UTF-8
-        if (read >= 2 && buf[0] == 0xFF && buf[1] == 0xFE) return 2; // UTF-16 LE
-        if (read >= 2 && buf[0] == 0xFE && buf[1] == 0xFF) return 2; // UTF-16 BE
-        return 0;
-    }
-
-    private static int DetectNewLineByteCount(string path)
-    {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096);
-        var buf = new byte[Math.Min(8192, stream.Length)];
-        var read = stream.Read(buf, 0, buf.Length);
-
-        for (var i = 0; i < read; i++)
-        {
-            if (buf[i] == (byte)'\n')
-                return (i > 0 && buf[i - 1] == (byte)'\r') ? 2 : 1;
-        }
-
-        return 1;
     }
 }

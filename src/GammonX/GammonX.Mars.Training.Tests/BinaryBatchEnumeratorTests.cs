@@ -1,3 +1,4 @@
+using GammonX.Mars.Training.Data;
 using static TorchSharp.torch;
 
 namespace GammonX.Mars.Training.Tests;

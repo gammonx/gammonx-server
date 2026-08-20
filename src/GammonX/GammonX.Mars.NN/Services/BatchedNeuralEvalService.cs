@@ -59,7 +59,7 @@ namespace GammonX.Mars.NN.Services
         public static INeuralEvalService Load(GameModus modus, string modelPath, Device device, int maxBatchSize = 32)
         {
             // we only support CPU based models for now in production
-            var net = NetModelFactory.Create(modus, device);
+            var net = NetModelFactory.CreateForModel(modus, modelPath, device);
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.Load(modelPath);
             net.Eval();
@@ -87,7 +87,10 @@ namespace GammonX.Mars.NN.Services
 
             // we only support CPU based models for now in production
             var device = cuda.is_available() ? CUDA : CPU;
-            var net = NetModelFactory.Create(modus, device);
+            var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
+            using var metadataStream = assembly.GetManifestResourceStream(metadataResourceName);
+            var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, metadataResourceName);
+            var net = NetModelFactory.Create(modus, device, metadata.OutputMode);
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.LoadFromStream(stream);
             net.Eval();

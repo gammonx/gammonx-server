@@ -1,6 +1,13 @@
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
+
 using GammonX.Mars.Training;
+using GammonX.Mars.Training.Data;
+using GammonX.Mars.Training.Generator;
+using GammonX.Mars.Training.Sidecars;
+using GammonX.Mars.Training.Train;
+using GammonX.Mars.Training.Validation;
+
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
@@ -17,8 +24,10 @@ Console.WriteLine("  3  Shuffle Mode");
 Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
 Console.WriteLine("  6  Tournament Mode against wildbg");
-Console.WriteLine("  7  Rebuild TD targets from trajectory sidecars");
+Console.WriteLine("  7  Rebuild TD targets");
 Console.WriteLine("  8  Select random replay games");
+Console.WriteLine("  9  Analyze score-gap diagnostics");
+Console.WriteLine(" 10  Audit trajectory output constraints");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -55,6 +64,14 @@ else if (modeInput == "8")
 {
     RunSelectRandomGames();
 }
+else if (modeInput == "9")
+{
+    RunAnalyzeExploration();
+}
+else if (modeInput == "10")
+{
+    RunAnalyzeConstraints();
+}
 else
 {
     Console.WriteLine("Invalid selection. Exiting.");
@@ -72,6 +89,8 @@ static void RunTrainModel()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
+    var useConstrainedOutputs = modus is not (GameModus.Fevga or GameModus.Plakoto)
+        && PromptBool("Use monotonic five-head outputs", false);
     // we assume that a batch size of 4096 takes up 10MB of GPU RAM
     var batchSize = PromptInt("Batch size", 40960);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
@@ -84,7 +103,8 @@ static void RunTrainModel()
         outputModelPath: outputModelPath,
         batchSize: batchSize,
         producerCount: producerCount,
-        queueCapacity: queueCapacity);
+        queueCapacity: queueCapacity,
+        useConstrainedOutputs: useConstrainedOutputs);
 }
 
 #endregion Train Model
@@ -234,7 +254,7 @@ static void RunShuffleCsv()
 
     foreach (var path in inputPaths)
     {
-        var rowIndex = BinaryBatchEnumerator.BuildRowIndex(path, labelCount);
+        var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
         if (header == null)
         {
             header = rowIndex.header;
@@ -246,7 +266,7 @@ static void RunShuffleCsv()
 
         if (trajectorySidecarsPresent)
         {
-            var trajectoryIndex = BinaryBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
+            var trajectoryIndex = CsvBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
             if (trajectoryHeader == null)
                 trajectoryHeader = trajectoryIndex.header;
             else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
@@ -529,10 +549,10 @@ static void RunSelectRandomGames()
     }
 
     Console.WriteLine($"Indexing {inputPaths.Count} file(s)...");
+
     string? header = null;
     string? trajectoryHeader = null;
     var rowIndices = new List<(int fileIndex, long offset, int rowNumber)>();
-    var rowGameIds = new List<Guid>();
     var trajectoryOffsets = new List<long[]>();
     var rowsByGame = new Dictionary<Guid, List<int>>();
     var gameSources = new Dictionary<Guid, int>();
@@ -540,7 +560,7 @@ static void RunSelectRandomGames()
     for (var fileIndex = 0; fileIndex < inputPaths.Count; fileIndex++)
     {
         var path = inputPaths[fileIndex];
-        var rowIndex = BinaryBatchEnumerator.BuildRowIndex(path, labelCount);
+        var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
         if (rowIndex.totalRows == 0)
             throw new InvalidDataException($"Input CSV '{path}' contains no data rows.");
 
@@ -553,7 +573,7 @@ static void RunSelectRandomGames()
             throw new InvalidDataException($"Header mismatch: {Path.GetFileName(path)} does not match the first input file.");
         }
 
-        var trajectoryIndex = BinaryBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
+        var trajectoryIndex = CsvBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
         if (trajectoryHeader == null)
             trajectoryHeader = trajectoryIndex.header;
         else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
@@ -576,7 +596,6 @@ static void RunSelectRandomGames()
             gameSources[gameId] = fileIndex;
             var globalRowIndex = rowIndices.Count;
             rowIndices.Add((fileIndex, rowIndex.offsets[rowNumber], rowNumber));
-            rowGameIds.Add(gameId);
 
             if (!rowsByGame.TryGetValue(gameId, out var gameRows))
             {
@@ -634,10 +653,10 @@ static void RunSelectRandomGames()
     {
         for (var fileIndex = 0; fileIndex < inputPaths.Count; fileIndex++)
         {
-            readers[fileIndex]?.Dispose();
-            streams[fileIndex]?.Dispose();
-            trajectoryReaders[fileIndex]?.Dispose();
-            trajectoryStreams[fileIndex]?.Dispose();
+            readers[fileIndex].Dispose();
+            streams[fileIndex].Dispose();
+            trajectoryReaders[fileIndex].Dispose();
+            trajectoryStreams[fileIndex].Dispose();
         }
     }
 
@@ -648,6 +667,134 @@ static void RunSelectRandomGames()
 }
 
 #endregion Select Random Games
+
+#region Analyze Score-Gap Diagnostics
+
+static void RunAnalyzeExploration()
+{
+    Console.WriteLine();
+    var path = PromptString("Exploration diagnostics path", "training_data.exploration.csv");
+    if (!File.Exists(path))
+    {
+        Console.WriteLine($"File not found: {path}");
+        return;
+    }
+
+    var report = ExplorationBroker.Analyze(ExplorationCsvReader.ReadDecisions(path));
+    Console.WriteLine("Overall score-gap diagnostics");
+    Console.WriteLine("==============================");
+    PrintExplorationSummary(report.Overall);
+
+    foreach (var group in report.Groups
+        .OrderBy(pair => pair.Key.Modus)
+        .ThenBy(pair => pair.Key.AgainstBot)
+        .ThenBy(pair => pair.Key.EarlyPhase ? 0 : 1)
+        .ThenBy(pair => pair.Key.CandidateBucket))
+    {
+        var key = group.Key;
+        Console.WriteLine();
+        Console.WriteLine($"{key.Modus} | {(key.AgainstBot ? "wildbg" : "self-play")} | {(key.EarlyPhase ? "early" : "late")} phase");
+        Console.WriteLine($"Candidates: {key.CandidateBucket}");
+        Console.WriteLine(new string('-', 40));
+        PrintExplorationSummary(group.Value);
+    }
+}
+
+static void PrintExplorationSummary(ExplorationGapSummary summary)
+{
+    Console.WriteLine($"  Decisions : {summary.DecisionCount:N0}");
+    Console.WriteLine($"  Gaps      : {summary.GapCount:N0}");
+    Console.WriteLine($"  Missing   : {summary.NoGapCount:N0}");
+
+    if (summary.GapCount == 0)
+        return;
+
+    Console.WriteLine();
+    Console.WriteLine("  Score gaps");
+    Console.WriteLine($"    Minimum : {summary.MinGap:F6}");
+    Console.WriteLine($"    P10     : {summary.P10Gap:F6}");
+    Console.WriteLine($"    P25     : {summary.P25Gap:F6}");
+    Console.WriteLine($"    Median  : {summary.P50Gap:F6}");
+    Console.WriteLine($"    P75     : {summary.P75Gap:F6}");
+    Console.WriteLine($"    P90     : {summary.P90Gap:F6}");
+    Console.WriteLine($"    P95     : {summary.P95Gap:F6}");
+    Console.WriteLine($"    Mean    : {summary.MeanGap:F6}");
+    Console.WriteLine($"    Maximum : {summary.MaxGap:F6}");
+    Console.WriteLine();
+    Console.WriteLine("  Choices");
+    Console.WriteLine($"    Greedy  : {summary.ChoiceCounts.GetValueOrDefault(ExplorationChoice.Greedy):N0}");
+    Console.WriteLine($"    Ranked  : {summary.ChoiceCounts.GetValueOrDefault(ExplorationChoice.Ranked):N0}");
+    Console.WriteLine($"    All legal: {summary.ChoiceCounts.GetValueOrDefault(ExplorationChoice.AllLegal):N0}");
+}
+
+#endregion Analyze Score-Gap Diagnostics
+
+#region Analyze Trajectory Constraints
+
+static void RunAnalyzeConstraints()
+{
+    Console.WriteLine();
+    var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
+    var trajectoryPath = PromptString("Trajectory sidecar path", "training_data.trajectory.csv");
+    if (!File.Exists(trajectoryPath))
+    {
+        Console.WriteLine($"File not found: {trajectoryPath}");
+        return;
+    }
+
+    var currentModelPath = PromptString("Current model path. Leave blank to audit sidecar only", "");
+    string? trainingCsvPath = null;
+
+    if (!string.IsNullOrWhiteSpace(currentModelPath))
+    {
+        trainingCsvPath = PromptString("Training CSV path for current-model re-evaluation", "training_data.csv");
+    }
+
+    var batchSize = PromptInt("Audit batch size", 256);
+    var device = cuda.is_available() ? CUDA : CPU;
+
+    var report = TrajectoryConstraintAuditor.Analyze(
+        modus,
+        trajectoryPath,
+        trainingCsvPath,
+        string.IsNullOrWhiteSpace(currentModelPath) ? null : currentModelPath,
+        device,
+        batchSize);
+
+    Console.WriteLine();
+    Console.WriteLine("Source-model predictions");
+    Console.WriteLine("------------------------");
+    PrintConstraintAuditMetrics(report.SourceModel);
+
+    Console.WriteLine();
+    Console.WriteLine("Current-model predictions");
+    Console.WriteLine("-------------------------");
+    PrintConstraintAuditMetrics(report.CurrentModel);
+}
+
+static void PrintConstraintAuditMetrics(ConstraintMetricsResult? metrics)
+{
+    if (metrics is null)
+    {
+        Console.WriteLine("  Not applicable or not requested.");
+        return;
+    }
+
+    Console.WriteLine($"  Rows             : {metrics.RowCount:N0}");
+    Console.WriteLine($"  Invalid rows     : {metrics.InvalidRowCount:N0} ({metrics.InvalidRate:P2})");
+    Console.WriteLine($"  Rule violations  : {metrics.RuleViolationCount:N0}");
+    Console.WriteLine($"  Average severity : {metrics.AverageSeverity:F5}");
+    Console.WriteLine($"  Maximum severity : {metrics.MaxSeverity:F5}");
+    Console.WriteLine();
+    Console.WriteLine("  Violations by rule");
+    Console.WriteLine($"    Range             : {metrics.RangeViolationRows:N0}");
+    Console.WriteLine($"    Win gammon        : {metrics.WinGammonHierarchyViolationRows:N0}");
+    Console.WriteLine($"    Win backgammon    : {metrics.WinBackgammonHierarchyViolationRows:N0}");
+    Console.WriteLine($"    Lose complement   : {metrics.LoseGammonComplementViolationRows:N0}");
+    Console.WriteLine($"    Lose backgammon   : {metrics.LoseBackgammonHierarchyViolationRows:N0}");
+}
+
+#endregion Analyze Trajectory Constraints
 
 #region Rebuild TD Targets
 
@@ -678,6 +825,7 @@ static void RunRebuildTdTargets()
 
     var trainingRows = TrajectoryCsvReader.ReadRows(trainingCsvPath, trajectoryCsvPath, labelCount);
     var validationRows = TrajectoryCsvReader.ReadRows(validationCsvPath, validationTrajectoryCsvPath, labelCount);
+
     var games = TrajectoryCsvReader.ReadGames(gamesCsvPath);
     var rebuiltRows = TrajectoryTargetBuilder.Recalculate(
         trainingRows.Concat(validationRows),
@@ -685,8 +833,10 @@ static void RunRebuildTdTargets()
         lambda,
         gamma,
         labelCount == 1 ? 1 : 5);
+
     var rebuiltTrainingRows = rebuiltRows.Take(trainingRows.Count).ToList();
     var rebuiltValidationRows = rebuiltRows.Skip(trainingRows.Count).ToList();
+
     var featureCount = rebuiltTrainingRows.Count == 0 ? 0 : rebuiltTrainingRows[0].Position.Features.Length;
 
     if (featureCount == 0)
@@ -698,10 +848,13 @@ static void RunRebuildTdTargets()
     var validationOutputPath = Path.ChangeExtension(outputPath, ".val.csv");
     WriteCsv(outputPath, modus, rebuiltTrainingRows, featureCount);
     WriteCsv(validationOutputPath, modus, rebuiltValidationRows, featureCount);
+
     var trajectoryTrainPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
     TrajectoryCsvWriter.WritePositions(trajectoryTrainPath, rebuiltTrainingRows);
+
     var trajectoryValpath = Path.ChangeExtension(validationOutputPath, ".trajectory.csv");
     TrajectoryCsvWriter.WritePositions(trajectoryValpath, rebuiltValidationRows);
+
     var gamesPath = Path.ChangeExtension(outputPath, ".games.csv");
     TrajectoryCsvWriter.WriteGames(gamesPath, games);
 
@@ -733,6 +886,12 @@ static void RunGenerateTrainingData()
     var playAgainstBotService = PromptBool("Play against wildbg bot", false);
     var evalBatchSize = PromptInt("Eval Batchsize", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
+    var collectScoreGapDiagnostics = PromptBool("Write score-gap diagnostics", false);
+    var scoreGapAwareExploration = PromptBool("Enable score-gap ranked exploration", false);
+    var scoreGapSmallThreshold = PromptFloat("Small score-gap threshold", 0.02f);
+    var scoreGapLargeThreshold = PromptFloat("Large score-gap threshold", 0.2f);
+    var smallGapRankedMultiplier = PromptFloat("Small-gap ranked multiplier", 1.5f);
+    var largeGapRankedMultiplier = PromptFloat("Large-gap ranked multiplier", 0.5f);
     Console.WriteLine();
 
     var extractor = GetFeatureVectorExtractor(modus);
@@ -762,9 +921,12 @@ static void RunGenerateTrainingData()
     var discarded = 0;
     var allSamples = new List<TrainingDataRow>(capacity: totalGames * 40);
     var completedGames = new List<GameMetadata>(capacity: totalGames);
+    var explorationDecisions = new List<ExplorationDecision>();
     var totalTurnCount = 0L;
     var totalPredVariance = 0.0;
     var predVarianceCount = 0;
+    // we collect constraint metrics for all played games
+    var constraintMetrics = useNeuralEval ? new ConstraintMetricsAccumulator() : null;
     var lockObj = new object();
 
     Console.WriteLine($"Starting self-play: {totalGames} games, modus={modus}, lambda={lambda}");
@@ -773,6 +935,16 @@ static void RunGenerateTrainingData()
 
     var stopwatch = Stopwatch.StartNew();
 
+    var explorationOptions = new ExplorationOptions
+    {
+        CollectScoreGapDiagnostics = collectScoreGapDiagnostics,
+        ScoreGapAwareExplorationEnabled = scoreGapAwareExploration,
+        ScoreGapSmallThreshold = scoreGapSmallThreshold,
+        ScoreGapLargeThreshold = scoreGapLargeThreshold,
+        SmallGapRankedExplorationMultiplier = smallGapRankedMultiplier,
+        LargeGapRankedExplorationMultiplier = largeGapRankedMultiplier
+    };
+
     Parallel.For(
         0,
         totalGames,
@@ -780,7 +952,11 @@ static void RunGenerateTrainingData()
         (i) =>
         {
             var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
-            var runner = new SelfPlayRunner(recorder, modus, neuralEvalService);
+            var runner = new SelfPlayRunner(
+                recorder,
+                modus,
+                neuralEvalService,
+                explorationOptions);
 
             SelfPlayRunResult result;
             if (playAgainstBotService)
@@ -797,9 +973,12 @@ static void RunGenerateTrainingData()
             {
                 totalTurnCount += result.TurnCount;
 
-                if (result.Samples.Count == 0
-                    || result.Trajectory is null
-                    || result.Trajectory.Positions.Count != result.Samples.Count)
+                if (result.ConstraintMetrics != null)
+                {
+                    constraintMetrics?.Merge(result.ConstraintMetrics);
+                }
+
+                if (result.Samples.Count == 0 || result.Trajectory == null || result.Trajectory.Positions.Count != result.Samples.Count)
                 {
                     discarded++;
                 }
@@ -816,6 +995,11 @@ static void RunGenerateTrainingData()
 
                     completedGames.Add(result.Trajectory.Metadata);
                     completed++;
+
+                    if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
+                    {
+                        explorationDecisions.AddRange(result.ExplorationDecisions);
+                    }
 
                     if (result.PredictionVariance.HasValue)
                     {
@@ -835,6 +1019,18 @@ static void RunGenerateTrainingData()
 
     if (predVarianceCount > 0)
         Console.WriteLine($"Avg pred variance: {totalPredVariance / predVarianceCount:F5}  (over {predVarianceCount} completed games)");
+
+    if (constraintMetrics != null)
+    {
+        var metrics = constraintMetrics.Complete();
+        if (metrics.RowCount > 0)
+        {
+            Console.WriteLine(
+                $"Output constraints: rows={metrics.RowCount:N0} invalid={metrics.InvalidRowCount:N0} "
+                + $"({metrics.InvalidRate:P2}) rules={metrics.RuleViolationCount:N0} "
+                + $"avgSeverity={metrics.AverageSeverity:F5} maxSeverity={metrics.MaxSeverity:F5}");
+        }
+    }
 
     Console.WriteLine("Shuffling by game...");
 
@@ -859,6 +1055,13 @@ static void RunGenerateTrainingData()
     TrajectoryCsvWriter.WritePositions(trajectoryPath, trainSamples);
     TrajectoryCsvWriter.WritePositions(valTrajectoryPath, valSamples);
     TrajectoryCsvWriter.WriteGames(gamesPath, completedGames);
+
+    if (collectScoreGapDiagnostics)
+    {
+        var explorationPath = Path.ChangeExtension(outputPath, ".exploration.csv");
+        ExplorationCsvWriter.WriteDecisions(explorationPath, explorationDecisions);
+        Console.WriteLine($"Written: {explorationPath}");
+    }
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {valPath}");

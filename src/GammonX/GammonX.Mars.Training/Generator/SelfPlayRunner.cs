@@ -5,6 +5,9 @@ using GammonX.Engine.Services;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
 
+using GammonX.Mars.Training.Sidecars;
+using GammonX.Mars.Training.Validation;
+
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
@@ -13,11 +16,9 @@ using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
 
-using Xunit;
-
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Mars.Training
+namespace GammonX.Mars.Training.Generator
 {
     /// <summary>
     /// Runs a single self-play game and records training samples for each position encountered.
@@ -25,11 +26,16 @@ namespace GammonX.Mars.Training
     /// <param name="Samples">List of (features, label) pairs for each position encountered during the game.</param>
     /// <param name="TurnCount">The number of turns played in the game.</param>
     /// <param name="PredictionVariance">The variance of the network's predictions during the game, if available.</param>
+    /// <param name="Trajectory">The recorded game trajectory, if trajectory recording was enabled.</param>
+    /// <param name="ExplorationDecisions">The exploration decisions made during the game, if diagnostics were enabled.</param>
+    /// <param name="ConstraintMetrics">The aggregate prediction-constraint metrics, if collection was enabled.</param>
     public sealed record SelfPlayRunResult(
         IReadOnlyList<(float[] Features, float[] Label)> Samples,
         int TurnCount,
         float? PredictionVariance,
-        GameTrajectory? Trajectory = null);
+        GameTrajectory? Trajectory = null,
+        IReadOnlyList<ExplorationDecision>? ExplorationDecisions = null,
+        ConstraintMetricsResult? ConstraintMetrics = null);
 
     public sealed class SelfPlayRunner
     {
@@ -37,6 +43,7 @@ namespace GammonX.Mars.Training
         private readonly SelfPlayRecorder _recorder;
         private readonly INeuralEvalService? _neuralEvalService;
         private readonly ExplorationOptions _explorationOptions;
+        private readonly List<ExplorationDecision> _explorationDecisions = new List<ExplorationDecision>();
 
         public SelfPlayRunner(
             SelfPlayRecorder recorder,
@@ -87,9 +94,9 @@ namespace GammonX.Mars.Training
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
+                var moveSequences = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
 
-                if (result.Count != 0)
+                if (moveSequences.Count != 0)
                 {
                     var resultToPlay = SelectTrainingMove(
                         evalService,
@@ -98,11 +105,10 @@ namespace GammonX.Mars.Training
                         evalRequest.Board,
                         isWhite,
                         rolls,
-                        result,
+                        moveSequences,
                         contactWeights,
-                        cheapContactWeights,
-                        raceWeights,
-                        turnCount);
+                        turnCount,
+                        false);
 
                     foreach (var move in resultToPlay.MoveSequence.Moves)
                     {
@@ -124,12 +130,24 @@ namespace GammonX.Mars.Training
                     // draw: both mothers pinned, neither player can win
                     // label all recorded positions as 0.5 (half-win) rather than discarding
                     var finalizedDraw = _recorder.Finalize(GameResult.Draw, GameResult.Draw, true);
-                    return new SelfPlayRunResult(finalizedDraw.Samples, turnCount, null, finalizedDraw.Trajectory);
+                    return new SelfPlayRunResult(
+                        finalizedDraw.Samples,
+                        turnCount,
+                        null,
+                        finalizedDraw.Trajectory,
+                        _explorationDecisions,
+                        _recorder.ConstraintMetrics);
                 }
             }
 
             if (turnCount >= maxTurns)
-                return new SelfPlayRunResult([], turnCount, null);
+                return new SelfPlayRunResult(
+                    new List<(float[], float[])>(),
+                    turnCount,
+                    null,
+                    null,
+                    _explorationDecisions,
+                    _recorder.ConstraintMetrics);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
@@ -138,7 +156,13 @@ namespace GammonX.Mars.Training
 
             var predictionVariance = ComputePredVariance();
 
-            return new SelfPlayRunResult(finalized.Samples, turnCount, predictionVariance, finalized.Trajectory);
+            return new SelfPlayRunResult(
+                finalized.Samples,
+                turnCount,
+                predictionVariance,
+                finalized.Trajectory,
+                _explorationDecisions,
+                _recorder.ConstraintMetrics);
         }
 
         public SelfPlayRunResult RunAgainstBotServiceGame(
@@ -185,8 +209,7 @@ namespace GammonX.Mars.Training
             var turnCount = 0;
 
             var gameSession = matchSession.GetGameSession(1);
-            Assert.NotNull(gameSession);
-            var board = gameSession.BoardModel;
+            var board = gameSession!.BoardModel;
 
             do
             {
@@ -234,9 +257,8 @@ namespace GammonX.Mars.Training
                             rolls,
                             result,
                             contactWeights,
-                            cheapContactWeights,
-                            raceWeights,
-                            turnCount);
+                            turnCount,
+                            true);
 
                         nextMoves = evalResultModel.MoveSequence;
                     }
@@ -274,7 +296,9 @@ namespace GammonX.Mars.Training
             while (turnCount < maxTurns);
 
             if (turnCount >= maxTurns)
-                return new SelfPlayRunResult([], turnCount, null);
+            {
+                return new SelfPlayRunResult([], turnCount, null, null, _explorationDecisions, _recorder.ConstraintMetrics);
+            }
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
@@ -283,9 +307,26 @@ namespace GammonX.Mars.Training
 
             var predictionVariance = ComputePredVariance();
 
-            return new SelfPlayRunResult(finalized.Samples, turnCount, predictionVariance, finalized.Trajectory);
+            return new SelfPlayRunResult(
+                finalized.Samples,
+                turnCount,
+                predictionVariance,
+                finalized.Trajectory,
+                _explorationDecisions,
+                _recorder.ConstraintMetrics);
         }
 
+        /// <summary>
+        /// Calculates the population variance of the networks win predictions recorded during the game.
+        /// </summary>
+        /// <returns>
+        /// The variance of the first prediction head when a neural evaluator produced more than one
+        /// prediction; otherwise, <see langword="null"/>.
+        /// </returns>
+        /// <remarks>
+        /// The calculation uses population variance because the collected predictions represent the
+        /// complete set of positions from this self-play game rather than a sample of a larger set.
+        /// </remarks>
         private float? ComputePredVariance()
         {
             float? predictionVariance = null;
@@ -294,8 +335,10 @@ namespace GammonX.Mars.Training
                 var predictions = _recorder.NetPredictions;
                 if (predictions.Count > 1)
                 {
+                    // The first output is the predicted probability of a win.
                     var pWins = predictions.Select(p => p[0]).ToList();
                     var mean = pWins.Average();
+                    // Average squared deviations from the game-level mean (population variance).
                     predictionVariance = pWins.Average(p => (p - mean) * (p - mean));
                 }
             }
@@ -303,6 +346,26 @@ namespace GammonX.Mars.Training
             return predictionVariance;
         }
 
+        /// <summary>
+        /// Selects the move to play according to the configured exploration policy and records diagnostics.
+        /// </summary>
+        /// <param name="evalService">The evaluator used to score a move selected outside the ranked results.</param>
+        /// <param name="boardService">The board service used to enumerate legal moves.</param>
+        /// <param name="board">The current mutable board.</param>
+        /// <param name="boardContract">The current board in evaluator contract form.</param>
+        /// <param name="isWhite">Whether the side selecting the move is white.</param>
+        /// <param name="rolls">The dice rolls available for the current turn.</param>
+        /// <param name="rankedResults">Candidate moves ordered from highest to lowest score.</param>
+        /// <param name="contactWeights">The weights used when re-evaluating a random legal move.</param>
+        /// <param name="turnCount">The one-based turn number used by the exploration policy and diagnostics.</param>
+        /// <param name="againstBot">Whether this decision is being made in a game against another bot service.</param>
+        /// <returns>The evaluated move sequence selected by the exploration policy.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when ranked results are not ordered by descending score.</exception>
+        /// <remarks>
+        /// Ranked exploration samples from the configured top-ranked candidates, greedy exploration
+        /// selects the best candidate, and random exploration samples from all legal moves. A random
+        /// move is evaluated again so its recorded score corresponds to the move actually played.
+        /// </remarks>
         private FinalEvalResultModel SelectTrainingMove(
             IFeatureEvalService evalService,
             IBoardService boardService,
@@ -312,38 +375,86 @@ namespace GammonX.Mars.Training
             int[] rolls,
             FinalEvalResultModels rankedResults,
             ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights,
-            int turnCount)
+            int turnCount,
+            bool againstBot)
         {
-            var topRankedCount = Math.Min(_explorationOptions.TopRankedCount, rankedResults.Count);
+            var bestScore = rankedResults[0].Score;
+            double? secondBestScore = rankedResults.Count > 1 ? rankedResults[1].Score : null;
+            // A missing second candidate means that no meaningful score gap can be computed.
+            double? scoreGap = secondBestScore.HasValue ? bestScore - secondBestScore.Value : null;
+
+            if (scoreGap.HasValue && scoreGap.Value < 0d)
+            {
+                throw new InvalidOperationException("Move evaluation results must be sorted from highest to lowest score.");
+            }
+
+            // The gap is supplied to the policy because confidence in the best move can influence exploration.
             var choice = RankAwareExplorationPolicy.Select(
                 turnCount,
                 rankedResults.Count,
                 _neuralEvalService != null,
                 Random.Shared.NextSingle(),
-                _explorationOptions);
+                _explorationOptions,
+                scoreGap);
 
+            FinalEvalResultModel selectedResult;
+            int? selectedRank;
             if (choice == ExplorationChoice.Ranked)
             {
+                // Sample within the configured top-ranked window, then map that sample to a candidate index.
+                var topRankedCount = Math.Min(_explorationOptions.TopRankedCount, rankedResults.Count);
                 var randomIndex = Random.Shared.Next(topRankedCount);
                 var rankedIndex = RankAwareExplorationPolicy.GetRankedCandidateIndex(
                     rankedResults.Count,
                     randomIndex,
                     _explorationOptions);
-                return rankedResults[rankedIndex];
+                selectedResult = rankedResults[rankedIndex];
+                selectedRank = rankedIndex;
+            }
+            else if (choice == ExplorationChoice.Greedy)
+            {
+                // Greedy selection always uses the highest-scoring candidate.
+                selectedResult = rankedResults[0];
+                selectedRank = 0;
+            }
+            else
+            {
+                // Random exploration considers every currently legal move, not only evaluated candidates.
+                var legalMoves = boardService.GetLegalMoveSequences(board, isWhite, rolls);
+                if (legalMoves.Length == 0)
+                {
+                    // Fall back to the best ranked result when the position has no legal move sequence.
+                    selectedResult = rankedResults[0];
+                    selectedRank = 0;
+                }
+                else
+                {
+                    var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
+                    // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
+                    selectedResult = evalService.EvalMoveSequence(boardContract, isWhite, selectedMove, contactWeights);
+                    selectedRank = null;
+                }
             }
 
-            if (choice == ExplorationChoice.Greedy)
-                return rankedResults[0];
+            if (_explorationOptions.CollectScoreGapDiagnostics)
+            {
+                // Record the decision after selection so the selected score and rank describe the move played.
+                _explorationDecisions.Add(new ExplorationDecision(
+                    _recorder.GameId,
+                    _modus,
+                    turnCount,
+                    turnCount <= _explorationOptions.EarlyTurnCount,
+                    againstBot,
+                    rankedResults.Count,
+                    bestScore,
+                    secondBestScore,
+                    scoreGap,
+                    choice,
+                    selectedRank,
+                    selectedResult.Score));
+            }
 
-            var legalMoves = boardService.GetLegalMoveSequences(board, isWhite, rolls);
-            if (legalMoves.Length == 0)
-                return rankedResults[0];
-
-            var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
-            // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-            return evalService.EvalMoveSequence(boardContract, isWhite, selectedMove, contactWeights);
+            return selectedResult;
         }
 
         private static MatchVariant From(GameModus modus)

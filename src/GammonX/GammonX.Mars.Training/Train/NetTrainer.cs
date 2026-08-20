@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
-
+using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-
+using GammonX.Mars.Training.Validation;
 using GammonX.Models.Enums;
 
 using TorchSharp;
@@ -9,7 +9,7 @@ using TorchSharp;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Train;
 
 public static class NetTrainer
 {
@@ -24,7 +24,8 @@ public static class NetTrainer
         int queueCapacity = 2,
         float learningRate = 1.5e-3f,
         int earlyStoppingPatience = 11,
-        bool shuffleLabels = false)
+        bool shuffleLabels = false,
+        bool useConstrainedOutputs = false)
     {
         var trainStopwatch = Stopwatch.StartNew();
 
@@ -48,7 +49,10 @@ public static class NetTrainer
             labelPermutation = Enumerable.Range(0, trainRowCount).OrderBy(_ => Random.Shared.Next()).ToArray();
         }
 
-        var model = NetModelFactory.Create(modus, device);
+        var outputMode = labelCount == GameOutcomeConstraintValidator.FullHeadCount && useConstrainedOutputs
+            ? GameOutcomeOutputMode.MonotonicCumulative
+            : GameOutcomeOutputMode.LegacyIndependentSigmoid;
+        var model = NetModelFactory.Create(modus, device, outputMode);
         model.MoveTo(device);
 
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
@@ -94,15 +98,29 @@ public static class NetTrainer
                 bestEpoch = epoch;
                 epochsWithoutImprovement = 0;
                 model.Save(outputModelPath);
+                NetModelMetadata.Write(outputModelPath, modus, outputMode);
             }
             else
             {
                 epochsWithoutImprovement++;
             }
 
-            var marker = epoch == bestEpoch ? " OK" : "";
             epochStopwatch.Stop();
-            Console.WriteLine($@"Epoch {epoch,3}/{epochs}  train_loss={trainMetrics.Loss:F5} [{FormatOutputLosses(trainMetrics.PerOutputLosses, labelCount)}]  val_loss={valMetrics.Loss:F5} [{FormatOutputLosses(valMetrics.PerOutputLosses, labelCount)}]  lr={currentLr:G3}  elapsed={epochStopwatch.Elapsed:hh\:mm\:ss}{marker}");
+
+
+            var marker = epoch == bestEpoch ? " OK" : "";
+            Console.WriteLine($@"Epoch {epoch,3}/{epochs}  lr={currentLr:G3}  elapsed={epochStopwatch.Elapsed:hh\:mm\:ss}{marker}");
+            // We log the train/val loss and accuracy metrics for each head, as well as the overall loss and accuracy
+            Console.WriteLine($"  train_loss={trainMetrics.Loss:F5} [{FormatOutputLosses(trainMetrics.PerOutputLosses, labelCount)}]");
+            Console.WriteLine($"  val_loss={valMetrics.Loss:F5} [{FormatOutputLosses(valMetrics.PerOutputLosses, labelCount)}]");
+
+            if (trainMetrics.ConstraintMetrics != null && valMetrics.ConstraintMetrics != null)
+            {
+                // We log metrics for the constraint validator, which checks that the model outputs are consistent with the game rules
+                Console.WriteLine("Constraint Metrics:");
+                Console.WriteLine($"  train: {FormatConstraintMetrics(trainMetrics.ConstraintMetrics)}");
+                Console.WriteLine($"  val  : {FormatConstraintMetrics(valMetrics.ConstraintMetrics)}");
+            }
 
             if (epochsWithoutImprovement >= earlyStoppingPatience)
             {
@@ -128,7 +146,9 @@ public static class NetTrainer
         int outputCount,
         bool train)
     {
-        using var metrics = new EpochMetricsAccumulator(outputCount);
+        using var metrics = new EpochMetricsAccumulator(
+            outputCount,
+            collectConstraintMetrics: outputCount == GameOutcomeConstraintValidator.FullHeadCount);
         foreach (var (xBatch, yBatch) in batches)
         {
             using (xBatch)
@@ -148,9 +168,9 @@ public static class NetTrainer
                 {
                     using var batchElementLosses = diagnosticLoss.forward(pred, yBatch);
                     using var batchLossSums = outputCount == 1
-                        ? batchElementLosses.sum().reshape([1])
+                        ? batchElementLosses.sum().reshape(1)
                         : batchElementLosses.sum(dim: 0);
-                    metrics.Add(batchLossSums, yBatch.shape[0]);
+                    metrics.Add(batchLossSums, yBatch.shape[0], pred);
                 }
             }
         }
@@ -165,5 +185,14 @@ public static class NetTrainer
             : ["pWin", "pGW", "pBgW", "pGL", "pBgL"];
 
         return string.Join(", ", names.Zip(losses, (name, value) => $"{name}={value:F5}"));
+    }
+
+    private static string FormatConstraintMetrics(ConstraintMetricsResult metrics)
+    {
+        return $"invalid={metrics.InvalidRowCount}/{metrics.RowCount} ({metrics.InvalidRate:P2}), " +
+            $"rules={metrics.RuleViolationCount}, avgSev={metrics.AverageSeverity:G4}, maxSev={metrics.MaxSeverity:G4}, " +
+            $"range={metrics.RangeViolationRows}, GW={metrics.WinGammonHierarchyViolationRows}, " +
+            $"BgW={metrics.WinBackgammonHierarchyViolationRows}, loseCompl={metrics.LoseGammonComplementViolationRows}, " +
+            $"BgL={metrics.LoseBackgammonHierarchyViolationRows}";
     }
 }

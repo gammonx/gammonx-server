@@ -1,6 +1,7 @@
+using GammonX.Mars.Training.Sidecars;
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Generator;
 
 /// <summary>
 /// Calculates forward-view TD(lambda) targets for positions in a game trajectory.

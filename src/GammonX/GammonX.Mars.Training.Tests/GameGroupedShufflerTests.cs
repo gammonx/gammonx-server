@@ -1,3 +1,5 @@
+using GammonX.Mars.Training.Data;
+
 namespace GammonX.Mars.Training.Tests;
 
 public sealed class GameGroupedShufflerTests

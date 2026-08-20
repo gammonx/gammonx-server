@@ -1,7 +1,9 @@
+using GammonX.Mars.Training.Generator;
+
 using System.Globalization;
 using System.Text;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Sidecars;
 
 public static class TrajectoryCsvWriter
 {

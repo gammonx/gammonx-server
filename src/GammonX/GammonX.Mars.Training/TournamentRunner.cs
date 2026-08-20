@@ -14,8 +14,6 @@ using GammonX.Server.Services;
 
 using GammonX.Server.Tests.Utils;
 
-using Xunit;
-
 using static TorchSharp.torch;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -46,9 +44,7 @@ namespace GammonX.Mars.Training
     {
         public static BotPlayerAssignment AssignBotPlayers(Guid player1Id, Guid player2Id, bool modelIsWhite)
         {
-            return modelIsWhite
-                ? new BotPlayerAssignment(player1Id, player2Id)
-                : new BotPlayerAssignment(player2Id, player1Id);
+            return modelIsWhite ? new BotPlayerAssignment(player1Id, player2Id) : new BotPlayerAssignment(player2Id, player1Id);
         }
 
         public static TournamentResult Run(
@@ -235,7 +231,6 @@ namespace GammonX.Mars.Training
 
         private static TournamentGameResult PlayAgainstBotServiceGame(GameModus modus, INeuralEvalService neuralService, bool modelIsWhite, ContactWeightModel contactWeights)
         {
-            // TODO: enable cube play for backgammon
             var diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
@@ -276,8 +271,7 @@ namespace GammonX.Mars.Training
             var turnCount = 0;
 
             var gameSession = matchSession.GetGameSession(1);
-            Assert.NotNull(gameSession);
-            var board = gameSession.BoardModel;
+            var board = gameSession!.BoardModel;
 
             do
             {

@@ -1,8 +1,10 @@
 using System.Globalization;
 
+using GammonX.Mars.Training.Generator;
+
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.Training;
+namespace GammonX.Mars.Training.Sidecars;
 
 public static class TrajectoryCsvReader
 {
@@ -75,7 +77,41 @@ public static class TrajectoryCsvReader
         return gameIds;
     }
 
+    public static IEnumerable<float[]> ReadPredictions(string path)
+    {
+        using var reader = new StreamReader(path);
+        var header = reader.ReadLine();
+        if (header != "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss")
+            throw new InvalidDataException($"Unexpected trajectory header in '{path}'.");
+
+        var lineNumber = 1;
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var columns = line.Split(',');
+            if (columns.Length != 9)
+                throw new InvalidDataException($"Trajectory row {lineNumber} has {columns.Length} columns; expected 9.");
+
+            ParseGuid(columns[0], path, lineNumber);
+            var prediction = new float[ForwardViewTdCalculator.FullHeadCount];
+            for (var head = 0; head < prediction.Length; head++)
+                prediction[head] = ParseFloat(columns[4 + head], path, lineNumber);
+
+            yield return prediction;
+        }
+    }
+
     public static IReadOnlyList<TrainingDataRow> ReadRows(
+        string trainingCsvPath,
+        string trajectoryCsvPath,
+        int labelCount)
+        => ReadRowsStreaming(trainingCsvPath, trajectoryCsvPath, labelCount).ToList();
+
+    public static IEnumerable<TrainingDataRow> ReadRowsStreaming(
         string trainingCsvPath,
         string trajectoryCsvPath,
         int labelCount)
@@ -98,7 +134,6 @@ public static class TrajectoryCsvReader
             throw new InvalidDataException($"Training CSV '{trainingCsvPath}' does not contain features and labels.");
 
         var featureCount = trainingColumnCount - labelCount;
-        var rows = new List<TrainingDataRow>();
         var lineNumber = 1;
         while (true)
         {
@@ -141,13 +176,11 @@ public static class TrajectoryCsvReader
             for (var label = 0; label < labelCount; label++)
                 labels[label] = ParseFloat(trainingColumns[featureCount + label], trainingCsvPath, lineNumber);
 
-            rows.Add(new TrainingDataRow(
+            yield return new TrainingDataRow(
                 gameId,
                 new TrajectoryPosition(turnIndex, isWhite, features, prediction, isTerminal),
-                labels));
+                labels);
         }
-
-        return rows;
     }
 
     private static Guid ParseGuid(string value, string path, int lineNumber)
