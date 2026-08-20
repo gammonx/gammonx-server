@@ -11,7 +11,7 @@ using GammonX.Mars.Training.Validation;
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
-
+using GammonX.Mars.NN.Nets;
 using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
@@ -89,12 +89,12 @@ static void RunTrainModel()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
-    var useConstrainedOutputs = modus is not (GameModus.Fevga or GameModus.Plakoto)
-        && PromptBool("Use monotonic five-head outputs", false);
+    var useConstrainedOutputs = modus is not (GameModus.Fevga or GameModus.Plakoto) && PromptBool("Use monotonic five-head outputs", false);
     // we assume that a batch size of 4096 takes up 10MB of GPU RAM
     var batchSize = PromptInt("Batch size", 40960);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
+    var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
 
     NetTrainer.Train(
         modus,
@@ -104,7 +104,8 @@ static void RunTrainModel()
         batchSize: batchSize,
         producerCount: producerCount,
         queueCapacity: queueCapacity,
-        useConstrainedOutputs: useConstrainedOutputs);
+        useConstrainedOutputs: useConstrainedOutputs,
+        architecture: netArchitecture);
 }
 
 #endregion Train Model
@@ -120,13 +121,15 @@ static void RunNoiseDiagnostic()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
+    var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
 
     NetTrainer.Train(
         modus,
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
         outputModelPath: outputModelPath,
-        shuffleLabels: true);
+        shuffleLabels: true,
+        architecture: netArchitecture);
 }
 
 #endregion Noise Floor Diagnostic
@@ -1102,7 +1105,7 @@ static void WriteCsv(string path, GameModus modus, IReadOnlyList<TrainingDataRow
 
 #region Prompt Helpers
 
-static GameModus PromptEnum(string label, GameModus[] options, GameModus defaultValue)
+static T PromptEnum<T>(string label, T[] options, T defaultValue)
 {
     Console.WriteLine($"{label}:");
     for (var i = 0; i < options.Length; i++)

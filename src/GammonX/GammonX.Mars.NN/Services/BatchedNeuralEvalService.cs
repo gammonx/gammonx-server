@@ -90,7 +90,7 @@ namespace GammonX.Mars.NN.Services
             var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
             using var metadataStream = assembly.GetManifestResourceStream(metadataResourceName);
             var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, metadataResourceName);
-            var net = NetModelFactory.Create(modus, device, metadata.OutputMode);
+            var net = NetModelFactory.Create(modus, device, metadata.OutputMode, metadata.Architecture);
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.LoadFromStream(stream);
             net.Eval();

@@ -50,11 +50,13 @@ public sealed class TrajectoryConstraintAuditorTests
         {
             WriteTrajectory(trajectoryPath, [[0.7f, 0.2f, 0.05f, 0.1f, 0.02f]]);
             WriteTraining(trainingPath);
-            using (var model = new DefaultNet(CPU, GameOutcomeOutputMode.MonotonicCumulative))
+
+            using (var model = new DefaultNet(CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A))
             {
                 model.Save(modelPath);
             }
-            NetModelMetadata.Write(modelPath, GameModus.Backgammon, GameOutcomeOutputMode.MonotonicCumulative);
+
+            NetModelMetadata.Write(modelPath, GameModus.Backgammon, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A);
 
             var report = TrajectoryConstraintAuditor.Analyze(
                 GameModus.Backgammon,

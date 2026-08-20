@@ -87,7 +87,7 @@ public sealed class FeatureVectorSymmetryTests
         var activeBlackFeatures = extractor.Extract(model, board, false);
         var invertedActiveWhiteFeatures = extractor.Extract(model, invertedBoard, true);
 
-        var net = NetModelFactory.Create(modus, CPU);
+        var net = NetModelFactory.Create(modus, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A);
         net.Eval();
 
         using var activeBlackInput = tensor(activeBlackFeatures, device: CPU).unsqueeze(0);

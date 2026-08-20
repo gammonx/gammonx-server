@@ -1,5 +1,6 @@
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
+
 using GammonX.Models.Enums;
 
 using static TorchSharp.torch;
@@ -11,7 +12,7 @@ public sealed class DefaultNetTests
     [Fact]
     public void MonotonicOutputModeProducesAValidFiveHeadHierarchy()
     {
-        using var model = new DefaultNet(CPU, GameOutcomeOutputMode.MonotonicCumulative);
+        using var model = new DefaultNet(CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A);
         using var input = tensor(new float[3 * 216], [3, 216], device: CPU);
         using var noGradScope = no_grad();
         using var output = model.Forward(input);
@@ -49,7 +50,7 @@ public sealed class DefaultNetTests
         var modelPath = Path.Combine(Path.GetTempPath(), $"gammonx-{Guid.NewGuid():N}.dat");
         try
         {
-            NetModelMetadata.Write(modelPath, GameModus.Backgammon, GameOutcomeOutputMode.MonotonicCumulative);
+            NetModelMetadata.Write(modelPath, GameModus.Backgammon, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A);
 
             var model = Assert.IsType<DefaultNet>(NetModelFactory.CreateForModel(GameModus.Backgammon, modelPath, CPU));
             Assert.Equal(GameOutcomeOutputMode.MonotonicCumulative, model.OutputMode);

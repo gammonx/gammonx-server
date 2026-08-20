@@ -7,6 +7,18 @@ using static TorchSharp.torch;
 namespace GammonX.Mars.NN.Nets
 {
     /// <summary>
+    /// Provides different neural network architecture sizes for different network models.
+    /// </summary>
+    /// <remarks>
+    /// Each model implementation interprets the architecture sizes differently, so the sizes are not necessarily comparable across models.
+    /// </remarks>
+    public enum NetArchitecture
+    {
+        A = 0,
+        B = 1
+    }
+
+    /// <summary>
     /// Encapsulates a neural network model that can be used for evaluation.
     /// </summary>
     /// <remarks>
@@ -81,15 +93,15 @@ namespace GammonX.Mars.NN.Nets
 
     public static class NetModelFactory
     {
-        public static INetModel Create(GameModus modus, Device device, GameOutcomeOutputMode outputMode)
+        public static INetModel Create(GameModus modus, Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
         {
             INetModel netModel = modus switch
             {
                 GameModus.Plakoto => new PlakotoNet(device),
                 GameModus.Fevga => new FevgaNet(device),
-                GameModus.Backgammon => new DefaultNet(device, outputMode),
-                GameModus.Tavla => new DefaultNet(device, outputMode),
-                GameModus.Portes => new DefaultNet(device, outputMode),
+                GameModus.Backgammon => new DefaultNet(device, outputMode, architecture),
+                GameModus.Tavla => new DefaultNet(device, outputMode, architecture),
+                GameModus.Portes => new DefaultNet(device, outputMode, architecture),
                 _ => throw new NotSupportedException($"Modus {modus} has no net model.")
             };
 
@@ -107,7 +119,7 @@ namespace GammonX.Mars.NN.Nets
         public static INetModel CreateForModel(GameModus modus, string modelPath, Device device)
         {
             var metadata = NetModelMetadata.ReadOrLegacy(modelPath, modus);
-            return Create(modus, device, metadata.OutputMode);
+            return Create(modus, device, metadata.OutputMode, metadata.Architecture);
         }
     }
 }

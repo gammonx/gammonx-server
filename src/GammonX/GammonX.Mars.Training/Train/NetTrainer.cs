@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 using GammonX.Mars.Training.Validation;
@@ -25,7 +26,8 @@ public static class NetTrainer
         float learningRate = 1.5e-3f,
         int earlyStoppingPatience = 11,
         bool shuffleLabels = false,
-        bool useConstrainedOutputs = false)
+        bool useConstrainedOutputs = false,
+        NetArchitecture architecture = NetArchitecture.A)
     {
         var trainStopwatch = Stopwatch.StartNew();
 
@@ -52,7 +54,8 @@ public static class NetTrainer
         var outputMode = labelCount == GameOutcomeConstraintValidator.FullHeadCount && useConstrainedOutputs
             ? GameOutcomeOutputMode.MonotonicCumulative
             : GameOutcomeOutputMode.LegacyIndependentSigmoid;
-        var model = NetModelFactory.Create(modus, device, outputMode);
+
+        var model = NetModelFactory.Create(modus, device, outputMode, architecture);
         model.MoveTo(device);
 
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
@@ -98,7 +101,7 @@ public static class NetTrainer
                 bestEpoch = epoch;
                 epochsWithoutImprovement = 0;
                 model.Save(outputModelPath);
-                NetModelMetadata.Write(outputModelPath, modus, outputMode);
+                NetModelMetadata.Write(outputModelPath, modus, outputMode, architecture);
             }
             else
             {

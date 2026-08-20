@@ -19,11 +19,11 @@ namespace GammonX.Mars.NN.Nets
     /// <seealso cref="INetModel"/>
     public sealed class DefaultNet : Module<Tensor, Tensor>, INetModel
     {
-        private readonly Linear _fc1;
-        private readonly Linear _fc2;
-        private readonly Linear _fc3;
-        
-        private readonly Linear _fc4;
+        private Linear _fc1 = null!;
+        private Linear _fc2 = null!;
+        private Linear _fc3 = null!;
+        private Linear _fc4 = null!;
+
         private readonly Dropout _drop;
 
         /// <summary>
@@ -31,21 +31,36 @@ namespace GammonX.Mars.NN.Nets
         /// </summary>
         public GameOutcomeOutputMode OutputMode { get; }
 
-        public DefaultNet(Device device, GameOutcomeOutputMode outputMode) : base(nameof(DefaultNet))
+        public DefaultNet(Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture) : base(nameof(DefaultNet))
         {
             if (!Enum.IsDefined(outputMode))
             {
                 throw new ArgumentOutOfRangeException(nameof(outputMode), outputMode, "Unknown output mode.");
             }
 
+            InitializeModelArchitecture(architecture, device);
             OutputMode = outputMode;
-            _fc1 = Linear(216, 256, true, device);
-            _fc2 = Linear(256, 128, true, device);
-            _fc3 = Linear(128, 64, true, device);
-            _fc4 = Linear(64, 5, true, device);
             // we increase p if model is over fitting
             _drop = Dropout(p: 0.0);
             RegisterComponents();
+        }
+
+        private void InitializeModelArchitecture(NetArchitecture architecture, Device device)
+        {
+            if (architecture == NetArchitecture.A)
+            {
+                _fc1 = Linear(216, 256, true, device);
+                _fc2 = Linear(256, 128, true, device);
+                _fc3 = Linear(128, 64, true, device);
+                _fc4 = Linear(64, 5, true, device);
+            }
+            else if (architecture == NetArchitecture.B)
+            {
+                _fc1 = Linear(216, 384, true, device);
+                _fc2 = Linear(384, 192, true, device);
+                _fc3 = Linear(192, 96, true, device);
+                _fc4 = Linear(96, 5, true, device);
+            }
         }
 
         // <inheritdoc />
