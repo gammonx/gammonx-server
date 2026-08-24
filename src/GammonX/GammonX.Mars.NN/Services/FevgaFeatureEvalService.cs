@@ -34,7 +34,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
         {
             EvalResultModel eval = new EvalResultModel
             {

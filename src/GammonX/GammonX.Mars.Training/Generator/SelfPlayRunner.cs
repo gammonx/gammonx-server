@@ -42,6 +42,7 @@ namespace GammonX.Mars.Training.Generator
         private readonly GameModus _modus;
         private readonly SelfPlayRecorder _recorder;
         private readonly INeuralEvalService? _neuralEvalService;
+        private readonly INeuralEvalService? _opponentNeuralEvalService;
         private readonly ExplorationOptions _explorationOptions;
         private readonly List<ExplorationDecision> _explorationDecisions = new List<ExplorationDecision>();
 
@@ -49,11 +50,16 @@ namespace GammonX.Mars.Training.Generator
             SelfPlayRecorder recorder,
             GameModus modus,
             INeuralEvalService? neuralService,
-            ExplorationOptions? explorationOptions = null)
+            ExplorationOptions? explorationOptions = null,
+            INeuralEvalService? opponentNeuralService = null)
         {
+            if (opponentNeuralService != null && neuralService == null)
+                throw new ArgumentException("Model B requires Model A.", nameof(opponentNeuralService));
+
             _recorder = recorder;
             _modus = modus;
             _neuralEvalService = neuralService;
+            _opponentNeuralEvalService = opponentNeuralService;
             _explorationOptions = explorationOptions ?? new ExplorationOptions();
             _explorationOptions.Validate();
         }
@@ -61,20 +67,22 @@ namespace GammonX.Mars.Training.Generator
         public SelfPlayRunResult Run(
             ContactWeightModel contactWeights,
             ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+            RaceWeightModel raceWeights,
+            bool? modelAIsWhite = null)
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
-            var evalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService!);
+            var modelAEvalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService!);
+            var modelBEvalService = _opponentNeuralEvalService == null ? null : FeatureEvalServiceFactory.Create(_modus, _opponentNeuralEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
-            var isWhite = Random.Shared.Next(2) == 0;
+            var modelAWhite = modelAIsWhite ?? Random.Shared.Next(2) == 0;
+            var isWhite = _opponentNeuralEvalService == null ? modelAWhite : modelAIsWhite ?? Random.Shared.Next(2) == 0;
+
             const int maxTurns = 250;
             var turnCount = 0;
 
-            while (board.BearOffCountBlack != board.WinConditionCount
-                && board.BearOffCountWhite != board.WinConditionCount
-                && turnCount < maxTurns)
+            while (board.BearOffCountBlack != board.WinConditionCount && board.BearOffCountWhite != board.WinConditionCount && turnCount < maxTurns)
             {
                 turnCount++;
                 var rolls = diceService.Roll(2, 6);
@@ -94,21 +102,25 @@ namespace GammonX.Mars.Training.Generator
                     BotLevel = BotLevel.Hard
                 };
 
-                var moveSequences = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
+                var isModelATurn = _opponentNeuralEvalService == null || isWhite == modelAWhite;
+                var activeEvalService = isModelATurn ? modelAEvalService : modelBEvalService!;
+                var moveSequences = activeEvalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
 
                 if (moveSequences.Count != 0)
                 {
-                    var resultToPlay = SelectTrainingMove(
-                        evalService,
-                        boardService,
-                        board,
-                        evalRequest.Board,
-                        isWhite,
-                        rolls,
-                        moveSequences,
-                        contactWeights,
-                        turnCount,
-                        false);
+                    var resultToPlay = isModelATurn
+                        ? SelectTrainingMove(
+                            modelAEvalService,
+                            boardService,
+                            board,
+                            evalRequest.Board,
+                            isWhite,
+                            rolls,
+                            moveSequences,
+                            contactWeights,
+                            turnCount,
+                            false)
+                        : moveSequences[0];
 
                     foreach (var move in resultToPlay.MoveSequence.Moves)
                     {
@@ -119,7 +131,7 @@ namespace GammonX.Mars.Training.Generator
                 }
                 else
                 {
-                    var passEval = evalService.EvalPositionForTraining(board.ToContract(false), isWhite);
+                    var passEval = activeEvalService.EvalPositionForTraining(board.ToContract(false), isWhite);
                     _recorder.RecordPosition(passEval, board, isWhite);
                 }
 
@@ -172,6 +184,9 @@ namespace GammonX.Mars.Training.Generator
             ContactWeightModel cheapContactWeights,
             RaceWeightModel raceWeights)
         {
+            if (_opponentNeuralEvalService != null)
+                throw new InvalidOperationException("Model B cannot be used when playing against the WildBG bot service.");
+
             var diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);

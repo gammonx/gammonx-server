@@ -1,7 +1,7 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+using GammonX.Engine.Extensions;
 
-using GammonX.Mars.NN.Features;
 using GammonX.Mars.NN.Models;
 
 using GammonX.Models.Contracts;
@@ -12,13 +12,11 @@ namespace GammonX.Mars.NN.Services
     // <inheritdoc />
     public abstract class BaseFeatureEvalServiceImpl : IFeatureEvalService
     {
-        private readonly INeuralEvalService _neuralEvalService;
+        private readonly INeuralEvalService? _neuralEvalService;
 
         protected abstract IBoardService BoardService { get; }
 
-        protected RaceFeature RaceFeature { get; } = new();
-
-        protected BaseFeatureEvalServiceImpl(INeuralEvalService neuralEvalService)
+        protected BaseFeatureEvalServiceImpl(INeuralEvalService? neuralEvalService)
         {
             _neuralEvalService = neuralEvalService;
         }
@@ -35,8 +33,7 @@ namespace GammonX.Mars.NN.Services
 
             if (board is IDoublingCubeModel cubeModel)
             {
-                var isRace = RaceFeature.Eval(board, isWhite);
-                var eval = CalculateEvalModel(board, isWhite, isRace);
+                var eval = CalculateEvalModel(board, isWhite);
 
                 var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
                 // we calculate the game equity
@@ -113,34 +110,8 @@ namespace GammonX.Mars.NN.Services
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;
 
-            var isRace = RaceFeature.Eval(board, isWhite);
-            var eval = CalculateEvalModel(board, isWhite, isRace);
-
-            double score;
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            if (_neuralEvalService != null)
-            {
-                var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
-                if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
-                {
-                    // TODO: enable full GAME equity predictions for plakoto/fevga
-                    // we just return pure single win probability for now
-                    score = predictions[0];
-                }
-                else
-                {
-                    // we calculate game equity by outcome probabilities
-                    var outcome = new GameOutcomeModel(predictions);
-                    var equityModel = new GameEquityModel(outcome);
-                    score = equityModel.Equity;
-                }
-            }
-            else
-            {
-                score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
-            }
-
-            return score;
+            var eval = CalculateEvalModel(board, isWhite);
+            return CalculatePositionScore(board, isWhite, eval, contactWeights);
         }
 
         // <inheritdoc />
@@ -165,7 +136,7 @@ namespace GammonX.Mars.NN.Services
                 return [];
 
             var evalCount = Math.Min(maxCandidates ?? legalMovesSeq.Length, legalMovesSeq.Length);
-            var evalResult = GetCandidatesByEval(board, legalMovesSeq, isWhite, contactWeights, evalCount);
+            var evalResult = GetCandidatesByEval(board, legalMovesSeq, isWhite, contactWeights, evalCount, contract.BotLevel);
             return [.. evalResult];
         }
 
@@ -173,8 +144,7 @@ namespace GammonX.Mars.NN.Services
         public NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract boardContract, bool isWhite)
         {
             var board = BoardService.CreateBoard(boardContract);
-            var isRace = RaceFeature.Eval(board, isWhite);
-            var eval = CalculateEvalModel(board, isWhite, isRace);
+            var eval = CalculateEvalModel(board, isWhite);
             return NormalizedEvalResultModel.From(eval);
         }
 
@@ -184,7 +154,7 @@ namespace GammonX.Mars.NN.Services
             var board = BoardService.CreateBoard(contract);
             var moveSequences = new[] { moveSequence };
             const int evalCount = 1;
-            var evalResult = GetCandidatesByEval(board, moveSequences, isWhite, contactWeights, evalCount);
+            var evalResult = GetCandidatesByEval(board, moveSequences, isWhite, contactWeights, evalCount, BotLevel.TwoPly);
             return evalResult.First();
         }
 
@@ -193,7 +163,8 @@ namespace GammonX.Mars.NN.Services
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
             ContactWeightModel contactWeights,
-            int evalCount)
+            int evalCount,
+            BotLevel botLevel)
         {
             var evals = new List<FinalEvalResultModel>();
 
@@ -201,52 +172,134 @@ namespace GammonX.Mars.NN.Services
             {
                 var moveSeq = legalMovesSeq[idx];
 
-                foreach (var move in moveSeq.Moves)
+                var appliedMoves = 0;
+                try
                 {
-                    BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
-                }
-
-                var eval = CalculateEvalModel(board, isWhite, false);
-                var evalModel = NormalizedEvalResultModel.From(eval);
-                double score;
-                if (_neuralEvalService != null)
-                {
-                    var predictions = _neuralEvalService.Predict(evalModel, board, isWhite);
-                    if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
+                    // we iterate over all possible moves for the active player
+                    foreach (var move in moveSeq.Moves)
                     {
-                        // TODO: enable full GAME equity predictions for plakoto/fevga
-                        // we just return pure single win probability for now
-                        score = predictions[0];
+                        BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
+                        appliedMoves++;
+                    }
+
+                    var eval = CalculateEvalModel(board, isWhite);
+                    var evalModel = NormalizedEvalResultModel.From(eval);
+                    var score = 0d;
+
+                    if (botLevel == BotLevel.TwoPly && _neuralEvalService != null)
+                    {
+                        // we calculate the score based on a two-ply evaluation of the resulting board state
+                        score = CalculateTwoPlyScore(board, isWhite, contactWeights);
                     }
                     else
                     {
-                        // we calculate game equity by outcome probabilities
-                        var outcome = new GameOutcomeModel(predictions);
-                        var equityModel = new GameEquityModel(outcome);
-                        score = equityModel.Equity;
+                        // we calculate the one-ply score for the active player and his move
+                        score = CalculatePositionScore(board, isWhite, eval, contactWeights);
+                    }
+
+                    evals.Add(new FinalEvalResultModel(score, moveSeq, evalModel));
+                }
+                finally
+                {
+                    // we undo all moves to restore the board state for the next evaluation
+                    // we do this in order to avoid allocating board copies for each move sequence, which would be expensive
+                    for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
+                    {
+                        BoardService.UndoMove(board, moveSeq.Moves[moveIndex], isWhite);
                     }
                 }
-                else
-                {
-                    // we calculate score by linear weighting model
-                    score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
-                }
-
-                var reversedMoveSeq = moveSeq.DeepClone();
-                reversedMoveSeq.Moves.Reverse();
-                foreach (var undoMove in reversedMoveSeq.Moves)
-                {
-                    // we manually undo the moves in order to reduce instance allocations
-                    BoardService.UndoMove(board, undoMove, isWhite);
-                }
-
-                var evalResult = new FinalEvalResultModel(score, moveSeq, evalModel);
-                evals.Add(evalResult);
             }
 
             return evals.OrderByDescending(e => e.Score);
         }
 
-        protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace);
+        private double CalculateTwoPlyScore(IBoardModel board, bool isWhite, ContactWeightModel contactWeights)
+        {
+            // we check if the game has already ended and return the terminal score if so
+            if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+            {
+                return terminalScore;
+            }
+
+            var evaluator = new TwoPlySearchEvaluator(
+                BoardService,
+                // we pass the position score calculation as a func
+                (position, perspectiveIsWhite) =>
+                {
+                    var eval = CalculateEvalModel(position, perspectiveIsWhite);
+                    return CalculatePositionScore(position, perspectiveIsWhite, eval, contactWeights);
+                });
+
+            return evaluator.Evaluate(board, isWhite);
+        }
+
+        private double CalculatePositionScore(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
+        {
+            // we check if the game has already ended and return the terminal score if so
+            if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+            {
+                return terminalScore;
+            }
+
+            // we return score based on linear weights
+            if (_neuralEvalService == null)
+            {
+                return EvalScoreCalculator.CalculateScore(eval, contactWeights);
+            }
+
+            var evalModel = NormalizedEvalResultModel.From(eval);
+            // we calculate the nn model prediction
+            var predictions = _neuralEvalService.Predict(evalModel, board, isWhite);
+
+            // TODO: support 5 head output for Plakoto and Fevga
+            if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
+            {
+                return predictions[0];
+            }
+
+            return new GameEquityModel(new GameOutcomeModel(predictions)).Equity;
+        }
+
+        private static bool TryGetTerminalScore(IBoardModel board, bool isWhite, out double score)
+        {
+            // some game modes allow a tie
+            if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
+            {
+                score = 0d;
+                return true;
+            }
+
+            var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
+            var blackWon = board.BearOffCountBlack == board.WinConditionCount;
+
+            if (!whiteWon && !blackWon)
+            {
+                score = 0d;
+                return false;
+            }
+
+            var result = board.ToGameResult(Guid.Empty, whiteWon);
+            var playerResult = isWhite == whiteWon ? result.WinnerResult : result.LoserResult;
+            score = playerResult switch
+            {
+                GameResult.Single => 1d,
+                GameResult.Gammon => 2d,
+                GameResult.Backgammon => 3d,
+                GameResult.LostSingle => -1d,
+                GameResult.LostGammon => -2d,
+                GameResult.LostBackgammon => -3d,
+                GameResult.Draw => 0d,
+                _ => 0d
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Calculates the game modus specific evaluation model for the given board state and player perspective.
+        /// </summary>
+        /// <param name="board">The current board state.</param>
+        /// <param name="isWhite">Indicates if the perspective is for the white player.</param>
+        /// <returns>The evaluation result model.</returns>
+        protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite);
     }
 }

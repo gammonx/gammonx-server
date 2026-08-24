@@ -46,6 +46,9 @@
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\training_net.dat" Link="Data\NeuralNets\Tavla\training_net.dat">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+		<None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\training_net.dat.meta.json" Link="Data\NeuralNets\Backgammon\training_net.dat.meta.json">
+	    	<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  	</None>
 	</ItemGroup>
 
 </Project>

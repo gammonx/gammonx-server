@@ -143,7 +143,9 @@ static void RunTournament()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
+    var modelBBotLevel = PromptEnum("Model B bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
     var evalBatchSize = PromptInt("Eval Batchsize", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
@@ -158,11 +160,14 @@ static void RunTournament()
         Console.WriteLine($"Model B not found: {modelBPath}"); return;
     }
 
+    var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
+    TournamentEntry? entryB = File.Exists(modelBPath) ? new TournamentEntry(modelBPath, modelBBotLevel, null, null) : null;
+
     var contactWeights = EvalWeights.GetContactWeights(modus);
     var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
     var raceWeights = EvalWeights.GetRaceWeights(modus);
 
-    var result = TournamentRunner.Run(modus, modelAPath, modelBPath, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var result = TournamentRunner.Run(modus, entryA, entryB, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -174,6 +179,7 @@ static void RunBotServiceTournament()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
     var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
 
     if (!File.Exists(modelAPath))
@@ -187,7 +193,9 @@ static void RunBotServiceTournament()
     var evalBatchSize = PromptInt("Eval Batchsize", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
-    var result = TournamentRunner.Run(modus, modelAPath, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
+
+    var result = TournamentRunner.Run(modus, entryA, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -881,7 +889,8 @@ static void RunGenerateTrainingData()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
-    var modelPath = PromptString("Model path. Leave blank for linear.", "");
+    var modelAPath = PromptString("Model A path. Leave blank for linear.", "");
+    var modelBPath = PromptString("Model B path. Leave blank for single-model or linear.", "");
     // we expect with a lambda below < 1.0 smooth intermediate labels, not just binary 1/0.
     // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
     // we also expect near-0.5 positions to increase above 0.0%
@@ -897,28 +906,86 @@ static void RunGenerateTrainingData()
     var largeGapRankedMultiplier = PromptFloat("Large-gap ranked multiplier", 0.5f);
     Console.WriteLine();
 
+    var hasModelAPath = !string.IsNullOrWhiteSpace(modelAPath);
+    var hasModelBPath = !string.IsNullOrWhiteSpace(modelBPath);
+
+    if (hasModelBPath && !hasModelAPath)
+    {
+        Console.WriteLine("Model B requires a Model A path.");
+        return;
+    }
+
+    if (hasModelAPath && !File.Exists(modelAPath))
+    {
+        Console.WriteLine($"Model A not found: {modelAPath}");
+        return;
+    }
+
+    if (hasModelBPath && !File.Exists(modelBPath))
+    {
+        Console.WriteLine($"Model B not found: {modelBPath}");
+        return;
+    }
+
+    if (hasModelAPath && hasModelBPath && string.Equals(Path.GetFullPath(modelAPath), Path.GetFullPath(modelBPath), StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine("Model A and Model B must be different files.");
+        return;
+    }
+
+    if (hasModelBPath && playAgainstBotService)
+    {
+        Console.WriteLine("Model B cannot be used when playing against the WildBG bot service.");
+        return;
+    }
+
     var extractor = GetFeatureVectorExtractor(modus);
     var contactWeights = EvalWeights.GetContactWeights(modus);
     var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
     var raceWeights = EvalWeights.GetRaceWeights(modus);
 
-    var useNeuralEval = !string.IsNullOrEmpty(modelPath) && File.Exists(modelPath);
-    INeuralEvalService neuralEvalService = null!;
+    var useNeuralEval = hasModelAPath;
+    BatchedNeuralEvalService? modelAService = null;
+    BatchedNeuralEvalService? modelBService = null;
 
     var device = cuda.is_available() ? CUDA : CPU;
     Console.WriteLine($"Device: {device}");
 
-    if (useNeuralEval)
+    try
     {
-        neuralEvalService = BatchedNeuralEvalService.Load(modus, modelPath, device, evalBatchSize);
-        // we expect the background process to be terminated if the parent process closes
-        ((BatchedNeuralEvalService)neuralEvalService).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
-        Console.WriteLine($"Loaded model: {modelPath}");
+        if (useNeuralEval)
+        {
+            modelAService = (BatchedNeuralEvalService)BatchedNeuralEvalService.Load(modus, modelAPath, device, evalBatchSize);
+            modelAService.StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+            Console.WriteLine($"Loaded Model A: {modelAPath}");
+
+            if (hasModelBPath)
+            {
+                modelBService = (BatchedNeuralEvalService)BatchedNeuralEvalService.Load(modus, modelBPath, device, evalBatchSize);
+                modelBService.StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                Console.WriteLine($"Loaded Model B: {modelBPath}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Using linear model.");
+        }
     }
-    else
+    catch
     {
-        Console.WriteLine("Using linear model.");
+        try
+        {
+            StopNeuralEvalService(modelBService);
+        }
+        finally
+        {
+            StopNeuralEvalService(modelAService);
+        }
+
+        throw;
     }
+
+    INeuralEvalService? neuralEvalService = modelAService;
 
     var completed = 0;
     var discarded = 0;
@@ -948,73 +1015,92 @@ static void RunGenerateTrainingData()
         LargeGapRankedExplorationMultiplier = largeGapRankedMultiplier
     };
 
-    Parallel.For(
-        0,
-        totalGames,
-        new ParallelOptions { MaxDegreeOfParallelism = processCount },
-        (i) =>
-        {
-            var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
-            var runner = new SelfPlayRunner(
-                recorder,
-                modus,
-                neuralEvalService,
-                explorationOptions);
-
-            SelfPlayRunResult result;
-            if (playAgainstBotService)
+    try
+    {
+        Parallel.For(
+            0,
+            totalGames,
+            new ParallelOptions { MaxDegreeOfParallelism = processCount },
+            (i) =>
             {
-                var modelIsWhite = i % 2 == 0;
-                result = runner.RunAgainstBotServiceGame(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
-            }
-            else
-            {
-                result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
-            }
+                var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
+                var runner = new SelfPlayRunner(
+                    recorder,
+                    modus,
+                    neuralEvalService,
+                    explorationOptions,
+                    modelBService);
 
-            lock (lockObj)
-            {
-                totalTurnCount += result.TurnCount;
-
-                if (result.ConstraintMetrics != null)
+                SelfPlayRunResult result;
+                if (playAgainstBotService)
                 {
-                    constraintMetrics?.Merge(result.ConstraintMetrics);
+                    var modelIsWhite = i % 2 == 0;
+                    result = runner.RunAgainstBotServiceGame(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
                 }
-
-                if (result.Samples.Count == 0 || result.Trajectory == null || result.Trajectory.Positions.Count != result.Samples.Count)
+                else if (modelBService != null)
                 {
-                    discarded++;
+                    result = runner.Run(contactWeights, cheapContactWeights, raceWeights, modelAIsWhite: i % 2 == 0);
                 }
                 else
                 {
-                    for (var sampleIndex = 0; sampleIndex < result.Samples.Count; sampleIndex++)
-                    {
-                        var position = result.Trajectory.Positions[sampleIndex];
-                        allSamples.Add(new TrainingDataRow(
-                            result.Trajectory.GameId,
-                            position,
-                            result.Samples[sampleIndex].Label));
-                    }
-
-                    completedGames.Add(result.Trajectory.Metadata);
-                    completed++;
-
-                    if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
-                    {
-                        explorationDecisions.AddRange(result.ExplorationDecisions);
-                    }
-
-                    if (result.PredictionVariance.HasValue)
-                    {
-                        totalPredVariance += result.PredictionVariance.Value;
-                        predVarianceCount++;
-                    }
+                    result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
                 }
 
-                var started = completed + discarded;
-                Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
-            }
-        });
+                lock (lockObj)
+                {
+                    totalTurnCount += result.TurnCount;
+
+                    if (result.ConstraintMetrics != null)
+                    {
+                        constraintMetrics?.Merge(result.ConstraintMetrics);
+                    }
+
+                    if (result.Samples.Count == 0 || result.Trajectory == null || result.Trajectory.Positions.Count != result.Samples.Count)
+                    {
+                        discarded++;
+                    }
+                    else
+                    {
+                        for (var sampleIndex = 0; sampleIndex < result.Samples.Count; sampleIndex++)
+                        {
+                            var position = result.Trajectory.Positions[sampleIndex];
+                            allSamples.Add(new TrainingDataRow(
+                                result.Trajectory.GameId,
+                                position,
+                                result.Samples[sampleIndex].Label));
+                        }
+
+                        completedGames.Add(result.Trajectory.Metadata);
+                        completed++;
+
+                        if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
+                        {
+                            explorationDecisions.AddRange(result.ExplorationDecisions);
+                        }
+
+                        if (result.PredictionVariance.HasValue)
+                        {
+                            totalPredVariance += result.PredictionVariance.Value;
+                            predVarianceCount++;
+                        }
+                    }
+
+                    var started = completed + discarded;
+                    Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
+                }
+            });
+    }
+    finally
+    {
+        try
+        {
+            StopNeuralEvalService(modelBService);
+        }
+        finally
+        {
+            StopNeuralEvalService(modelAService);
+        }
+    }
 
     Console.WriteLine();
     Console.WriteLine($"Done. Completed={completed}  Discarded={discarded}  Total samples={allSamples.Count:N0}");
@@ -1167,6 +1253,21 @@ static bool PromptBool(string label, bool defaultValue)
 #endregion Prompt Helpers
 
 #region Helpers
+
+static void StopNeuralEvalService(BatchedNeuralEvalService? service)
+{
+    if (service == null)
+        return;
+
+    try
+    {
+        service.StopAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+    }
+    finally
+    {
+        service.Dispose();
+    }
+}
 
 static IFeatureVectorExtractor GetFeatureVectorExtractor(GameModus modus)
 {

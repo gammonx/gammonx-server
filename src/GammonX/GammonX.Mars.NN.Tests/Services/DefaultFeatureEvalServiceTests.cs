@@ -388,6 +388,97 @@ namespace GammonX.Mars.NN.Tests.Services
             Assert.Equal(CubeAction.Take, shouldTake);
         }
 
+        [Theory]
+        [InlineData(true, 15, 1, 0, 0, 1)]
+        [InlineData(true, 15, 0, 0, 0, 2)]
+        [InlineData(true, 15, 0, 0, 1, 3)]
+        [InlineData(false, 15, 1, 0, 0, -1)]
+        [InlineData(false, 15, 0, 0, 0, -2)]
+        [InlineData(false, 15, 0, 0, 1, -3)]
+        public void EvalBoardStateUsesTerminalGameEquityWithoutNeural(
+            bool isWhite,
+            int bearOffCountWhite,
+            int bearOffCountBlack,
+            int homeBarCountWhite,
+            int homeBarCountBlack,
+            double expectedScore)
+        {
+            var neural = new Mock<INeuralEvalService>();
+            var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
+            var request = new EvalBoardRequestContract
+            {
+                Modus = GameModus.Backgammon,
+                IsWhite = isWhite,
+                Board = new BoardModelContract
+                {
+                    Fields = new int[24],
+                    BearOffCountWhite = bearOffCountWhite,
+                    BearOffCountBlack = bearOffCountBlack,
+                    HomeBarCountWhite = homeBarCountWhite,
+                    HomeBarCountBlack = homeBarCountBlack
+                }
+            };
+
+            var score = service.EvalBoardState(
+                request,
+                EvalWeights.GetContactWeights(GameModus.Backgammon));
+
+            Assert.Equal(expectedScore, score);
+            neural.Verify(neuralService => neuralService.Predict(
+                It.IsAny<NormalizedEvalResultModel>(),
+                It.IsAny<IBoardModel>(),
+                It.IsAny<bool>()), Times.Never);
+        }
+
+        [Fact]
+        public void TwoPlyMoveScoreDiffersFromImmediatePositionScore()
+        {
+            var modus = GameModus.Backgammon;
+            var boardService = BoardServiceFactory.Create(modus);
+            var board = boardService.CreateBoard(new BoardModelContract
+            {
+                Fields = CreateRaceFields(),
+                BearOffCountWhite = 0,
+                BearOffCountBlack = 0
+            });
+            var moveSequence = boardService.GetUniqueLegalMoveSequences(board, true, [1, 2]).First();
+            var originalContract = board.ToContract(false);
+            var immediateBoard = boardService.CreateBoard(new BoardModelContract
+            {
+                Fields = originalContract.Fields.ToArray(),
+                BearOffCountWhite = originalContract.BearOffCountWhite,
+                BearOffCountBlack = originalContract.BearOffCountBlack,
+                HomeBarCountWhite = originalContract.HomeBarCountWhite,
+                HomeBarCountBlack = originalContract.HomeBarCountBlack
+            });
+            foreach (var move in moveSequence.Moves)
+            {
+                boardService.MoveCheckerTo(immediateBoard, move.From, move.To, true);
+            }
+
+            var neural = new PipAdvantageNeuralEvalService();
+            var service = new DefaultFeatureEvalService(neural, modus);
+            var contactWeights = EvalWeights.GetContactWeights(modus);
+            var immediateScore = service.EvalBoardState(
+                new EvalBoardRequestContract
+                {
+                    Modus = modus,
+                    IsWhite = true,
+                    Board = immediateBoard.ToContract(false)
+                },
+                contactWeights);
+            var twoPlyScore = service.EvalMoveSequence(
+                originalContract,
+                true,
+                moveSequence,
+                contactWeights).Score;
+
+            Assert.NotEqual(immediateScore, twoPlyScore);
+            Assert.Equal(CreateRaceFields(), board.Fields);
+            Assert.Equal(0, board.BearOffCountWhite);
+            Assert.Equal(0, board.BearOffCountBlack);
+        }
+
         private static EvalCubeRequestContract CreateRequest()
         {
             return new EvalCubeRequestContract
@@ -403,6 +494,26 @@ namespace GammonX.Mars.NN.Tests.Services
                     DoublingCubeValue = 1
                 }
             };
+        }
+
+        private static int[] CreateRaceFields()
+        {
+            var fields = new int[24];
+            fields[5] = 15;
+            fields[18] = -15;
+            return fields;
+        }
+
+        private sealed class PipAdvantageNeuralEvalService : INeuralEvalService
+        {
+            public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+            {
+                var advantage = isWhite
+                    ? board.PipCountBlack - board.PipCountWhite
+                    : board.PipCountWhite - board.PipCountBlack;
+                var winProbability = Math.Clamp(0.5f + (float)advantage / 200f, 0.01f, 0.99f);
+                return [winProbability, 0f, 0f, 0f, 0f];
+            }
         }
     }
 }

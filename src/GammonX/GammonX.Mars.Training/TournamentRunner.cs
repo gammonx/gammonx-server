@@ -20,6 +20,12 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Mars.Training
 {
+    public sealed record TournamentEntry(
+        string? Path,
+        BotLevel Level,
+        bool? IsWhite,
+        INeuralEvalService? Service);
+
     public sealed record TournamentGameResult(
         bool WhiteWon,
         int TurnCount,
@@ -49,8 +55,8 @@ namespace GammonX.Mars.Training
 
         public static TournamentResult Run(
             GameModus modus,
-            string modelAPath,
-            string? modelBPath,
+            TournamentEntry modelA,
+            TournamentEntry? modelB,
             int totalGames,
             ContactWeightModel contactWeights,
             ContactWeightModel cheapContactWeights,
@@ -58,19 +64,20 @@ namespace GammonX.Mars.Training
             int evalBatchSize,
             int processCount)
         {
-            var modelALabel = Path.GetFileNameWithoutExtension(modelAPath);
-            var modelBLabel = Path.GetFileNameWithoutExtension(modelBPath);
+            var modelALabel = Path.GetFileNameWithoutExtension(modelA.Path);
+            var modelBLabel = Path.GetFileNameWithoutExtension(modelB?.Path);
 
-            Console.WriteLine($"Loading model A: {modelAPath}");
+            Console.WriteLine($"Loading model A: {modelA.Path}");
             var device = cuda.is_available() ? CUDA : CPU;
-            var serviceA = BatchedNeuralEvalService.Load(modus, modelAPath, device, evalBatchSize);
+            var serviceA = BatchedNeuralEvalService.Load(modus, modelA.Path!, device, evalBatchSize);
+            modelA = modelA with { Service = serviceA };
             // we expect the background process to be terminated if the parent process closes
             ((BatchedNeuralEvalService)serviceA).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
-            INeuralEvalService? serviceB = null;
-            if (!string.IsNullOrEmpty(modelBPath))
+            if (!string.IsNullOrEmpty(modelB?.Path))
             {
-                Console.WriteLine($"Loading model B: {modelBPath}");
-                serviceB = BatchedNeuralEvalService.Load(modus, modelBPath, device, evalBatchSize);
+                Console.WriteLine($"Loading model B: {modelB.Path}");
+                var serviceB = BatchedNeuralEvalService.Load(modus, modelB.Path, device, evalBatchSize);
+                modelB = modelB with { Service = serviceB };
                 // we expect the background process to be terminated if the parent process closes
                 ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
@@ -85,8 +92,8 @@ namespace GammonX.Mars.Training
 
             Console.WriteLine();
             Console.WriteLine($"Starting tournament: {totalGames} games  modus={modus}");
-            Console.WriteLine($"  Model A: {modelALabel}");
-            Console.WriteLine($"  Model B: {modelBLabel ?? "wildbg"}");
+            Console.WriteLine($"  Model A: {modelALabel} BotLevel: {modelA.Level}");
+            Console.WriteLine($"  Model B: {modelBLabel ?? "wildbg"} BotLevel: {modelB?.Level.ToString() ?? "none"}");
             Console.WriteLine();
 
             Parallel.For(
@@ -100,9 +107,11 @@ namespace GammonX.Mars.Training
                         // we alternate which model plays white to eliminate first-mover bias
                         var modelAIsWhite = i % 2 == 0;
                         TournamentGameResult? result = null;
-                        if (serviceB != null)
+                        if (modelB?.Service != null)
                         {
-                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights);
+                            modelA = modelA with { IsWhite = modelAIsWhite };
+                            modelB = modelB with { IsWhite = !modelAIsWhite };
+                            result = PlayGame(modus, modelA, modelB, contactWeights);
                         }
                         else
                         {
@@ -172,29 +181,34 @@ namespace GammonX.Mars.Training
                 winRateHistory);
         }
 
-        private static TournamentGameResult PlayGame(GameModus modus, INeuralEvalService serviceA, INeuralEvalService serviceB, bool modelAIsWhite, ContactWeightModel contactWeights)
+        private static TournamentGameResult PlayGame(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
         {
+            ArgumentNullException.ThrowIfNull(entryA.Service);
+            ArgumentNullException.ThrowIfNull(entryB.Service);
+
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
-            var evalServiceA = FeatureEvalServiceFactory.Create(modus, serviceA);
-            var evalServiceB = FeatureEvalServiceFactory.Create(modus, serviceB);
+            var evalServiceA = FeatureEvalServiceFactory.Create(modus, entryA.Service);
+            var evalServiceB = FeatureEvalServiceFactory.Create(modus, entryB.Service);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var isWhite = Random.Shared.Next(2) == 0;
             const int maxTurns = 250;
             var turnCount = 0;
 
-            while (board.BearOffCountBlack != board.WinConditionCount
-                && board.BearOffCountWhite != board.WinConditionCount
-                && turnCount < maxTurns)
+            while (board.BearOffCountBlack != board.WinConditionCount && board.BearOffCountWhite != board.WinConditionCount && turnCount < maxTurns)
             {
                 turnCount++;
                 var rolls = diceService.Roll(2, 6);
-                rolls = rolls[0] == rolls[1]
-                    ? [rolls[0], rolls[0], rolls[0], rolls[0]]
-                    : [rolls[0], rolls[1]];
+                rolls = rolls[0] == rolls[1] ? [rolls[0], rolls[0], rolls[0], rolls[0]] : [rolls[0], rolls[1]];
+
                 // We append the roll event because the turn number depends on it
                 boardService.AddRollEventToHistory(board, isWhite, rolls);
+
+                // we let model A play white on even numbers and model B play white on odd numbers
+                // we want to eliminate any first-mover advantage by alternating colors every game
+                var activeService = (isWhite == entryA.IsWhite) ? evalServiceA : evalServiceB;
+                var botLevel = isWhite == entryA.IsWhite ? entryA.Level : entryB.Level;
 
                 var evalRequest = new EvalMoveRequestContract
                 {
@@ -202,12 +216,8 @@ namespace GammonX.Mars.Training
                     IsWhite = isWhite,
                     Modus = modus,
                     Rolls = rolls,
-                    BotLevel = BotLevel.Hard
+                    BotLevel = botLevel
                 };
-
-                // we let model A play white on even numbers and model B play white on odd numbers
-                // we want to eliminate any first-mover advantage by alternating colors every game
-                var activeService = (isWhite == modelAIsWhite) ? evalServiceA : evalServiceB;
 
                 var result = activeService.EvalMoveSequences(evalRequest, contactWeights);
 
@@ -226,6 +236,7 @@ namespace GammonX.Mars.Training
                 return new TournamentGameResult(false, turnCount, true);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
+
             return new TournamentGameResult(whiteWon, turnCount, false);
         }
 
@@ -380,7 +391,7 @@ namespace GammonX.Mars.Training
             Console.WriteLine();
             Console.WriteLine($"  Model A : {result.ModelALabel}");
             Console.WriteLine($"  Model B : {result.ModelBLabel}");
-            Console.WriteLine($"  Modus   : (from game)");
+            Console.WriteLine("  Modus   : (from game)");
             Console.WriteLine();
             Console.WriteLine($"  Total games  : {result.TotalGames}");
             Console.WriteLine($"  Decisive     : {decisive}");

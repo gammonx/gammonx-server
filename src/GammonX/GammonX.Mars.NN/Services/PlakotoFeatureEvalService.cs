@@ -31,7 +31,7 @@ namespace GammonX.Mars.NN.Services
         {
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
         }
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite, bool isRace)
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
         {
             var pinEval = _pinEvalFeature.Eval(board, isWhite);
 
