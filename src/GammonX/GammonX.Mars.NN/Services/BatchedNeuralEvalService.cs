@@ -1,16 +1,16 @@
-using System.Reflection;
-
 using GammonX.Engine.Models;
+
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 
 using GammonX.Models.Enums;
 
+using Microsoft.Extensions.Hosting;
+
 using Serilog;
 
+using System.Reflection;
 using System.Threading.Channels;
-
-using Microsoft.Extensions.Hosting;
 
 using static TorchSharp.torch;
 
@@ -44,7 +44,9 @@ namespace GammonX.Mars.NN.Services
                 new BoundedChannelOptions(maxBatchSize * 4)
                 {
                     FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true
+                    SingleReader = false,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false
                 });
         }
 
@@ -98,14 +100,14 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public  Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var vec = _extractor.Extract(model, board, isWhite);
             var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
             // TryWrite will not block here: the channel is bounded but large relative to batch size;
             // under sustained overload the channel's Wait mode applies back-pressure.
             _channel.Writer.TryWrite(new InferenceRequest(vec, tcs));
-            return tcs.Task;
+            return await tcs.Task.ConfigureAwait(false);
         }
 
         // <inheritdoc />
@@ -149,7 +151,7 @@ namespace GammonX.Mars.NN.Services
                 // we block until at least one request arrives
                 if (!await _channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
                     break;
-
+                
                 // we drain all currently queued requests up to maxBatchSize
                 while (batch.Count < _maxBatchSize && _channel.Reader.TryRead(out var req))
                 {
@@ -185,17 +187,29 @@ namespace GammonX.Mars.NN.Services
             using var _ = no_grad();
             using var output = _netModel.Forward(input);
 
+            // we perform one GPU-to-CPU transfer and one synchronization for the whole batch.
+            using var cpuOutput = output.to(CPU);
+            var values = cpuOutput.data<float>().ToArray();
+
+            var outputWidth = output.shape.Length == 1 ? 1 : checked((int)output.shape[^1]);
+
             // we fan results back out, row i is independent of all other rows
             for (var i = 0; i < batch.Count; i++)
             {
-                using var row = output[i];
-                var result = row.data<float>().ToArray();
+                float[] result;
+
                 // we normalize single-output nets
-                if (result.Length == 1)
+                if (outputWidth == 1)
                 {
                     // TODO: enable full GAME equity predictions for plakoto/fevga
-                    result = [result[0], 0f, 0f, 0f, 0f];
+                    result = [values[i], 0f, 0f, 0f, 0f];
                 }
+                else
+                {
+                    result = new float[outputWidth];
+                    Array.Copy(values, i * outputWidth, result, 0, outputWidth);
+                }
+
                 batch[i].Result.TrySetResult(result);
             }
         }

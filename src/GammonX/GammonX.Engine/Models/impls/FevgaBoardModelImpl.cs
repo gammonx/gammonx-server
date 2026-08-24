@@ -57,139 +57,163 @@ namespace GammonX.Engine.Models
 		public override int[] Fields { get; protected set; }
 
 		// <inheritdoc />
-		public override Range HomeRangeWhite => new(18, 23);
+		public override Range HomeRangeWhite { get; } = new(18, 23);
 
 		// <inheritdoc />
-		public override Range HomeRangeBlack => new(6, 11);
+		public override Range HomeRangeBlack { get; } = new(6, 11);
 
 		// <inheritdoc />
-		public override Range StartRangeBlack => new(12, 17);
+		public override Range StartRangeBlack { get; } = new(12, 17);
 
 		// <inheritdoc />
 		public override int BlockAmount => 1;
 
         // <inheritdoc />
-        public override Func<bool, int, int, int> MoveOperator => new((isWhite, currentPosition, moveDistance) =>
+        public override Func<bool, int, int, int> MoveOperator => Move;
+
+        private int Move(bool isWhite, int currentPosition, int moveDistance)
         {
             if (isWhite)
             {
                 // white moves from 0 to 23
-                int newPosition = currentPosition + moveDistance;
+                var newPosition = currentPosition + moveDistance;
                 return newPosition;
             }
             else
             {
-				// we redirect checkers movements from the homebar (index 24) to the actual start position
-				if (currentPosition == StartIndexBlack)
-				{
-					currentPosition = 11;
-				}
+                // we redirect checkers movements from the homebar (index 24) to the actual start position
+                if (currentPosition == StartIndexBlack)
+                {
+                    currentPosition = 11;
+                }
 
                 // black moves forward (wraps from 23 -> 0)
-                int newPosition = (currentPosition + moveDistance) % 24;
+                var newPosition = (currentPosition + moveDistance) % 24;
                 return newPosition;
             }
-        });
+        }
 
 		// <inheritdoc />
-		public override Func<bool, int, int, int> RecoverRollOperator => new((isWhite, from, to) =>
-		{
-			if (isWhite)
-			{
-				// white moves from 0 to 23
-				if (to == BoardPositions.BearOffWhite)
-				{
-					to = HomeRangeWhite.End.Value + 1;
-				}
-				int roll = to - from;
-				return roll;
-			}
-			else
-			{
-				if (to == BoardPositions.BearOffBlack)
-				{
-					to = HomeRangeBlack.End.Value + 1;
-				}
-				// we redirect checkers movements from the homebar (index 24) to the actual start position
-				if (from == StartIndexBlack)
-				{
-					from = 11;
-				}
-				// black moves forward (wraps from 23 -> 0)
-				int roll = (to - from + Fields.Length) % Fields.Length;
-				return roll;
-			}
-		});
+        public override Func<bool, int, int, int> RecoverRollOperator => RecoverRoll;
 
-		// <inheritdoc />
-		public override Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
-		{
-            // we cannot bear off if some checkers are still on the homebar
-			// this case is only valid in fevga, because we do not must enter from the homebar
-            var homebarCount = isWhite ? HomeBarCountWhite : HomeBarCountBlack;
-			if (homebarCount > 0)
-				return false;
-
+        private int RecoverRoll(bool isWhite, int from, int to)
+        {
             if (isWhite)
-			{
-				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				// checkers with the perfect bear off roll can always be taken out
-				if (to == HomeRangeWhite.End.Value + 1)
-				{
-					return true;
-				}
-				// checkers with a higher roll than their bear off value can only be taken off
-				// if there does not exist a checker with a higher index/distance.
-				else if (to > HomeRangeWhite.End.Value)
-				{
-					// check if there are any checkers in the home range with above the current position
-					bool highestCheckerIndex = !Fields
-						.Skip(HomeRangeWhite.Start.Value)
-						.Take(currentPosition - HomeRangeWhite.Start.Value)
-						.Any(v => v < 0);
-					return highestCheckerIndex;
-				}
-				return false;
-			}
-			else
-			{
-				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				// checkers with the perfect bear off roll can always be taken out
-				// except if a black fevga checkers is played from the homebar
-				if (to == HomeRangeBlack.End.Value + 1 && currentPosition != BoardPositions.HomeBarBlack)
-				{
-					return true;
-				}
-				// checkers with a higher roll than their bear off value can only be taken off
-				// if there does not exist a checker with a lower index/distance.
-				else if (to > HomeRangeBlack.End.Value)
-				{
-					// check if there are any checkers in the home range with above the current position
-					bool highestCheckerIndex = !Fields
-						.Skip(HomeRangeBlack.Start.Value)
-						.Take(currentPosition - HomeRangeBlack.Start.Value)
-						.Any(v => v > 0);
-					return highestCheckerIndex;
-				}
-				return false;
-			}
-		});
-
-		// <inheritdoc />
-		public override Func<bool, int, bool> IsInHomeOperator => new((isWhite, position) =>
-		{
-			if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
-			if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value)) return false;
-			return true;
-		});
+            {
+                // white moves from 0 to 23
+                if (to == BoardPositions.BearOffWhite)
+                {
+                    to = HomeRangeWhite.End.Value + 1;
+                }
+                int roll = to - from;
+                return roll;
+            }
+            else
+            {
+                if (to == BoardPositions.BearOffBlack)
+                {
+                    to = HomeRangeBlack.End.Value + 1;
+                }
+                // we redirect checkers movements from the homebar (index 24) to the actual start position
+                if (from == StartIndexBlack)
+                {
+                    from = 11;
+                }
+                // black moves forward (wraps from 23 -> 0)
+                int roll = (to - from + Fields.Length) % Fields.Length;
+                return roll;
+            }
+        }
 
         // <inheritdoc />
-        public override Func<bool, int, bool> IsInStartOperator => new((isWhite, position) =>
+        public override Func<bool, int, int, bool> CanBearOffOperator => CanBearOff;
+
+        private bool CanBearOff(bool isWhite, int currentPosition, int moveDistance)
         {
-            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value)) return false;
-            if (!isWhite && (position < StartRangeBlack.Start.Value || position > StartRangeBlack.End.Value)) return false;
+            // we cannot bear off if some checkers are still on the homebar
+            // this case is only valid in fevga, because we do not must enter from the homebar
+            var homebarCount = isWhite ? HomeBarCountWhite : HomeBarCountBlack;
+            if (homebarCount > 0)
+                return false;
+
+            if (isWhite)
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                // checkers with the perfect bear off roll can always be taken out
+                if (to == HomeRangeWhite.End.Value + 1)
+                {
+                    return true;
+                }
+                // checkers with a higher roll than their bear off value can only be taken off
+                // if there does not exist a checker with a higher index/distance.
+                else if (to > HomeRangeWhite.End.Value)
+                {
+                    // check if there are any checkers in the home range with above the current position
+                    bool highestCheckerIndex = !Fields
+                        .Skip(HomeRangeWhite.Start.Value)
+                        .Take(currentPosition - HomeRangeWhite.Start.Value)
+                        .Any(v => v < 0);
+                    return highestCheckerIndex;
+                }
+                return false;
+            }
+            else
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                // checkers with the perfect bear off roll can always be taken out
+                // except if a black fevga checkers is played from the homebar
+                if (to == HomeRangeBlack.End.Value + 1 && currentPosition != BoardPositions.HomeBarBlack)
+                {
+                    return true;
+                }
+                // checkers with a higher roll than their bear off value can only be taken off
+                // if there does not exist a checker with a lower index/distance.
+                else if (to > HomeRangeBlack.End.Value)
+                {
+                    // check if there are any checkers in the home range with above the current position
+                    bool highestCheckerIndex = !Fields
+                        .Skip(HomeRangeBlack.Start.Value)
+                        .Take(currentPosition - HomeRangeBlack.Start.Value)
+                        .Any(v => v > 0);
+                    return highestCheckerIndex;
+                }
+                return false;
+            }
+        }
+
+        // <inheritdoc />
+        public override Func<bool, int, bool> IsInHomeOperator => IsInHomeRange;
+
+        private bool IsInHomeRange(bool isWhite, int position)
+        {
+            if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value))
+            {
+                return false;
+            }
+
+            if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value))
+            {
+                return false;
+            }
             return true;
-        });
+        }
+
+        // <inheritdoc />
+        public override Func<bool, int, bool> IsInStartOperator => IsInStartRange;
+
+        private bool IsInStartRange(bool isWhite, int position)
+        {
+            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value))
+            {
+                return false;
+            }
+
+            if (!isWhite && (position < StartRangeBlack.Start.Value || position > StartRangeBlack.End.Value))
+            {
+                return false;
+            }
+            return true;
+        }
 
         // <inheritdoc />
         public int HomeBarCountWhite { get; private set; } = 14;
