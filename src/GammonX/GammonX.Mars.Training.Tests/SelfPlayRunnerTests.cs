@@ -27,7 +27,11 @@ public sealed class SelfPlayRunnerTests
             LateRankedExplorationProbability = 0f,
             AllLegalExplorationProbability = 0f
         };
-        var runner = new SelfPlayRunner(recorder, modus, modelA, options, modelB);
+
+        var entryA = new SelfPlayEntry(modelA, BotLevel.Hard);
+        var entryB = new SelfPlayEntry(modelB, BotLevel.Hard);
+
+        var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, options);
 
         var result = await runner.RunAsync(
             EvalWeights.GetContactWeights(modus),

@@ -51,7 +51,9 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
             var device = cuda.is_available() ? CUDA : CPU;
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
+            var nnEvalService = BatchedNeuralEvalService.Load(modus, modelPath, device);
+            var cancellationTokenSource = new CancellationTokenSource();
+            await ((BatchedNeuralEvalService)nnEvalService).StartAsync(cancellationTokenSource.Token);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             Assert.NotNull(evalService);
 
@@ -68,6 +70,8 @@ namespace GammonX.Mars.NN.Tests.Services
             };
             var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights);
             Assert.NotNull(resultWhite);
+
+            await cancellationTokenSource.CancelAsync();
         }
 
         [Theory]

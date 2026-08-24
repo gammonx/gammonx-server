@@ -37,29 +37,31 @@ namespace GammonX.Mars.Training.Generator
         IReadOnlyList<ExplorationDecision>? ExplorationDecisions = null,
         ConstraintMetricsResult? ConstraintMetrics = null);
 
+    public sealed record SelfPlayEntry(INeuralEvalService? EvalService, BotLevel BotLevel);
+
     public sealed class SelfPlayRunner
     {
         private readonly GameModus _modus;
         private readonly SelfPlayRecorder _recorder;
-        private readonly INeuralEvalService? _neuralEvalService;
-        private readonly INeuralEvalService? _opponentNeuralEvalService;
+        private readonly SelfPlayEntry? _entryA;
+        private readonly SelfPlayEntry? _entryB;
         private readonly ExplorationOptions _explorationOptions;
         private readonly List<ExplorationDecision> _explorationDecisions = new List<ExplorationDecision>();
 
         public SelfPlayRunner(
             SelfPlayRecorder recorder,
             GameModus modus,
-            INeuralEvalService? neuralService,
-            ExplorationOptions? explorationOptions = null,
-            INeuralEvalService? opponentNeuralService = null)
+            SelfPlayEntry? entryA,
+            SelfPlayEntry? entryB = null,
+            ExplorationOptions? explorationOptions = null)
         {
-            if (opponentNeuralService != null && neuralService == null)
-                throw new ArgumentException("Model B requires Model A.", nameof(opponentNeuralService));
+            if (entryB != null && entryA == null)
+                throw new ArgumentException("Model B requires Model A.", nameof(entryB));
 
             _recorder = recorder;
             _modus = modus;
-            _neuralEvalService = neuralService;
-            _opponentNeuralEvalService = opponentNeuralService;
+            _entryA = entryA;
+            _entryB = entryB;
             _explorationOptions = explorationOptions ?? new ExplorationOptions();
             _explorationOptions.Validate();
         }
@@ -72,12 +74,12 @@ namespace GammonX.Mars.Training.Generator
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
-            var modelAEvalService = FeatureEvalServiceFactory.Create(_modus, _neuralEvalService!);
-            var modelBEvalService = _opponentNeuralEvalService == null ? null : FeatureEvalServiceFactory.Create(_modus, _opponentNeuralEvalService);
+            var modelAEvalService = FeatureEvalServiceFactory.Create(_modus, _entryA?.EvalService!);
+            var modelBEvalService = _entryB?.EvalService == null ? null : FeatureEvalServiceFactory.Create(_modus, _entryB.EvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var modelAWhite = modelAIsWhite ?? Random.Shared.Next(2) == 0;
-            var isWhite = _opponentNeuralEvalService == null ? modelAWhite : modelAIsWhite ?? Random.Shared.Next(2) == 0;
+            var isWhite = _entryB == null ? modelAWhite : modelAIsWhite ?? Random.Shared.Next(2) == 0;
 
             const int maxTurns = 250;
             var turnCount = 0;
@@ -86,12 +88,13 @@ namespace GammonX.Mars.Training.Generator
             {
                 turnCount++;
                 var rolls = diceService.Roll(2, 6);
-                rolls = rolls[0] == rolls[1]
-                    ? [rolls[0], rolls[0], rolls[0], rolls[0]]
-                    : [rolls[0], rolls[1]];
+                rolls = rolls[0] == rolls[1] ? [rolls[0], rolls[0], rolls[0], rolls[0]] : [rolls[0], rolls[1]];
 
                 // We append the roll event because the turn number depends on it
                 boardService.AddRollEventToHistory(board, isWhite, rolls);
+
+                var isModelATurn = _entryB == null || isWhite == modelAWhite;
+                var activeEvalService = isModelATurn ? modelAEvalService : modelBEvalService ?? modelAEvalService;
 
                 var evalRequest = new EvalMoveRequestContract
                 {
@@ -99,11 +102,9 @@ namespace GammonX.Mars.Training.Generator
                     IsWhite = isWhite,
                     Modus = _modus,
                     Rolls = rolls,
-                    BotLevel = BotLevel.Hard
+                    BotLevel = isModelATurn ? _entryA?.BotLevel ?? BotLevel.Hard : _entryB?.BotLevel ?? BotLevel.Hard
                 };
-
-                var isModelATurn = _opponentNeuralEvalService == null || isWhite == modelAWhite;
-                var activeEvalService = isModelATurn ? modelAEvalService : modelBEvalService!;
+                
                 var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
 
                 if (moveSequences.Count != 0)
@@ -184,7 +185,7 @@ namespace GammonX.Mars.Training.Generator
             ContactWeightModel cheapContactWeights,
             RaceWeightModel raceWeights)
         {
-            if (_opponentNeuralEvalService != null)
+            if (_entryB != null)
                 throw new InvalidOperationException("Model B cannot be used when playing against the WildBG bot service.");
 
             var diceFactory = new DiceServiceFactory();
@@ -194,7 +195,7 @@ namespace GammonX.Mars.Training.Generator
             var boardService = BoardServiceFactory.Create(modus);
 
             // eval service to test
-            var evalService = FeatureEvalServiceFactory.Create(modus, _neuralEvalService!);
+            var evalService = FeatureEvalServiceFactory.Create(modus, _entryA?.EvalService!);
             // bot service to play against
             var wildBgService = BotUtils.GetBotService(WellKnownBotServices.WildBg);
 
@@ -257,7 +258,7 @@ namespace GammonX.Mars.Training.Generator
                         IsWhite = isWhite,
                         Modus = modus,
                         Rolls = rolls,
-                        BotLevel = BotLevel.Hard
+                        BotLevel = _entryA?.BotLevel ?? BotLevel.Hard
                     };
                     var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
 
@@ -345,7 +346,7 @@ namespace GammonX.Mars.Training.Generator
         private float? ComputePredVariance()
         {
             float? predictionVariance = null;
-            if (_neuralEvalService != null)
+            if (_entryA != null)
             {
                 var predictions = _recorder.NetPredictions;
                 if (predictions.Count > 1)
@@ -407,7 +408,7 @@ namespace GammonX.Mars.Training.Generator
             var choice = RankAwareExplorationPolicy.Select(
                 turnCount,
                 rankedResults.Count,
-                _neuralEvalService != null,
+                _entryA != null,
                 Random.Shared.NextSingle(),
                 _explorationOptions,
                 scoreGap);

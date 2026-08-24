@@ -392,7 +392,9 @@ namespace GammonX.Mars.NN.Tests
             var board = boardService.CreateBoard();
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
             var device = cuda.is_available() ? CUDA : CPU;
-            var nnEvalService = NeuralEvalService.Load(modus, modelPath, device);
+            var nnEvalService = BatchedNeuralEvalService.Load(modus, modelPath, device, 96);
+            var cancellationTokenSource = new CancellationTokenSource();
+            await ((BatchedNeuralEvalService)nnEvalService).StartAsync(cancellationTokenSource.Token);
             var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
@@ -455,6 +457,8 @@ namespace GammonX.Mars.NN.Tests
             Assert.True(board.BearOffCountWhite == board.WinConditionCount);
             Assert.Equal(0, board.PipCountWhite);
             Assert.True(differentSelectionCount > 0);
+
+            await cancellationTokenSource.CancelAsync();
         }
     }
 }

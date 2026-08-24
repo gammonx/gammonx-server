@@ -1,5 +1,6 @@
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
+using GammonX.Mars.NN.Nets;
 
 using GammonX.Mars.Training;
 using GammonX.Mars.Training.Data;
@@ -11,7 +12,7 @@ using GammonX.Mars.Training.Validation;
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
-using GammonX.Mars.NN.Nets;
+
 using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
@@ -890,7 +891,9 @@ static async Task RunGenerateTrainingDataAsync()
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
     var modelAPath = PromptString("Model A path. Leave blank for linear.", "");
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     var modelBPath = PromptString("Model B path. Leave blank for single-model or linear.", "");
+    var modelBBotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     // we expect with a lambda below < 1.0 smooth intermediate labels, not just binary 1/0.
     // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
     // we also expect near-0.5 positions to increase above 0.0%
@@ -985,8 +988,6 @@ static async Task RunGenerateTrainingDataAsync()
         throw;
     }
 
-    INeuralEvalService? neuralEvalService = modelAService;
-
     var completed = 0;
     var discarded = 0;
     var allSamples = new List<TrainingDataRow>(capacity: totalGames * 40);
@@ -1015,6 +1016,9 @@ static async Task RunGenerateTrainingDataAsync()
         LargeGapRankedExplorationMultiplier = largeGapRankedMultiplier
     };
 
+    var entryA = new SelfPlayEntry(modelAService, modelABotLevel);
+    var entryB = new SelfPlayEntry(modelBService, modelBBotLevel);
+
     try
     {
         await Parallel.ForAsync(
@@ -1023,21 +1027,18 @@ static async Task RunGenerateTrainingDataAsync()
             new ParallelOptions { MaxDegreeOfParallelism = processCount },
             async (i, _) =>
             {
-                var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
-                var runner = new SelfPlayRunner(
-                    recorder,
-                    modus,
-                    neuralEvalService,
-                    explorationOptions,
-                    modelBService);
+                var recorder = new SelfPlayRecorder(extractor, modelAService, lambda);
+                
+                var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, explorationOptions);
 
                 SelfPlayRunResult result;
+
                 if (playAgainstBotService)
                 {
                     var modelIsWhite = i % 2 == 0;
                     result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
                 }
-                else if (modelBService != null)
+                else if (entryA.EvalService != null)
                 {
                     result = await runner.RunAsync(contactWeights, cheapContactWeights, raceWeights, modelAIsWhite: i % 2 == 0);
                 }
