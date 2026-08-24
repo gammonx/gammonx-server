@@ -12,7 +12,7 @@ public sealed class SelfPlayRunnerTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void DualModelRunUsesModelAForRecordingAndDiagnostics(bool modelAIsWhite)
+    public async Task DualModelRunUsesModelAForRecordingAndDiagnostics(bool modelAIsWhite)
     {
         const GameModus modus = GameModus.Backgammon;
         var modelA = new ConstantNeuralEvalService(0.25f);
@@ -29,7 +29,7 @@ public sealed class SelfPlayRunnerTests
         };
         var runner = new SelfPlayRunner(recorder, modus, modelA, options, modelB);
 
-        var result = runner.Run(
+        var result = await runner.RunAsync(
             EvalWeights.GetContactWeights(modus),
             EvalWeights.GetCheapContactWeights(modus),
             EvalWeights.GetRaceWeights(modus),
@@ -67,10 +67,10 @@ public sealed class SelfPlayRunnerTests
 
         public int PredictionCount { get; private set; }
 
-        public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             PredictionCount++;
-            return [_pWin, 0.1f, 0.05f, 0.1f, 0.05f];
+            return Task.FromResult(new [] { _pWin, 0.1f, 0.05f, 0.1f, 0.05f });
         }
     }
 }

@@ -34,7 +34,7 @@ Console.Write("Select mode: ");
 var modeInput = Console.ReadLine()?.Trim();
 if (modeInput == "1")
 {
-    RunGenerateTrainingData();
+    RunGenerateTrainingDataAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 }
 else if (modeInput == "2")
 {
@@ -50,11 +50,11 @@ else if (modeInput == "4")
 }
 else if (modeInput == "5")
 {
-    RunTournament();
+    RunTournamentAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 }
 else if (modeInput == "6")
 {
-    RunBotServiceTournament();
+    RunBotServiceTournamentAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 }
 else if (modeInput == "7")
 {
@@ -136,7 +136,7 @@ static void RunNoiseDiagnostic()
 
 #region Tournament
 
-static void RunTournament()
+static async Task RunTournamentAsync()
 {
     Console.WriteLine();
 
@@ -167,12 +167,12 @@ static void RunTournament()
     var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
     var raceWeights = EvalWeights.GetRaceWeights(modus);
 
-    var result = TournamentRunner.Run(modus, entryA, entryB, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var result = await TournamentRunner.RunAsync(modus, entryA, entryB, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
 
-static void RunBotServiceTournament()
+static async Task RunBotServiceTournamentAsync()
 {
     Console.WriteLine();
 
@@ -195,7 +195,7 @@ static void RunBotServiceTournament()
 
     var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
 
-    var result = TournamentRunner.Run(modus, entryA, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var result = await TournamentRunner.RunAsync(modus, entryA, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -881,7 +881,7 @@ static void RunRebuildTdTargets()
 
 #region Generate Training Data
 
-static void RunGenerateTrainingData()
+static async Task RunGenerateTrainingDataAsync()
 {
     Console.WriteLine();
 
@@ -1017,11 +1017,11 @@ static void RunGenerateTrainingData()
 
     try
     {
-        Parallel.For(
+        await Parallel.ForAsync(
             0,
             totalGames,
             new ParallelOptions { MaxDegreeOfParallelism = processCount },
-            (i) =>
+            async (i, _) =>
             {
                 var recorder = new SelfPlayRecorder(extractor, neuralEvalService, lambda);
                 var runner = new SelfPlayRunner(
@@ -1035,15 +1035,15 @@ static void RunGenerateTrainingData()
                 if (playAgainstBotService)
                 {
                     var modelIsWhite = i % 2 == 0;
-                    result = runner.RunAgainstBotServiceGame(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                    result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
                 }
                 else if (modelBService != null)
                 {
-                    result = runner.Run(contactWeights, cheapContactWeights, raceWeights, modelAIsWhite: i % 2 == 0);
+                    result = await runner.RunAsync(contactWeights, cheapContactWeights, raceWeights, modelAIsWhite: i % 2 == 0);
                 }
                 else
                 {
-                    result = runner.Run(contactWeights, cheapContactWeights, raceWeights);
+                    result = await runner.RunAsync(contactWeights, cheapContactWeights, raceWeights);
                 }
 
                 lock (lockObj)

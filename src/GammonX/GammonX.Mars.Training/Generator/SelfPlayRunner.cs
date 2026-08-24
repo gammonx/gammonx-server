@@ -64,7 +64,7 @@ namespace GammonX.Mars.Training.Generator
             _explorationOptions.Validate();
         }
 
-        public SelfPlayRunResult Run(
+        public async Task<SelfPlayRunResult> RunAsync(
             ContactWeightModel contactWeights,
             ContactWeightModel cheapContactWeights,
             RaceWeightModel raceWeights,
@@ -104,12 +104,12 @@ namespace GammonX.Mars.Training.Generator
 
                 var isModelATurn = _opponentNeuralEvalService == null || isWhite == modelAWhite;
                 var activeEvalService = isModelATurn ? modelAEvalService : modelBEvalService!;
-                var moveSequences = activeEvalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
+                var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
 
                 if (moveSequences.Count != 0)
                 {
                     var resultToPlay = isModelATurn
-                        ? SelectTrainingMove(
+                        ? await SelectTrainingMoveAsync(
                             modelAEvalService,
                             boardService,
                             board,
@@ -127,12 +127,12 @@ namespace GammonX.Mars.Training.Generator
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                     }
 
-                    _recorder.RecordPosition(resultToPlay.EvalResult, board, isWhite);
+                    await _recorder.RecordPositionAsync(resultToPlay.EvalResult, board, isWhite);
                 }
                 else
                 {
                     var passEval = activeEvalService.EvalPositionForTraining(board.ToContract(false), isWhite);
-                    _recorder.RecordPosition(passEval, board, isWhite);
+                    await _recorder.RecordPositionAsync(passEval, board, isWhite);
                 }
 
                 isWhite = !isWhite;
@@ -177,7 +177,7 @@ namespace GammonX.Mars.Training.Generator
                 _recorder.ConstraintMetrics);
         }
 
-        public SelfPlayRunResult RunAgainstBotServiceGame(
+        public async Task<SelfPlayRunResult> RunAgainstBotServiceGameAsync(
             GameModus modus,
             bool evalPlayerIsWhite,
             ContactWeightModel contactWeights,
@@ -245,7 +245,7 @@ namespace GammonX.Mars.Training.Generator
                     // wildbg turn
                     nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
                     var boardContract = board.ToContract(false);
-                    evalResultModel = evalService.EvalMoveSequence(boardContract, isWhite, nextMoves, contactWeights);
+                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, contactWeights);
                 }
                 else
                 {
@@ -259,11 +259,11 @@ namespace GammonX.Mars.Training.Generator
                         Rolls = rolls,
                         BotLevel = BotLevel.Hard
                     };
-                    var result = evalService.EvalMoveSequencesForTraining(evalRequest, contactWeights);
+                    var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
 
                     if (result.Count != 0)
                     {
-                        evalResultModel = SelectTrainingMove(
+                        evalResultModel = await SelectTrainingMoveAsync(
                             evalService,
                             boardService,
                             board,
@@ -294,7 +294,7 @@ namespace GammonX.Mars.Training.Generator
                 }
 
                 // we must record after the moves were made
-                _recorder.RecordPosition(evalResultModel.EvalResult, board, isWhite);
+                await _recorder.RecordPositionAsync(evalResultModel.EvalResult, board, isWhite);
 
                 if (!hasWon)
                 {
@@ -381,7 +381,7 @@ namespace GammonX.Mars.Training.Generator
         /// selects the best candidate, and random exploration samples from all legal moves. A random
         /// move is evaluated again so its recorded score corresponds to the move actually played.
         /// </remarks>
-        private FinalEvalResultModel SelectTrainingMove(
+        private async Task<FinalEvalResultModel> SelectTrainingMoveAsync(
             IFeatureEvalService evalService,
             IBoardService boardService,
             IBoardModel board,
@@ -446,7 +446,7 @@ namespace GammonX.Mars.Training.Generator
                 {
                     var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
                     // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-                    selectedResult = evalService.EvalMoveSequence(boardContract, isWhite, selectedMove, contactWeights);
+                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, contactWeights);
                     selectedRank = null;
                 }
             }

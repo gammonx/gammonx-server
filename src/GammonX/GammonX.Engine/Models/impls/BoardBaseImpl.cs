@@ -188,11 +188,10 @@ namespace GammonX.Engine.Models
 
 		protected virtual int GetPipCount(bool isWhite)
 		{
-			var fieldsCopy = Fields.ToList();
 			var pipCount = 0;
 			if (isWhite)
 			{
-				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeWhite.End.Value, (i) => i < 0);
+				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeWhite.End.Value, (i) => i < 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountWhite * 24;
@@ -200,7 +199,7 @@ namespace GammonX.Engine.Models
 			}
 			else
 			{
-				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeBlack.End.Value, (i) => i > 0);
+				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeBlack.End.Value, (i) => i > 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountBlack * 24;

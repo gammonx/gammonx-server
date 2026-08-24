@@ -13,7 +13,7 @@ namespace GammonX.Mars.NN.Tests.Services
     public class TwoPlySearchEvaluatorTests
     {
         [Fact]
-        public void UsesBackgammonDiceProbabilities()
+        public async Task UsesBackgammonDiceProbabilities()
         {
             var harness = CreateHarness(
                 rolls =>
@@ -21,9 +21,9 @@ namespace GammonX.Mars.NN.Tests.Services
                     var marker = rolls.Length == 4 ? 100 : 0;
                     return [CreateSequence(marker)];
                 });
-            var evaluator = CreateEvaluator(harness, (board, _) => board.Fields[0]);
+            var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = evaluator.Evaluate(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
             Assert.Equal(-600d / 36d, score, 10);
             Assert.Equal(21, harness.RequestedRolls.Count);
@@ -31,7 +31,7 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public void SelectsTheBestOpponentResponseForEachRollBeforeAveraging()
+        public async Task SelectsTheBestOpponentResponseForEachRollBeforeAveraging()
         {
             var harness = CreateHarness(
                 rolls =>
@@ -41,9 +41,9 @@ namespace GammonX.Mars.NN.Tests.Services
                         : rolls[0] * 10 + rolls[1];
                     return [CreateSequence(rollKey), CreateSequence(rollKey + 100)];
                 });
-            var evaluator = CreateEvaluator(harness, (board, _) => board.Fields[0]);
+            var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = evaluator.Evaluate(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
             var expected = 0d;
             for (var die1 = 1; die1 <= 6; die1++)
@@ -60,12 +60,12 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public void MaximizesNegativeOpponentScoreBeforeNegatingIt()
+        public async Task MaximizesNegativeOpponentScoreBeforeNegatingIt()
         {
             var harness = CreateHarness(_ => [CreateSequence(-8), CreateSequence(-2)]);
-            var evaluator = CreateEvaluator(harness, (board, _) => board.Fields[0]);
+            var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = evaluator.Evaluate(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
             Assert.Equal(2d, score, 10);
         }
@@ -73,7 +73,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [Theory]
         [InlineData(true, false)]
         [InlineData(false, true)]
-        public void PassesWhenOpponentHasNoLegalResponseAndRestoresTheBoard(
+        public async Task PassesWhenOpponentHasNoLegalResponseAndRestoresTheBoard(
             bool rootIsWhite,
             bool expectedOpponentIsWhite)
         {
@@ -84,10 +84,10 @@ namespace GammonX.Mars.NN.Tests.Services
                 (board, isWhite) =>
                 {
                     perspectives.Add(isWhite);
-                    return board.Fields[0];
+                    return Task.FromResult((double)board.Fields[0]);
                 });
 
-            var score = evaluator.Evaluate(harness.Board.Object, rootIsWhite);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, rootIsWhite);
 
             Assert.Equal(-7d, score, 10);
             Assert.Equal(21, perspectives.Count);
@@ -97,12 +97,12 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public void UndoesOpponentMovesInReverseOrder()
+        public async Task UndoesOpponentMovesInReverseOrder()
         {
             var harness = CreateHarness(_ => [CreateSequence(1, 2)]);
-            var evaluator = CreateEvaluator(harness, (board, _) => board.Fields[0]);
+            var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            evaluator.Evaluate(harness.Board.Object, true);
+            await evaluator.EvaluateAsync(harness.Board.Object, true);
 
             Assert.Equal(0, harness.Fields[0]);
             Assert.Equal(42, harness.UndoneMoves.Count);
@@ -111,18 +111,18 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public void RestoresAHitDuringRealBackgammonTraversal()
+        public async Task RestoresAHitDuringRealBackgammonTraversal()
         {
             var fields = new int[24];
             fields[0] = -14;
             fields[22] = -1;
             fields[23] = 15;
 
-            AssertRealBackgammonTraversalRestoresBoard(fields);
+            await AssertRealBackgammonTraversalRestoresBoard(fields);
         }
 
         [Fact]
-        public void RestoresAHomeBarEntryDuringRealBackgammonTraversal()
+        public async Task RestoresAHomeBarEntryDuringRealBackgammonTraversal()
         {
             var fields = new int[24];
             fields[0] = -4;
@@ -134,22 +134,22 @@ namespace GammonX.Mars.NN.Tests.Services
             fields[23] = -1;
             fields[10] = 14;
 
-            AssertRealBackgammonTraversalRestoresBoard(fields, homeBarCountBlack: 1);
+            await AssertRealBackgammonTraversalRestoresBoard(fields, homeBarCountBlack: 1);
         }
 
         [Fact]
-        public void RestoresABearOffDuringRealBackgammonTraversal()
+        public async Task RestoresABearOffDuringRealBackgammonTraversal()
         {
             var fields = new int[24];
             fields[5] = 15;
             fields[23] = -15;
 
-            AssertRealBackgammonTraversalRestoresBoard(fields);
+            await AssertRealBackgammonTraversalRestoresBoard(fields);
         }
 
         private static TwoPlySearchEvaluator CreateEvaluator(
             Harness harness,
-            Func<IBoardModel, bool, double> scorePosition)
+            Func<IBoardModel, bool, Task<double>> scorePosition)
         {
             return new TwoPlySearchEvaluator(harness.BoardService.Object, scorePosition);
         }
@@ -217,7 +217,7 @@ namespace GammonX.Mars.NN.Tests.Services
             return sequence;
         }
 
-        private static void AssertRealBackgammonTraversalRestoresBoard(
+        private static async Task AssertRealBackgammonTraversalRestoresBoard(
             int[] fields,
             int homeBarCountWhite = 0,
             int homeBarCountBlack = 0)
@@ -236,8 +236,8 @@ namespace GammonX.Mars.NN.Tests.Services
             var expectedBearOffWhite = board.BearOffCountWhite;
             var expectedBearOffBlack = board.BearOffCountBlack;
 
-            var evaluator = new TwoPlySearchEvaluator(boardService, (_, _) => 0d);
-            evaluator.Evaluate(board, true);
+            var evaluator = new TwoPlySearchEvaluator(boardService, (_, _) => Task.FromResult(0d));
+            await evaluator.EvaluateAsync(board, true);
 
             Assert.Equal(expectedFields, board.Fields);
             Assert.Equal(expectedBearOffWhite, board.BearOffCountWhite);

@@ -30,7 +30,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("cube")]
-        public IActionResult Cube([FromBody] EvalCubeRequestContract request)
+        public async Task<IActionResult> Cube([FromBody] EvalCubeRequestContract request)
         {
             try
             {
@@ -49,7 +49,7 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var (shouldOffer, shouldTake) = evalService.EvalCube(request);
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(request);
                 var payload = new CubeEvalPayload { ShouldOffer = shouldOffer, ShouldTake = shouldTake };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
@@ -63,14 +63,14 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("board")]
-        public IActionResult Board([FromBody] EvalBoardRequestContract request)
+        public async Task<IActionResult> Board([FromBody] EvalBoardRequestContract request)
         {
             try
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus); ;
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
                 contactWeights.Validate();
-                var boardScore = evalService.EvalBoardState(request, contactWeights);
+                var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights);
                 var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -84,7 +84,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("move")]
-        public IActionResult Move([FromBody] EvalMoveRequestContract request)
+        public async Task<IActionResult> Move([FromBody] EvalMoveRequestContract request)
         {
             try
             {
@@ -99,7 +99,7 @@ namespace GammonX.Mars.Server.Controllers
 
                 contactWeights.Validate();
 
-                var bestMove = evalService.EvalMoveSequences(request, contactWeights);
+                var bestMove = await evalService.EvalMoveSequencesAsync(request, contactWeights);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };

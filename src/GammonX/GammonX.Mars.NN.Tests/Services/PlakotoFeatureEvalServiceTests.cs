@@ -38,7 +38,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(5, 5)]
         [InlineData(5, 6)]
         [InlineData(6, 6)]
-        public void PlakotoStartBoardEvalEqualsForBlackAndWhite(int roll1, int roll2)
+        public async Task PlakotoStartBoardEvalEqualsForBlackAndWhite(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBoard1);
             Assert.NotNull(boardContract);
@@ -57,7 +57,7 @@ namespace GammonX.Mars.NN.Tests.Services
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService(null);
-            var result = evalService.EvalMoveSequences(request, EvalWeights.PlakotoContactWeights, 20);
+            var result = await evalService.EvalMoveSequencesAsync(request, EvalWeights.PlakotoContactWeights, 20);
 
             Assert.NotNull(result);
         }
@@ -84,7 +84,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(5, 5)]
         [InlineData(5, 6)]
         [InlineData(6, 6)]
-        public void CanEvalPlakotoBoard1ForWhite(int roll1, int roll2)
+        public async Task CanEvalPlakotoBoard1ForWhite(int roll1, int roll2)
         {
             var boardService = BoardServiceFactory.Create(GameModus.Plakoto);
             var board = boardService.CreateBoard();
@@ -105,7 +105,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -116,7 +116,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequences(requestBlack, EvalWeights.PlakotoContactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -125,7 +125,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
         [Theory]
         [InlineData(3, 5)]
-        public void CanEvalPlakotoBoard3ForWhite(int roll1, int roll2)
+        public async Task CanEvalPlakotoBoard3ForWhite(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBoard3);
             Assert.NotNull(boardContract);
@@ -144,7 +144,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -155,7 +155,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(4, 4)]
         [InlineData(5, 5)]
         [InlineData(6, 6)]
-        public void CanEvalPlakotoBoard4ForWhite(int roll1, int roll2)
+        public async Task CanEvalPlakotoBoard4ForWhite(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBoard4);
             Assert.NotNull(boardContract);
@@ -174,12 +174,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequences(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
         [Fact]
-        public void CanEvalPlakotoBlackWonBoard()
+        public async Task CanEvalPlakotoBlackWonBoard()
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBlackWonBoard);
             Assert.NotNull(boardContract);
@@ -196,7 +196,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalBoardState(requestBlack, EvalWeights.PlakotoContactWeights);
+            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.PlakotoContactWeights);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -204,14 +204,14 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalBoardState(requestWhite, EvalWeights.PlakotoContactWeights);
+            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.PlakotoContactWeights);
 
             Assert.True(resultBlack > 0.0);
             Assert.True(resultWhite < -0.0);
         }
 
         [Fact]
-        public void CannotEvalCube()
+        public async Task CannotEvalCube()
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PlakotoBlackWonBoard);
             Assert.NotNull(boardContract);
@@ -229,7 +229,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request));
         }
     }
 }

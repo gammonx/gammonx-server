@@ -17,7 +17,7 @@ namespace GammonX.Mars.NN.Services
         /// </summary>
         /// <param name="contract">Match state to evaluate</param>
         /// <returns>Cube actions to take based on the evaluation.</returns>
-        (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract);
+        Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(EvalCubeRequestContract contract);
 
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in <paramref name="contactWeights"/>.
@@ -28,7 +28,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contract">Contains board state .</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <returns>Score rating of the given board for a given player.</returns>
-        double EvalBoardState(
+        Task<double> EvalBoardStateAsync(
             EvalBoardRequestContract contract,
             ContactWeightModel contactWeights);
 
@@ -43,7 +43,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
         /// <returns>Best rated move sequence.</returns>
-        MoveSequenceModel EvalMoveSequences(
+        Task<MoveSequenceModel> EvalMoveSequencesAsync(
             EvalMoveRequestContract contract,
             ContactWeightModel contactWeights,
             int? maxCandidates = null);
@@ -59,7 +59,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
-        FinalEvalResultModels EvalMoveSequencesForTraining(
+        Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(
             EvalMoveRequestContract contract,
             ContactWeightModel contactWeights,
             int? maxCandidates = null);
@@ -82,7 +82,7 @@ namespace GammonX.Mars.NN.Services
         /// <param name="moveSequence">The sequence of moves to evaluate.</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <returns>The final eval result for the given <paramref name="moveSequence"/></returns>
-        FinalEvalResultModel EvalMoveSequence(
+        Task<FinalEvalResultModel> EvalMoveSequenceAsync(
             BoardModelContract contract,
             bool isWhite,
             MoveSequenceModel moveSequence,

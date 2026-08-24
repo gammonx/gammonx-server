@@ -14,24 +14,20 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public double Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var totalStackHeight = 0;
+            var occupiedPointCount = 0;
+            foreach (var field in board.Fields)
             {
-                var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
-                if (whitePositions.Count != 0)
+                if ((isWhite && field < 0) || (!isWhite && field > 0))
                 {
-                    return Math.Abs(whitePositions.Average(wp => wp.Item));
-                }
-            }
-            else
-            {
-                var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
-                if (blackPositions.Count != 0)
-                {
-                    return blackPositions.Average(bp => bp.Item);
+                    totalStackHeight += Math.Abs(field);
+                    occupiedPointCount++;
                 }
             }
 
-            return 0;
+            return occupiedPointCount > 0
+                ? (double)totalStackHeight / occupiedPointCount
+                : 0;
         }
     }
 }

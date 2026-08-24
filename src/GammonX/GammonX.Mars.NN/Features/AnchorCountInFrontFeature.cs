@@ -13,49 +13,87 @@ namespace GammonX.Mars.NN.Features
         {
             if (isWhite)
             {
-                var whiteAnchors = board.Fields.Index().Where(i => i.Item <= -board.BlockAmount).ToList();
-                if (board is IPinModel pinModel)
+                var nearStartRangeIndex = board.StartRangeBlack.Start.Value;
+                var nearStartPosition = board.RecoverRollOperator(false, nearStartRangeIndex, board.HomeRangeBlack.End.Value);
+                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountBlack == 0)
                 {
-                    var potWhiteAnchors = board.Fields.Index().Where(i => i.Item == -(board.BlockAmount - 1));
-                    potWhiteAnchors = potWhiteAnchors.Where(i => pinModel.PinnedFields[i.Index] == board.BlockAmount - 1);
-                    whiteAnchors = whiteAnchors.Concat(potWhiteAnchors).ToList();
+                    var hasBlackChecker = false;
+                    for (var index = 0; index < board.Fields.Length; index++)
+                    {
+                        if (board.Fields[index] > 0)
+                        {
+                            var movementPosition = board.RecoverRollOperator(false, index, board.HomeRangeBlack.End.Value);
+                            if (!hasBlackChecker || movementPosition > nearStartPosition)
+                            {
+                                nearStartPosition = movementPosition;
+                            }
+
+                            hasBlackChecker = true;
+                        }
+                    }
                 }
 
-                var blackIndices = board.Fields.Index().Where(i => i.Item > 0);
-                var nearStartRangeIndex = board.StartRangeBlack.Start.Value;
-                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountBlack == 0 && blackIndices.Any())
+                var anchorCount = 0;
+                var pinModel = board as IPinModel;
+                for (var index = 0; index < board.Fields.Length; index++)
                 {
-                    nearStartRangeIndex = blackIndices.MaxBy(
-                           bi => board.RecoverRollOperator(!isWhite, bi.Index, board.HomeRangeBlack.End.Value)).Index;
+                    var field = board.Fields[index];
+                    var isAnchor = field <= -board.BlockAmount;
+                    if (!isAnchor && pinModel is not null)
+                    {
+                        isAnchor = field == -(board.BlockAmount - 1)
+                            && pinModel.PinnedFields[index] == board.BlockAmount - 1;
+                    }
+
+                    if (isAnchor && board.RecoverRollOperator(false, index, board.HomeRangeBlack.End.Value) < nearStartPosition)
+                    {
+                        anchorCount++;
+                    }
                 }
-                
-                // we count all white anchors in front of the black checker which is the furthest away from home end
-                return whiteAnchors.Count(wa => 
-                    board.RecoverRollOperator(!isWhite, wa.Index, board.HomeRangeBlack.End.Value) <
-                    board.RecoverRollOperator(!isWhite, nearStartRangeIndex, board.HomeRangeBlack.End.Value));
+
+                return anchorCount;
             }
             else
             {
-                var blackAnchors = board.Fields.Index().Where(i => i.Item >= board.BlockAmount).ToList();
-                if (board is IPinModel pinModel)
-                {
-                    var potBlackAnchors = board.Fields.Index().Where(i => i.Item == board.BlockAmount - 1);
-                    potBlackAnchors = potBlackAnchors.Where(i => pinModel.PinnedFields[i.Index] == -(board.BlockAmount - 1));
-                    blackAnchors = blackAnchors.Concat(potBlackAnchors).ToList();
-                }
-
-                var whiteIndices = board.Fields.Index().Where(i => i.Item < 0);
                 var nearStartRangeIndex = board.StartRangeWhite.Start.Value;
-                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountWhite == 0 && whiteIndices.Any())
+                var nearStartPosition = board.RecoverRollOperator(true, nearStartRangeIndex, board.HomeRangeWhite.End.Value);
+                if (board is IHomeBarModel homeBarModel && homeBarModel.HomeBarCountWhite == 0)
                 {
-                    nearStartRangeIndex = whiteIndices.MaxBy(
-                           bi => board.RecoverRollOperator(!isWhite, bi.Index, board.HomeRangeWhite.End.Value)).Index;
+                    var hasWhiteChecker = false;
+                    for (var index = 0; index < board.Fields.Length; index++)
+                    {
+                        if (board.Fields[index] < 0)
+                        {
+                            var movementPosition = board.RecoverRollOperator(true, index, board.HomeRangeWhite.End.Value);
+                            if (!hasWhiteChecker || movementPosition > nearStartPosition)
+                            {
+                                nearStartPosition = movementPosition;
+                            }
+
+                            hasWhiteChecker = true;
+                        }
+                    }
                 }
 
-                // we count all black anchors in front of the white checker which is the furthest away from home end
-                return blackAnchors.Count(wa =>
-                    board.RecoverRollOperator(!isWhite, wa.Index, board.HomeRangeWhite.End.Value) <
-                    board.RecoverRollOperator(!isWhite, nearStartRangeIndex, board.HomeRangeWhite.End.Value));
+                var anchorCount = 0;
+                var pinModel = board as IPinModel;
+                for (var index = 0; index < board.Fields.Length; index++)
+                {
+                    var field = board.Fields[index];
+                    var isAnchor = field >= board.BlockAmount;
+                    if (!isAnchor && pinModel is not null)
+                    {
+                        isAnchor = field == board.BlockAmount - 1
+                            && pinModel.PinnedFields[index] == -(board.BlockAmount - 1);
+                    }
+
+                    if (isAnchor && board.RecoverRollOperator(true, index, board.HomeRangeWhite.End.Value) < nearStartPosition)
+                    {
+                        anchorCount++;
+                    }
+                }
+
+                return anchorCount;
             }
         }
     }

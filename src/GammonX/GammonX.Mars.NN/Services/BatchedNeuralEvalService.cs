@@ -98,14 +98,14 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public  Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var vec = _extractor.Extract(model, board, isWhite);
             var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
             // TryWrite will not block here: the channel is bounded but large relative to batch size;
             // under sustained overload the channel's Wait mode applies back-pressure.
             _channel.Writer.TryWrite(new InferenceRequest(vec, tcs));
-            return tcs.Task.GetAwaiter().GetResult();
+            return tcs.Task;
         }
 
         // <inheritdoc />

@@ -19,7 +19,7 @@ namespace GammonX.Mars.NN.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]
-        public void LinearModelBotCanPlayAgainstItself(GameModus modus)
+        public async Task LinearModelBotCanPlayAgainstItself(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -49,7 +49,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequences(
+                var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
                     150);
@@ -78,7 +78,7 @@ namespace GammonX.Mars.NN.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]
-        public void NeuralNetBotCanPlayAgainstItself(GameModus modus)
+        public async Task NeuralNetBotCanPlayAgainstItself(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -111,7 +111,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = BotLevel.Hard
                 };
 
-                var result = evalService.EvalMoveSequences(
+                var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
                     150);
@@ -140,7 +140,7 @@ namespace GammonX.Mars.NN.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]
-        public void NeuralNetBotHardDefeatsMedium(GameModus modus)
+        public async Task NeuralNetBotHardDefeatsMedium(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -175,7 +175,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequences(
+                var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
                     150);
@@ -205,7 +205,7 @@ namespace GammonX.Mars.NN.Tests
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]
-        public void NeuralNetBotMediumDefeatsEasy(GameModus modus)
+        public async Task NeuralNetBotMediumDefeatsEasy(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -240,7 +240,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequences(
+                var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
                     150);
@@ -266,7 +266,7 @@ namespace GammonX.Mars.NN.Tests
 
         [Theory]
         [InlineData(GameModus.Backgammon)]
-        public void NeuralNetBotHardOffersDoubleAgainstEasy(GameModus modus)
+        public async Task NeuralNetBotHardOffersDoubleAgainstEasy(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -300,7 +300,7 @@ namespace GammonX.Mars.NN.Tests
                     PointsAwayOpp = isWhite ? 1 : 5
                 };
 
-                var (shouldOffer, shouldTake) = evalService.EvalCube(evalCubePlayerReq);
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubePlayerReq);
                 Assert.NotEqual(CubeAction.Unknown, shouldOffer);
                 Assert.NotEqual(CubeAction.Unknown, shouldTake);
 
@@ -320,7 +320,7 @@ namespace GammonX.Mars.NN.Tests
                         PointsAwayOpp = isWhite ? 1 : 5
                     };
 
-                    var (shouldOfferOpp, shouldTakeOpp) = evalService.EvalCube(evalCubeOppReq);
+                    var (shouldOfferOpp, shouldTakeOpp) = await evalService.EvalCubeAsync(evalCubeOppReq);
                     Assert.NotEqual(CubeAction.Unknown, shouldOfferOpp);
                     Assert.NotEqual(CubeAction.Unknown, shouldTakeOpp);
 
@@ -357,7 +357,7 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = isWhite ? whiteBotLevel : blackBotLevel
                 };
 
-                var result = evalService.EvalMoveSequences(
+                var result = await evalService.EvalMoveSequencesAsync(
                     evalMoveReq,
                     EvalWeights.GetContactWeights(modus),
                     150);
@@ -386,7 +386,7 @@ namespace GammonX.Mars.NN.Tests
 
         [Theory]
         [InlineData(GameModus.Backgammon)]
-        public void EvaluateMoveSelectionOfTwoPlyAndHard(GameModus modus)
+        public async Task EvaluateMoveSelectionOfTwoPlyAndHard(GameModus modus)
         {
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
@@ -427,8 +427,8 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = blackBotLevel
                 };
 
-                var twoPlyResult = evalService.EvalMoveSequences(twoPlyRequest, EvalWeights.GetContactWeights(modus));
-                var onePlyResult = evalService.EvalMoveSequences(onePlyRequest, EvalWeights.GetContactWeights(modus));
+                var twoPlyResult = await evalService.EvalMoveSequencesAsync(twoPlyRequest, EvalWeights.GetContactWeights(modus));
+                var onePlyResult = await evalService.EvalMoveSequencesAsync(onePlyRequest, EvalWeights.GetContactWeights(modus));
                 if (!twoPlyResult.Equals(onePlyResult))
                 {
                     differentSelectionCount++;

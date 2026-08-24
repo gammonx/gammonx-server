@@ -53,7 +53,7 @@ namespace GammonX.Mars.Training
             return modelIsWhite ? new BotPlayerAssignment(player1Id, player2Id) : new BotPlayerAssignment(player2Id, player1Id);
         }
 
-        public static TournamentResult Run(
+        public static async Task<TournamentResult> RunAsync(
             GameModus modus,
             TournamentEntry modelA,
             TournamentEntry? modelB,
@@ -64,7 +64,7 @@ namespace GammonX.Mars.Training
             int evalBatchSize,
             int processCount)
         {
-            var modelALabel = Path.GetFileNameWithoutExtension(modelA.Path);
+            var modelALabel = Path.GetFileNameWithoutExtension(modelA.Path) ?? "undefined model";
             var modelBLabel = Path.GetFileNameWithoutExtension(modelB?.Path);
 
             Console.WriteLine($"Loading model A: {modelA.Path}");
@@ -96,11 +96,11 @@ namespace GammonX.Mars.Training
             Console.WriteLine($"  Model B: {modelBLabel ?? "wildbg"} BotLevel: {modelB?.Level.ToString() ?? "none"}");
             Console.WriteLine();
 
-            Parallel.For(
+            await Parallel.ForAsync(
                 0,
                 totalGames,
                 new ParallelOptions { MaxDegreeOfParallelism = processCount },
-                (i) =>
+                async (i, _) =>
                 {
                     try
                     {
@@ -111,11 +111,12 @@ namespace GammonX.Mars.Training
                         {
                             modelA = modelA with { IsWhite = modelAIsWhite };
                             modelB = modelB with { IsWhite = !modelAIsWhite };
-                            result = PlayGame(modus, modelA, modelB, contactWeights);
+                            result = await PlayGameAsync(modus, modelA, modelB, contactWeights);
                         }
                         else
                         {
-                            result = PlayAgainstBotServiceGame(modus, serviceA, modelAIsWhite, contactWeights);
+                            modelA = modelA with { IsWhite = modelAIsWhite };
+                            result = await PlayAgainstBotServiceGameAsync(modus, modelA, contactWeights);
                         }
 
                         lock (lockObj)
@@ -181,7 +182,7 @@ namespace GammonX.Mars.Training
                 winRateHistory);
         }
 
-        private static TournamentGameResult PlayGame(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
+        private static async Task<TournamentGameResult> PlayGameAsync(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
         {
             ArgumentNullException.ThrowIfNull(entryA.Service);
             ArgumentNullException.ThrowIfNull(entryB.Service);
@@ -219,7 +220,7 @@ namespace GammonX.Mars.Training
                     BotLevel = botLevel
                 };
 
-                var result = activeService.EvalMoveSequences(evalRequest, contactWeights);
+                var result = await activeService.EvalMoveSequencesAsync(evalRequest, contactWeights);
 
                 foreach (var move in result.Moves)
                 {
@@ -240,15 +241,18 @@ namespace GammonX.Mars.Training
             return new TournamentGameResult(whiteWon, turnCount, false);
         }
 
-        private static TournamentGameResult PlayAgainstBotServiceGame(GameModus modus, INeuralEvalService neuralService, bool modelIsWhite, ContactWeightModel contactWeights)
+        private static async Task<TournamentGameResult> PlayAgainstBotServiceGameAsync(GameModus modus, TournamentEntry modelA, ContactWeightModel contactWeights)
         {
+            ArgumentNullException.ThrowIfNull(modelA.Service);
+            ArgumentNullException.ThrowIfNull(modelA.IsWhite);
+
             var diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(modus.From(), MatchType.CashGame, matchFactory);
 
             // eval service to test
-            var evalService = FeatureEvalServiceFactory.Create(modus, neuralService);
+            var evalService = FeatureEvalServiceFactory.Create(modus, modelA.Service);
             // bot service to play against
             var wildBgService = BotUtils.GetBotService(WellKnownBotServices.WildBg);
 
@@ -258,14 +262,14 @@ namespace GammonX.Mars.Training
             var assignment = AssignBotPlayers(
                 matchSession.Player1.Id,
                 matchSession.Player2.Id,
-                modelIsWhite);
+                modelA.IsWhite.Value);
             var evalPlayerId = assignment.ModelPlayerId;
             var wildbgPlayerId = assignment.WildBgPlayerId;
 
             var activePlayerId = Guid.Empty;
             var otherPlayerId = Guid.Empty;
 
-            if (modelIsWhite)
+            if (modelA.IsWhite.Value)
             {
                 matchSession.StartMatch(evalPlayerId);
                 activePlayerId = evalPlayerId;
@@ -301,7 +305,7 @@ namespace GammonX.Mars.Training
                 else
                 {
                     // eval service turn
-                    var isWhite = modelIsWhite;
+                    var isWhite = modelA.IsWhite.Value;
                     var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
                     var evalRequest = new EvalMoveRequestContract
                     {
@@ -309,9 +313,9 @@ namespace GammonX.Mars.Training
                         IsWhite = isWhite,
                         Modus = modus,
                         Rolls = rolls,
-                        BotLevel = BotLevel.Hard
+                        BotLevel = modelA.Level
                     };
-                    nextMoves = evalService.EvalMoveSequences(evalRequest, contactWeights);
+                    nextMoves = await evalService.EvalMoveSequencesAsync(evalRequest, contactWeights);
                 }
 
                 var hasWon = false;

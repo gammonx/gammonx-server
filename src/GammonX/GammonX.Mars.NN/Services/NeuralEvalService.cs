@@ -83,7 +83,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var vec = _extractor.Extract(model, board, isWhite);
             lock (InferLock)
@@ -97,9 +97,9 @@ namespace GammonX.Mars.NN.Services
                 if (result.Length == 1)
                 {
                     // TODO: enable full GAME equity predictions for plakoto/fevga
-                    return [result[0], 0f, 0f, 0f, 0f];
+                    return Task.FromResult(new float[] { result[0], 0f, 0f, 0f, 0f });
                 }
-                return result;
+                return Task.FromResult(result);
             }
         }
     }

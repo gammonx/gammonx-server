@@ -22,7 +22,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract)
+        public async Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(EvalCubeRequestContract contract)
         {
             if (_neuralEvalService == null)
                 throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
@@ -35,7 +35,7 @@ namespace GammonX.Mars.NN.Services
             {
                 var eval = CalculateEvalModel(board, isWhite);
 
-                var predictions = _neuralEvalService.Predict(NormalizedEvalResultModel.From(eval), board, isWhite);
+                var predictions = await _neuralEvalService.PredictAsync(NormalizedEvalResultModel.From(eval), board, isWhite);
                 // we calculate the game equity
                 var outcome = new GameOutcomeModel(predictions);
                 var equityModel = new GameEquityModel(outcome);
@@ -104,25 +104,25 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public double EvalBoardState(EvalBoardRequestContract contract, ContactWeightModel contactWeights)
+        public Task<double> EvalBoardStateAsync(EvalBoardRequestContract contract, ContactWeightModel contactWeights)
         {
             var boardContract = contract.Board;
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;
 
             var eval = CalculateEvalModel(board, isWhite);
-            return CalculatePositionScore(board, isWhite, eval, contactWeights);
+            return CalculatePositionScoreAsync(board, isWhite, eval, contactWeights);
         }
 
         // <inheritdoc />
-        public MoveSequenceModel EvalMoveSequences(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
+        public async Task<MoveSequenceModel> EvalMoveSequencesAsync(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
         {
-            var evalMoves = EvalMoveSequencesForTraining(contract, contactWeights, maxCandidates);
+            var evalMoves = await EvalMoveSequencesForTrainingAsync(contract, contactWeights, maxCandidates);
             return evalMoves.Select(contract.BotLevel);
         }
 
         // <inheritdoc />
-        public FinalEvalResultModels EvalMoveSequencesForTraining(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
+        public async Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(EvalMoveRequestContract contract, ContactWeightModel contactWeights, int? maxCandidates = null)
         {
             var rolls = contract.Rolls;
             var boardContract = contract.Board;
@@ -136,7 +136,7 @@ namespace GammonX.Mars.NN.Services
                 return [];
 
             var evalCount = Math.Min(maxCandidates ?? legalMovesSeq.Length, legalMovesSeq.Length);
-            var evalResult = GetCandidatesByEval(board, legalMovesSeq, isWhite, contactWeights, evalCount, contract.BotLevel);
+            var evalResult = await GetCandidatesByEvalAsync(board, legalMovesSeq, isWhite, contactWeights, evalCount, contract.BotLevel);
             return [.. evalResult];
         }
 
@@ -149,16 +149,16 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public FinalEvalResultModel EvalMoveSequence(BoardModelContract contract, bool isWhite, MoveSequenceModel moveSequence, ContactWeightModel contactWeights)
+        public async Task<FinalEvalResultModel> EvalMoveSequenceAsync(BoardModelContract contract, bool isWhite, MoveSequenceModel moveSequence, ContactWeightModel contactWeights)
         {
             var board = BoardService.CreateBoard(contract);
             var moveSequences = new[] { moveSequence };
             const int evalCount = 1;
-            var evalResult = GetCandidatesByEval(board, moveSequences, isWhite, contactWeights, evalCount, BotLevel.TwoPly);
+            var evalResult = await GetCandidatesByEvalAsync(board, moveSequences, isWhite, contactWeights, evalCount, BotLevel.TwoPly);
             return evalResult.First();
         }
 
-        private IEnumerable<FinalEvalResultModel> GetCandidatesByEval(
+        private async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(
             IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
@@ -189,12 +189,12 @@ namespace GammonX.Mars.NN.Services
                     if (botLevel == BotLevel.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the score based on a two-ply evaluation of the resulting board state
-                        score = CalculateTwoPlyScore(board, isWhite, contactWeights);
+                        score = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);
                     }
                     else
                     {
                         // we calculate the one-ply score for the active player and his move
-                        score = CalculatePositionScore(board, isWhite, eval, contactWeights);
+                        score = await CalculatePositionScoreAsync(board, isWhite, eval, contactWeights);
                     }
 
                     evals.Add(new FinalEvalResultModel(score, moveSeq, evalModel));
@@ -213,12 +213,12 @@ namespace GammonX.Mars.NN.Services
             return evals.OrderByDescending(e => e.Score);
         }
 
-        private double CalculateTwoPlyScore(IBoardModel board, bool isWhite, ContactWeightModel contactWeights)
+        private Task<double> CalculateTwoPlyScoreAsync(IBoardModel board, bool isWhite, ContactWeightModel contactWeights)
         {
             // we check if the game has already ended and return the terminal score if so
             if (TryGetTerminalScore(board, isWhite, out var terminalScore))
             {
-                return terminalScore;
+                return Task.FromResult(terminalScore);
             }
 
             var evaluator = new TwoPlySearchEvaluator(
@@ -227,13 +227,13 @@ namespace GammonX.Mars.NN.Services
                 (position, perspectiveIsWhite) =>
                 {
                     var eval = CalculateEvalModel(position, perspectiveIsWhite);
-                    return CalculatePositionScore(position, perspectiveIsWhite, eval, contactWeights);
+                    return CalculatePositionScoreAsync(position, perspectiveIsWhite, eval, contactWeights);
                 });
 
-            return evaluator.Evaluate(board, isWhite);
+            return evaluator.EvaluateAsync(board, isWhite);
         }
 
-        private double CalculatePositionScore(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
+        private async Task<double> CalculatePositionScoreAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
         {
             // we check if the game has already ended and return the terminal score if so
             if (TryGetTerminalScore(board, isWhite, out var terminalScore))
@@ -249,7 +249,7 @@ namespace GammonX.Mars.NN.Services
 
             var evalModel = NormalizedEvalResultModel.From(eval);
             // we calculate the nn model prediction
-            var predictions = _neuralEvalService.Predict(evalModel, board, isWhite);
+            var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite);
 
             // TODO: support 5 head output for Plakoto and Fevga
             if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
@@ -288,6 +288,7 @@ namespace GammonX.Mars.NN.Services
                 GameResult.LostSingle => -1d,
                 GameResult.LostGammon => -2d,
                 GameResult.LostBackgammon => -3d,
+                // ReSharper disable once RedundantSwitchExpressionArms
                 GameResult.Draw => 0d,
                 _ => 0d
             };

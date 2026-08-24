@@ -472,13 +472,15 @@ namespace GammonX.Engine.Services
                 {
                     MoveCheckerTo(board, move.From, move.To, isWhite);
 
-                    var newRemaining = new List<int>(remainingRolls);
-                    newRemaining.RemoveAt(i);
+                    remainingRolls.RemoveAt(i);
+                    currentMoves.Add(move);
+                    usedDices.Add(die);
 
-                    var newMoves = new List<MoveModel>(currentMoves) { move };
-                    var newUsedDice = new List<int>(usedDices) { die };
+                    ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results);
 
-                    ExploreBoardRecursively(board, isWhite, newRemaining, newMoves, newUsedDice, results);
+                    usedDices.RemoveAt(usedDices.Count - 1);
+                    currentMoves.RemoveAt(currentMoves.Count - 1);
+                    remainingRolls.Insert(i, die);
 
                     // we use undo move here to avoid the overhead of cloning the board for each move
                     UndoMove(board, move, isWhite);
@@ -532,12 +534,13 @@ namespace GammonX.Engine.Services
 
                     MoveCheckerTo(board, move.From, move.To, isWhite);
 
-                    var newRemaining = new List<int>(remainingRolls);
-                    newRemaining.RemoveAt(i);
+                    remainingRolls.RemoveAt(i);
+                    currentMoves.Add(move);
 
-                    var newMoves = new List<MoveModel>(currentMoves) { move };
+                    ExploreWithCallback(board, isWhite, remainingRolls, currentMoves, totalDices, callback, ref maxDepthSeen, ref satisfied);
 
-                    ExploreWithCallback(board, isWhite, newRemaining, newMoves, totalDices, callback, ref maxDepthSeen, ref satisfied);
+                    currentMoves.RemoveAt(currentMoves.Count - 1);
+                    remainingRolls.Insert(i, die);
 
                     UndoMove(board, move, isWhite);
                 }
