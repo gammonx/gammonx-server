@@ -178,7 +178,35 @@ namespace GammonX.Models.Tests
         [Fact]
         public void MATBackgammonMatchIsParsedProperly()
         {
-            // TODO
+            var parser = HistoryParserFactory.Create<IMatchHistoryParser>(HistoryFormat.MAT);
+
+            var historyPath = Path.Combine("Data", "BackgammonMatchHistory.txt");
+            var history = File.ReadAllText(historyPath);
+
+            var match = parser.ParseMatch(history);
+
+            var whitePlayer = Guid.Parse("2f41dca1-8f6c-462a-83ae-4bf545733144");
+            var blackPlayer = Guid.Parse("f91201d3-ca26-4835-9516-bd35a218f03a");
+
+            Assert.NotNull(match);
+            Assert.Equal(Guid.Parse("47550209-963e-45f4-a3a4-c54ad163559c"), match.Id);
+            Assert.Equal("Backgammon Bot SevenPointGame", match.Name);
+            Assert.Single(match.Games);
+            Assert.Equal(whitePlayer, match.Player1Id);
+            Assert.Equal(blackPlayer, match.Player2Id);
+            Assert.Equal(HistoryFormat.MAT, match.Format);
+            Assert.Equal(1, match.Length);
+            Assert.Equal(DateTimeHelper.ParseFlexible("25/08/2026 07:07:49"), match.StartedAt);
+            Assert.Equal(DateTimeHelper.ParseFlexible("25/08/2026 07:08:25"), match.EndedAt);
+            Assert.Equal(8, match.PointCount(whitePlayer));
+            Assert.Equal(0, match.PointCount(blackPlayer));
+            Assert.Equal(5, match.AvgDoubleDiceCount(whitePlayer));
+            Assert.Equal(3, match.AvgDoubleDiceCount(blackPlayer));
+            Assert.Equal(TimeSpan.FromSeconds(36), match.AvgDuration());
+            Assert.Equal(29, match.AvgTurnCount(whitePlayer));
+            Assert.Equal(28, match.AvgTurnCount(blackPlayer));
+            Assert.Equal(2, match.AvgDoubleOfferCount(whitePlayer));
+            Assert.Equal(1, match.AvgDoubleOfferCount(blackPlayer));
         }
     }
 }

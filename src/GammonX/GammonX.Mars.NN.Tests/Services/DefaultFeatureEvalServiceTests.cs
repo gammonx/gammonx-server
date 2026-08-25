@@ -260,6 +260,22 @@ namespace GammonX.Mars.NN.Tests.Services
 
         [Theory]
         [InlineData(GameModus.Backgammon)]
+        public void BotAcceptsEarlyDouble(GameModus modus)
+        {
+            var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
+            var nnEvalService = NeuralEvalService.Load(modus, modelPath);
+            var evalService = FeatureEvalServiceFactory.Create(modus, nnEvalService);
+
+            var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvaleRequestBotOffersEarlyDouble);
+            Assert.NotNull(evalCubeReq);
+
+            var (shouldOffer, shouldTake) = evalService.EvalCube(evalCubeReq);
+            Assert.Equal(CubeAction.Double, shouldOffer);
+            Assert.Equal(CubeAction.Take, shouldTake);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
         public void BotOffersInstantDoubleIfBehindBig(GameModus modus)
         {
             var modelPath = Path.Combine("Data/NeuralNets", $"{modus}", "training_net.dat");
