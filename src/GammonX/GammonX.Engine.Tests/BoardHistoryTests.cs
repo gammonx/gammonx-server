@@ -25,7 +25,7 @@ namespace GammonX.Engine.Tests
 			var board = boardService.CreateBoard();
 			var edtiableHistory = board.History as IEditableBoardHistory;
 			Assert.NotNull(edtiableHistory);
-            Assert.NotNull(board.History);
+			Assert.NotNull(board.History);
 			Assert.Empty(board.History.Events);
 
 			var playerStr = isWhite ? "White" : "Black";
@@ -35,7 +35,7 @@ namespace GammonX.Engine.Tests
 			Assert.Equal("1 2 3 4", rollEventValue.ToString());
 			var rollEvent = new HistoryEventImpl(HistoryEventType.Roll, rollEventValue, isWhite);
 			Assert.Equal($"{playerStr} Roll 1 2 3 4", rollEvent.ToString());
-            edtiableHistory.Add(rollEvent);
+			edtiableHistory.Add(rollEvent);
 			Assert.Single(board.History.Events);
 
 			Assert.Equal(isWhite, rollEvent.IsWhite);
@@ -47,7 +47,7 @@ namespace GammonX.Engine.Tests
 			Assert.Equal("5/2", moveEventValue.ToString());
 			var moveEvent = new HistoryEventImpl(HistoryEventType.Move, moveEventValue, isWhite);
 			Assert.Equal($"{playerStr} Move 5/2", moveEvent.ToString());
-            edtiableHistory.Add(moveEvent);
+			edtiableHistory.Add(moveEvent);
 			Assert.Equal(2, board.History.Events.Count);
 
 			Assert.Equal(isWhite, moveEvent.IsWhite);
@@ -60,7 +60,7 @@ namespace GammonX.Engine.Tests
 			Assert.Contains(rollEvent, board.History.Events);
 			Assert.DoesNotContain(moveEvent, board.History.Events);
 
-            edtiableHistory.Remove(rollEvent);
+			edtiableHistory.Remove(rollEvent);
 			Assert.Empty(board.History.Events);
 			Assert.DoesNotContain(rollEvent, board.History.Events);
 
@@ -101,15 +101,47 @@ namespace GammonX.Engine.Tests
 		[Fact]
 		public void CanCreateHitEvent()
 		{
-            var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
-            var board = boardService.CreateBoard();
-            Assert.NotNull(board.History);
-            Assert.Empty(board.History.Events);
+			var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+			var board = boardService.CreateBoard();
+			Assert.NotNull(board.History);
+			Assert.Empty(board.History.Events);
 			var hitEvent = HistoryEventFactory.CreateHitEvent(true, 5);
 			Assert.True(hitEvent.IsWhite);
 			Assert.Equal(HistoryEventType.Hit, hitEvent.Type);
 			Assert.IsType<Tuple<int, int>>(hitEvent.Value.GetValue());
-            Assert.Equal($"5/bar", hitEvent.Value.ToString());
-        }
+			Assert.Equal($"5/bar", hitEvent.Value.ToString());
+		}
+
+		[Fact]
+		public void CanCreateCubeEvents()
+		{
+			var offerCubeEvent = HistoryEventFactory.CreateCubeEvent(true, CubeAction.Offer);
+			Assert.True(offerCubeEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Cube, offerCubeEvent.Type);
+			Assert.IsType<CubeAction>(offerCubeEvent.Value.GetValue());
+			Assert.Equal($"White Cube Offer", offerCubeEvent.ToString());
+
+			var takeCubeEvent = HistoryEventFactory.CreateCubeEvent(true, CubeAction.Take);
+			Assert.True(takeCubeEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Cube, takeCubeEvent.Type);
+			Assert.IsType<CubeAction>(takeCubeEvent.Value.GetValue());
+			Assert.Equal($"White Cube Take", takeCubeEvent.ToString());
+
+			var passCubeEvent = HistoryEventFactory.CreateCubeEvent(true, CubeAction.Pass);
+			Assert.True(passCubeEvent.IsWhite);
+			Assert.Equal(HistoryEventType.Cube, passCubeEvent.Type);
+			Assert.IsType<CubeAction>(passCubeEvent.Value.GetValue());
+			Assert.Equal($"White Cube Pass", passCubeEvent.ToString());
+		}
+
+		[Theory]
+		[InlineData(CubeAction.Double)]
+		[InlineData(CubeAction.NoDouble)]
+		[InlineData(CubeAction.TooGood)]
+		[InlineData(CubeAction.Unknown)]
+		public void CannotCreateCubeEventWithInvalidCubeAction(CubeAction invalidAction)
+		{
+			Assert.Throws<ArgumentOutOfRangeException>(() => HistoryEventFactory.CreateCubeEvent(true, invalidAction));
+		}
 	}
 }

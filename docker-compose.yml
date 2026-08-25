@@ -74,8 +74,7 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
       - SERVICE__BASEPATH=/bot/mars
-      # Match the Dockerfile's EXPOSE/HEALTHCHECK and the ECS containerPort.
-      # Without it the app binds the aspnet image default of 8080.
+      # We match the Dockerfile EXPOSE/HEALTHCHECK and the ECS containerPort
       - ASPNETCORE_HTTP_PORTS=8083
     networks:
     - gammonx-network   

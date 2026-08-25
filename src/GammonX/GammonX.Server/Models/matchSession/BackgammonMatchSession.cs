@@ -172,7 +172,8 @@ namespace GammonX.Server.Models
 			if (_doubleCubeOfferPlayerId == null)
 			{
 				_doubleCubeOfferPlayerId = callingPlayerId;
-				doublingCubeGameSession.DoubleOffered(callingPlayerId);
+				var isWhite = IsWhite(callingPlayerId);
+				doublingCubeGameSession.DoubleOffered(callingPlayerId, isWhite);
 				LastExecutedCommand = ServerCommands.OfferDoubleCommand;
 			}
 			else
@@ -238,7 +239,7 @@ namespace GammonX.Server.Models
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
 			LastExecutedCommand = ServerCommands.AcceptDoubleCommand;
-			doublingCubeGameSession.DoubleAccepted(callingPlayerId);
+			doublingCubeGameSession.DoubleAccepted(callingPlayerId, isWhite);
 		}
 
 		// <inheritdoc />
@@ -290,7 +291,8 @@ namespace GammonX.Server.Models
 			// reset the pending doubling offer
 			_doubleCubeOfferPlayerId = null;
 			LastExecutedCommand = ServerCommands.DeclineDoubleCommand;
-			doublingCubeGameSession.DoubleDeclined(callingPlayerId);
+			var isWhite = IsWhite(callingPlayerId);
+			doublingCubeGameSession.DoubleDeclined(callingPlayerId, isWhite);
 		}
 
 		// <inheritdoc />

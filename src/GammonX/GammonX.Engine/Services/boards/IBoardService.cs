@@ -72,16 +72,24 @@ namespace GammonX.Engine.Services
         /// <param name="rolls">Roll Event values to add.</param>
         void AddRollEventToHistory(IBoardModel model, bool isWhite, int[] rolls);
 
-		/// <summary>
-		/// Checks if the given checker can be moved from to a given position based
-		/// on the roll.
-		/// </summary>
-		/// <param name="model">The board model to operate on.</param>
-		/// <param name="from">Position to move from.</param>
-		/// <param name="roll">Value of the used dice roll.</param>
-		/// <param name="isWhite">Indicates if the white or black pieces move.</param>
-		/// <returns>Indicates if the given dice roll value can be moved from.</returns>
-		bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite);
+        /// <summary>
+        /// Adds the given <paramref name="cubeAction"/> to the board history for player <paramref name="isWhite"/>.
+        /// </summary>
+        /// <param name="model">Provides the history to add on.</param>
+        /// <param name="isWhite">Indicates if white or black pieces move.</param>
+        /// <param name="cubeAction">Cube action to add.</param>
+        void AddCubeEventToHistory(IBoardModel model, bool isWhite, CubeAction cubeAction);
+
+        /// <summary>
+        /// Checks if the given checker can be moved from to a given position based
+        /// on the roll.
+        /// </summary>
+        /// <param name="model">The board model to operate on.</param>
+        /// <param name="from">Position to move from.</param>
+        /// <param name="roll">Value of the used dice roll.</param>
+        /// <param name="isWhite">Indicates if the white or black pieces move.</param>
+        /// <returns>Indicates if the given dice roll value can be moved from.</returns>
+        bool CanMoveChecker(IBoardModel model, int from, int roll, bool isWhite);
 
 		/// <summary>
 		/// Checks if the given checker can be born off.

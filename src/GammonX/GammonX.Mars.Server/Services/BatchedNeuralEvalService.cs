@@ -101,6 +101,14 @@ namespace GammonX.Mars.Server.Services
             {
                 // pass
             }
+            catch (OperationCanceledException)
+            {
+                // pass
+            }
+            catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is OperationCanceledException))
+            {
+                // pass
+            }
         }
 
         private async Task RunWorkerAsync(CancellationToken ct)

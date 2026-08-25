@@ -1,5 +1,8 @@
 ﻿namespace GammonX.Models.Enums
 {
+    /// <summary>
+    /// Provides all well known actions a player can take with the doubling cube in backgammon.
+    /// </summary>
     public enum CubeAction
     {
         /// <summary>
@@ -23,6 +26,10 @@
         /// The player got offered a double by the opponent and should decline it, because accepting would lower the match equity.
         /// </summary>
         Pass = 4,
+        /// <summary>
+        /// The player offered his opponent a double and is waiting for the opponent to either <see cref="Take"/> or <see cref="Pass"/> the double.
+        /// </summary>
+        Offer = 5,
         /// <summary>
         /// Default value.
         /// </summary>
