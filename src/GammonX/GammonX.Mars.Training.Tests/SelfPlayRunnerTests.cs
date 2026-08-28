@@ -33,11 +33,7 @@ public sealed class SelfPlayRunnerTests
 
         var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, options);
 
-        var result = await runner.RunAsync(
-            EvalWeights.GetContactWeights(modus),
-            EvalWeights.GetCheapContactWeights(modus),
-            EvalWeights.GetRaceWeights(modus),
-            modelAIsWhite);
+        var result = await runner.RunAsync(EvalWeights.GetContactWeights(modus), modelAIsWhite);
 
         Assert.NotNull(result.Trajectory);
         Assert.NotEmpty(result.Samples);

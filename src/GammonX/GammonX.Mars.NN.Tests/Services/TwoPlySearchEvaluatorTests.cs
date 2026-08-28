@@ -60,6 +60,36 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
+        public async Task StartsOpponentLeafEvaluationsBeforeAwaitingThem()
+        {
+            var harness = CreateHarness(_ => [CreateSequence(1), CreateSequence(2)]);
+            var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var scoreCallCount = 0;
+
+            async Task<double> ScoreAsync()
+            {
+                var callIndex = Interlocked.Increment(ref scoreCallCount);
+                if (callIndex <= 2)
+                {
+                    if (callIndex == 2)
+                        release.TrySetResult(true);
+
+                    await release.Task.WaitAsync(TimeSpan.FromSeconds(1));
+                }
+
+                return 0d;
+            }
+
+            var evaluator = CreateEvaluator(harness, (_, _) => ScoreAsync());
+
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+
+            Assert.Equal(0d, score);
+            Assert.Equal(42, scoreCallCount);
+            Assert.Equal(0, harness.Fields[0]);
+        }
+
+        [Fact]
         public async Task MaximizesNegativeOpponentScoreBeforeNegatingIt()
         {
             var harness = CreateHarness(_ => [CreateSequence(-8), CreateSequence(-2)]);

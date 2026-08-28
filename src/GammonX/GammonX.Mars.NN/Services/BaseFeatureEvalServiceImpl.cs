@@ -224,10 +224,10 @@ namespace GammonX.Mars.NN.Services
             var evaluator = new TwoPlySearchEvaluator(
                 BoardService,
                 // we pass the position score calculation as a func
-                (position, perspectiveIsWhite) =>
+                (boardModel, perspectiveIsWhite) =>
                 {
-                    var eval = CalculateEvalModel(position, perspectiveIsWhite);
-                    return CalculatePositionScoreAsync(position, perspectiveIsWhite, eval, contactWeights);
+                    var eval = CalculateEvalModel(boardModel, perspectiveIsWhite);
+                    return CalculatePositionScoreAsync(boardModel, perspectiveIsWhite, eval, contactWeights);
                 });
 
             return evaluator.EvaluateAsync(board, isWhite);

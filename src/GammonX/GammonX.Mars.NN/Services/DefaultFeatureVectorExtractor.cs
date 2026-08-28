@@ -31,7 +31,7 @@ namespace GammonX.Mars.NN.Services
             var features = new float[FeatureCount];
             var featureIndex = 0;
 
-            // we always extract the feature vectors from whites perspective
+            // we always extract the feature vectors from active players perspective
             features[featureIndex++] = (float)model.MaxPrimeLengthPlayer;
             features[featureIndex++] = (float)model.MaxPrimeLengthOpp;
             features[featureIndex++] = (float)model.HomebarCountPlayer;
@@ -61,8 +61,9 @@ namespace GammonX.Mars.NN.Services
             var fields = board.Fields;
             for (var i = 0; i < fields.Length; i++)
             {
-                // white players view are positive values, opponent displayed as negative values
-                // TODO: verify this
+                // we invert the board, so that the perspective always reflects the active player
+                // white i=0 takes board.Fields[0] and black i=0 takes board.Fields[23]
+                // the active player checker count (v) is always negative, the opponent checker count (v) is always positive
                 var v = isWhite ? fields[i] : -fields[fields.Length - 1 - i];
                 features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
                 features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor

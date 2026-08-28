@@ -66,11 +66,7 @@ namespace GammonX.Mars.Training.Generator
             _explorationOptions.Validate();
         }
 
-        public async Task<SelfPlayRunResult> RunAsync(
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights,
-            bool? modelAIsWhite = null)
+        public async Task<SelfPlayRunResult> RunAsync(ContactWeightModel contactWeights, bool? modelAIsWhite = null)
         {
             var boardService = BoardServiceFactory.Create(_modus);
             var board = boardService.CreateBoard();
@@ -178,12 +174,7 @@ namespace GammonX.Mars.Training.Generator
                 _recorder.ConstraintMetrics);
         }
 
-        public async Task<SelfPlayRunResult> RunAgainstBotServiceGameAsync(
-            GameModus modus,
-            bool evalPlayerIsWhite,
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+        public async Task<SelfPlayRunResult> RunAgainstBotServiceGameAsync(GameModus modus, bool evalPlayerIsWhite, ContactWeightModel contactWeights)
         {
             if (_entryB != null)
                 throw new InvalidOperationException("Model B cannot be used when playing against the WildBG bot service.");

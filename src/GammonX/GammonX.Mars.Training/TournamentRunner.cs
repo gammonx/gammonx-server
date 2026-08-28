@@ -59,8 +59,6 @@ namespace GammonX.Mars.Training
             TournamentEntry? modelB,
             int totalGames,
             ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights,
             int evalBatchSize,
             int processCount)
         {

@@ -41,7 +41,7 @@ namespace GammonX.Mars.NN.Services
 
         private async Task<double> CalculateBestOpponentResponseAsync(IBoardModel board, bool isWhite, int[] rolls)
         {
-            // score each reply from the opponent's perspective
+            // score each reply from the opponents perspective
             var opponentIsWhite = !isWhite;
             var opponentMoveSequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
             if (opponentMoveSequences.Length == 0)
@@ -49,32 +49,33 @@ namespace GammonX.Mars.NN.Services
                 return await _evalPositionAsync(board, opponentIsWhite);
             }
 
-            var bestOpponentScore = double.NegativeInfinity;
-            // scores are from the opponent's perspective, so the opponent maximizes them
+            var scoreTasks = new List<Task<double>>(opponentMoveSequences.Length);
             foreach (var opponentMoveSequence in opponentMoveSequences)
             {
+                var boardCopy = board.DeepClone();
                 var appliedMoves = 0;
                 try
                 {
                     foreach (var move in opponentMoveSequence.Moves)
                     {
-                        _boardService.MoveCheckerTo(board, move.From, move.To, opponentIsWhite);
+                        _boardService.MoveCheckerTo(boardCopy, move.From, move.To, opponentIsWhite);
                         appliedMoves++;
                     }
 
-                    var opponentScore = await _evalPositionAsync(board, opponentIsWhite);
-                    bestOpponentScore = Math.Max(bestOpponentScore, opponentScore);
+                    scoreTasks.Add(_evalPositionAsync(boardCopy, opponentIsWhite));
                 }
                 finally
                 {
                     for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
                     {
-                        _boardService.UndoMove(board, opponentMoveSequence.Moves[moveIndex], opponentIsWhite);
+                        _boardService.UndoMove(boardCopy, opponentMoveSequence.Moves[moveIndex], opponentIsWhite);
                     }
                 }
             }
 
-            return bestOpponentScore;
+            var opponentScores = await Task.WhenAll(scoreTasks);
+            // scores are from the opponents perspective, so the opponent maximizes them
+            return opponentScores.Max();
         }
     }
 }

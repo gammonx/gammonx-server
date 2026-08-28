@@ -23,6 +23,7 @@ namespace GammonX.Mars.NN.Services
         private readonly MotherDistanceFeature _motherDistanceFeature = new MotherDistanceFeature();
         private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
         private readonly AverageDistanceToBearOffFeature _averageDistancePositionFeature = new AverageDistanceToBearOffFeature();
+        private readonly RaceFeature _raceFeature = new RaceFeature();
 
         protected override IBoardService BoardService { get; }
 
@@ -37,7 +38,7 @@ namespace GammonX.Mars.NN.Services
 
             var eval = new EvalResultModel
             {
-                Race = false,
+                Race = _raceFeature.Eval(board, isWhite),
                 PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
                 PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
                 PipDifference = _pipDifferenceFeature.Eval(board, isWhite),

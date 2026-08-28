@@ -10,8 +10,13 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel, IFevgaBoardModel
     {
+        private readonly Func<bool, int, int, int> _recoverRollOperator;
+        private readonly Func<bool, int, bool> _isInHomeOperator;
+
         internal FevgaBoardModelImpl(BoardModelContract contract)
         {
+            _recoverRollOperator = RecoverRoll;
+            _isInHomeOperator = IsInHomeRange;
             Fields = contract.Fields;
             BearOffCountWhite = contract.BearOffCountWhite;
             BearOffCountBlack = contract.BearOffCountBlack;
@@ -21,6 +26,8 @@ namespace GammonX.Engine.Models
 
         public FevgaBoardModelImpl()
         {
+            _recoverRollOperator = RecoverRoll;
+            _isInHomeOperator = IsInHomeRange;
             Fields = new int[24]
             {
                 -1, // Field 1  :: 1 White Checkers
@@ -94,7 +101,7 @@ namespace GammonX.Engine.Models
         }
 
 		// <inheritdoc />
-        public override Func<bool, int, int, int> RecoverRollOperator => RecoverRoll;
+        public override Func<bool, int, int, int> RecoverRollOperator => _recoverRollOperator;
 
         private int RecoverRoll(bool isWhite, int from, int to)
         {
@@ -103,10 +110,9 @@ namespace GammonX.Engine.Models
                 // white moves from 0 to 23
                 if (to == BoardPositions.BearOffWhite)
                 {
-                    to = HomeRangeWhite.End.Value + 1;
+                    return HomeRangeWhite.End.Value + 1 - from;
                 }
-                int roll = to - from;
-                return roll;
+                return to - from;
             }
             else
             {
@@ -182,20 +188,12 @@ namespace GammonX.Engine.Models
         }
 
         // <inheritdoc />
-        public override Func<bool, int, bool> IsInHomeOperator => IsInHomeRange;
+        public override Func<bool, int, bool> IsInHomeOperator => _isInHomeOperator;
 
         private bool IsInHomeRange(bool isWhite, int position)
         {
-            if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value))
-            {
-                return false;
-            }
-
-            if (!isWhite && (position < HomeRangeBlack.Start.Value || position > HomeRangeBlack.End.Value))
-            {
-                return false;
-            }
-            return true;
+            var homeRange = isWhite ? HomeRangeWhite : HomeRangeBlack;
+            return position >= homeRange.Start.Value && position <= homeRange.End.Value;
         }
 
         // <inheritdoc />

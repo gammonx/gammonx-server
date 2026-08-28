@@ -104,9 +104,7 @@ namespace GammonX.Mars.NN.Services
         {
             var vec = _extractor.Extract(model, board, isWhite);
             var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-            // TryWrite will not block here: the channel is bounded but large relative to batch size;
-            // under sustained overload the channel's Wait mode applies back-pressure.
-            _channel.Writer.TryWrite(new InferenceRequest(vec, tcs));
+            await _channel.Writer.WriteAsync(new InferenceRequest(vec, tcs)).ConfigureAwait(false);
             return await tcs.Task.ConfigureAwait(false);
         }
 

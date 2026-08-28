@@ -165,10 +165,8 @@ static async Task RunTournamentAsync()
     TournamentEntry? entryB = File.Exists(modelBPath) ? new TournamentEntry(modelBPath, modelBBotLevel, null, null) : null;
 
     var contactWeights = EvalWeights.GetContactWeights(modus);
-    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
-    var raceWeights = EvalWeights.GetRaceWeights(modus);
 
-    var result = await TournamentRunner.RunAsync(modus, entryA, entryB, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var result = await TournamentRunner.RunAsync(modus, entryA, entryB, totalGames, contactWeights,evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -189,14 +187,12 @@ static async Task RunBotServiceTournamentAsync()
     }
 
     var contactWeights = EvalWeights.GetContactWeights(modus);
-    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
-    var raceWeights = EvalWeights.GetRaceWeights(modus);
     var evalBatchSize = PromptInt("Eval Batchsize", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
     var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
 
-    var result = await TournamentRunner.RunAsync(modus, entryA, null, totalGames, contactWeights, cheapContactWeights, raceWeights, evalBatchSize, processCount);
+    var result = await TournamentRunner.RunAsync(modus, entryA, null, totalGames, contactWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -944,8 +940,6 @@ static async Task RunGenerateTrainingDataAsync()
 
     var extractor = GetFeatureVectorExtractor(modus);
     var contactWeights = EvalWeights.GetContactWeights(modus);
-    var cheapContactWeights = EvalWeights.GetCheapContactWeights(modus);
-    var raceWeights = EvalWeights.GetRaceWeights(modus);
 
     var useNeuralEval = hasModelAPath;
     BatchedNeuralEvalService? modelAService = null;
@@ -1036,15 +1030,15 @@ static async Task RunGenerateTrainingDataAsync()
                 if (playAgainstBotService)
                 {
                     var modelIsWhite = i % 2 == 0;
-                    result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                    result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights);
                 }
                 else if (entryA.EvalService != null)
                 {
-                    result = await runner.RunAsync(contactWeights, cheapContactWeights, raceWeights, modelAIsWhite: i % 2 == 0);
+                    result = await runner.RunAsync(contactWeights, modelAIsWhite: i % 2 == 0);
                 }
                 else
                 {
-                    result = await runner.RunAsync(contactWeights, cheapContactWeights, raceWeights);
+                    result = await runner.RunAsync(contactWeights);
                 }
 
                 lock (lockObj)
