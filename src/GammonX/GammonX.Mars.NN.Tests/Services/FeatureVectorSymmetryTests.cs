@@ -90,7 +90,7 @@ public sealed class FeatureVectorSymmetryTests
         var outComeType = modus is GameModus.Plakoto or GameModus.Fevga
             ? GameOutcomeOutputMode.LegacyIndependentSigmoid
             : GameOutcomeOutputMode.MonotonicCumulative;
-        var net = NetModelFactory.Create(modus, CPU, outComeType, NetArchitecture.A);
+        var net = NetModelFactory.CreateNew(modus, CPU, outComeType, NetArchitecture.A);
         net.Eval();
 
         using var activeBlackInput = tensor(activeBlackFeatures, device: CPU).unsqueeze(0);

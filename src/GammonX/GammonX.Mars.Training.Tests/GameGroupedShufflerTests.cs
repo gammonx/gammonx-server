@@ -5,6 +5,96 @@ namespace GammonX.Mars.Training.Tests;
 public sealed class GameGroupedShufflerTests
 {
     [Fact]
+    public void StableSplitKeepsGamesTogetherAndPreservesRows()
+    {
+        var rows = Enumerable.Range(0, 100)
+            .SelectMany(game => Enumerable.Range(0, 3)
+                .Select(turn => new SampleRow(GuidFromInt(game), turn)))
+            .ToArray();
+
+        var split = GameGroupedShuffler.SplitByStableHash(rows, row => row.GameId, 0.85);
+        var trainingGames = split.Training.Select(row => row.GameId).ToHashSet();
+        var validationGames = split.Validation.Select(row => row.GameId).ToHashSet();
+
+        Assert.Empty(trainingGames.Intersect(validationGames));
+        Assert.Equal(rows.Length, split.Training.Count + split.Validation.Count);
+        Assert.Equal(
+            rows.OrderBy(row => row.GameId).ThenBy(row => row.Turn),
+            split.Training.Concat(split.Validation).OrderBy(row => row.GameId).ThenBy(row => row.Turn));
+    }
+
+    [Fact]
+    public void StableSplitRetainsMembershipWhenDatasetGrowsOrGameOrderChanges()
+    {
+        var original = Enumerable.Range(0, 100)
+            .Select(game => new SampleRow(GuidFromInt(game), 0))
+            .ToArray();
+        var expanded = original
+            .Reverse()
+            .Concat(Enumerable.Range(100, 50).Select(game => new SampleRow(GuidFromInt(game), 0)))
+            .ToArray();
+        var originalGameIds = original.Select(row => row.GameId).ToHashSet();
+
+        var originalSplit = GameGroupedShuffler.SplitByStableHash(original, row => row.GameId, 0.85, seed: 17);
+        var expandedSplit = GameGroupedShuffler.SplitByStableHash(expanded, row => row.GameId, 0.85, seed: 17);
+        var originalTrainingGames = originalSplit.Training.Select(row => row.GameId).ToHashSet();
+        var expandedTrainingGames = expandedSplit.Training.Select(row => row.GameId).ToHashSet();
+
+        Assert.All(original, row => Assert.Equal(
+            originalTrainingGames.Contains(row.GameId),
+            expandedTrainingGames.Contains(row.GameId)));
+        Assert.Equal(
+            originalSplit.Training.Select(row => row.GameId),
+            expandedSplit.Training.Select(row => row.GameId).Where(originalTrainingGames.Contains));
+        Assert.Equal(
+            originalSplit.Validation.Select(row => row.GameId),
+            expandedSplit.Validation.Select(row => row.GameId).Where(originalGameIds.Contains));
+    }
+
+    [Fact]
+    public void StableSplitChangesMembershipWithSeed()
+    {
+        var rows = Enumerable.Range(0, 200)
+            .Select(game => new SampleRow(GuidFromInt(game), 0))
+            .ToArray();
+
+        var first = GameGroupedShuffler.SplitByStableHash(rows, row => row.GameId, 0.85, seed: 17);
+        var second = GameGroupedShuffler.SplitByStableHash(rows, row => row.GameId, 0.85, seed: 18);
+        var firstTrainingGames = first.Training.Select(row => row.GameId).ToHashSet();
+        var secondTrainingGames = second.Training.Select(row => row.GameId).ToHashSet();
+
+        Assert.NotEmpty(firstTrainingGames
+            .Except(secondTrainingGames)
+            .Concat(secondTrainingGames.Except(firstTrainingGames)));
+    }
+
+    [Fact]
+    public void StableSplitSeed17HasExpectedGoldenMembership()
+    {
+        var rows = Enumerable.Range(0, 16)
+            .Select(game => new SampleRow(GuidFromInt(game), 0))
+            .ToArray();
+
+        var split = GameGroupedShuffler.SplitByStableHash(rows, row => row.GameId, 0.85, seed: 17);
+
+        Assert.Equal([GuidFromInt(5)], split.Validation.Select(row => row.GameId));
+        Assert.Equal(15, split.Training.Count);
+    }
+
+    [Fact]
+    public void StableSplitApproximatesRequestedFractionAcrossManyEqualGames()
+    {
+        var rows = Enumerable.Range(0, 1_000)
+            .Select(game => new SampleRow(GuidFromInt(game), 0))
+            .ToArray();
+
+        var split = GameGroupedShuffler.SplitByStableHash(rows, row => row.GameId, 0.85, seed: 17);
+        var actualFraction = (double)split.Training.Count / rows.Length;
+
+        Assert.InRange(actualFraction, 0.82, 0.88);
+    }
+
+    [Fact]
     public void SplitKeepsEachGameInOnePartitionAndPreservesAllRows()
     {
         var gameA = Guid.NewGuid();

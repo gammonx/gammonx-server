@@ -44,7 +44,6 @@ namespace GammonX.Mars.NN.Services
                 // we only support CPU based models for now in production
                 var net = NetModelFactory.CreateForModel(modus, modelPath, device);
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
-                net.Load(modelPath);
                 net.Eval();
                 return new NeuralEvalService(net, extractor, device);
             }
@@ -74,7 +73,7 @@ namespace GammonX.Mars.NN.Services
                 var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
                 using var metadataStream = assembly.GetManifestResourceStream(metadataResourceName);
                 var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, metadataResourceName);
-                var net = NetModelFactory.Create(modus, device, metadata.OutputMode, metadata.Architecture);
+                var net = NetModelFactory.CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
                 var extractor = FeatureVectorExtractorFactory.Create(modus);
                 net.LoadFromStream(stream);
                 net.Eval();

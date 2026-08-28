@@ -18,30 +18,47 @@ public static class NetTrainer
         GameModus modus,
         string trainCsvPath,
         string valCsvPath,
+        string? inputModelPath,
         string outputModelPath,
         int epochs = 100,
         int batchSize = 4096,
         int producerCount = 1,
         int queueCapacity = 2,
-        float learningRate = 1.5e-3f,
+        float learningRate = 1e-4f,
         int earlyStoppingPatience = 11,
         bool shuffleLabels = false,
-        bool useConstrainedOutputs = false,
+        GameOutcomeOutputMode outputMode = GameOutcomeOutputMode.MonotonicCumulative,
         NetArchitecture architecture = NetArchitecture.A)
     {
-        var trainStopwatch = Stopwatch.StartNew();
-
         // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
 
-        // We convert the csv files to a binary format for faster training, and build an index of row offsets for random access
+        var device = cuda.is_available() ? CUDA : CPU;
+
+        INetModel model;
+
+        if (!string.IsNullOrEmpty(inputModelPath))
+        {
+            // we load an existing model to continue training
+            model = NetModelFactory.CreateForModel(modus, inputModelPath, device);
+        }
+        else
+        {
+            // we create a new model from scratch
+            model = NetModelFactory.CreateNew(modus, device, outputMode, architecture);
+        }
+
+        model.MoveTo(device);
+
+        var trainStopwatch = Stopwatch.StartNew();
+
+        // we convert the csv files to a binary format for faster training, and build an index of row offsets for random access
         var trainBinaryPath = $"{Path.GetFileNameWithoutExtension(trainCsvPath)}.bin";
         var (trainFeatureCount, trainRowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(trainCsvPath, trainBinaryPath, labelCount);
         
         var valBinaryPath = $"{Path.GetFileNameWithoutExtension(valCsvPath)}.bin";
         var (valFeatureCount, valRowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(valCsvPath, valBinaryPath, labelCount);
 
-        var device = cuda.is_available() ? CUDA : CPU;
         Console.WriteLine($"Device: {device}");
 
         int[]? labelPermutation = null;
@@ -50,13 +67,6 @@ public static class NetTrainer
             Console.WriteLine("WARNING: label shuffling enabled, not a real training run.");
             labelPermutation = Enumerable.Range(0, trainRowCount).OrderBy(_ => Random.Shared.Next()).ToArray();
         }
-
-        var outputMode = labelCount == GameOutcomeConstraintValidator.FullHeadCount && useConstrainedOutputs
-            ? GameOutcomeOutputMode.MonotonicCumulative
-            : GameOutcomeOutputMode.LegacyIndependentSigmoid;
-
-        var model = NetModelFactory.Create(modus, device, outputMode, architecture);
-        model.MoveTo(device);
 
         var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
         var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 10, gamma: 0.66);
@@ -71,9 +81,42 @@ public static class NetTrainer
             ? Enumerable.Range(0, valRowCount).OrderBy(_ => Random.Shared.Next()).ToArray()
             : null;
 
-        var bestValLoss = float.MaxValue;
         var epochsWithoutImprovement = 0;
+        var bestValLoss = float.MaxValue;
         var bestEpoch = 0;
+
+        if (!string.IsNullOrEmpty(inputModelPath))
+        {
+            // we are continuing training an existing model, so we need to evaluate it first to get a baseline for early stopping
+            var parentValBatches = new BinaryBatchEnumerator(
+                valBinaryPath,
+                batchSize,
+                labelCount,
+                valFeatureCount,
+                valOrder,
+                device,
+                valLabelPerm,
+                producerCount,
+                queueCapacity);
+
+            model.Eval();
+
+            using (no_grad())
+            {
+                var parentMetrics = RunEpochStreaming(
+                    model,
+                    optimizer,
+                    loss,
+                    diagnosticLoss,
+                    parentValBatches,
+                    labelCount,
+                    false);
+
+                bestValLoss = parentMetrics.Loss;
+            }
+            model.Save(outputModelPath);
+            Console.WriteLine($"Parent val_loss={bestValLoss:F5}");
+        }
 
         for (var epoch = 1; epoch <= epochs; epoch++)
         {
@@ -110,20 +153,21 @@ public static class NetTrainer
 
             epochStopwatch.Stop();
 
-
+            Console.WriteLine("##############################################");
             var marker = epoch == bestEpoch ? " OK" : "";
             Console.WriteLine($@"Epoch {epoch,3}/{epochs}  lr={currentLr:G3}  elapsed={epochStopwatch.Elapsed:hh\:mm\:ss}{marker}");
             // We log the train/val loss and accuracy metrics for each head, as well as the overall loss and accuracy
             Console.WriteLine($"  train_loss={trainMetrics.Loss:F5} [{FormatOutputLosses(trainMetrics.PerOutputLosses, labelCount)}]");
             Console.WriteLine($"  val_loss={valMetrics.Loss:F5} [{FormatOutputLosses(valMetrics.PerOutputLosses, labelCount)}]");
 
-            if (trainMetrics.ConstraintMetrics != null && valMetrics.ConstraintMetrics != null)
-            {
-                // We log metrics for the constraint validator, which checks that the model outputs are consistent with the game rules
-                Console.WriteLine("Constraint Metrics:");
-                Console.WriteLine($"  train: {FormatConstraintMetrics(trainMetrics.ConstraintMetrics)}");
-                Console.WriteLine($"  val  : {FormatConstraintMetrics(valMetrics.ConstraintMetrics)}");
-            }
+            // enable if output constraint metrics are needed for debugging
+            //if (trainMetrics.ConstraintMetrics != null && valMetrics.ConstraintMetrics != null)
+            //{
+            //    // We log metrics for the constraint validator, which checks that the model outputs are consistent with the game rules
+            //    Console.WriteLine("Constraint Metrics:");
+            //    Console.WriteLine($"  train: {FormatConstraintMetrics(trainMetrics.ConstraintMetrics)}");
+            //    Console.WriteLine($"  val  : {FormatConstraintMetrics(valMetrics.ConstraintMetrics)}");
+            //}
 
             if (epochsWithoutImprovement >= earlyStoppingPatience)
             {

@@ -90,22 +90,36 @@ static void RunTrainModel()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "training_net.dat");
-    var useConstrainedOutputs = modus is not (GameModus.Fevga or GameModus.Plakoto) && PromptBool("Use monotonic five-head outputs", false);
+    var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
     // we assume that a batch size of 4096 takes up 10MB of GPU RAM
     var batchSize = PromptInt("Batch size", 40960);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
-    var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+
+    NetArchitecture netArchitecture;
+    GameOutcomeOutputMode outputMode;
+    if (string.IsNullOrEmpty(inputModelPath))
+    {
+        netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+        outputMode = PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative);
+    }
+    else
+    {
+        var metadata = NetModelMetadata.ReadOrLegacy(inputModelPath, modus);
+        netArchitecture = metadata.Architecture;
+        outputMode = metadata.OutputMode;
+    }
 
     NetTrainer.Train(
         modus,
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        inputModelPath: inputModelPath,
         outputModelPath: outputModelPath,
         batchSize: batchSize,
         producerCount: producerCount,
         queueCapacity: queueCapacity,
-        useConstrainedOutputs: useConstrainedOutputs,
+        outputMode: outputMode,
         architecture: netArchitecture);
 }
 
@@ -122,6 +136,7 @@ static void RunNoiseDiagnostic()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
+    var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
     var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
 
     NetTrainer.Train(
@@ -129,6 +144,7 @@ static void RunNoiseDiagnostic()
         trainCsvPath: trainingCsvPath,
         valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
         outputModelPath: outputModelPath,
+        inputModelPath: inputModelPath,
         shuffleLabels: true,
         architecture: netArchitecture);
 }
@@ -234,6 +250,7 @@ static void RunShuffleCsv()
 
     var defaultOutput = inputPaths.Count == 1 ? inputPaths[0] : "merged.csv";
     var outputPath = PromptString("Output CSV path", defaultOutput);
+    var validationSplitSeed = PromptInt("Validation split seed", GameGroupedShuffler.DefaultValidationSplitSeed);
 
     Console.WriteLine($"Indexing {inputPaths.Count} file(s)...");
     string? header = null;
@@ -308,12 +325,17 @@ static void RunShuffleCsv()
 
     Console.WriteLine($"Total rows: {rowIndices.Count:N0}. Shuffling by game...");
     var rowOrder = Enumerable.Range(0, rowIndices.Count).ToArray();
-    var split = GameGroupedShuffler.SplitByGame(
+    var split = GameGroupedShuffler.SplitByStableHash(
         rowOrder,
         rowIndex => rowGameIds[rowIndex],
         trainFraction: 0.85,
-        Random.Shared);
-    Console.WriteLine($"Train={split.Training.Count:N0}  Validation={split.Validation.Count:N0}");
+        validationSplitSeed);
+    if (split.Training.Count == 0 || split.Validation.Count == 0)
+    {
+        Console.WriteLine("The stable validation split produced an empty partition. Use more games or a different validation split seed.");
+        return;
+    }
+    Console.WriteLine($"Train={split.Training.Count:N0}  Validation={split.Validation.Count:N0}  Seed={validationSplitSeed}");
     Console.WriteLine("Writing CSV files...");
 
     var valPath = Path.ChangeExtension(outputPath, ".val.csv");
@@ -854,8 +876,8 @@ static void RunRebuildTdTargets()
     }
 
     var validationOutputPath = Path.ChangeExtension(outputPath, ".val.csv");
-    WriteCsv(outputPath, modus, rebuiltTrainingRows, featureCount);
-    WriteCsv(validationOutputPath, modus, rebuiltValidationRows, featureCount);
+    TrainingCsvWriter.Write(outputPath, modus, rebuiltTrainingRows, featureCount);
+    TrainingCsvWriter.Write(validationOutputPath, modus, rebuiltValidationRows, featureCount);
 
     var trajectoryTrainPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
     TrajectoryCsvWriter.WritePositions(trajectoryTrainPath, rebuiltTrainingRows);
@@ -886,6 +908,7 @@ static async Task RunGenerateTrainingDataAsync()
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var totalGames = PromptInt("Total games", 1_000);
     var outputPath = PromptString("Output CSV path", "training_data.csv");
+    var validationSplitSeed = PromptInt("Validation split seed", GameGroupedShuffler.DefaultValidationSplitSeed);
     var modelAPath = PromptString("Model A path. Leave blank for linear.", "");
     var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
     var modelBPath = PromptString("Model B path. Leave blank for single-model or linear.", "");
@@ -1011,7 +1034,9 @@ static async Task RunGenerateTrainingDataAsync()
     };
 
     var entryA = new SelfPlayEntry(modelAService, modelABotLevel);
-    var entryB = new SelfPlayEntry(modelBService, modelBBotLevel);
+    var entryB = hasModelBPath
+        ? new SelfPlayEntry(modelBService, modelBBotLevel)
+        : null;
 
     try
     {
@@ -1118,20 +1143,25 @@ static async Task RunGenerateTrainingDataAsync()
 
     Console.WriteLine("Shuffling by game...");
 
-    var split = GameGroupedShuffler.SplitByGame(
+    var split = GameGroupedShuffler.SplitByStableHash(
         allSamples,
         sample => sample.GameId,
         trainFraction: 0.85,
-        Random.Shared);
+        validationSplitSeed);
+    if (split.Training.Count == 0 || split.Validation.Count == 0)
+    {
+        Console.WriteLine("The stable validation split produced an empty partition. Use more games or a different validation split seed.");
+        return;
+    }
     var trainSamples = split.Training;
     var valSamples = split.Validation;
 
-    Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}");
+    Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}  Seed={validationSplitSeed}");
     Console.WriteLine("Writing CSV files...");
 
-    WriteCsv(outputPath, modus, trainSamples, extractor.FeatureCount);
+    TrainingCsvWriter.Write(outputPath, modus, trainSamples, extractor.FeatureCount);
     var valPath = Path.ChangeExtension(outputPath, ".val.csv");
-    WriteCsv(valPath, modus, valSamples, extractor.FeatureCount);
+    TrainingCsvWriter.Write(valPath, modus, valSamples, extractor.FeatureCount);
 
     var trajectoryPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
     var valTrajectoryPath = Path.ChangeExtension(valPath, ".trajectory.csv");
@@ -1154,32 +1184,6 @@ static async Task RunGenerateTrainingDataAsync()
     Console.WriteLine($"Written: {gamesPath}");
     Console.WriteLine($@"Elapsed: {stopwatch.Elapsed:dd\:hh\:mm\:ss}");
     Console.WriteLine("Complete.");
-}
-
-static void WriteCsv(string path, GameModus modus, IReadOnlyList<TrainingDataRow> samples, int featureCount)
-{
-    using var writer = new StreamWriter(path);
-
-    var labelHeaders = (modus == GameModus.Fevga || modus == GameModus.Plakoto)
-        ? "pWin"
-        : "pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss";
-
-    writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(i => $"f{i}")) + "," + labelHeaders);
-
-    foreach (var sample in samples)
-    {
-        writer.Write(string.Join(",", sample.Position.Features.Select(f => f.ToString("G6"))));
-        writer.Write(',');
-        if (modus == GameModus.Fevga || modus == GameModus.Plakoto)
-        {
-            // TODO: enable full GAME equity predictions for plakoto/fevga
-            writer.WriteLine(sample.Label[0].ToString("G6"));
-        }
-        else
-        {
-            writer.WriteLine(string.Join(",", sample.Label.Select(l => l.ToString("G6"))));
-        }
-    }
 }
 
 #endregion Generate Training Data

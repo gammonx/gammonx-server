@@ -1,4 +1,5 @@
 using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
@@ -9,6 +10,73 @@ namespace GammonX.Mars.Training.Tests;
 
 public sealed class SelfPlayRunnerTests
 {
+    [Fact]
+    public void AllLegalExplorationUsesUniqueResultingBoards()
+    {
+        var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
+        var board = boardService.CreateBoard();
+        var rolls = new[] { 1, 2 };
+
+        var rawMoves = boardService.GetLegalMoveSequences(board, true, rolls);
+        var explorationMoves = SelfPlayRunner.GetAllLegalExplorationMoves(
+            boardService,
+            board,
+            true,
+            rolls);
+        var uniqueMoves = boardService.GetUniqueLegalMoveSequences(board, true, rolls);
+
+        Assert.True(rawMoves.Length > uniqueMoves.Length);
+        Assert.Equal(uniqueMoves, explorationMoves);
+    }
+
+    [Fact]
+    public void ConstructorRejectsModelBWithoutEvaluationService()
+    {
+        const GameModus modus = GameModus.Backgammon;
+        var modelA = new ConstantNeuralEvalService(0.25f);
+        var recorder = new SelfPlayRecorder(
+            FeatureVectorExtractorFactory.Create(modus),
+            modelA);
+
+        var exception = Assert.Throws<ArgumentException>(() => new SelfPlayRunner(
+            recorder,
+            modus,
+            new SelfPlayEntry(modelA, BotLevel.Hard),
+            new SelfPlayEntry(null, BotLevel.Hard)));
+
+        Assert.Equal("entryB", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task SingleModelRunCollectsExplorationDecisionsForBothPlayers()
+    {
+        const GameModus modus = GameModus.Backgammon;
+        var model = new ConstantNeuralEvalService(0.25f);
+        var recorder = new SelfPlayRecorder(
+            FeatureVectorExtractorFactory.Create(modus),
+            model);
+        var options = new ExplorationOptions
+        {
+            CollectScoreGapDiagnostics = true,
+            EarlyRankedExplorationProbability = 0f,
+            LateRankedExplorationProbability = 0f,
+            AllLegalExplorationProbability = 0f
+        };
+        var runner = new SelfPlayRunner(
+            recorder,
+            modus,
+            new SelfPlayEntry(model, BotLevel.Hard),
+            explorationOptions: options);
+
+        var result = await runner.RunAsync(EvalWeights.GetContactWeights(modus), modelAIsWhite: true);
+
+        Assert.NotNull(result.Trajectory);
+        Assert.Contains(result.ExplorationDecisions!, decision =>
+            result.Trajectory!.Positions[decision.TurnIndex - 1].IsWhite);
+        Assert.Contains(result.ExplorationDecisions!, decision =>
+            !result.Trajectory!.Positions[decision.TurnIndex - 1].IsWhite);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

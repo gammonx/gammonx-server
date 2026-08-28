@@ -30,13 +30,13 @@ public sealed class ConstrainedTrainingTests
                 GameModus.Backgammon,
                 trainingPath,
                 validationPath,
+                "",
                 modelPath,
                 epochs: 1,
                 batchSize: 2,
                 producerCount: 1,
                 queueCapacity: 2,
-                earlyStoppingPatience: 1,
-                useConstrainedOutputs: true);
+                earlyStoppingPatience: 1);
 
             Assert.True(File.Exists(modelPath));
             Assert.True(File.Exists(NetModelMetadata.GetPath(modelPath)));
@@ -45,7 +45,6 @@ public sealed class ConstrainedTrainingTests
             Assert.Equal(GameOutcomeOutputMode.MonotonicCumulative, metadata.OutputMode);
 
             var model = NetModelFactory.CreateForModel(GameModus.Backgammon, modelPath, CPU);
-            model.Load(modelPath);
             model.Eval();
             using var input = tensor(new float[2 * 216], [2, 216], device: CPU);
             using var noGradScope = no_grad();

@@ -53,6 +53,16 @@ namespace GammonX.Mars.Training
             return modelIsWhite ? new BotPlayerAssignment(player1Id, player2Id) : new BotPlayerAssignment(player2Id, player1Id);
         }
 
+        internal static (TournamentEntry ModelA, TournamentEntry? ModelB) AssignColors(
+            TournamentEntry modelA,
+            TournamentEntry? modelB,
+            bool modelAIsWhite)
+        {
+            return (
+                modelA with { IsWhite = modelAIsWhite },
+                modelB is null ? null : modelB with { IsWhite = !modelAIsWhite });
+        }
+
         public static async Task<TournamentResult> RunAsync(
             GameModus modus,
             TournamentEntry modelA,
@@ -104,17 +114,22 @@ namespace GammonX.Mars.Training
                     {
                         // we alternate which model plays white to eliminate first-mover bias
                         var modelAIsWhite = i % 2 == 0;
+                        var assignedModels = AssignColors(modelA, modelB, modelAIsWhite);
                         TournamentGameResult? result = null;
-                        if (modelB?.Service != null)
+                        if (assignedModels.ModelB?.Service != null)
                         {
-                            modelA = modelA with { IsWhite = modelAIsWhite };
-                            modelB = modelB with { IsWhite = !modelAIsWhite };
-                            result = await PlayGameAsync(modus, modelA, modelB, contactWeights);
+                            result = await PlayGameAsync(
+                                modus,
+                                assignedModels.ModelA,
+                                assignedModels.ModelB,
+                                contactWeights);
                         }
                         else
                         {
-                            modelA = modelA with { IsWhite = modelAIsWhite };
-                            result = await PlayAgainstBotServiceGameAsync(modus, modelA, contactWeights);
+                            result = await PlayAgainstBotServiceGameAsync(
+                                modus,
+                                assignedModels.ModelA,
+                                contactWeights);
                         }
 
                         lock (lockObj)

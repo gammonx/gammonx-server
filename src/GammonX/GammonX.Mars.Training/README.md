@@ -22,4 +22,10 @@ The console application provides tools for generating data, training models, and
 
 10. **Audit trajectory output constraints** – Checks whether recorded trajectory predictions satisfy the expected probability ranges and hierarchy rules. Optionally evaluates a current model on the same positions to compare source-model and current-model constraint violations.
 
+## Validation Splits
+
+Training-data generation and shuffle mode assign complete games to training or validation with a stable hash of the game ID and validation seed. The default seed is `17`. Reusing the seed keeps an existing game's partition unchanged when files are reordered, merged, or extended with new games.
+
+The requested 85/15 ratio is probabilistic, so exact row counts can vary. This creates stable membership, not a frozen cross-generation benchmark: newly generated games still add new validation positions. Use a separately retained validation dataset when candidates from different generations must be compared against exactly the same games.
+
 Choose a number at the `Select mode:` prompt and follow the prompts for paths, model settings, and other options. Most modes read or write CSV files in the current working directory unless another path is provided.

@@ -57,6 +57,8 @@ namespace GammonX.Mars.Training.Generator
         {
             if (entryB != null && entryA == null)
                 throw new ArgumentException("Model B requires Model A.", nameof(entryB));
+            if (entryB?.EvalService == null && entryB != null)
+                throw new ArgumentException("Model B requires an evaluation service.", nameof(entryB));
 
             _recorder = recorder;
             _modus = modus;
@@ -176,7 +178,7 @@ namespace GammonX.Mars.Training.Generator
 
         public async Task<SelfPlayRunResult> RunAgainstBotServiceGameAsync(GameModus modus, bool evalPlayerIsWhite, ContactWeightModel contactWeights)
         {
-            if (_entryB != null)
+            if (_entryB?.EvalService != null)
                 throw new InvalidOperationException("Model B cannot be used when playing against the WildBG bot service.");
 
             var diceFactory = new DiceServiceFactory();
@@ -235,7 +237,7 @@ namespace GammonX.Mars.Training.Generator
                 if (activePlayerId == wildbgPlayerId)
                 {
                     // wildbg turn
-                    nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
+                    nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId);
                     var boardContract = board.ToContract(false);
                     evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, contactWeights);
                 }
@@ -427,7 +429,7 @@ namespace GammonX.Mars.Training.Generator
             else
             {
                 // Random exploration considers every currently legal move, not only evaluated candidates.
-                var legalMoves = boardService.GetLegalMoveSequences(board, isWhite, rolls);
+                var legalMoves = GetAllLegalExplorationMoves(boardService, board, isWhite, rolls);
                 if (legalMoves.Length == 0)
                 {
                     // Fall back to the best ranked result when the position has no legal move sequence.
@@ -462,6 +464,15 @@ namespace GammonX.Mars.Training.Generator
             }
 
             return selectedResult;
+        }
+
+        internal static MoveSequenceModel[] GetAllLegalExplorationMoves(
+            IBoardService boardService,
+            IBoardModel board,
+            bool isWhite,
+            int[] rolls)
+        {
+            return boardService.GetUniqueLegalMoveSequences(board, isWhite, rolls);
         }
 
         private static MatchVariant From(GameModus modus)

@@ -93,7 +93,7 @@ namespace GammonX.Mars.NN.Nets
 
     public static class NetModelFactory
     {
-        public static INetModel Create(GameModus modus, Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
+        public static INetModel CreateNew(GameModus modus, Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
         {
             INetModel netModel = modus switch
             {
@@ -105,21 +105,30 @@ namespace GammonX.Mars.NN.Nets
                 _ => throw new NotSupportedException($"Modus {modus} has no net model.")
             };
 
-            if (modus is GameModus.Plakoto or GameModus.Fevga
-                && outputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
+            if (modus is GameModus.Plakoto or GameModus.Fevga && outputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
             {
-                throw new ArgumentException(
-                    $"Output mode {outputMode} is only supported by five-head game modes.",
-                    nameof(outputMode));
+                throw new ArgumentException($"Output mode {outputMode} is only supported by five-head game modes.", nameof(outputMode));
             }
 
             return netModel;
         }
 
+        /// <summary>
+        /// Create a neural net model for the specified <paramref name="modelPath"/>.
+        /// </summary>
+        /// <remarks>
+        /// Reads the metadata sidecar file to determine the model type, architecture, and output mode.
+        /// </remarks>
+        /// <param name="modus">The game mode.</param>
+        /// <param name="modelPath">The path to the model file.</param>
+        /// <param name="device">The target device for the model.</param>
+        /// <returns>The created neural net model.</returns>
         public static INetModel CreateForModel(GameModus modus, string modelPath, Device device)
         {
             var metadata = NetModelMetadata.ReadOrLegacy(modelPath, modus);
-            return Create(modus, device, metadata.OutputMode, metadata.Architecture);
+            var netModel = CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
+            netModel.Load(modelPath);
+            return netModel;
         }
     }
 }
