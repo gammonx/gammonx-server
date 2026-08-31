@@ -1037,78 +1037,103 @@ static async Task RunGenerateTrainingDataAsync()
     var entryB = hasModelBPath
         ? new SelfPlayEntry(modelBService, modelBBotLevel)
         : null;
+    Exception? generationException = null;
 
     try
     {
-        await Parallel.ForAsync(
-            0,
-            totalGames,
-            new ParallelOptions { MaxDegreeOfParallelism = processCount },
-            async (i, _) =>
-            {
-                var recorder = new SelfPlayRecorder(extractor, modelAService, lambda);
-                
-                var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, explorationOptions);
-
-                SelfPlayRunResult result;
-
-                if (playAgainstBotService)
+        try
+        {
+            await Parallel.ForAsync(
+                0,
+                totalGames,
+                new ParallelOptions { MaxDegreeOfParallelism = processCount },
+                async (i, _) =>
                 {
-                    var modelIsWhite = i % 2 == 0;
-                    result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights);
-                }
-                else if (entryA.EvalService != null)
-                {
-                    result = await runner.RunAsync(contactWeights, modelAIsWhite: i % 2 == 0);
-                }
-                else
-                {
-                    result = await runner.RunAsync(contactWeights);
-                }
-
-                lock (lockObj)
-                {
-                    totalTurnCount += result.TurnCount;
-
-                    if (result.ConstraintMetrics != null)
+                    try
                     {
-                        constraintMetrics?.Merge(result.ConstraintMetrics);
-                    }
+                        var recorder = new SelfPlayRecorder(extractor, modelAService, lambda);
+                        var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, explorationOptions);
 
-                    if (result.Samples.Count == 0 || result.Trajectory == null || result.Trajectory.Positions.Count != result.Samples.Count)
-                    {
-                        discarded++;
-                    }
-                    else
-                    {
-                        for (var sampleIndex = 0; sampleIndex < result.Samples.Count; sampleIndex++)
+                        SelfPlayRunResult result;
+
+                        if (playAgainstBotService)
                         {
-                            var position = result.Trajectory.Positions[sampleIndex];
-                            allSamples.Add(new TrainingDataRow(
-                                result.Trajectory.GameId,
-                                position,
-                                result.Samples[sampleIndex].Label));
+                            var modelIsWhite = i % 2 == 0;
+                            result = await runner.RunAgainstBotServiceGameAsync(modus, modelIsWhite, contactWeights);
+                        }
+                        else if (entryA.EvalService != null)
+                        {
+                            result = await runner.RunAsync(contactWeights, modelAIsWhite: i % 2 == 0);
+                        }
+                        else
+                        {
+                            result = await runner.RunAsync(contactWeights);
                         }
 
-                        completedGames.Add(result.Trajectory.Metadata);
-                        completed++;
-
-                        if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
+                        lock (lockObj)
                         {
-                            explorationDecisions.AddRange(result.ExplorationDecisions);
-                        }
+                            totalTurnCount += result.TurnCount;
 
-                        if (result.PredictionVariance.HasValue)
-                        {
-                            totalPredVariance += result.PredictionVariance.Value;
-                            predVarianceCount++;
+                            if (result.ConstraintMetrics != null)
+                            {
+                                constraintMetrics?.Merge(result.ConstraintMetrics);
+                            }
+
+                            if (result.Samples.Count == 0 || result.Trajectory == null || result.Trajectory.Positions.Count != result.Samples.Count)
+                            {
+                                discarded++;
+                            }
+                            else
+                            {
+                                for (var sampleIndex = 0; sampleIndex < result.Samples.Count; sampleIndex++)
+                                {
+                                    var position = result.Trajectory.Positions[sampleIndex];
+                                    allSamples.Add(new TrainingDataRow(
+                                        result.Trajectory.GameId,
+                                        position,
+                                        result.Samples[sampleIndex].Label));
+                                }
+
+                                completedGames.Add(result.Trajectory.Metadata);
+                                completed++;
+
+                                if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
+                                {
+                                    explorationDecisions.AddRange(result.ExplorationDecisions);
+                                }
+
+                                if (result.PredictionVariance.HasValue)
+                                {
+                                    totalPredVariance += result.PredictionVariance.Value;
+                                    predVarianceCount++;
+                                }
+                            }
+
+                            var started = completed + discarded;
+                            Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            discarded++;
+                            Console.WriteLine($"  Game {i + 1} failed and was discarded:");
+                            Console.WriteLine(ex.ToString());
 
-                    var started = completed + discarded;
-                    Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
-                }
-            });
+                            var started = completed + discarded;
+                            Console.WriteLine($"  {started,6} / {totalGames} completed={completed} discarded={discarded} samples={allSamples.Count:N0}");
+                        }
+                    }
+                });
+        }
+        catch (Exception ex)
+        {
+            generationException = ex;
+            Console.WriteLine();
+            Console.WriteLine($"Self-play stopped after {completed + discarded} of {totalGames} games:");
+            Console.WriteLine(ex.ToString());
+        }
     }
     finally
     {
@@ -1120,6 +1145,13 @@ static async Task RunGenerateTrainingDataAsync()
         {
             StopNeuralEvalService(modelAService);
         }
+    }
+
+    var generationIncomplete = generationException != null || completed + discarded < totalGames;
+    if (generationIncomplete)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Generation incomplete: {completed + discarded} of {totalGames} games processed.");
     }
 
     Console.WriteLine();
@@ -1148,42 +1180,63 @@ static async Task RunGenerateTrainingDataAsync()
         sample => sample.GameId,
         trainFraction: 0.85,
         validationSplitSeed);
+
+    IReadOnlyList<TrainingDataRow> trainSamples;
+    IReadOnlyList<TrainingDataRow> valSamples;
     if (split.Training.Count == 0 || split.Validation.Count == 0)
     {
-        Console.WriteLine("The stable validation split produced an empty partition. Use more games or a different validation split seed.");
-        return;
+        if (generationIncomplete)
+        {
+            Console.WriteLine("The stable validation split produced an empty partition. Writing all available samples to partial training output.");
+            trainSamples = allSamples;
+            valSamples = [];
+        }
+        else
+        {
+            Console.WriteLine("The stable validation split produced an empty partition. Use more games or a different validation split seed.");
+            return;
+        }
     }
-    var trainSamples = split.Training;
-    var valSamples = split.Validation;
+    else
+    {
+        trainSamples = split.Training;
+        valSamples = split.Validation;
+    }
+
+    var finalOutputPath = generationIncomplete ? GetPartialOutputPath(outputPath) : outputPath;
+    if (generationIncomplete)
+    {
+        Console.WriteLine($"Writing partial output: {Path.GetFullPath(finalOutputPath)}");
+    }
 
     Console.WriteLine($"Train={trainSamples.Count:N0}  Validation={valSamples.Count:N0}  Seed={validationSplitSeed}");
     Console.WriteLine("Writing CSV files...");
 
-    TrainingCsvWriter.Write(outputPath, modus, trainSamples, extractor.FeatureCount);
-    var valPath = Path.ChangeExtension(outputPath, ".val.csv");
+    TrainingCsvWriter.Write(finalOutputPath, modus, trainSamples, extractor.FeatureCount);
+    var valPath = Path.ChangeExtension(finalOutputPath, ".val.csv");
     TrainingCsvWriter.Write(valPath, modus, valSamples, extractor.FeatureCount);
 
-    var trajectoryPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+    var trajectoryPath = Path.ChangeExtension(finalOutputPath, ".trajectory.csv");
     var valTrajectoryPath = Path.ChangeExtension(valPath, ".trajectory.csv");
-    var gamesPath = Path.ChangeExtension(outputPath, ".games.csv");
+    var gamesPath = Path.ChangeExtension(finalOutputPath, ".games.csv");
     TrajectoryCsvWriter.WritePositions(trajectoryPath, trainSamples);
     TrajectoryCsvWriter.WritePositions(valTrajectoryPath, valSamples);
     TrajectoryCsvWriter.WriteGames(gamesPath, completedGames);
 
     if (collectScoreGapDiagnostics)
     {
-        var explorationPath = Path.ChangeExtension(outputPath, ".exploration.csv");
+        var explorationPath = Path.ChangeExtension(finalOutputPath, ".exploration.csv");
         ExplorationCsvWriter.WriteDecisions(explorationPath, explorationDecisions);
         Console.WriteLine($"Written: {explorationPath}");
     }
 
-    Console.WriteLine($"Written: {outputPath}");
+    Console.WriteLine($"Written: {finalOutputPath}");
     Console.WriteLine($"Written: {valPath}");
     Console.WriteLine($"Written: {trajectoryPath}");
     Console.WriteLine($"Written: {valTrajectoryPath}");
     Console.WriteLine($"Written: {gamesPath}");
     Console.WriteLine($@"Elapsed: {stopwatch.Elapsed:dd\:hh\:mm\:ss}");
-    Console.WriteLine("Complete.");
+    Console.WriteLine(generationIncomplete ? "Partial output complete." : "Complete.");
 }
 
 #endregion Generate Training Data
@@ -1266,6 +1319,15 @@ static void StopNeuralEvalService(BatchedNeuralEvalService? service)
     {
         service.Dispose();
     }
+}
+
+static string GetPartialOutputPath(string outputPath)
+{
+    var directory = Path.GetDirectoryName(outputPath);
+    var fileName = Path.GetFileNameWithoutExtension(outputPath);
+    var extension = Path.GetExtension(outputPath);
+    var partialFileName = $"{fileName}.partial{extension}";
+    return string.IsNullOrEmpty(directory) ? partialFileName : Path.Combine(directory, partialFileName);
 }
 
 static IFeatureVectorExtractor GetFeatureVectorExtractor(GameModus modus)
