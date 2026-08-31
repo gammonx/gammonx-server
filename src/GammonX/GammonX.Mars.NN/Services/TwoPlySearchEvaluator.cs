@@ -8,13 +8,16 @@ namespace GammonX.Mars.NN.Services
     {
         private readonly IBoardService _boardService;
         private readonly Func<IBoardModel, bool, Task<double>> _evalPositionAsync;
+        private readonly Func<IBoardModel, IBoardModel> _cloneBoard;
 
         public TwoPlySearchEvaluator(
             IBoardService boardService,
-            Func<IBoardModel, bool, Task<double>> scorePosition)
+            Func<IBoardModel, bool, Task<double>> scorePosition,
+            Func<IBoardModel, IBoardModel>? cloneBoard = null)
         {
             _boardService = boardService ?? throw new ArgumentNullException(nameof(boardService));
             _evalPositionAsync = scorePosition ?? throw new ArgumentNullException(nameof(scorePosition));
+            _cloneBoard = cloneBoard ?? (board => board.DeepClone());
         }
 
         public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite)
@@ -52,7 +55,7 @@ namespace GammonX.Mars.NN.Services
             var scoreTasks = new List<Task<double>>(opponentMoveSequences.Length);
             foreach (var opponentMoveSequence in opponentMoveSequences)
             {
-                var boardCopy = board.DeepClone();
+                var boardCopy = _cloneBoard(board);
                 var appliedMoves = 0;
                 try
                 {

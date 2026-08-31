@@ -181,7 +181,10 @@ namespace GammonX.Mars.NN.Tests.Services
             Harness harness,
             Func<IBoardModel, bool, Task<double>> scorePosition)
         {
-            return new TwoPlySearchEvaluator(harness.BoardService.Object, scorePosition);
+            return new TwoPlySearchEvaluator(
+                harness.BoardService.Object,
+                scorePosition,
+                _ => harness.Board.Object);
         }
 
         private static Harness CreateHarness(
@@ -231,6 +234,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     undoneMoves.Add(move);
                     fields[0] = undoStack.Pop();
                 });
+
 
             return new Harness(board, boardService, fields, requestedRolls, undoneMoves);
         }
