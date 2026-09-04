@@ -24,5 +24,16 @@ namespace GammonX.Server.Repository
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>An intsance of <see cref="PlayerRatingResponseContract"/>.</returns>
         Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Gets the games for the given <paramref name="playerId"/>.
+        /// </summary>
+        /// <remarks>
+        /// GET /players/{id}/games
+        /// </remarks>
+        /// <param name="playerId">Player to search for.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>An instance of <see cref="PlayerGamesResponseContract"/>.</returns>
+        Task<PlayerGamesResponseContract?> GetPlayersGames(Guid playerId, CancellationToken cancellationToken);
     }
 }

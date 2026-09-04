@@ -9,34 +9,7 @@ namespace GammonX.Mars.NN.Services
     /// <seealso cref="https://bkgm.com/articles/GOL/demo/equity.htm"/>
     public static class MatchEquityCalculator
     {
-        /// <summary>
-        /// Gets the match equity table (MET) for a 15-point match. The rows represent the points away for the player to win,
-        /// </summary>
-        /// <remarks>
-        /// y-axis: points away for the player to win (1 to 15)
-        /// x-axis: points away for the opponent to win (1 to 15)
-        /// MET[ROW, COLUMN]
-        /// MET[2, 4] returns 0.66
-        /// MET[4, 2] returns 0.34
-        /// </remarks>
-        private static readonly double[,] MET =
-        {
-            {0.50, 0.70, 0.75, 0.83, 0.85, 0.90, 0.91, 0.94, 0.95, 0.97, 0.97, 0.98, 0.98, 0.99, 0.99},
-            {0.30, 0.50, 0.60, 0.68, 0.75, 0.81, 0.85, 0.88, 0.91, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98},
-            {0.25, 0.40, 0.50, 0.59, 0.66, 0.71, 0.76, 0.80, 0.84, 0.87, 0.90, 0.92, 0.94, 0.95, 0.96},
-            {0.17, 0.32, 0.41, 0.50, 0.58, 0.64, 0.70, 0.75, 0.79, 0.83, 0.86, 0.88, 0.90, 0.92, 0.93},
-            {0.15, 0.25, 0.34, 0.42, 0.50, 0.57, 0.63, 0.68, 0.73, 0.77, 0.81, 0.84, 0.87, 0.89, 0.90},
-            {0.10, 0.19, 0.29, 0.36, 0.43, 0.50, 0.56, 0.62, 0.67, 0.72, 0.76, 0.79, 0.82, 0.85, 0.87},
-            {0.09, 0.15, 0.24, 0.30, 0.37, 0.44, 0.50, 0.56, 0.61, 0.66, 0.70, 0.74, 0.78, 0.81, 0.84},
-            {0.06, 0.12, 0.20, 0.25, 0.32, 0.38, 0.44, 0.50, 0.55, 0.60, 0.65, 0.69, 0.73, 0.77, 0.80},
-            {0.05, 0.09, 0.16, 0.21, 0.27, 0.33, 0.39, 0.45, 0.50, 0.55, 0.60, 0.64, 0.68, 0.72, 0.76},
-            {0.03, 0.07, 0.13, 0.17, 0.23, 0.28, 0.34, 0.40, 0.45, 0.50, 0.55, 0.60, 0.64, 0.68, 0.71},
-            {0.03, 0.06, 0.10, 0.14, 0.19, 0.24, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.59, 0.63, 0.67},
-            {0.02, 0.05, 0.08, 0.12, 0.16, 0.21, 0.26, 0.31, 0.36, 0.40, 0.45, 0.50, 0.54, 0.58, 0.62},
-            {0.02, 0.04, 0.06, 0.10, 0.13, 0.18, 0.22, 0.27, 0.32, 0.36, 0.41, 0.46, 0.50, 0.54, 0.58},
-            {0.01, 0.03, 0.05, 0.08, 0.11, 0.15, 0.19, 0.23, 0.28, 0.32, 0.37, 0.42, 0.46, 0.50, 0.54},
-            {0.01, 0.02, 0.04, 0.07, 0.10, 0.13, 0.16, 0.20, 0.24, 0.29, 0.33, 0.38, 0.42, 0.46, 0.50}
-        };
+        private static readonly double[,] MET = KazarossXg2Met.Values;
 
         public static double CalculateEquity(
             GameEquityModel model,
@@ -74,13 +47,58 @@ namespace GammonX.Mars.NN.Services
             return equity;
         }
 
+        /// <summary>
+        /// Calculates the current player's match equity after an accepted double.
+        /// </summary>
+        /// <remarks>
+        /// This follows bglab's <c>tp_gammons()</c> automatic-recubing rule. Normally the accepted double uses
+        /// <c>2 * cubeValue</c>; when the non-taking player is at or below <c>2 * cubeValue</c>, the effective cube is
+        /// <c>4 * cubeValue</c>. For example, a take at 4-away versus 2-away with cube 1 uses an effective cube of 4.
+        /// </remarks>
+        /// <param name="model">The current player's discrete game outcome probabilities.</param>
+        /// <param name="pointsAway">The current player's points away.</param>
+        /// <param name="pointsAwayOpp">The opponent's points away.</param>
+        /// <param name="cubeValue">The cube value before the double.</param>
+        /// <param name="currentPlayerIsTaker">Whether the current player is accepting the double.</param>
+        /// <returns>The current player's match equity after the accepted double.</returns>
+        public static double CalculateEquityAfterAcceptedDouble(
+            GameEquityModel model,
+            int pointsAway,
+            int pointsAwayOpp,
+            int cubeValue,
+            bool currentPlayerIsTaker)
+        {
+            var recubeTriggerPointsAway = currentPlayerIsTaker
+                ? pointsAwayOpp
+                : pointsAway;
+            var effectiveCubeValue = cubeValue * 2;
+
+            if (recubeTriggerPointsAway <= cubeValue * 2)
+            {
+                effectiveCubeValue *= 2;
+            }
+
+            return CalculateEquity(
+                model,
+                pointsAway,
+                pointsAwayOpp,
+                effectiveCubeValue);
+        }
+
+        /// <summary>
+        /// Gets a match equity table value for the supplied points-away values.
+        /// </summary>
+        /// <param name="playerAway">The points away for the player.</param>
+        /// <param name="opponentAway">The points away for the opponent.</param>
+        /// <returns>The player's match equity.</returns>
         public static double GetMET(int playerAway, int opponentAway)
         {
             if (playerAway <= 0) return 1.0;
             if (opponentAway <= 0) return 0.0;
 
-            playerAway = Math.Min(playerAway, 15);
-            opponentAway = Math.Min(opponentAway, 15);
+            var maxPointsAway = MET.GetLength(0);
+            playerAway = Math.Min(playerAway, maxPointsAway);
+            opponentAway = Math.Min(opponentAway, maxPointsAway);
 
             return MET[playerAway - 1, opponentAway - 1];
         }

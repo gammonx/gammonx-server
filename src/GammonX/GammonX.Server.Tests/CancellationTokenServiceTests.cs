@@ -206,7 +206,7 @@ namespace GammonX.Server.Tests
             cts.Cancel();
             
             // Wait a bit for callback to fire
-            Task.Delay(10).Wait();
+            Task.Delay(10, TestContext.Current.CancellationToken).Wait(TestContext.Current.CancellationToken);
 
             Assert.True(callbackFired);
             Assert.False(_service.TryGet(key, out _));
@@ -230,7 +230,7 @@ namespace GammonX.Server.Tests
                 var key = CreateKey(playerId, matchId, CancellationTokenCategory.Turn);
                 var cts = new CancellationTokenSource();
 
-                tasks.Add(Task.Run(() => _service.Store(key, cts)));
+                tasks.Add(Task.Run(() => _service.Store(key, cts), TestContext.Current.CancellationToken));
             }
 
             await Task.WhenAll(tasks);
@@ -254,11 +254,11 @@ namespace GammonX.Server.Tests
             // we store, retrieve, and cancel from multiple threads concurrently
             for (int i = 0; i < 50; i++)
             {
-                tasks.Add(Task.Run(() => _service.TryGet(key, out _)));
-                tasks.Add(Task.Run(() => _service.Store(key, cts)));
+                tasks.Add(Task.Run(() => _service.TryGet(key, out _), TestContext.Current.CancellationToken));
+                tasks.Add(Task.Run(() => _service.Store(key, cts), TestContext.Current.CancellationToken));
             }
 
-            tasks.Add(Task.Run(() => _service.Cancel(key)));
+            tasks.Add(Task.Run(() => _service.Cancel(key), TestContext.Current.CancellationToken));
 
             // we should complete without deadlock
             var completedWithinTimeout = Task.WaitAll(tasks.ToArray(), TimeSpan.FromSeconds(5));
@@ -283,7 +283,7 @@ namespace GammonX.Server.Tests
             // we cancel from multiple threads concurrently
             for (int i = 0; i < 50; i++)
             {
-                tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId, CancellationTokenCategory.Turn)));
+                tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId, CancellationTokenCategory.Turn), TestContext.Current.CancellationToken));
             }
 
             // we should complete without deadlock
@@ -309,7 +309,7 @@ namespace GammonX.Server.Tests
             // we cancel from multiple threads concurrently
             for (int i = 0; i < 50; i++)
             {
-                tasks.Add(Task.Run(() => _service.CancelForMatch(matchId, CancellationTokenCategory.Turn)));
+                tasks.Add(Task.Run(() => _service.CancelForMatch(matchId, CancellationTokenCategory.Turn), TestContext.Current.CancellationToken));
             }
 
             // we should complete without deadlock
@@ -337,27 +337,27 @@ namespace GammonX.Server.Tests
                     var key = CreateKey(playerId1, matchId1, CancellationTokenCategory.Turn);
                     using var cts = new CancellationTokenSource();
                     _service.Store(key, cts);
-                }));
+                }, TestContext.Current.CancellationToken));
 
                 // retrieve operations
                 tasks.Add(Task.Run(() =>
                 {
                     var key = CreateKey(playerId1, matchId1, CancellationTokenCategory.Turn);
                     _service.TryGet(key, out _);
-                }));
+                }, TestContext.Current.CancellationToken));
 
                 // cancel operations
                 tasks.Add(Task.Run(() =>
                 {
                     var key = CreateKey(playerId2, matchId2, CancellationTokenCategory.Disconnect);
                     _service.Cancel(key);
-                }));
+                }, TestContext.Current.CancellationToken));
 
                 // batch operations
                 if (index % 10 == 0)
                 {
-                    tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId1, CancellationTokenCategory.Turn)));
-                    tasks.Add(Task.Run(() => _service.CancelForMatch(matchId2, CancellationTokenCategory.Disconnect)));
+                    tasks.Add(Task.Run(() => _service.CancelForPlayer(playerId1, CancellationTokenCategory.Turn), TestContext.Current.CancellationToken));
+                    tasks.Add(Task.Run(() => _service.CancelForMatch(matchId2, CancellationTokenCategory.Disconnect), TestContext.Current.CancellationToken));
                 }
             }
 

@@ -535,7 +535,7 @@ namespace GammonX.Engine.Tests
 			Assert.Contains((BoardPositions.HomeBarWhite, 0), legalMoves);
 
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1, 2);
-			Assert.Equal(2, legalMoves.Count());
+			Assert.Equal(2, legalMoves.Length);
 			Assert.Contains((BoardPositions.HomeBarWhite, 0), legalMoves);
 			Assert.Contains((BoardPositions.HomeBarWhite, 1), legalMoves);
 		}
@@ -556,7 +556,7 @@ namespace GammonX.Engine.Tests
 			Assert.Contains((BoardPositions.HomeBarBlack, 23), legalMoves);
 
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1, 2);
-			Assert.Equal(2, legalMoves.Count());
+			Assert.Equal(2, legalMoves.Length);
 			Assert.Contains((BoardPositions.HomeBarBlack, 23), legalMoves);
 			Assert.Contains((BoardPositions.HomeBarBlack, 22), legalMoves);
 		}
@@ -623,10 +623,10 @@ namespace GammonX.Engine.Tests
 			board.SetFields(BoardMocks.StandardCanBearOffBoard);
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((23, BoardPositions.BearOffWhite), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((22, BoardPositions.BearOffWhite), legalMoves);
 			Assert.Contains((18, BoardPositions.BearOffWhite), legalMoves);
 		}
@@ -642,10 +642,10 @@ namespace GammonX.Engine.Tests
 			board.SetFields(BoardMocks.StandardCanBearOffBoard);
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((0, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 2);
-			Assert.Equal(7, legalMoves.Count());
+			Assert.Equal(7, legalMoves.Length);
 			Assert.Contains((1, BoardPositions.BearOffBlack), legalMoves);
 			Assert.Contains((5, BoardPositions.BearOffBlack), legalMoves);
 		}
@@ -662,10 +662,10 @@ namespace GammonX.Engine.Tests
 			homebarModel.RemoveFromHomeBar(true, 14);
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 1);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((23, BoardPositions.BearOffWhite), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
-			Assert.Equal(6, legalMoves.Count());
+            Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((22, BoardPositions.BearOffWhite), legalMoves);
 			Assert.Contains((18, BoardPositions.BearOffWhite), legalMoves);
 		}
@@ -682,10 +682,10 @@ namespace GammonX.Engine.Tests
 			homebarModel.RemoveFromHomeBar(false, 14);
 
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 1);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((11, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 2);
-			Assert.Equal(6, legalMoves.Count());
+			Assert.Equal(6, legalMoves.Length);
 			Assert.Contains((10, BoardPositions.BearOffBlack), legalMoves);
 			Assert.Contains((6, BoardPositions.BearOffBlack), legalMoves);
 		}
@@ -740,11 +740,11 @@ namespace GammonX.Engine.Tests
 			service.MoveCheckerTo(board, 5, 23, false);
 			// white cannot enter board, black checkers block entry
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 2);
-			Assert.Equal(3, legalMoves.Count());
+			Assert.Equal(3, legalMoves.Length);
 			Assert.DoesNotContain((23, BoardPositions.BearOffWhite), legalMoves);
 			Assert.DoesNotContain((21, 23), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, true, 6, 2);
-			Assert.Equal(3, legalMoves.Count());
+			Assert.Equal(3, legalMoves.Length);
 			Assert.DoesNotContain((22, BoardPositions.BearOffWhite), legalMoves);
 			Assert.DoesNotContain((18, BoardPositions.BearOffWhite), legalMoves);
 		}
@@ -763,10 +763,10 @@ namespace GammonX.Engine.Tests
 			service.MoveCheckerTo(board, 18, 3, true);
 			// black cannot enter board, white checkers block entry
 			var legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 3);
-			Assert.Equal(2, legalMoves.Count());
+			Assert.Equal(2, legalMoves.Length);
 			Assert.DoesNotContain((3, BoardPositions.BearOffBlack), legalMoves);
 			legalMoves = service.GetLegalMovesAsFlattenedList(board, false, 6, 3);
-			Assert.Equal(2, legalMoves.Count());
+			Assert.Equal(2, legalMoves.Length);
 			Assert.DoesNotContain((3, BoardPositions.BearOffBlack), legalMoves);
 			Assert.DoesNotContain((5, BoardPositions.BearOffBlack), legalMoves);
 		}

@@ -131,7 +131,8 @@ namespace GammonX.Server.Tests.Repository
                     {
                         exceptions.Add(ex);
                     }
-                }));
+                },
+                TestContext.Current.CancellationToken));
             }
 
             await Task.WhenAll(tasks.ToArray());
@@ -176,9 +177,7 @@ namespace GammonX.Server.Tests.Repository
             );
 
             // all tasks should return the exact same instance
-#pragma warning disable xUnit1031 // Do not use blocking task operations in test method
             var distinctInstances = tasks.Select(t => t.Result).Distinct().ToList();
-#pragma warning restore xUnit1031 // Do not use blocking task operations in test method
             Assert.Single(distinctInstances);
         }
 
@@ -201,7 +200,8 @@ namespace GammonX.Server.Tests.Repository
                 {
                     try { repo.Remove(id); }
                     catch { /* expected sometimes */ }
-                }));
+                },
+                TestContext.Current.CancellationToken));
             }
 
             await Task.WhenAll(tasks.ToArray());

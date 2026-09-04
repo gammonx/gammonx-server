@@ -1,21 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
+		<TargetFramework>$(TargetFramework)</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Bcl.Memory" Version="9.0.15" />
-		<PackageReference Include="Microsoft.ML" Version="5.0.0" />
-		<PackageReference Include="Microsoft.ML.TorchSharp" Version="0.23.0" />
+		<PackageReference Include="Microsoft.Bcl.Memory" Version="$(MicrosoftBclMemoryVersion)" />
+		<PackageReference Include="Microsoft.ML" Version="$(MicrosoftMlVersion)" />
+		<PackageReference Include="Microsoft.ML.TorchSharp" Version="$(MicrosoftMlTorchSharpVersion)" />
 		<!-- We use the GPU based package for training a model or generating training data -->
-		<!--<PackageReference Include="TorchSharp-cuda-windows" Version="0.106.0" />-->
+		<!--<PackageReference Include="TorchSharp-cuda-windows" Version="$(TorchSharpCpuVersion)" />-->
 		<!-- We use the CPU based package for deployment -->
 		<!-- We use the CPU based package for production -->
-		<PackageReference Include="TorchSharp-cpu" Version="0.106.0" />
-		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+		<PackageReference Include="TorchSharp-cpu" Version="$(TorchSharpCpuVersion)" />
+		<PackageReference Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />
 	</ItemGroup>
 
 	<ItemGroup>

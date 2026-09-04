@@ -15,5 +15,11 @@ namespace GammonX.Server.Repository
             var dummyRating = new PlayerRatingResponseContract() { Rating = 1200 };
             return Task.FromResult(dummyRating ?? null);
         }
+
+        // <inheritdoc />
+        public Task<PlayerGamesResponseContract?> GetPlayersGames(Guid playerId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<PlayerGamesResponseContract?>(null);
+        }
     }
 }

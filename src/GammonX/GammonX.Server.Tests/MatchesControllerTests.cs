@@ -46,8 +46,8 @@ namespace GammonX.Server.Tests
 			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
 			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
 			// join player 1
-			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
-			var resultJson1 = await response1.Content.ReadAsStringAsync();
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
+			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
@@ -56,8 +56,8 @@ namespace GammonX.Server.Tests
 			Assert.NotNull(joinPayload1.QueueId);
 			// status for player 1
 			var statusRequest1 = new StatusRequest(_player1Id, modus);
-			var statusResponse1 = await client.PostAsJsonAsync($"/api/matches/queues/{joinPayload1.QueueId}", statusRequest1);
-			var statusJson1 = await statusResponse1.Content.ReadAsStringAsync();
+			var statusResponse1 = await client.PostAsJsonAsync($"/api/matches/queues/{joinPayload1.QueueId}", statusRequest1, TestContext.Current.CancellationToken);
+			var statusJson1 = await statusResponse1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			Assert.NotNull(statusJson1);
 			var statusContract1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(statusJson1);
 			Assert.NotNull(statusContract1);
@@ -65,8 +65,8 @@ namespace GammonX.Server.Tests
 			Assert.Null(statusContract1.Payload.MatchId);
 			Assert.NotNull(statusContract1.Payload.QueueId);
 			// join player 2
-			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2);
-			var resultJson2 = await response2.Content.ReadAsStringAsync();
+			var response2 = await client.PostAsJsonAsync("/game/api/matches/join", player2, TestContext.Current.CancellationToken);
+			var resultJson2 = await response2.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse2 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson2);
 			var joinPayload2 = joinResponse2?.Payload;
 			Assert.NotNull(joinPayload2);

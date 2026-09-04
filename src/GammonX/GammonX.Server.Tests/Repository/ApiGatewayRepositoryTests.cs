@@ -8,7 +8,7 @@ namespace GammonX.Server.Tests.Repository
 {
     public class ApiGatewayRepositoryTests
     {
-        private ApiGatewayClient _client;
+        private readonly ApiGatewayClient _client;
 
         public ApiGatewayRepositoryTests()
         {
@@ -40,7 +40,24 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(baseUrl, _client.BaseUrl);
         }
 
-        [Fact(Skip = "AWS STACK TEST")]
+        [Fact(Skip = "AWS_STACK")]
+        public async Task CanGetPlayersGamesFromRepository1()
+        {
+            var existingPlayer1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");
+            var games = await _client.GetPlayersGames(existingPlayer1Id, CancellationToken.None);
+            Assert.NotNull(games);
+            Assert.NotNull(games.Games);
+        }
+
+        [Fact(Skip = "AWS_STACK")]
+        public async Task ReturnsNullOnUnknownPlayer()
+        {
+            var unknownPlayerId = Guid.NewGuid();
+            var games = await _client.GetPlayersGames(unknownPlayerId, CancellationToken.None);
+            Assert.Null(games);
+        }
+
+        [Fact(Skip = "AWS_STACK")]
         public async Task CanGetRatingFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
@@ -49,7 +66,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating > 1200);
         }
 
-        [Fact(Skip = "AWS STACK TEST")]
+        [Fact(Skip = "AWS_STACK")]
         public async Task CanGetRatingFromRepository2()
         {
             var existingPlayer1Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
@@ -58,7 +75,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating < 1200);
         }
 
-        [Fact(Skip = "AWS STACK TEST")]
+        [Fact(Skip = "AWS_STACK")]
         public async Task CannotGetRatingOnWrongPlayerId()
         {
             var existingPlayer1Id = Guid.Empty;
@@ -68,7 +85,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(1200, rating.Rating);
         }
 
-        [Fact(Skip = "AWS STACK TEST")]
+        [Fact(Skip = "AWS_STACK")]
         public async Task CannotGetRatingOnWrongVariant()
         {
             var existingPlayer1Id = Guid.Empty;

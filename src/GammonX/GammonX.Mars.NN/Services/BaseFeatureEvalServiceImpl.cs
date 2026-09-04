@@ -56,21 +56,29 @@ namespace GammonX.Mars.NN.Services
                 var equityIfPlayerPasses = MatchEquityCalculator.GetMET(
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp - cubeValue);
-                // match equity if double is offered and accepted (game continues at doubled cube)
-                var doubleTake = MatchEquityCalculator.CalculateEquity(
+                // match equity if opponent redoubles after taking the players double offer
+                var equityIfOppTakes = MatchEquityCalculator.CalculateEquityAfterAcceptedDouble(
                     equityModel,
                     contract.PointsAwayPlayer,
                     contract.PointsAwayOpp,
-                    cubeValue * 2);
+                    cubeValue,
+                    currentPlayerIsTaker: false);
+                // match equity if player redoubles after taking the opponents double offer
+                var equityIfPlayerTakes = MatchEquityCalculator.CalculateEquityAfterAcceptedDouble(
+                    equityModel,
+                    contract.PointsAwayPlayer,
+                    contract.PointsAwayOpp,
+                    cubeValue,
+                    currentPlayerIsTaker: true);
 
                 CubeAction shouldOffer;
                 CubeAction shouldTake;
 
                 // we expect the opponent takes if their equity from taking >= their equity from passing:
-                if (doubleTake <= equityIfOppPasses)
+                if (equityIfOppTakes <= equityIfOppPasses)
                 {
-                    // we expect opponent would take, players equity after doubling = doubleTake
-                    shouldOffer = doubleTake > noDouble ? CubeAction.Double : CubeAction.NoDouble;
+                    // we expect the opponent would take; compare the accepted double with no double.
+                    shouldOffer = equityIfOppTakes > noDouble ? CubeAction.Double : CubeAction.NoDouble;
                 }
                 else
                 {
@@ -87,8 +95,8 @@ namespace GammonX.Mars.NN.Services
                     }
                 }
 
-                // we expect the player takes if their equity from taking >= their equity from passing
-                if (doubleTake >= equityIfPlayerPasses)
+                // we expect the player takes if their accepted-double equity is at least their pass equity.
+                if (equityIfPlayerTakes >= equityIfPlayerPasses)
                 {
                     shouldTake = CubeAction.Take;
                 }

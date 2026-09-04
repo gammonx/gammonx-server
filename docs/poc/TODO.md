@@ -2,37 +2,45 @@
 - see changelog 
 
 ## Active
-- next gen mars bots
+- ?
 
-## Pre-Beta
-- commit and push current mars bot generation
-- prepare beta tests
-    - validate dynamodb datamodel and CRUD operation > sanitize/error
-    - disconnect handling
+## Beta Preparation
+- push most recent nn models
+- validate dynamodb layer
+- validte re-connect handling
 
 ## TODO
-- upgrade to net10
-    - unify nuget package version > build props
-- doubling cube to history/stats
+- verify lambda functions and dynamodb items
+    - datetime/timespan formats
+    - missing/invalid values
+    - lambda handler (player stats update)
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow
+    - match equity/stats after match :: win percentage to user
 - bot services as lambda containers/functions
+- verify dynamodb items (e.g. datetime)
 - validate start index for fevga/plakoto
 - resilience patterns
     - retry/timeouts
     - proper healthcheck
+- make game service stateless
+    - or sticky sessions for clients?
+    - web socket/SignalR backplan > synchronizes hubcontextes between ecs instances via pub/sub
+    - redis (AWS ElasticCache) as match/game state storage
+    - AWS API Gateway WebSockets?
+    - Match/Session affinity, players stick to an ecs instance
+        - create match and assign instance
+        - client connects with routing hint
+        - load balancer routes based on hint
+        - direct task routing ECS Service Discovery (AWS Cloud Map)
 - mars bot MET tables
     - match equity for all match variants
 - update nn arch of plakoto/fevga to > 5
-- export matches to sgf/.mat format
 - subscription service (clients ide?)
-- match equity/stats after match :: win percentage to user
-- auth/user account > how to identify premium accounts?
-    - authentication with api gateway
-    - authorization required
 
 ## Open Points
+- export matches to sgf/.mat format
 - tournament mode
 - sns > sqs
 - Chat

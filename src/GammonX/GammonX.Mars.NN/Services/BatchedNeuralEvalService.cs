@@ -135,6 +135,10 @@ namespace GammonX.Mars.NN.Services
             {
                 // cancellation is expected when the worker is stopped
             }
+            catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is OperationCanceledException))
+            {
+                // cancellation is expected when the worker is stopped
+            }
         }
 
         private async Task RunWorkerAsync(CancellationToken ct)

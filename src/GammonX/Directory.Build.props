@@ -1,7 +1,48 @@
 <Project>
   <PropertyGroup>
-
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Shared libraries -->
+    <DotNetEnvVersion>3.1.1</DotNetEnvVersion>
+    <NewtonsoftVersion>13.0.1</NewtonsoftVersion>
+    <SerilogAspNetCoreVersion>9.0.0</SerilogAspNetCoreVersion>
+    <SerilogSinksConsoleVersion>6.0.0</SerilogSinksConsoleVersion>
+    <!-- AWS -->
+    <AwsSdkDynamoDbVersion>4.0.21.3</AwsSdkDynamoDbVersion>
+    <AwsSdkExtensionsNetCoreSetupVersion>4.0.4.7</AwsSdkExtensionsNetCoreSetupVersion>
+    <AwsSdkSqsVersion>4.0.2.6</AwsSdkSqsVersion>
+    <AmazonLambdaCoreVersion>3.1.0</AmazonLambdaCoreVersion>
+    <AmazonLambdaRuntimeSupportVersion>2.1.1</AmazonLambdaRuntimeSupportVersion>
+    <AmazonLambdaSerializationSystemTextJsonVersion>3.0.0</AmazonLambdaSerializationSystemTextJsonVersion>
+    <AmazonLambdaSqsEventsVersion>3.0.0</AmazonLambdaSqsEventsVersion>
+    <AmazonLambdaApiGatewayEventsVersion>3.0.0</AmazonLambdaApiGatewayEventsVersion>
+    <AmazonLambdaTestUtilitiesVersion>4.1.0</AmazonLambdaTestUtilitiesVersion>
+    <!-- Microsoft -->
+    <MicrosoftAspNetCoreAuthenticationJwtBearerVersion>8.0.25</MicrosoftAspNetCoreAuthenticationJwtBearerVersion>
+    <MicrosoftAspNetCoreSignalRClientVersion>9.0.8</MicrosoftAspNetCoreSignalRClientVersion>
+    <MicrosoftAspNetCoreMvcTestingVersion>10.0.8</MicrosoftAspNetCoreMvcTestingVersion>
+    <MicrosoftBclMemoryVersion>9.0.15</MicrosoftBclMemoryVersion>
+    <MicrosoftExtensionsDependencyInjectionVersion>9.0.8</MicrosoftExtensionsDependencyInjectionVersion>
+    <MicrosoftExtensionsDependencyInjectionAbstractionsVersion>9.0.8</MicrosoftExtensionsDependencyInjectionAbstractionsVersion>
+    <MicrosoftExtensionsConfigurationEnvironmentVariablesVersion>9.0.8</MicrosoftExtensionsConfigurationEnvironmentVariablesVersion>
+    <MicrosoftExtensionsOptionsVersion>9.0.8</MicrosoftExtensionsOptionsVersion>
+    <MicrosoftExtensionsOptionsConfigurationExtensionsVersion>8.0.0</MicrosoftExtensionsOptionsConfigurationExtensionsVersion>
+    <MicrosoftVisualStudioAzureContainersToolsTargetsVersion>1.22.1</MicrosoftVisualStudioAzureContainersToolsTargetsVersion>
+    <!-- ML -->
+    <MicrosoftMlVersion>5.0.0</MicrosoftMlVersion>
+    <MicrosoftMlTorchSharpVersion>0.23.0</MicrosoftMlTorchSharpVersion>
+    <TorchSharpCpuVersion>0.106.0</TorchSharpCpuVersion>
+    <!-- Test -->
+    <CoverletCollectorVersion>6.0.4</CoverletCollectorVersion>
+    <MicrosoftNetTestSdkVersion>18.6.0</MicrosoftNetTestSdkVersion>
+    <MoqVersion>4.20.72</MoqVersion>
+    <XunitVersion>3.2.2</XunitVersion>
+    <XunitRunnerVisualStudioVersion>3.1.5</XunitRunnerVisualStudioVersion>
   </PropertyGroup>
 </Project>
