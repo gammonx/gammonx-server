@@ -4,6 +4,12 @@
 ## Active
 - next gen mars bots
 
+## Pre-Beta
+- commit and push current mars bot generation
+- prepare beta tests
+    - validate dynamodb datamodel and CRUD operation > sanitize/error
+    - disconnect handling
+
 ## TODO
 - upgrade to net10
     - unify nuget package version > build props

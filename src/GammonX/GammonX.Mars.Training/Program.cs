@@ -466,8 +466,17 @@ static void MergeGameMetadataCsv(IReadOnlyList<string> inputPaths, string output
                 continue;
 
             var columns = line.Split(',');
-            if (columns.Length != 5 || !gameIds.Add(columns[0]))
-                throw new InvalidDataException($"Duplicate or malformed game metadata row {lineNumber} in '{path}'.");
+            if (columns.Length != 5)
+            {
+                throw new InvalidDataException($"Malformed game metadata row {lineNumber} in '{path}'.");
+            }
+
+            if (!gameIds.Add(columns[0]))
+            {
+                // We just skip duplicates, since the game metadata is expected to be identical across all sidecar files.
+                Console.WriteLine($"Duplicate game ID '{columns[0]}' found in row {lineNumber} of '{path}'.");
+                continue;
+            }
 
             writer.WriteLine(line);
         }
