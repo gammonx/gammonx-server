@@ -486,7 +486,7 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public async Task TwoPlyMoveScoreDiffersFromImmediatePositionScore()
+        public async Task ExplicitTwoPlyMoveScoreDiffersFromImmediatePositionScore()
         {
             var modus = GameModus.Backgammon;
             var boardService = BoardServiceFactory.Create(modus);
@@ -522,12 +522,19 @@ namespace GammonX.Mars.NN.Tests.Services
                     Board = immediateBoard.ToContract(false)
                 },
                 contactWeights);
-            var twoPlyScore = (await service.EvalMoveSequenceAsync(
+            var onePlyScore = (await service.EvalMoveSequenceAsync(
                 originalContract,
                 true,
                 moveSequence,
                 contactWeights)).Score;
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(
+                originalContract,
+                true,
+                [moveSequence],
+                contactWeights,
+                BotLevel.TwoPly))[0].Score;
 
+            Assert.Equal(immediateScore, onePlyScore);
             Assert.NotEqual(immediateScore, twoPlyScore);
             Assert.Equal(CreateRaceFields(), board.Fields);
             Assert.Equal(0, board.BearOffCountWhite);

@@ -141,6 +141,31 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
+        public async Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(
+            BoardModelContract contract,
+            bool isWhite,
+            IReadOnlyList<MoveSequenceModel> candidates,
+            ContactWeightModel contactWeights,
+            BotLevel searchLevel)
+        {
+            ArgumentNullException.ThrowIfNull(contract);
+            ArgumentNullException.ThrowIfNull(candidates);
+
+            if (candidates.Count == 0)
+                return [];
+
+            var board = BoardService.CreateBoard(contract);
+            var evalResult = await GetCandidatesByEvalAsync(
+                board,
+                candidates.ToArray(),
+                isWhite,
+                contactWeights,
+                candidates.Count,
+                searchLevel);
+            return [.. evalResult];
+        }
+
+        // <inheritdoc />
         public NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract boardContract, bool isWhite)
         {
             var board = BoardService.CreateBoard(boardContract);
@@ -151,11 +176,13 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public async Task<FinalEvalResultModel> EvalMoveSequenceAsync(BoardModelContract contract, bool isWhite, MoveSequenceModel moveSequence, ContactWeightModel contactWeights)
         {
-            var board = BoardService.CreateBoard(contract);
-            var moveSequences = new[] { moveSequence };
-            const int evalCount = 1;
-            var evalResult = await GetCandidatesByEvalAsync(board, moveSequences, isWhite, contactWeights, evalCount, BotLevel.TwoPly);
-            return evalResult.First();
+            var evalResult = await EvalMoveSequenceCandidatesAsync(
+                contract,
+                isWhite,
+                [moveSequence],
+                contactWeights,
+                BotLevel.TwoPly);
+            return evalResult[0];
         }
 
         private async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(

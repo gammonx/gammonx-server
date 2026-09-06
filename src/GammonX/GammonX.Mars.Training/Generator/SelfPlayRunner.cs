@@ -29,13 +29,15 @@ namespace GammonX.Mars.Training.Generator
     /// <param name="Trajectory">The recorded game trajectory, if trajectory recording was enabled.</param>
     /// <param name="ExplorationDecisions">The exploration decisions made during the game, if diagnostics were enabled.</param>
     /// <param name="ConstraintMetrics">The aggregate prediction-constraint metrics, if collection was enabled.</param>
+    /// <param name="SearchDecisions">The selective two-ply search decisions made during the game, if selective two-ply search was enabled.</param>
     public sealed record SelfPlayRunResult(
         IReadOnlyList<(float[] Features, float[] Label)> Samples,
         int TurnCount,
         float? PredictionVariance,
         GameTrajectory? Trajectory = null,
         IReadOnlyList<ExplorationDecision>? ExplorationDecisions = null,
-        ConstraintMetricsResult? ConstraintMetrics = null);
+        ConstraintMetricsResult? ConstraintMetrics = null,
+        IReadOnlyList<SelectiveTwoPlySearchDecision>? SearchDecisions = null);
 
     public sealed record SelfPlayEntry(INeuralEvalService? EvalService, BotLevel BotLevel);
 
@@ -46,14 +48,17 @@ namespace GammonX.Mars.Training.Generator
         private readonly SelfPlayEntry? _entryA;
         private readonly SelfPlayEntry? _entryB;
         private readonly ExplorationOptions _explorationOptions;
+        private readonly SelectiveTwoPlyOptions _selectiveTwoPlyOptions;
         private readonly List<ExplorationDecision> _explorationDecisions = new List<ExplorationDecision>();
+        private readonly List<SelectiveTwoPlySearchDecision> _searchDecisions = new List<SelectiveTwoPlySearchDecision>();
 
         public SelfPlayRunner(
             SelfPlayRecorder recorder,
             GameModus modus,
             SelfPlayEntry? entryA,
             SelfPlayEntry? entryB = null,
-            ExplorationOptions? explorationOptions = null)
+            ExplorationOptions? explorationOptions = null,
+            SelectiveTwoPlyOptions? selectiveTwoPlyOptions = null)
         {
             if (entryB != null && entryA == null)
                 throw new ArgumentException("Model B requires Model A.", nameof(entryB));
@@ -66,6 +71,13 @@ namespace GammonX.Mars.Training.Generator
             _entryB = entryB;
             _explorationOptions = explorationOptions ?? new ExplorationOptions();
             _explorationOptions.Validate();
+            _selectiveTwoPlyOptions = selectiveTwoPlyOptions ?? new SelectiveTwoPlyOptions();
+            _selectiveTwoPlyOptions.Validate();
+
+            if (_selectiveTwoPlyOptions.Enabled && _entryA?.EvalService == null)
+                throw new ArgumentException("Selective two-ply search requires a neural Model A.", nameof(selectiveTwoPlyOptions));
+            if (_selectiveTwoPlyOptions.Enabled && _entryA?.BotLevel == BotLevel.TwoPly)
+                throw new ArgumentException("Selective two-ply search requires a one-ply Model A bot level.", nameof(selectiveTwoPlyOptions));
         }
 
         public async Task<SelfPlayRunResult> RunAsync(ContactWeightModel contactWeights, bool? modelAIsWhite = null)
@@ -147,7 +159,8 @@ namespace GammonX.Mars.Training.Generator
                         null,
                         finalizedDraw.Trajectory,
                         _explorationDecisions,
-                        _recorder.ConstraintMetrics);
+                        _recorder.ConstraintMetrics,
+                        _searchDecisions);
                 }
             }
 
@@ -158,7 +171,8 @@ namespace GammonX.Mars.Training.Generator
                     null,
                     null,
                     _explorationDecisions,
-                    _recorder.ConstraintMetrics);
+                    _recorder.ConstraintMetrics,
+                    _searchDecisions);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
             var gameResult = whiteWon ? board.ToGameResult(Guid.Empty, true) : board.ToGameResult(Guid.Empty, false);
@@ -173,7 +187,8 @@ namespace GammonX.Mars.Training.Generator
                 predictionVariance,
                 finalized.Trajectory,
                 _explorationDecisions,
-                _recorder.ConstraintMetrics);
+                _recorder.ConstraintMetrics,
+                _searchDecisions);
         }
 
         public async Task<SelfPlayRunResult> RunAgainstBotServiceGameAsync(GameModus modus, bool evalPlayerIsWhite, ContactWeightModel contactWeights)
@@ -306,7 +321,7 @@ namespace GammonX.Mars.Training.Generator
 
             if (turnCount >= maxTurns)
             {
-                return new SelfPlayRunResult([], turnCount, null, null, _explorationDecisions, _recorder.ConstraintMetrics);
+                return new SelfPlayRunResult([], turnCount, null, null, _explorationDecisions, _recorder.ConstraintMetrics, _searchDecisions);
             }
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
@@ -322,7 +337,8 @@ namespace GammonX.Mars.Training.Generator
                 predictionVariance,
                 finalized.Trajectory,
                 _explorationDecisions,
-                _recorder.ConstraintMetrics);
+                _recorder.ConstraintMetrics,
+                _searchDecisions);
         }
 
         /// <summary>
@@ -387,6 +403,26 @@ namespace GammonX.Mars.Training.Generator
             int turnCount,
             bool againstBot)
         {
+            if (_selectiveTwoPlyOptions.Enabled)
+            {
+                var selectiveResult = await ApplySelectiveTwoPlyAsync(
+                    evalService,
+                    boardContract,
+                    isWhite,
+                    rankedResults,
+                    contactWeights,
+                    _selectiveTwoPlyOptions,
+                    Random.Shared.NextSingle(),
+                    _recorder.GameId,
+                    _modus,
+                    turnCount,
+                    againstBot);
+                rankedResults = selectiveResult.Results;
+
+                if (_selectiveTwoPlyOptions.CollectDiagnostics)
+                    _searchDecisions.Add(selectiveResult.Decision);
+            }
+
             var bestScore = rankedResults[0].Score;
             double? secondBestScore = rankedResults.Count > 1 ? rankedResults[1].Score : null;
             // A missing second candidate means that no meaningful score gap can be computed.
@@ -464,6 +500,102 @@ namespace GammonX.Mars.Training.Generator
             }
 
             return selectedResult;
+        }
+
+        internal static async Task<(FinalEvalResultModels Results, SelectiveTwoPlySearchDecision Decision)> ApplySelectiveTwoPlyAsync(
+            IFeatureEvalService evalService,
+            BoardModelContract boardContract,
+            bool isWhite,
+            FinalEvalResultModels rankedResults,
+            ContactWeightModel contactWeights,
+            SelectiveTwoPlyOptions options,
+            float auditRoll,
+            Guid gameId,
+            GameModus modus,
+            int turnIndex,
+            bool againstBot)
+        {
+            ArgumentNullException.ThrowIfNull(evalService);
+            ArgumentNullException.ThrowIfNull(boardContract);
+            ArgumentNullException.ThrowIfNull(rankedResults);
+            ArgumentNullException.ThrowIfNull(options);
+
+            if (rankedResults.Count == 0)
+                throw new ArgumentException("At least one ranked result is required.", nameof(rankedResults));
+
+            var onePlyBestScore = rankedResults[0].Score;
+            double? onePlySecondBestScore = rankedResults.Count > 1 ? rankedResults[1].Score : null;
+            double? onePlyScoreGap = onePlySecondBestScore.HasValue
+                ? onePlyBestScore - onePlySecondBestScore.Value
+                : null;
+
+            var policyDecision = SelectiveTwoPlyPolicy.Select(
+                rankedResults.Count,
+                onePlyScoreGap,
+                auditRoll,
+                options);
+
+            var finalResults = rankedResults;
+            double? twoPlyBestScore = null;
+            double? twoPlySecondBestScore = null;
+            double? twoPlyScoreGap = null;
+            bool? bestMoveChanged = null;
+            int? twoPlyBestOnePlyRank = null;
+
+            if (policyDecision.ShouldEvaluate)
+            {
+                // We fetch the candidates based on the count
+                var candidates = rankedResults
+                    .Take(policyDecision.CandidateCount)
+                    .Select(result => result.MoveSequence)
+                    .ToArray();
+                // We execute a full 2-ply search for the given top candidates
+                var evaluatedResults = await evalService.EvalMoveSequenceCandidatesAsync(
+                    boardContract,
+                    isWhite,
+                    candidates,
+                    contactWeights,
+                    BotLevel.TwoPly);
+
+                if (evaluatedResults.Count != candidates.Length)
+                    throw new InvalidOperationException("Candidate evaluation must return one result per requested move sequence.");
+
+                var originalBestIndex = rankedResults.FindIndex(result =>
+                    result.MoveSequence.Equals(evaluatedResults[0].MoveSequence));
+                if (originalBestIndex < 0)
+                    throw new InvalidOperationException("Candidate evaluation returned an unknown move sequence.");
+
+                twoPlyBestOnePlyRank = originalBestIndex + 1;
+                twoPlyBestScore = evaluatedResults[0].Score;
+                twoPlySecondBestScore = evaluatedResults.Count > 1 ? evaluatedResults[1].Score : null;
+                twoPlyScoreGap = twoPlySecondBestScore.HasValue ? twoPlyBestScore.Value - twoPlySecondBestScore.Value : null;
+                bestMoveChanged = originalBestIndex != 0;
+
+                finalResults = policyDecision.CandidateCount == rankedResults.Count
+                    ? evaluatedResults
+                    : new FinalEvalResultModels(
+                        evaluatedResults.Concat(rankedResults.Skip(policyDecision.CandidateCount)));
+            }
+
+            var searchDecision = new SelectiveTwoPlySearchDecision(
+                gameId,
+                modus,
+                turnIndex,
+                againstBot,
+                rankedResults.Count,
+                policyDecision.CandidateCount,
+                options.MaximumCandidates,
+                onePlyBestScore,
+                onePlySecondBestScore,
+                onePlyScoreGap,
+                policyDecision.Reason,
+                twoPlyBestScore,
+                twoPlySecondBestScore,
+                twoPlyScoreGap,
+                bestMoveChanged,
+                twoPlyBestOnePlyRank);
+
+            return (finalResults, searchDecision);
         }
 
         internal static MoveSequenceModel[] GetAllLegalExplorationMoves(

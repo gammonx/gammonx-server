@@ -65,6 +65,22 @@ namespace GammonX.Mars.NN.Services
             int? maxCandidates = null);
 
         /// <summary>
+        /// Evaluates an explicit set of move candidates at the requested search level.
+        /// </summary>
+        /// <param name="contract">The board state before any candidate move is applied.</param>
+        /// <param name="isWhite">Indicates whether the player making the moves is white.</param>
+        /// <param name="candidates">The move candidates to evaluate.</param>
+        /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="searchLevel">The search level to use for every candidate.</param>
+        /// <returns>The evaluated candidates sorted descending by score.</returns>
+        Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(
+            BoardModelContract contract,
+            bool isWhite,
+            IReadOnlyList<MoveSequenceModel> candidates,
+            ContactWeightModel contactWeights,
+            BotLevel searchLevel);
+
+        /// <summary>
         /// Calculates the normalized position values for a turn without requiring a legal move.
         /// Used to preserve pass turns in training trajectories.
         /// </summary>

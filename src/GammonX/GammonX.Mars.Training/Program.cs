@@ -29,6 +29,7 @@ Console.WriteLine("  7  Rebuild TD targets");
 Console.WriteLine("  8  Select random replay games");
 Console.WriteLine("  9  Analyze score-gap diagnostics");
 Console.WriteLine(" 10  Audit trajectory output constraints");
+Console.WriteLine(" 11  Analyze selective 2-ply diagnostics");
 Console.WriteLine();
 Console.Write("Select mode: ");
 
@@ -73,6 +74,10 @@ else if (modeInput == "10")
 {
     RunAnalyzeConstraints();
 }
+else if (modeInput == "11")
+{
+    RunAnalyzeSelectiveTwoPlySearch();
+}
 else
 {
     Console.WriteLine("Invalid selection. Exiting.");
@@ -92,7 +97,8 @@ static void RunTrainModel()
     var outputModelPath = PromptString("Output model path", "training_net.dat");
     var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
     // we assume that a batch size of 4096 takes up 10MB of GPU RAM
-    var batchSize = PromptInt("Batch size", 40960);
+    // batch size influneces the amount of optimizer updates per epoch, so a smaller batch size will result in more updates and potentially better convergence
+    var batchSize = PromptInt("Batch size", 16384);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
 
@@ -647,13 +653,25 @@ static void RunSelectRandomGames()
         Console.WriteLine($"  Indexed {rowIndex.totalRows:N0} rows from {Path.GetFileName(path)}");
     }
 
+    // We validate all games and remove any that are not complete or have missing metadata
+    // We only want to select fully available games for replay extraction
+    var gameIdsToRemove = new List<Guid>();
     foreach (var (gameId, gameRows) in rowsByGame)
     {
         if (!gamesById.TryGetValue(gameId, out var metadata))
-            throw new InvalidDataException($"No game metadata exists for game ID '{gameId}'.");
+        {
+            Console.WriteLine($"No game metadata exists for game ID '{gameId}'.");
+            gameIdsToRemove.Add(gameId);
+            continue;
+        }
+
         if (metadata.TotalTurns != gameRows.Count)
-            throw new InvalidDataException($"Game metadata turn count mismatch for game ID '{gameId}': metadata={metadata.TotalTurns}, rows={gameRows.Count}.");
+        {
+            Console.WriteLine($"Game metadata turn count mismatch for game ID '{gameId}': metadata={metadata.TotalTurns}, rows={gameRows.Count}.");
+            gameIdsToRemove.Add(gameId);
+        }
     }
+    gameIdsToRemove.ForEach(gameId => rowsByGame.Remove(gameId));
 
     var random = new Random(effectiveSeed);
     var selectedGameIds = GameGroupedShuffler.SelectGames(rowsByGame.Keys.ToArray(), gameCount, random);
@@ -767,6 +785,65 @@ static void PrintExplorationSummary(ExplorationGapSummary summary)
 }
 
 #endregion Analyze Score-Gap Diagnostics
+
+#region Analyze Selective Two-Ply Diagnostics
+
+static void RunAnalyzeSelectiveTwoPlySearch()
+{
+    Console.WriteLine();
+    var path = PromptString("Selective 2-ply diagnostics path", "training_data.search.csv");
+    if (!File.Exists(path))
+    {
+        Console.WriteLine($"File not found: {path}");
+        return;
+    }
+
+    var report = SelectiveTwoPlySearchBroker.Analyze(SelectiveTwoPlySearchCsvReader.ReadDecisions(path));
+    Console.WriteLine("Overall selective 2-ply diagnostics");
+    Console.WriteLine("===================================");
+    PrintSelectiveTwoPlySummary(report.Overall);
+
+    foreach (var group in report.Groups.OrderBy(pair => pair.Key.Modus).ThenBy(pair => pair.Key.AgainstBot))
+    {
+        Console.WriteLine();
+        Console.WriteLine($"{group.Key.Modus} | {(group.Key.AgainstBot ? "wildbg" : "self-play")}");
+        Console.WriteLine(new string('-', 40));
+        PrintSelectiveTwoPlySummary(group.Value);
+    }
+}
+
+static void PrintSelectiveTwoPlySummary(SelectiveTwoPlySearchSummary summary)
+{
+    Console.WriteLine($"  Decisions          : {summary.DecisionCount:N0}");
+    Console.WriteLine($"  Evaluated          : {summary.EvaluatedDecisionCount:N0}");
+    Console.WriteLine($"  Best move changed  : {summary.BestMoveChangedCount:N0} ({summary.BestMoveChangeRate:P2})");
+    Console.WriteLine($"  Avg candidates     : {summary.AverageEvaluatedCandidateCount:F2}");
+    Console.WriteLine($"  Mean 1-ply gap     : {summary.MeanOnePlyScoreGap:F6}");
+    Console.WriteLine($"  Mean 2-ply gap     : {summary.MeanTwoPlyScoreGap:F6}");
+    Console.WriteLine("  Audits");
+    Console.WriteLine($"    Decisions       : {summary.AuditDecisionCount:N0}");
+    Console.WriteLine($"    Best move changed: {summary.AuditBestMoveChangedCount:N0} ({summary.AuditBestMoveChangeRate:P2})");
+    Console.WriteLine($"    Ranked audits   : {summary.RankedAuditDecisionCount:N0}");
+    if (summary.RankedAuditDecisionCount > 0)
+    {
+        Console.WriteLine($"    Winner outside K: {summary.AuditWinnerOutsideCandidateLimitCount:N0} ({summary.AuditWinnerOutsideCandidateLimitRate:P2})");
+    }
+    if (summary.AuditWinnerOnePlyRankCounts.Count > 0)
+    {
+        Console.WriteLine("    Winner 1-ply ranks");
+        foreach (var rank in summary.AuditWinnerOnePlyRankCounts.OrderBy(pair => pair.Key))
+        {
+            Console.WriteLine($"      {rank.Key,3}: {rank.Value:N0}");
+        }
+    }
+    Console.WriteLine("  Reasons");
+    foreach (var reason in Enum.GetValues<SelectiveTwoPlyReason>())
+    {
+        Console.WriteLine($"    {reason,-15}: {summary.ReasonCounts.GetValueOrDefault(reason):N0}");
+    }
+}
+
+#endregion Analyze Selective Two-Ply Diagnostics
 
 #region Analyze Trajectory Constraints
 
@@ -929,12 +1006,21 @@ static async Task RunGenerateTrainingDataAsync()
     var playAgainstBotService = PromptBool("Play against wildbg bot", false);
     var evalBatchSize = PromptInt("Eval Batchsize", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
+    // we configure the rank aware exploration parameters (selecting the best move exploration)
     var collectScoreGapDiagnostics = PromptBool("Write score-gap diagnostics", false);
     var scoreGapAwareExploration = PromptBool("Enable score-gap ranked exploration", false);
     var scoreGapSmallThreshold = PromptFloat("Small score-gap threshold", 0.02f);
     var scoreGapLargeThreshold = PromptFloat("Large score-gap threshold", 0.2f);
     var smallGapRankedMultiplier = PromptFloat("Small-gap ranked multiplier", 1.5f);
     var largeGapRankedMultiplier = PromptFloat("Large-gap ranked multiplier", 0.5f);
+    // we configure the selective two-ply search parameters (selectively execute a two-ply search based on the 1-ply evaluation gap)
+    // it is a compromise between computational cost (full 2-ply) and search accuracy (selective 2-ply)
+    var selectiveTwoPlyEnabled = PromptBool("Enable selective 2-ply search", false);
+    var selectiveTwoPlyGap = selectiveTwoPlyEnabled ? PromptFloat("Maximum 1-ply gap for selective search", 0.02f) : 0.02f;
+    var selectiveTwoPlyCandidates = selectiveTwoPlyEnabled ? PromptInt("Maximum selective 2-ply candidates", 3) : 3;
+    var selectiveTwoPlyAuditProbability = selectiveTwoPlyEnabled ? PromptFloat("Full-search audit probability", 0.01f) : 0.01f;
+    var collectSelectiveTwoPlyDiagnostics = selectiveTwoPlyEnabled && PromptBool("Write selective 2-ply diagnostics", true);
+
     Console.WriteLine();
 
     var hasModelAPath = !string.IsNullOrWhiteSpace(modelAPath);
@@ -967,6 +1053,37 @@ static async Task RunGenerateTrainingDataAsync()
     if (hasModelBPath && playAgainstBotService)
     {
         Console.WriteLine("Model B cannot be used when playing against the WildBG bot service.");
+        return;
+    }
+
+    if (selectiveTwoPlyEnabled && !hasModelAPath)
+    {
+        Console.WriteLine("Selective 2-ply search requires a Model A path.");
+        return;
+    }
+
+    if (selectiveTwoPlyEnabled && modelABotLevel == BotLevel.TwoPly)
+    {
+        Console.WriteLine("Selective 2-ply search requires a 1-ply Model A bot level.");
+        return;
+    }
+
+    var selectiveTwoPlyOptions = new SelectiveTwoPlyOptions
+    {
+        Enabled = selectiveTwoPlyEnabled,
+        MaximumOnePlyGap = selectiveTwoPlyGap,
+        MaximumCandidates = selectiveTwoPlyCandidates,
+        FullSearchAuditProbability = selectiveTwoPlyAuditProbability,
+        CollectDiagnostics = collectSelectiveTwoPlyDiagnostics
+    };
+
+    try
+    {
+        selectiveTwoPlyOptions.Validate();
+    }
+    catch (ArgumentOutOfRangeException exception)
+    {
+        Console.WriteLine($"Invalid selective 2-ply configuration: {exception.Message}");
         return;
     }
 
@@ -1019,6 +1136,7 @@ static async Task RunGenerateTrainingDataAsync()
     var allSamples = new List<TrainingDataRow>(capacity: totalGames * 40);
     var completedGames = new List<GameMetadata>(capacity: totalGames);
     var explorationDecisions = new List<ExplorationDecision>();
+    var searchDecisions = new List<SelectiveTwoPlySearchDecision>();
     var totalTurnCount = 0L;
     var totalPredVariance = 0.0;
     var predVarianceCount = 0;
@@ -1043,9 +1161,7 @@ static async Task RunGenerateTrainingDataAsync()
     };
 
     var entryA = new SelfPlayEntry(modelAService, modelABotLevel);
-    var entryB = hasModelBPath
-        ? new SelfPlayEntry(modelBService, modelBBotLevel)
-        : null;
+    var entryB = hasModelBPath ? new SelfPlayEntry(modelBService, modelBBotLevel) : null;
     Exception? generationException = null;
 
     try
@@ -1061,7 +1177,13 @@ static async Task RunGenerateTrainingDataAsync()
                     try
                     {
                         var recorder = new SelfPlayRecorder(extractor, modelAService, lambda);
-                        var runner = new SelfPlayRunner(recorder, modus, entryA, entryB, explorationOptions);
+                        var runner = new SelfPlayRunner(
+                            recorder,
+                            modus,
+                            entryA,
+                            entryB,
+                            explorationOptions,
+                            selectiveTwoPlyOptions);
 
                         SelfPlayRunResult result;
 
@@ -1109,6 +1231,11 @@ static async Task RunGenerateTrainingDataAsync()
                                 if (result.ExplorationDecisions != null && result.ExplorationDecisions.Count > 0)
                                 {
                                     explorationDecisions.AddRange(result.ExplorationDecisions);
+                                }
+
+                                if (result.SearchDecisions != null && result.SearchDecisions.Count > 0)
+                                {
+                                    searchDecisions.AddRange(result.SearchDecisions);
                                 }
 
                                 if (result.PredictionVariance.HasValue)
@@ -1192,6 +1319,7 @@ static async Task RunGenerateTrainingDataAsync()
 
     IReadOnlyList<TrainingDataRow> trainSamples;
     IReadOnlyList<TrainingDataRow> valSamples;
+
     if (split.Training.Count == 0 || split.Validation.Count == 0)
     {
         if (generationIncomplete)
@@ -1237,6 +1365,14 @@ static async Task RunGenerateTrainingDataAsync()
         var explorationPath = Path.ChangeExtension(finalOutputPath, ".exploration.csv");
         ExplorationCsvWriter.WriteDecisions(explorationPath, explorationDecisions);
         Console.WriteLine($"Written: {explorationPath}");
+    }
+
+
+    if (collectSelectiveTwoPlyDiagnostics)
+    {
+        var searchPath = Path.ChangeExtension(finalOutputPath, ".search.csv");
+        SelectiveTwoPlySearchCsvWriter.WriteDecisions(searchPath, searchDecisions);
+        Console.WriteLine($"Written: {searchPath}");
     }
 
     Console.WriteLine($"Written: {finalOutputPath}");
