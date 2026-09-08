@@ -20,16 +20,26 @@ public static class NetTrainer
         string valCsvPath,
         string? inputModelPath,
         string outputModelPath,
-        int epochs = 100,
-        int batchSize = 4096,
+        int epochs = 50,
+        int batchSize = 16384,
         int producerCount = 1,
         int queueCapacity = 2,
         float learningRate = 1e-4f,
-        int earlyStoppingPatience = 11,
+        int earlyStoppingPatience = 8,
+        float minimumDelta = 1e-5f,
         bool shuffleLabels = false,
         GameOutcomeOutputMode outputMode = GameOutcomeOutputMode.MonotonicCumulative,
         NetArchitecture architecture = NetArchitecture.A)
     {
+        // we expect a higher learing rate for a bigger batch size
+        // combination: batchSize=40960, learningRate=1e-4f (until default gen9)
+        // result: 5.32M samples / 40,960 batche size ≈ 130 optimizer updates per epoch
+
+        // combination: batchSize=16384, learningRate=1e-4f (since default gen9-1)
+        // result: 5.32M samples / 16,384 batche size ≈ 325 optimizer updates per epoch
+
+        // TODO: write all settings into model metadata
+
         // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
 
@@ -68,8 +78,13 @@ public static class NetTrainer
             labelPermutation = Enumerable.Range(0, trainRowCount).OrderBy(_ => Random.Shared.Next()).ToArray();
         }
 
-        var optimizer = optim.Adam(model.GetParameters(), lr: learningRate, weight_decay: 5e-4);
-        var scheduler = optim.lr_scheduler.StepLR(optimizer, step_size: 10, gamma: 0.66);
+        var optimizer = optim.AdamW(model.GetParameters(), lr: learningRate, weight_decay: 1e-4);
+        var scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            factor: 0.66,
+            patience: 3,
+            threshold: minimumDelta,
+            threshold_mode: "abs");
         // Reduced BCE trains the model; unreduced BCE supplies row-weighted per-head diagnostics.
         var loss = BCELoss();
         var diagnosticLoss = BCELoss(reduction: Reduction.None);
@@ -113,6 +128,7 @@ public static class NetTrainer
                     false);
 
                 bestValLoss = parentMetrics.Loss;
+                scheduler.step(bestValLoss);
             }
             model.Save(outputModelPath);
             Console.WriteLine($"Parent val_loss={bestValLoss:F5}");
@@ -138,7 +154,7 @@ public static class NetTrainer
 
             var currentLr = optimizer.ParamGroups.First().LearningRate;
 
-            if (valMetrics.Loss < bestValLoss)
+            if (valMetrics.Loss < bestValLoss - minimumDelta)
             {
                 bestValLoss = valMetrics.Loss;
                 bestEpoch = epoch;
@@ -160,6 +176,8 @@ public static class NetTrainer
             Console.WriteLine($"  train_loss={trainMetrics.Loss:F5} [{FormatOutputLosses(trainMetrics.PerOutputLosses, labelCount)}]");
             Console.WriteLine($"  val_loss={valMetrics.Loss:F5} [{FormatOutputLosses(valMetrics.PerOutputLosses, labelCount)}]");
 
+            scheduler.step(valMetrics.Loss);
+
             // enable if output constraint metrics are needed for debugging
             //if (trainMetrics.ConstraintMetrics != null && valMetrics.ConstraintMetrics != null)
             //{
@@ -174,8 +192,6 @@ public static class NetTrainer
                 Console.WriteLine($"Early stopping — best val_loss={bestValLoss:F5} at epoch {bestEpoch}");
                 break;
             }
-
-            scheduler.step();
         }
 
         trainStopwatch.Stop();
