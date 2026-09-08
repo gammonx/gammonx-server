@@ -28,27 +28,33 @@
 	<ItemGroup>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\README.md" Link="Data\NeuralNets\Backgammon\README.md" />
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\training_net.dat" Link="Data\NeuralNets\Backgammon\training_net.dat">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Fevga\README.md" Link="Data\NeuralNets\Fevga\README.md" />
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Fevga\training_net.dat" Link="Data\NeuralNets\Fevga\training_net.dat">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\README.md" Link="Data\NeuralNets\Plakoto\README.md" />
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\training_net.dat" Link="Data\NeuralNets\Plakoto\training_net.dat">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Portes\README.md" Link="Data\NeuralNets\Portes\README.md" />
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Portes\training_net.dat" Link="Data\NeuralNets\Portes\training_net.dat">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\README.md" Link="Data\NeuralNets\Tavla\README.md" />
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\training_net.dat" Link="Data\NeuralNets\Tavla\training_net.dat">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 		<None Include="..\GammonX.Mars.Server\NeuralNets\Backgammon\training_net.dat.meta.json" Link="Data\NeuralNets\Backgammon\training_net.dat.meta.json">
-	    	<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  	</None>
+		<None Include="..\GammonX.Mars.Server\NeuralNets\Portes\training_net.dat.meta.json" Link="Data\NeuralNets\Portes\training_net.dat.meta.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+		<None Include="..\GammonX.Mars.Server\NeuralNets\Tavla\training_net.dat.meta.json" Link="Data\NeuralNets\Tavla\training_net.dat.meta.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 </Project>
