@@ -1,10 +1,11 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Engine.Tests.Data;
-
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Moq;
+using Newtonsoft.Json;
 
 namespace GammonX.Engine.Tests
 {
@@ -546,7 +547,56 @@ namespace GammonX.Engine.Tests
 			Assert.NotEmpty(legalToPositions);
 		}
 
-		[Theory]
+		[Fact]
+        public void LegalMovesNotDuplicated1()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(BoardMocks.DefaultBoard1);
+            Assert.NotNull(boardContract);
+            var board = service.CreateBoard(boardContract);
+
+            var moves = service.GetLegalMoveSequences(board, true, 1, 1);
+            Assert.Single(moves);
+            moves = service.GetLegalMoveSequences(board, false, 1, 1);
+            Assert.Single(moves);
+        }
+
+        [Fact]
+        public void LegalMovesNotDuplicated2()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(BoardMocks.DefaultBoard2);
+            Assert.NotNull(boardContract);
+            var board = service.CreateBoard(boardContract);
+
+            var moves = service.GetLegalMoveSequences(board, true, 1, 1);
+            Assert.Equal(2, moves.Length);
+            moves = service.GetLegalMoveSequences(board, false, 1, 1);
+            Assert.Equal(2, moves.Length);
+        }
+
+        [Fact]
+        public void LegalMovesNotDuplicated3()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(BoardMocks.DefaultBoard2);
+            Assert.NotNull(boardContract);
+            var board = service.CreateBoard(boardContract);
+
+			// we expect duplicates, same board end state but different ways to get there
+            var moves = service.GetLegalMoveSequences(board, true, 2, 2, 2, 2);
+            Assert.Equal(6, moves.Length);
+            moves = service.GetLegalMoveSequences(board, false, 2, 2, 2, 2);
+            Assert.Equal(6, moves.Length);
+
+            // we expect no duplicated end boards
+            moves = service.GetUniqueLegalMoveSequences(board, true, 2, 2, 2, 2);
+            Assert.Equal(3, moves.Length);
+            moves = service.GetUniqueLegalMoveSequences(board, false, 2, 2, 2, 2);
+            Assert.Equal(3, moves.Length);
+        }
+
+        [Theory]
 		[InlineData(GameModus.Backgammon, true)]
 		[InlineData(GameModus.Portes, true)]
 		[InlineData(GameModus.Tavla, true)]

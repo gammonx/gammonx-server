@@ -1,5 +1,32 @@
 # Changelog
 
+## 08.09.2026
+### Mars Bot
+- updated default nn model to gen10
+- made eval call chain async
+- enabled CUDA device mode for bot eval and training pipeline
+- completely refactored the training pipeline (see gammonx-training repo for details)
+	- output constraints for default model
+	- implemented 2-ply search
+	- some performance optimizations for hand crafted model features
+	- introduced model metadata
+	- increased net architecture for default models
+	- implemented monotonic cumulative output mode for default models
+	- removed cheap and race feature eval, always run full eval
+	- memory optimizations for feature extractors
+	- fixed forward TD view caulculator
+- training console modes
+	- added rank aware exploration and its analysis
+	- added selective 2-ply search and its analysis
+	- allow a per game group shuffle
+	- added different sidecards to recalculate existing training data
+	- made use of a binary file format for reading and processing training data
+### Engine
+- refactored legal move generation for bot purposes returning a list of move which results in unique end board state (`GetUniqueLegalMoveSequences`)
+- reduced memory load/object assignments for board base model implementation. Assigning static instances for hot paths (`RecoverRollOperator`/`IsInHomeOperator `)
+- fixed property getters of board implementations
+- added "TwoPly" as new bot level 
+
 ## 18.08.2026
 
 ### NEW

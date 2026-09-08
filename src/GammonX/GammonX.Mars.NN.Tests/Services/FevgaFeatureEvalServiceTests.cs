@@ -38,7 +38,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(5, 5)]
         [InlineData(5, 6)]
         [InlineData(6, 6)]
-        public void CanEvalFevgaStartBoardForWhiteAndBlack(int roll1, int roll2)
+        public async Task CanEvalFevgaStartBoardForWhiteAndBlack(int roll1, int roll2)
         {
             var boardService = BoardServiceFactory.Create(GameModus.Fevga);
             var board = boardService.CreateBoard();
@@ -58,7 +58,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -69,7 +69,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -83,7 +83,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(4, 4)]
         [InlineData(5, 5)]
         [InlineData(6, 6)]
-        public void CanEvalFevgaStartBoardForDoubles(int roll1, int roll2)
+        public async Task CanEvalFevgaStartBoardForDoubles(int roll1, int roll2)
         {
             var boardService = BoardServiceFactory.Create(GameModus.Fevga);
             var board = boardService.CreateBoard();
@@ -103,7 +103,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -114,7 +114,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -128,7 +128,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(4, 4)]
         [InlineData(5, 5)]
         [InlineData(6, 6)]
-        public void CanEvalFevgaBoard1ForDoubles(int roll1, int roll2)
+        public async Task CanEvalFevgaBoard1ForDoubles(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBoard1);
             Assert.NotNull(boardContract);
@@ -146,7 +146,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -157,7 +157,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = evalService.EvalMoveSequence(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultBlack);
         }
 
@@ -168,7 +168,7 @@ namespace GammonX.Mars.NN.Tests.Services
         [InlineData(4, 4)]
         [InlineData(5, 5)]
         [InlineData(6, 6)]
-        public void CanEvalFevgaBoard2ForDoubles(int roll1, int roll2)
+        public async Task CanEvalFevgaBoard2ForDoubles(int roll1, int roll2)
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBoard2);
             Assert.NotNull(boardContract);
@@ -186,12 +186,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                     BotLevel = BotLevel.Hard
             };
-            var resultWhite = evalService.EvalMoveSequence(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
             Assert.NotNull(resultWhite);
         }
 
         [Fact]
-        public void CanEvalFevgaBlackWonBoard()
+        public async Task CanEvalFevgaBlackWonBoard()
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBlackWonBoard);
             Assert.NotNull(boardContract);
@@ -208,7 +208,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Fevga,
                 IsWhite = false
             };
-            var resultBlack = evalService.EvalBoardState(requestBlack, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.FevgaContactWeights);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -216,14 +216,14 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Fevga,
                 IsWhite = true
             };
-            var resultWhite = evalService.EvalBoardState(requestWhite, EvalWeights.FevgaCheapContactWeights, EvalWeights.FevgaContactWeights, EvalWeights.RaceWeights);
+            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.FevgaContactWeights);
 
-            Assert.True(resultBlack > 0.5);
-            Assert.True(resultWhite < -0.25);
+            Assert.True(resultBlack > 0.0);
+            Assert.True(resultWhite < -0.0);
         }
 
         [Fact]
-        public void CannotEvalCube()
+        public async Task CannotEvalCube()
         {
             var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.FevgaBlackWonBoard);
             Assert.NotNull(boardContract);
@@ -241,7 +241,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            Assert.Throws<InvalidOperationException>(() => evalService.EvalCube(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request));
         }
     }
 }

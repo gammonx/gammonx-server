@@ -10,51 +10,33 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var longest = 0;
+            var current = 0;
+            var pinModel = board as IPinModel;
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var whiteAnchors = board.Fields.Index().Where(i => i.Item <= -board.BlockAmount);
-                if (board is IPinModel pinModel)
+                var field = board.Fields[index];
+                var isAnchor = isWhite
+                    ? field <= -board.BlockAmount
+                    : field >= board.BlockAmount;
+                if (!isAnchor && pinModel is not null)
                 {
-                    var potWhiteAnchors = board.Fields.Index()
-                        .Where(i => i.Item == -(board.BlockAmount - 1) && pinModel.PinnedFields[i.Index] == board.BlockAmount - 1);
-                    whiteAnchors = whiteAnchors.Concat(potWhiteAnchors);
+                    isAnchor = isWhite
+                        ? field == -(board.BlockAmount - 1) && pinModel.PinnedFields[index] == board.BlockAmount - 1
+                        : field == board.BlockAmount - 1 && pinModel.PinnedFields[index] == -(board.BlockAmount - 1);
                 }
-                return LongestConsecutiveRun(whiteAnchors.Select(i => i.Index));
-            }
-            else
-            {
-                var blackAnchors = board.Fields.Index().Where(i => i.Item >= board.BlockAmount);
-                if (board is IPinModel pinModel)
-                {
-                    var potBlackAnchors = board.Fields.Index()
-                        .Where(i => i.Item == board.BlockAmount - 1 && pinModel.PinnedFields[i.Index] == -(board.BlockAmount - 1));
-                    blackAnchors = blackAnchors.Concat(potBlackAnchors);
-                }
-                return LongestConsecutiveRun(blackAnchors.Select(i => i.Index));
-            }
-        }
 
-        private static int LongestConsecutiveRun(IEnumerable<int> indices)
-        {
-            var sorted = indices.Order().ToArray();
-            if (sorted.Length == 0)
-                return 0;
-
-            int longest = 1;
-            int current = 1;
-            for (int i = 1; i < sorted.Length; i++)
-            {
-                if (sorted[i] == sorted[i - 1] + 1)
+                if (isAnchor)
                 {
                     current++;
-                    if (current > longest)
-                        longest = current;
+                    longest = Math.Max(longest, current);
                 }
-                else if (sorted[i] != sorted[i - 1])
+                else
                 {
-                    current = 1;
+                    current = 0;
                 }
             }
+
             return longest;
         }
     }

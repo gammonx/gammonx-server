@@ -20,38 +20,38 @@ namespace GammonX.Mars.NN.Services
             var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
 
             var pinModel = (IPinModel)boardClone;
-            var turnNumber = boardClone.History.Events.Count(e => e.Type == HistoryEventType.Roll);
+            var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
 
             List<float> features =
             [
                 // self-crafted pin features
-                isWhite ? (float)model.PinCountOpp : (float)model.PinCountPlayer,
-                isWhite ? (float)model.PinCountPlayer : (float)model.PinCountOpp,
-                isWhite ? (float)model.OppMotherPinned : (float)model.PlayerMotherPinned,
-                isWhite ? (float)model.PlayerMotherPinned : (float)model.OppMotherPinned,
-                isWhite ? (float)model.MotherDistancePlayer : (float)model.MotherDistanceOpp,
-                isWhite ? (float)model.MotherDistanceOpp : (float)model.MotherDistancePlayer,
-                isWhite ? (float)model.NumChFrontLastPin : (float)model.NumChFrontLastPinOpp,
-                isWhite ? (float)model.NumChFrontLastPinOpp : (float)model.NumChFrontLastPin,
+                (float)model.PinCountOpp,
+                (float)model.PinCountPlayer,
+                (float)model.OppMotherPinned,
+                (float)model.PlayerMotherPinned,
+                (float)model.MotherDistancePlayer,
+                (float)model.MotherDistanceOpp,
+                (float)model.NumChFrontLastPin,
+                (float)model.NumChFrontLastPinOpp,
                 // self-crafted structural features
-                isWhite ? (float)model.BlotCount : (float)model.BlotCountOpp,
-                isWhite ? (float)model.BlotCountOpp : (float)model.BlotCount,
-                isWhite ? (float)model.BlotInStartRangeCount : (float)model.BlotInStartRangeCountOpp,
-                isWhite ? (float)model.BlotInStartRangeCountOpp : (float)model.BlotInStartRangeCount,
-                isWhite ? (float)model.AnchorCount : (float)model.AnchorCountOpp,
-                isWhite ? (float)model.AnchorCountOpp : (float)model.AnchorCount,
-                isWhite ? (float)model.AverageStackHeightPlayer : (float)model.AverageStackHeightOpp,
-                isWhite ? (float)model.AverageStackHeightOpp : (float)model.AverageStackHeightPlayer,
-                isWhite ? (float)model.AverageDistanceToBearOffPlayer : (float)model.AverageDistanceToBearOffOpp,
-                isWhite ? (float)model.AverageDistanceToBearOffOpp : (float)model.AverageDistanceToBearOffPlayer,
+                (float)model.BlotCount,
+                (float)model.BlotCountOpp,
+                (float)model.BlotInStartRangeCount,
+                (float)model.BlotInStartRangeCountOpp,
+                (float)model.AnchorCount,
+                (float)model.AnchorCountOpp,
+                (float)model.AverageStackHeightPlayer,
+                (float)model.AverageStackHeightOpp,
+                (float)model.AverageDistanceToBearOffPlayer,
+                (float)model.AverageDistanceToBearOffOpp,
                 // race features
-                isWhite ? (float)model.PipDifference : -(float)model.PipDifference,
-                isWhite ? (float)model.PipToBearOff : (float)model.PipToBearOffOpp,
-                isWhite ? (float)model.PipToBearOffOpp : (float)model.PipToBearOff,
+                (float)model.PipDifference,
+                (float)model.PipToBearOff,
+                (float)model.PipToBearOffOpp,
                 // race feature flag
                 model.Race ? 1f : 0f,
                 // raw board feature tensors
-                isWhite ? 1f : 0f,
+                0f,
                 boardClone.BearOffCountWhite / 15f,
                 boardClone.BearOffCountBlack / 15f,
                 turnNumber / 100f,

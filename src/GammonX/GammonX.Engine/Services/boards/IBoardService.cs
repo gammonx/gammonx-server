@@ -21,7 +21,7 @@ namespace GammonX.Engine.Services
         /// </summary>
         /// <remarks>
         /// Negative numbers in the array represent the number of pieces for the white player, 
-        /// while positive numbers represent the peices for the black player.
+        /// while positive numbers represent the pieces for the black player.
         /// </remarks>
         /// <returns>An instance of <see cref="IBoardModel"/>.</returns>
         IBoardModel CreateBoard();
@@ -30,7 +30,7 @@ namespace GammonX.Engine.Services
         /// Creates a board based on the given <paramref name="contract"/>.
         /// </summary>
         /// <param name="contract">Contract to parse from.</param>
-        /// <returns>An intance of <see cref="IBoardModel"/>.s</returns>
+        /// <returns>An instance of <see cref="IBoardModel"/>.s</returns>
         IBoardModel CreateBoard(BoardModelContract contract);
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace GammonX.Engine.Services
 		/// </summary>
 		/// <remarks>
 		/// Undoing a move on the board has no internal validation. The validation if an undo move is right
-		/// is handelled by the caller (e.g. game server).
+		/// is handled by the caller (e.g. game server).
 		/// </remarks>
 		/// <param name="model">Model to operate on.</param>
 		/// <param name="moveToUndo">Move to undo.</param>
@@ -111,12 +111,11 @@ namespace GammonX.Engine.Services
         /// <param name="model">Board model to operate on.</param>
         /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
         /// <param name="rolls">1:n Dice roll values</param>
-        /// <returns>A tuple array containing all legal moves from to as a flattended array.</returns>
+        /// <returns>A tuple array containing all legal moves from to as a flattened array.</returns>
         ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls);
 
 		/// <summary>
-		/// Calculates all legal moves for the given player based on the current board state
-		/// and the given dice rolls.
+		/// Calculates all legal moves for the given player based on the current board state and the given dice rolls.
 		/// </summary>
         /// <remarks>
         /// The moves within a move sequences must not be reordered. They have to be played in the exact same
@@ -128,6 +127,18 @@ namespace GammonX.Engine.Services
 		/// <returns>An array of move sequences.</returns>
 		MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
 
+        /// <summary>
+        /// Calculates all legal moves for the given player based on the current board state and the given dice rolls.
+        /// </summary>
+        /// <remarks>
+        /// Only returns move sequences which results in a unique end board state.
+        /// </remarks>
+        /// <param name="model">Board model to operate on.</param>
+        /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
+        /// <param name="rolls">1:n Dice roll values</param>
+        /// <returns>An array of move sequences.</returns>
+        MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
+        
 		/// <summary>
 		/// Explores legal move sequences and invokes the <paramref name="callback"/> for each one.
 		/// Stops exploration early when the callback returns <c>true</c>, indicating satisfaction.
@@ -138,5 +149,5 @@ namespace GammonX.Engine.Services
 		/// <param name="callback">Invoked for each legal leaf sequence. Return <c>true</c> to signal early termination.</param>
 		/// <returns><c>true</c> if the callback returned <c>true</c> for any legal sequence.</returns>
 		bool ExploreLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, Func<IReadOnlyList<MoveModel>, bool> callback);
-	}
+	    }
 }

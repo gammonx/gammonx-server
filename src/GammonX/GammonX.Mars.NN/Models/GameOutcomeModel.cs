@@ -35,8 +35,17 @@
         /// </summary>
         public double LoseBackgammonP { get; }
 
+        public GameOutcomeConstraintReport ConstraintReport => GameOutcomeConstraintValidator.Validate(this);
+
         public GameOutcomeModel(float[] netPredictions)
         {
+            ArgumentNullException.ThrowIfNull(netPredictions);
+
+            if (netPredictions.Length < GameOutcomeConstraintValidator.FullHeadCount)
+            {
+                throw new ArgumentException("Five outcome heads are required.", nameof(netPredictions));
+            }
+
             WinP = netPredictions[0];
             WinGammonP = netPredictions[1];
             WinBackgammonP = netPredictions[2];

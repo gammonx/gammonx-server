@@ -11,47 +11,39 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public double Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
-            {
-                var totalCheckers = 0;
-                var totalDistance = 0.0;
+            var totalCheckers = 0;
+            var totalDistance = 0.0;
+            var homeRangeEnd = isWhite
+                ? board.HomeRangeWhite.End.Value
+                : board.HomeRangeBlack.End.Value;
 
-                foreach (var (index, value) in board.Fields.Index().Where(i => i.Item < 0))
+            for (var index = 0; index < board.Fields.Length; index++)
+            {
+                var value = board.Fields[index];
+                if ((isWhite && value < 0) || (!isWhite && value > 0))
                 {
                     var count = Math.Abs(value);
                     totalCheckers += count;
-                    totalDistance += count * board.RecoverRollOperator(isWhite, index, board.HomeRangeWhite.End.Value);
+                    totalDistance += count * board.RecoverRollOperator(isWhite, index, homeRangeEnd);
                 }
-
-                if (board is IHomeBarModel homeBarModelWhite && homeBarModelWhite.HomeBarCountWhite > 0)
-                {
-                    var count = homeBarModelWhite.HomeBarCountWhite;
-                    totalCheckers += count;
-                    totalDistance += count * board.RecoverRollOperator(isWhite, board.StartRangeWhite.Start.Value, board.HomeRangeWhite.End.Value);
-                }
-
-                return totalCheckers > 0 ? totalDistance / totalCheckers : 0.0;
             }
-            else
+
+            if (board is IHomeBarModel homeBarModel)
             {
-                var totalCheckers = 0;
-                var totalDistance = 0.0;
-
-                foreach (var (index, value) in board.Fields.Index().Where(i => i.Item > 0))
+                var homeBarCount = isWhite
+                    ? homeBarModel.HomeBarCountWhite
+                    : homeBarModel.HomeBarCountBlack;
+                if (homeBarCount > 0)
                 {
-                    totalCheckers += value;
-                    totalDistance += value * board.RecoverRollOperator(isWhite, index, board.HomeRangeBlack.End.Value);
+                    totalCheckers += homeBarCount;
+                    var startIndex = isWhite
+                        ? board.StartRangeWhite.Start.Value
+                        : board.StartRangeBlack.Start.Value;
+                    totalDistance += homeBarCount * board.RecoverRollOperator(isWhite, startIndex, homeRangeEnd);
                 }
-
-                if (board is IHomeBarModel homeBarModelBlack && homeBarModelBlack.HomeBarCountBlack > 0)
-                {
-                    var count = homeBarModelBlack.HomeBarCountBlack;
-                    totalCheckers += count;
-                    totalDistance += count * board.RecoverRollOperator(isWhite, board.StartRangeBlack.Start.Value, board.HomeRangeBlack.End.Value);
-                }
-
-                return totalCheckers > 0 ? totalDistance / totalCheckers : 0.0;
             }
+
+            return totalCheckers > 0 ? totalDistance / totalCheckers : 0.0;
         }
     }
 }

@@ -111,7 +111,6 @@ namespace GammonX.Engine.Services
                     return false;
             }
 
-            var homeRange = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
             for (int i = 0; i < model.Fields.Length; i++)
             {
                 int point = model.Fields[i];
@@ -241,7 +240,7 @@ namespace GammonX.Engine.Services
 		/// <returns>Converted value tuple with from/to as values.</returns>
 		public static (int, int) InvertBoardMoveDiagonalHorizontally(int from, int to)
 		{
-			int InvertHorinzotalDiagonalIndex(int index)
+			static int InvertHorinzotalDiagonalIndex(int index)
 			{
 				return index switch
 				{
@@ -270,11 +269,9 @@ namespace GammonX.Engine.Services
             {
                 return (IBoardModel)cloneable.Clone();
             }
-            else
-            {
-                throw new InvalidOperationException("The board model does not support cloning.");
-			}
-		}
+
+            throw new InvalidOperationException("The board model does not support cloning.");
+        }
 
         /// <summary>
         /// Searches all legal <c>to</c> positions based on the given <paramref name="moveSequences"/> and <paramref name="from"/>.

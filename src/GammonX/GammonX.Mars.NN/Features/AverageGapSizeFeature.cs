@@ -15,32 +15,38 @@ namespace GammonX.Mars.NN.Features
             var startIndex = isWhite
                 ? board.StartRangeWhite.Start.Value
                 : board.StartRangeBlack.Start.Value;
+            var positions = new int[board.Fields.Length];
+            var positionCount = 0;
 
-            var positions = board.Fields.Index()
-                .Where(i => isWhite ? i.Item < 0 : i.Item > 0)
-                .Select(i => board.RecoverRollOperator(isWhite, startIndex, i.Index))
-                .Order()
-                .ToList();
+            for (var index = 0; index < board.Fields.Length; index++)
+            {
+                var field = board.Fields[index];
+                if ((isWhite && field < 0) || (!isWhite && field > 0))
+                {
+                    positions[positionCount++] = board.RecoverRollOperator(isWhite, startIndex, index);
+                }
+            }
 
-            return CalculateAverageGap(positions);
+            Array.Sort(positions, 0, positionCount);
+            return CalculateAverageGap(positions, positionCount);
         }
 
         /// <summary>
         /// Returns the average number of empty points between consecutive checker positions
         /// when ordered by movement direction. Returns 0 when fewer than 2 checkers exist.
         /// </summary>
-        private static double CalculateAverageGap(List<int> sortedMovementPositions)
+        private static double CalculateAverageGap(int[] sortedMovementPositions, int positionCount)
         {
-            if (sortedMovementPositions.Count <= 1)
+            if (positionCount <= 1)
                 return 0.0;
 
             double totalGap = 0;
-            for (int i = 1; i < sortedMovementPositions.Count; i++)
+            for (var i = 1; i < positionCount; i++)
             {
                 totalGap += sortedMovementPositions[i] - sortedMovementPositions[i - 1] - 1;
             }
 
-            return totalGap / (sortedMovementPositions.Count - 1);
+            return totalGap / (positionCount - 1);
         }
     }
 }

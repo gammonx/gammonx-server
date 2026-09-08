@@ -14,16 +14,26 @@ using GammonX.Server.Services;
 
 using GammonX.Server.Tests.Utils;
 
-using Xunit;
+using static TorchSharp.torch;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Mars.Training
 {
+    public sealed record TournamentEntry(
+        string? Path,
+        BotLevel Level,
+        bool? IsWhite,
+        INeuralEvalService? Service);
+
     public sealed record TournamentGameResult(
         bool WhiteWon,
         int TurnCount,
         bool Discarded);
+
+    public readonly record struct BotPlayerAssignment(
+        Guid ModelPlayerId,
+        Guid WildBgPlayerId);
 
     public sealed record TournamentResult(
         string ModelALabel,
@@ -38,25 +48,46 @@ namespace GammonX.Mars.Training
 
     public static class TournamentRunner
     {
-        public static TournamentResult Run(
+        public static BotPlayerAssignment AssignBotPlayers(Guid player1Id, Guid player2Id, bool modelIsWhite)
+        {
+            return modelIsWhite ? new BotPlayerAssignment(player1Id, player2Id) : new BotPlayerAssignment(player2Id, player1Id);
+        }
+
+        internal static (TournamentEntry ModelA, TournamentEntry? ModelB) AssignColors(
+            TournamentEntry modelA,
+            TournamentEntry? modelB,
+            bool modelAIsWhite)
+        {
+            return (
+                modelA with { IsWhite = modelAIsWhite },
+                modelB is null ? null : modelB with { IsWhite = !modelAIsWhite });
+        }
+
+        public static async Task<TournamentResult> RunAsync(
             GameModus modus,
-            string modelAPath,
-            string? modelBPath,
+            TournamentEntry modelA,
+            TournamentEntry? modelB,
             int totalGames,
             ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+            int evalBatchSize,
+            int processCount)
         {
-            var modelALabel = Path.GetFileNameWithoutExtension(modelAPath);
-            var modelBLabel = Path.GetFileNameWithoutExtension(modelBPath);
+            var modelALabel = Path.GetFileNameWithoutExtension(modelA.Path) ?? "undefined model";
+            var modelBLabel = Path.GetFileNameWithoutExtension(modelB?.Path);
 
-            Console.WriteLine($"Loading model A: {modelAPath}");
-            var serviceA = NeuralEvalService.Load(modus, modelAPath);
-            INeuralEvalService? serviceB = null;
-            if (!string.IsNullOrEmpty(modelBPath))
+            Console.WriteLine($"Loading model A: {modelA.Path}");
+            var device = cuda.is_available() ? CUDA : CPU;
+            var serviceA = BatchedNeuralEvalService.Load(modus, modelA.Path!, device, evalBatchSize);
+            modelA = modelA with { Service = serviceA };
+            // we expect the background process to be terminated if the parent process closes
+            ((BatchedNeuralEvalService)serviceA).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+            if (!string.IsNullOrEmpty(modelB?.Path))
             {
-                Console.WriteLine($"Loading model B: {modelBPath}");
-                serviceB = NeuralEvalService.Load(modus, modelBPath);
+                Console.WriteLine($"Loading model B: {modelB.Path}");
+                var serviceB = BatchedNeuralEvalService.Load(modus, modelB.Path, device, evalBatchSize);
+                modelB = modelB with { Service = serviceB };
+                // we expect the background process to be terminated if the parent process closes
+                ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
             }
 
             var modelAWins = 0;
@@ -69,28 +100,36 @@ namespace GammonX.Mars.Training
 
             Console.WriteLine();
             Console.WriteLine($"Starting tournament: {totalGames} games  modus={modus}");
-            Console.WriteLine($"  Model A (white): {modelALabel}");
-            Console.WriteLine($"  Model B (black): {modelBLabel ?? "wildbg"}");
+            Console.WriteLine($"  Model A: {modelALabel} BotLevel: {modelA.Level}");
+            Console.WriteLine($"  Model B: {modelBLabel ?? "wildbg"} BotLevel: {modelB?.Level.ToString() ?? "none"}");
             Console.WriteLine();
 
-            Parallel.For(
+            await Parallel.ForAsync(
                 0,
                 totalGames,
-                new ParallelOptions { MaxDegreeOfParallelism = 1 },
-                (i) =>
+                new ParallelOptions { MaxDegreeOfParallelism = processCount },
+                async (i, _) =>
                 {
                     try
                     {
                         // we alternate which model plays white to eliminate first-mover bias
                         var modelAIsWhite = i % 2 == 0;
+                        var assignedModels = AssignColors(modelA, modelB, modelAIsWhite);
                         TournamentGameResult? result = null;
-                        if (serviceB != null)
+                        if (assignedModels.ModelB?.Service != null)
                         {
-                            result = PlayGame(modus, serviceA, serviceB, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                            result = await PlayGameAsync(
+                                modus,
+                                assignedModels.ModelA,
+                                assignedModels.ModelB,
+                                contactWeights);
                         }
                         else
                         {
-                            result = PlayAgainstBotServiceGame(modus, serviceA, modelAIsWhite, contactWeights, cheapContactWeights, raceWeights);
+                            result = await PlayAgainstBotServiceGameAsync(
+                                modus,
+                                assignedModels.ModelA,
+                                contactWeights);
                         }
 
                         lock (lockObj)
@@ -135,7 +174,12 @@ namespace GammonX.Mars.Training
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"  Error during tournament: {ex.Message}");
+                        lock (lockObj)
+                        {
+                            discarded++;
+                        }
+
+                        Console.WriteLine($"  Error during tournament (discarded): {ex.Message}");
                     }
                 });
 
@@ -151,34 +195,34 @@ namespace GammonX.Mars.Training
                 winRateHistory);
         }
 
-        private static TournamentGameResult PlayGame(
-            GameModus modus,
-            INeuralEvalService serviceA,
-            INeuralEvalService serviceB,
-            bool modelAIsWhite,
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+        private static async Task<TournamentGameResult> PlayGameAsync(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
         {
+            ArgumentNullException.ThrowIfNull(entryA.Service);
+            ArgumentNullException.ThrowIfNull(entryB.Service);
+
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
-            var evalServiceA = FeatureEvalServiceFactory.Create(modus, serviceA);
-            var evalServiceB = FeatureEvalServiceFactory.Create(modus, serviceB);
+            var evalServiceA = FeatureEvalServiceFactory.Create(modus, entryA.Service);
+            var evalServiceB = FeatureEvalServiceFactory.Create(modus, entryB.Service);
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var isWhite = Random.Shared.Next(2) == 0;
             const int maxTurns = 250;
             var turnCount = 0;
 
-            while (board.BearOffCountBlack != board.WinConditionCount
-                && board.BearOffCountWhite != board.WinConditionCount
-                && turnCount < maxTurns)
+            while (board.BearOffCountBlack != board.WinConditionCount && board.BearOffCountWhite != board.WinConditionCount && turnCount < maxTurns)
             {
                 turnCount++;
                 var rolls = diceService.Roll(2, 6);
-                rolls = rolls[0] == rolls[1]
-                    ? [rolls[0], rolls[0], rolls[0], rolls[0]]
-                    : [rolls[0], rolls[1]];
+                rolls = rolls[0] == rolls[1] ? [rolls[0], rolls[0], rolls[0], rolls[0]] : [rolls[0], rolls[1]];
+
+                // We append the roll event because the turn number depends on it
+                boardService.AddRollEventToHistory(board, isWhite, rolls);
+
+                // we let model A play white on even numbers and model B play white on odd numbers
+                // we want to eliminate any first-mover advantage by alternating colors every game
+                var activeService = (isWhite == entryA.IsWhite) ? evalServiceA : evalServiceB;
+                var botLevel = isWhite == entryA.IsWhite ? entryA.Level : entryB.Level;
 
                 var evalRequest = new EvalMoveRequestContract
                 {
@@ -186,19 +230,10 @@ namespace GammonX.Mars.Training
                     IsWhite = isWhite,
                     Modus = modus,
                     Rolls = rolls,
-                    BotLevel = BotLevel.Hard
+                    BotLevel = botLevel
                 };
 
-                // we let model A play white on even numbers and model B play white on odd numbers
-                // we want to eliminate any first-mover advantage by alternating colors every game
-                var activeService = (isWhite == modelAIsWhite) ? evalServiceA : evalServiceB;
-
-                var result = activeService.EvalMoveSequence(
-                    evalRequest,
-                    cheapContactWeights,
-                    contactWeights,
-                    raceWeights,
-                    150);
+                var result = await activeService.EvalMoveSequencesAsync(evalRequest, contactWeights);
 
                 foreach (var move in result.Moves)
                 {
@@ -215,41 +250,39 @@ namespace GammonX.Mars.Training
                 return new TournamentGameResult(false, turnCount, true);
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
+
             return new TournamentGameResult(whiteWon, turnCount, false);
         }
 
-        private static TournamentGameResult PlayAgainstBotServiceGame(
-            GameModus modus,
-            INeuralEvalService neuralService,
-            bool modelIsWhite,
-            ContactWeightModel contactWeights,
-            ContactWeightModel cheapContactWeights,
-            RaceWeightModel raceWeights)
+        private static async Task<TournamentGameResult> PlayAgainstBotServiceGameAsync(GameModus modus, TournamentEntry modelA, ContactWeightModel contactWeights)
         {
-            // TODO: enable cube play for backgammon
+            ArgumentNullException.ThrowIfNull(modelA.Service);
+            ArgumentNullException.ThrowIfNull(modelA.IsWhite);
+
             var diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(modus.From(), MatchType.CashGame, matchFactory);
 
             // eval service to test
-            var evalService = FeatureEvalServiceFactory.Create(modus, neuralService);
+            var evalService = FeatureEvalServiceFactory.Create(modus, modelA.Service);
             // bot service to play against
             var wildBgService = BotUtils.GetBotService(WellKnownBotServices.WildBg);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
 
-            var evalPlayerId = matchSession.Player1.Id;
-            var wildbgPlayerId = matchSession.Player2.Id;
-
-            matchSession.Player1.AcceptNextGame();
-            matchSession.Player2.AcceptNextGame();
+            var assignment = AssignBotPlayers(
+                matchSession.Player1.Id,
+                matchSession.Player2.Id,
+                modelA.IsWhite.Value);
+            var evalPlayerId = assignment.ModelPlayerId;
+            var wildbgPlayerId = assignment.WildBgPlayerId;
 
             var activePlayerId = Guid.Empty;
             var otherPlayerId = Guid.Empty;
 
-            if (modelIsWhite)
+            if (modelA.IsWhite.Value)
             {
                 matchSession.StartMatch(evalPlayerId);
                 activePlayerId = evalPlayerId;
@@ -266,11 +299,7 @@ namespace GammonX.Mars.Training
             var turnCount = 0;
 
             var gameSession = matchSession.GetGameSession(1);
-            Assert.NotNull(gameSession);
-            var board = gameSession.BoardModel;
-
-            // we only play the first game of the match (only portes can be played for tavli)
-            turnCount++;
+            var board = gameSession!.BoardModel;
 
             do
             {
@@ -289,7 +318,7 @@ namespace GammonX.Mars.Training
                 else
                 {
                     // eval service turn
-                    var isWhite = matchSession.Player1.Id == evalPlayerId;
+                    var isWhite = modelA.IsWhite.Value;
                     var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
                     var evalRequest = new EvalMoveRequestContract
                     {
@@ -297,14 +326,9 @@ namespace GammonX.Mars.Training
                         IsWhite = isWhite,
                         Modus = modus,
                         Rolls = rolls,
-                        BotLevel = BotLevel.Hard
+                        BotLevel = modelA.Level
                     };
-                    nextMoves = evalService.EvalMoveSequence(
-                        evalRequest,
-                        cheapContactWeights,
-                        contactWeights,
-                        raceWeights,
-                        150);
+                    nextMoves = await evalService.EvalMoveSequencesAsync(evalRequest, contactWeights);
                 }
 
                 var hasWon = false;
@@ -384,7 +408,7 @@ namespace GammonX.Mars.Training
             Console.WriteLine();
             Console.WriteLine($"  Model A : {result.ModelALabel}");
             Console.WriteLine($"  Model B : {result.ModelBLabel}");
-            Console.WriteLine($"  Modus   : (from game)");
+            Console.WriteLine("  Modus   : (from game)");
             Console.WriteLine();
             Console.WriteLine($"  Total games  : {result.TotalGames}");
             Console.WriteLine($"  Decisive     : {decisive}");
@@ -406,7 +430,7 @@ namespace GammonX.Mars.Training
                 var last10 = result.ModelAWinRateHistory.TakeLast(10).ToList();
                 var last10Avg = last10.Average();
                 var last10Std = Math.Sqrt(last10.Average(x => (x - last10Avg) * (x - last10Avg)));
-                Console.WriteLine($"  Win rate last 10 checkpoints: {last10Avg:P2} ± {last10Std:P2}");
+                Console.WriteLine($"  Win rate last 10 checkpoints: {last10Avg:P2} ï¿½ {last10Std:P2}");
             }
 
             Console.WriteLine();
@@ -423,11 +447,11 @@ namespace GammonX.Mars.Training
             var z = Math.Abs((p - 0.5) / Math.Sqrt(0.25 / total));
             return z switch
             {
-                >= 3.29 => $"p<0.001 (z={z:F2}) — highly significant",
-                >= 2.58 => $"p<0.01  (z={z:F2}) — significant",
-                >= 1.96 => $"p<0.05  (z={z:F2}) — significant",
-                >= 1.65 => $"p<0.10  (z={z:F2}) — marginal",
-                _ => $"p>0.10  (z={z:F2}) — not significant"
+                >= 3.29 => $"p<0.001 (z={z:F2}) ï¿½ highly significant",
+                >= 2.58 => $"p<0.01  (z={z:F2}) ï¿½ significant",
+                >= 1.96 => $"p<0.05  (z={z:F2}) ï¿½ significant",
+                >= 1.65 => $"p<0.10  (z={z:F2}) ï¿½ marginal",
+                _ => $"p>0.10  (z={z:F2}) ï¿½ not significant"
             };
         }
 

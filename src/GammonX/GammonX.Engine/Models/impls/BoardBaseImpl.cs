@@ -1,5 +1,4 @@
-﻿
-using GammonX.Engine.History;
+﻿using GammonX.Engine.History;
 
 using GammonX.Models.Enums;
 
@@ -10,6 +9,15 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal abstract class BoardBaseImpl : IBoardModel, ICloneable
 	{
+        private readonly Func<bool, int, int, int> _recoverRollOperator;
+        private readonly Func<bool, int, bool> _isInHomeOperator;
+
+        protected BoardBaseImpl()
+        {
+            _recoverRollOperator = RecoverRoll;
+            _isInHomeOperator = IsInHomeRange;
+        }
+
 		// <inheritdoc />
 		public abstract GameModus Modus { get; }
 
@@ -26,10 +34,10 @@ namespace GammonX.Engine.Models
 		public abstract Range HomeRangeBlack { get; }
 
 		// <inheritdoc />
-		public virtual Range StartRangeWhite => new(0, 5);
+		public virtual Range StartRangeWhite { get; } = new(0, 5);
 
 		// <inheritdoc />
-		public virtual Range StartRangeBlack => new(23, 18);
+		public virtual Range StartRangeBlack { get; } = new(23, 18);
 
 		// <inheritdoc />
 		public virtual int BearOffCountWhite { get; protected set; } = 0;
@@ -50,110 +58,125 @@ namespace GammonX.Engine.Models
 		public int PipCountBlack => GetPipCount(false);
 
 		// <inheritdoc />
-		public virtual Func<bool, int, int, int> MoveOperator => new((isWhite, currentPosition, moveDistance) =>
-		{
-			if (isWhite)
-			{
-				// White moves from 0 to 23
-				int newPosition = currentPosition + moveDistance;
-				return newPosition;
-			}
-			else
-			{
-				// Black moves from 23 to 0
-				int newPosition = currentPosition - moveDistance;
-				return newPosition;
-			}
-		});
+        public virtual Func<bool, int, int, int> MoveOperator => Move;
+
+        private static int Move(bool isWhite, int currentPosition, int moveDistance)
+        {
+            if (isWhite)
+            {
+                // White moves from 0 to 23
+                int newPosition = currentPosition + moveDistance;
+                return newPosition;
+            }
+            else
+            {
+                // Black moves from 23 to 0
+                int newPosition = currentPosition - moveDistance;
+                return newPosition;
+            }
+        }
 
 		// <inheritdoc />
-		public virtual Func<bool, int, int, int> RecoverRollOperator => new((isWhite, from, to) =>
-		{
-			if (isWhite)
-			{
-				// white moves from 0 to 23
-				if (to == BoardPositions.BearOffWhite)
-				{
-					to = HomeRangeWhite.End.Value + 1;
-				}
-				int roll = to - from;
-				return roll;
-			}
-			else
-			{
-				// black moves forward (wraps from 23 -> 0)
-				if (to == BoardPositions.BearOffBlack)
-				{
-					to = HomeRangeBlack.End.Value;
-					int bearOffRoll = from - to + 1;
-					return bearOffRoll;
-				}
-				int roll = from - to;
-				return roll;
-			}
-		});
+        public virtual Func<bool, int, int, int> RecoverRollOperator => _recoverRollOperator;
+
+        private int RecoverRoll(bool isWhite, int from, int to)
+        {
+            if (isWhite)
+            {
+                // white moves from 0 to 23
+                if (to == BoardPositions.BearOffWhite)
+                {
+                    return HomeRangeWhite.End.Value + 1 - from;
+                }
+                return to - from;
+            }
+            else
+            {
+                // black moves forward (wraps from 23 -> 0)
+                if (to == BoardPositions.BearOffBlack)
+                {
+                    return from - HomeRangeBlack.End.Value + 1;
+                }
+                return from - to;
+            }
+        }
 
 		// <inheritdoc />
-		public virtual Func<bool, int, int, bool> CanBearOffOperator => new((isWhite, currentPosition, moveDistance) =>
-		{
-			if (isWhite)
-			{
-				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				// checkers with the perfect bear off roll can always be taken out
-				if (to == HomeRangeWhite.End.Value + 1)
-				{
-					return true;
-				}
-				// checkers with a higher roll than their bear off value can only be taken off
-				// if there does not exist a checker with a higher index/distance.
-				else if (to > HomeRangeWhite.End.Value)
-				{
-					// check if there are any checkers in the home range with above the current position
-					bool highestCheckerIndex = !Fields
-						.Skip(HomeRangeWhite.Start.Value)
-						.Take(currentPosition - HomeRangeWhite.Start.Value)
-						.Any(v => v < 0);
-					return highestCheckerIndex;
-				}
-				return false;
-			}
-			else
-			{
-				int to = MoveOperator(isWhite, currentPosition, moveDistance);
-				// checkers with the perfect bear off roll can always be taken out
-				if (to == HomeRangeBlack.End.Value - 1)
-				{
-					return true;
-				}
-				// checkers with a higher roll than their bear off value can only be taken off
-				// if there does not exist a checker with a lower index/distance.
-				else if (to < HomeRangeBlack.End.Value)
-				{
-					// check if there are any checkers in the home range with above the current position
-					bool highestCheckerIndex = !Fields
-						.Skip(currentPosition + 1)
-						.Any(v => v > 0);
-					return highestCheckerIndex;
-				}
-				return false;
-			}
-		});
+        public virtual Func<bool, int, int, bool> CanBearOffOperator => CanBearOff;
+
+        private bool CanBearOff(bool isWhite, int currentPosition, int moveDistance)
+        {
+            if (isWhite)
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                // checkers with the perfect bear off roll can always be taken out
+                if (to == HomeRangeWhite.End.Value + 1)
+                {
+                    return true;
+                }
+                // checkers with a higher roll than their bear off value can only be taken off
+                // if there does not exist a checker with a higher index/distance.
+                else if (to > HomeRangeWhite.End.Value)
+                {
+                    // check if there are any checkers in the home range with above the current position
+                    bool highestCheckerIndex = !Fields
+                        .Skip(HomeRangeWhite.Start.Value)
+                        .Take(currentPosition - HomeRangeWhite.Start.Value)
+                        .Any(v => v < 0);
+                    return highestCheckerIndex;
+                }
+                return false;
+            }
+            else
+            {
+                int to = MoveOperator(isWhite, currentPosition, moveDistance);
+                // checkers with the perfect bear off roll can always be taken out
+                if (to == HomeRangeBlack.End.Value - 1)
+                {
+                    return true;
+                }
+                // checkers with a higher roll than their bear off value can only be taken off
+                // if there does not exist a checker with a lower index/distance.
+                else if (to < HomeRangeBlack.End.Value)
+                {
+                    // check if there are any checkers in the home range with above the current position
+                    bool highestCheckerIndex = !Fields
+                        .Skip(currentPosition + 1)
+                        .Any(v => v > 0);
+                    return highestCheckerIndex;
+                }
+                return false;
+            }
+        }
 
 		// <inheritdoc />
-		public virtual Func<bool, int, bool> IsInHomeOperator => new((isWhite, position) =>
+        public virtual Func<bool, int, bool> IsInHomeOperator => _isInHomeOperator;
+
+		private bool IsInHomeRange(bool isWhite, int position)
 		{
-			if (isWhite && (position < HomeRangeWhite.Start.Value || position > HomeRangeWhite.End.Value)) return false;
-			if (!isWhite && (position > HomeRangeBlack.Start.Value || position < HomeRangeBlack.End.Value)) return false;
-			return true;
-		});
+            var homeRange = isWhite ? HomeRangeWhite : HomeRangeBlack;
+            var start = homeRange.Start.Value;
+            var end = homeRange.End.Value;
+            return isWhite
+                ? position >= start && position <= end
+                : position <= start && position >= end;
+		}
 
         // <inheritdoc />
-        public virtual Func<bool, int, bool> IsInStartOperator => new((isWhite, position) =>
+        public virtual Func<bool, int, bool> IsInStartOperator => IsInStartRange;
+
+        private bool IsInStartRange(bool isWhite, int position)
         {
-            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value)) return false;
-            if (!isWhite && (position > StartRangeBlack.Start.Value || position < StartRangeBlack.End.Value)) return false;
+            if (isWhite && (position < StartRangeWhite.Start.Value || position > StartRangeWhite.End.Value))
+            {
+                return false;
+            }
+            if (!isWhite && (position > StartRangeBlack.Start.Value || position < StartRangeBlack.End.Value))
+            {
+                return false;
+            }
             return true;
-        });
+        }
 
         // <inheritdoc />
         public virtual void BearOffChecker(bool isWhite, int amount)
@@ -188,11 +211,10 @@ namespace GammonX.Engine.Models
 
 		protected virtual int GetPipCount(bool isWhite)
 		{
-			var fieldsCopy = Fields.ToList();
 			var pipCount = 0;
 			if (isWhite)
 			{
-				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeWhite.End.Value, (i) => i < 0);
+				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeWhite.End.Value, (i) => i < 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountWhite * 24;
@@ -200,7 +222,7 @@ namespace GammonX.Engine.Models
 			}
 			else
 			{
-				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy.ToArray(), HomeRangeBlack.End.Value, (i) => i > 0);
+				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeBlack.End.Value, (i) => i > 0);
 				if (this is IHomeBarModel homeBar)
 				{
 					pipCount += homeBar.HomeBarCountBlack * 24;

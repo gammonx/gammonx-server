@@ -1,17 +1,20 @@
 using GammonX.Engine.Models;
+
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Enums;
 
+using Microsoft.Extensions.Hosting;
+
 using Serilog;
 
+using System.Reflection;
 using System.Threading.Channels;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.Server.Services
+namespace GammonX.Mars.NN.Services
 {
     /// <summary>
     /// Neural eval service that batches concurrent Predict calls into a single forward pass.
@@ -25,22 +28,43 @@ namespace GammonX.Mars.Server.Services
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
+        private readonly Device _device;
         private readonly Channel<InferenceRequest> _channel;
         private readonly int _maxBatchSize;
         private Task? _workerTask;
         private CancellationTokenSource _cts = new();
 
-        private BatchedNeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, int maxBatchSize)
+        private BatchedNeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, int maxBatchSize, Device device)
         {
             _netModel = netModel;
             _extractor = extractor;
+            _device = device;
             _maxBatchSize = maxBatchSize;
             _channel = Channel.CreateBounded<InferenceRequest>(
                 new BoundedChannelOptions(maxBatchSize * 4)
                 {
                     FullMode = BoundedChannelFullMode.Wait,
-                    SingleReader = true
+                    SingleReader = false,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false
                 });
+        }
+
+        /// <summary>
+        /// Loads the model from the given path and starts the background worker.
+        /// </summary>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="modelPath">The path to the model file.</param>
+        /// <param name="device">The device to run the model on.</param>
+        /// <param name="maxBatchSize">The maximum batch size for inference.</param>
+        /// <returns>The loaded <see cref="BatchedNeuralEvalService"/>.</returns>
+        public static INeuralEvalService Load(GameModus modus, string modelPath, Device device, int maxBatchSize = 32)
+        {
+            // we only support CPU based models for now in production
+            var net = NetModelFactory.CreateForModel(modus, modelPath, device);
+            var extractor = FeatureVectorExtractorFactory.Create(modus);
+            net.Eval();
+            return new BatchedNeuralEvalService(net, extractor, maxBatchSize, device);
         }
 
         /// <summary>
@@ -48,9 +72,12 @@ namespace GammonX.Mars.Server.Services
         /// <c>NeuralNets/{modus}/training_net.dat</c> in the calling assembly.
         /// Returns <c>null</c> if no embedded resource exists for the given modus.
         /// </summary>
-        public static BatchedNeuralEvalService? LoadEmbedded(GameModus modus, int maxBatchSize = 32)
+        /// <param name="assembly">The assembly to load the embedded resource from.</param>
+        /// <param name="modus">The game modus.</param>
+        /// <param name="maxBatchSize">The maximum batch size for inference.</param>
+        /// <returns>The loaded <see cref="BatchedNeuralEvalService"/> or <c>null</c> if no embedded resource exists for the given modus.</returns>
+        public static BatchedNeuralEvalService? LoadEmbedded(Assembly assembly, GameModus modus, int maxBatchSize = 32)
         {
-            var assembly = typeof(BatchedNeuralEvalService).Assembly;
             var resourceName = $"GammonX.Mars.Server.NeuralNets.{modus}.training_net.dat";
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream is null)
@@ -59,22 +86,25 @@ namespace GammonX.Mars.Server.Services
                 return null;
             }
 
-            var net = NetModelFactory.Create(modus);
+            // we only support CPU based models for now in production
+            var device = cuda.is_available() ? CUDA : CPU;
+            var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
+            using var metadataStream = assembly.GetManifestResourceStream(metadataResourceName);
+            var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, metadataResourceName);
+            var net = NetModelFactory.CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
             var extractor = FeatureVectorExtractorFactory.Create(modus);
             net.LoadFromStream(stream);
             net.Eval();
-            return new BatchedNeuralEvalService(net, extractor, maxBatchSize);
+            return new BatchedNeuralEvalService(net, extractor, maxBatchSize, device);
         }
 
         // <inheritdoc />
-        public float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var vec = _extractor.Extract(model, board, isWhite);
             var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-            // TryWrite will not block here: the channel is bounded but large relative to batch size;
-            // under sustained overload the channel's Wait mode applies back-pressure.
-            _channel.Writer.TryWrite(new InferenceRequest(vec, tcs));
-            return tcs.Task.GetAwaiter().GetResult();
+            await _channel.Writer.WriteAsync(new InferenceRequest(vec, tcs)).ConfigureAwait(false);
+            return await tcs.Task.ConfigureAwait(false);
         }
 
         // <inheritdoc />
@@ -103,11 +133,11 @@ namespace GammonX.Mars.Server.Services
             }
             catch (OperationCanceledException)
             {
-                // pass
+                // cancellation is expected when the worker is stopped
             }
             catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is OperationCanceledException))
             {
-                // pass
+                // cancellation is expected when the worker is stopped
             }
         }
 
@@ -122,7 +152,7 @@ namespace GammonX.Mars.Server.Services
                 // we block until at least one request arrives
                 if (!await _channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
                     break;
-
+                
                 // we drain all currently queued requests up to maxBatchSize
                 while (batch.Count < _maxBatchSize && _channel.Reader.TryRead(out var req))
                 {
@@ -154,21 +184,33 @@ namespace GammonX.Mars.Server.Services
             }
 
             // one forward pass for all positions in the batch: [N, featureCount] > [N, outputCount]
-            using var input = tensor(flat, [batch.Count, featureCount]);
+            using var input = tensor(flat, [batch.Count, featureCount], device: _device);
             using var _ = no_grad();
             using var output = _netModel.Forward(input);
+
+            // we perform one GPU-to-CPU transfer and one synchronization for the whole batch.
+            using var cpuOutput = output.to(CPU);
+            var values = cpuOutput.data<float>().ToArray();
+
+            var outputWidth = output.shape.Length == 1 ? 1 : checked((int)output.shape[^1]);
 
             // we fan results back out, row i is independent of all other rows
             for (var i = 0; i < batch.Count; i++)
             {
-                using var row = output[i];
-                var result = row.data<float>().ToArray();
+                float[] result;
+
                 // we normalize single-output nets
-                if (result.Length == 1)
+                if (outputWidth == 1)
                 {
                     // TODO: enable full GAME equity predictions for plakoto/fevga
-                    result = [result[0], 0f, 0f, 0f, 0f];
+                    result = [values[i], 0f, 0f, 0f, 0f];
                 }
+                else
+                {
+                    result = new float[outputWidth];
+                    Array.Copy(values, i * outputWidth, result, 0, outputWidth);
+                }
+
                 batch[i].Result.TrySetResult(result);
             }
         }

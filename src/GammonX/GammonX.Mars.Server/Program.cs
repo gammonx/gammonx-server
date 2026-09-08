@@ -3,7 +3,6 @@ using DotNetEnv;
 using GammonX.Mars.NN.Services;
 
 using GammonX.Mars.Server;
-using GammonX.Mars.Server.Services;
 
 using GammonX.Models.Enums;
 
@@ -49,31 +48,31 @@ builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorEx
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Backgammon);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Tavla);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Portes);
-var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Plakoto);
+var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Plakoto, 64);
 if (plakotoInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Plakoto, (_, _) => plakotoInference);
     builder.Services.AddSingleton<IHostedService>(plakotoInference);
 }
-var fevgaInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Fevga);
+var fevgaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Fevga, 64);
 if (fevgaInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Fevga, (_, _) => fevgaInference);
     builder.Services.AddSingleton<IHostedService>(fevgaInference);
 }
-var backgammonInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Backgammon);
+var backgammonInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Backgammon, 64);
 if (backgammonInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Backgammon, (_, _) => backgammonInference);
     builder.Services.AddSingleton<IHostedService>(backgammonInference);
 }
-var tavlaInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Tavla);
+var tavlaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Tavla, 64);
 if (tavlaInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Tavla, (_, _) => tavlaInference);
     builder.Services.AddSingleton<IHostedService>(tavlaInference);
 }
-var portesInference = BatchedNeuralEvalService.LoadEmbedded(GameModus.Portes);
+var portesInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Portes, 64);
 if (portesInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Portes, (_, _) => portesInference);

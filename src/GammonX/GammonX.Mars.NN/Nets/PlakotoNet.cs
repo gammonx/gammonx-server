@@ -14,15 +14,14 @@ namespace GammonX.Mars.NN.Nets
         private readonly Linear _fc4;
         private readonly Dropout _drop;
 
-        public PlakotoNet() : base(nameof(PlakotoNet))
+        public PlakotoNet(Device device) : base(nameof(PlakotoNet))
         {
-            _fc1 = Linear(266, 256);
-            _fc2 = Linear(256, 128);
-            _fc3 = Linear(128, 64);
-            _fc4 = Linear(64, 1);
-            // we randomly zero 10% of the neurons during training process to prevent overfitting
-            // we do not apply it in eval process
-            _drop = Dropout(p: 0.1);
+            _fc1 = Linear(266, 256, true, device);
+            _fc2 = Linear(256, 128, true, device);
+            _fc3 = Linear(128, 64, true, device);
+            _fc4 = Linear(64, 1, true, device);
+            // increase p if model is over fitting
+            _drop = Dropout(p: 0.0);
             RegisterComponents();
         }
 
@@ -60,6 +59,15 @@ namespace GammonX.Mars.NN.Nets
         public IEnumerable<Parameter> GetParameters()
         {
             return parameters();
+        }
+
+        // <inheritdoc />
+        public void MoveTo(Device device)
+        {
+            foreach (var (_, param) in named_parameters())
+                param.to(device);
+            foreach (var (_, buf) in named_buffers())
+                buf.to(device);
         }
 
         // <inheritdoc />

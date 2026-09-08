@@ -20,8 +20,8 @@ namespace GammonX.Mars.NN.Services
         /// Extracts the normalized feature vector from an eval result for use as NN input.
         /// All values are already in [0, 1] via <see cref="NormalizedEvalResultModel"/>.
         /// </summary>
-        /// <param name="model">Computed model values.</param>
-        /// <param name="board">Target board state.</param>
+        /// <param name="model">Computed model values from the perspective of the active player.</param>
+        /// <param name="board">Target board state from the perspective of the white player (not inverted).</param>
         /// <param name="isWhite">Player indicator.</param>
         /// <returns>A normalized feature vector as a float array.</returns>
         float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);

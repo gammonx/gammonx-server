@@ -101,7 +101,7 @@ namespace GammonX.Mars.NN.Tests.Models
         }
 
         [Fact]
-        public void InvalidOrderingClampsNegativeProbabilitiesToZero()
+        public void InvalidOrderingIsProjectedToAValidDistribution()
         {
             var gameOutcome = new [] { 0.50f, 0.70f, 0.20f, 0.60f, 0.10f };
             var outcome = new GameOutcomeModel(gameOutcome);
@@ -109,12 +109,15 @@ namespace GammonX.Mars.NN.Tests.Models
             var model = new GameEquityModel(outcome);
 
             Assert.Equal(0.0f, model.WinSingleP, 5);
-            Assert.Equal(0.50f, model.WinGammonP, 5);
+            Assert.Equal(0.30f, model.WinGammonP, 5);
             Assert.Equal(0.20f, model.WinBackgammonP, 5);
 
             Assert.Equal(0.0f, model.LoseSingleP, 5);
-            Assert.Equal(0.50f, model.LoseGammonP, 5);
+            Assert.Equal(0.40f, model.LoseGammonP, 5);
             Assert.Equal(0.10f, model.LoseBackgammonP, 5);
+            Assert.False(model.ConstraintReport.IsValid);
+            Assert.True(model.WasProjected);
+            Assert.Equal(1.0, model.AtomicProbabilityMass, 5);
         }
 
         [Fact]

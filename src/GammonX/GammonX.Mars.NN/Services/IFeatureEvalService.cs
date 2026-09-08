@@ -17,85 +17,93 @@ namespace GammonX.Mars.NN.Services
         /// </summary>
         /// <param name="contract">Match state to evaluate</param>
         /// <returns>Cube actions to take based on the evaluation.</returns>
-        (CubeAction ShouldOffer, CubeAction ShouldTake) EvalCube(EvalCubeRequestContract contract);
+        Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(EvalCubeRequestContract contract);
 
         /// <summary>
-        /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in
-        /// <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.
+        /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in <paramref name="contactWeights"/>.
         /// </summary>
+        /// <remarks>
+        /// Linear contact weights are ignored if a neural net service is injected.
+        /// </remarks>
         /// <param name="contract">Contains board state .</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Race position weights.</param>
         /// <returns>Score rating of the given board for a given player.</returns>
-        double EvalBoardState(
+        Task<double> EvalBoardStateAsync(
             EvalBoardRequestContract contract,
-            ContactWeightModel cheapContactWeight,
-            ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights);
+            ContactWeightModel contactWeights);
 
         /// <summary>
         /// Calculates the best rated move sequence for the board and roll in <paramref name="contract"/> based on
-        /// weights in <paramref name="contactWeights"/> and <paramref name="raceWeights"/>.
+        /// weights in <paramref name="contactWeights"/>.
         /// </summary>
+        /// <remarks>
+        /// Linear contact weights are ignored if a neural net service is injected.
+        /// </remarks>
         /// <param name="contract">Contains board state and rolls.</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Race position weights.</param>
-        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
+        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
         /// <returns>Best rated move sequence.</returns>
-        MoveSequenceModel EvalMoveSequence(
+        Task<MoveSequenceModel> EvalMoveSequencesAsync(
             EvalMoveRequestContract contract,
-            ContactWeightModel cheapContactWeight,
             ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights,
-            int maxCandidates);
+            int? maxCandidates = null);
 
         /// <summary>
         /// Evaluates all legal move sequences without the cheap pre-filter.
         /// Intended for self-play training data collection only, slower but unbiased.
         /// </summary>
+        /// <remarks>
+        /// Linear contact weights are ignored if a neural net service is injected.
+        /// </remarks>
         /// <param name="contract">Contains board state and rolls.</param>
-        /// <param name="cheapContactWeight">Cheap contact position weights to prefilter.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="raceWeights">Race position weights.</param>
-        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate.</param>
+        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
-        FinalEvalResultModels EvalMoveSequenceForTraining(
+        Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(
             EvalMoveRequestContract contract,
-            ContactWeightModel cheapContactWeight,
             ContactWeightModel contactWeights,
-            RaceWeightModel raceWeights,
-            int maxCandidates);
-    }
+            int? maxCandidates = null);
 
-    /// <summary>
-    /// Provides the cheap evaluation results for a list of legal move sequences.
-    /// </summary>
-    /// <param name="CheapScore">Calculated cheap score.</param>
-    /// <param name="Index">Index of the move sequence.</param>
-    /// <param name="IsRace">Indicates if the move is a race move.</param>
-    /// <param name="EvalResult">Normalized evaluation result.</param>
-    public record CheapEvalResult(
-        double CheapScore,
-        int Index,
-        bool IsRace,
-        NormalizedEvalResultModel EvalResult)
-    {
         /// <summary>
-        /// Sorts by <see cref="CheapScore"/> descending — highest score first.
+        /// Evaluates an explicit set of move candidates at the requested search level.
         /// </summary>
-        public sealed class DescendingComparer : IComparer<CheapEvalResult>
-        {
-            public static readonly DescendingComparer Instance = new();
+        /// <param name="contract">The board state before any candidate move is applied.</param>
+        /// <param name="isWhite">Indicates whether the player making the moves is white.</param>
+        /// <param name="candidates">The move candidates to evaluate.</param>
+        /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="searchLevel">The search level to use for every candidate.</param>
+        /// <returns>The evaluated candidates sorted descending by score.</returns>
+        Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(
+            BoardModelContract contract,
+            bool isWhite,
+            IReadOnlyList<MoveSequenceModel> candidates,
+            ContactWeightModel contactWeights,
+            BotLevel searchLevel);
 
-            private DescendingComparer() 
-            {
-                // pass
-            }
+        /// <summary>
+        /// Calculates the normalized position values for a turn without requiring a legal move.
+        /// Used to preserve pass turns in training trajectories.
+        /// </summary>
+        NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract board, bool isWhite);
 
-            // <inheritdoc />
-            public int Compare(CheapEvalResult? x, CheapEvalResult? y) => y!.CheapScore.CompareTo(x!.CheapScore);
-        }
+        /// <summary>
+        /// Evaluates the given <param name="contract"></param> with a predefined <param name="moveSequence"></param> and
+        /// calculates the eval result for the final board state after applying the move sequence.
+        /// </summary>
+        /// <remarks>
+        /// Linear contact weights are ignored if a neural net service is injected.
+        /// </remarks>
+        /// <param name="contract">Contains the board state.</param>
+        /// <param name="isWhite">Indicates if the player is white.</param>
+        /// <param name="moveSequence">The sequence of moves to evaluate.</param>
+        /// <param name="botLevel">The search level to use for the evaluation.</param>
+        /// <param name="contactWeights">Contact position weights.</param>
+        /// <returns>The final eval result for the given <paramref name="moveSequence"/></returns>
+        Task<FinalEvalResultModel> EvalMoveSequenceAsync(
+            BoardModelContract contract,
+            bool isWhite,
+            MoveSequenceModel moveSequence,
+            BotLevel botLevel,
+            ContactWeightModel contactWeights);
     }
 }

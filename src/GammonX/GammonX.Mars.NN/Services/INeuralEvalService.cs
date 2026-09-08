@@ -24,6 +24,6 @@ namespace GammonX.Mars.NN.Services
         /// <param name="board">Target board state.</param>
         /// <param name="isWhite">Player indicator.</param>
         /// <returns>An array of values between 0 (lost) and 1 (won) for each output.</returns>
-        float[] Predict(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
+        Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
     }
 }

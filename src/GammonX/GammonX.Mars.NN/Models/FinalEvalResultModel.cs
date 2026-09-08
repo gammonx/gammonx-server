@@ -25,32 +25,34 @@ namespace GammonX.Mars.NN.Models
         {
             if (botLevel == BotLevel.Easy)
             {
-                if (this.Count > 0)
+                if (Count > 0)
                 {
-                    var halfCount = (int)Math.Round((double)this.Count / 2, 0, MidpointRounding.ToPositiveInfinity);
+                    var halfCount = (int)Math.Round((double)Count / 2, 0, MidpointRounding.ToPositiveInfinity);
                     if (Count > 0)
                     {
                         // we want to return a random move from the worst half (third and fourth quartile)
-                        var moveSeqIndex = Random.Shared.Next(halfCount - 1, this.Count - 1);
+                        var moveSeqIndex = Random.Shared.Next(halfCount - 1, Count - 1);
                         return this[moveSeqIndex]?.MoveSequence ?? new MoveSequenceModel();
                     }
                 }
                 return new MoveSequenceModel();
             }
-            else if (botLevel == BotLevel.Medium)
+
+            if (botLevel == BotLevel.Medium)
             {
-                var quarterCount = (int)Math.Round((double)this.Count / 4, 0, MidpointRounding.ToPositiveInfinity);
+                var quarterCount = (int)Math.Round((double)Count / 4, 0, MidpointRounding.ToPositiveInfinity);
                 if (quarterCount > 0)
                 {
                     // we want to return a random move from the better half (first and second quartile)
-                    var startIndex = 0;
-                    var endIndex = Math.Min(2 * quarterCount, this.Count);
+                    const int startIndex = 0;
+                    var endIndex = Math.Min(2 * quarterCount, Count);
                     var moveSeqIndex = Random.Shared.Next(startIndex, endIndex - 1);
-                    return this[moveSeqIndex]?.MoveSequence ?? new MoveSequenceModel();
+                    return this[moveSeqIndex].MoveSequence;
                 }
                 return new MoveSequenceModel();
             }
-            else if (botLevel == BotLevel.Hard)
+
+            if (botLevel == BotLevel.Hard || botLevel == BotLevel.TwoPly)
             {
                 // we always return the best move possible
                 return this.FirstOrDefault()?.MoveSequence ?? new MoveSequenceModel();

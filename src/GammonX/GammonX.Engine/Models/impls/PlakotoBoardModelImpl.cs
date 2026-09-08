@@ -88,16 +88,16 @@ namespace GammonX.Engine.Models
 		public override int[] Fields { get; protected set; }
 
         // <inheritdoc />
-        public int[] PinnedFields { get; private set; }
+        public int[] PinnedFields { get; private init; }
 
 		// <inheritdoc />
-		public override Range HomeRangeWhite => new(18, 23);
+		public override Range HomeRangeWhite { get; } = new(18, 23);
 
 		// <inheritdoc />
-		public override Range HomeRangeBlack => new(5, 0);
+		public override Range HomeRangeBlack { get; } = new(5, 0);
 
 		// <inheritdoc />
-		public override int BlockAmount => 2;
+		public override int BlockAmount { get; } = 2;
 
 		// <inheritdoc />
 		public bool BothMothersArePinned => PinnedFields[0] < 0 && PinnedFields[23] > 0;

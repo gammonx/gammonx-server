@@ -19,61 +19,63 @@ namespace GammonX.Mars.NN.Services
 
         // <inheritdoc />
         public float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
-        {       
-            // we always extract the feature vectors from whites perspective
-            var boardCopy = isWhite ? board : board.InvertBoard();
+        {
+            var turnNumber = 0;
+            foreach (var historyEvent in board.History.Events)
+            {
+                if (historyEvent.Type == HistoryEventType.Roll)
+                {
+                    turnNumber++;
+                }
+            }
+            var features = new float[FeatureCount];
+            var featureIndex = 0;
 
-            var turnNumber = boardCopy.History.Events.Count(e => e.Type == HistoryEventType.Roll);
-
-            List<float> features =
-            [
-                // self-crafted structural features
-                isWhite ? (float)model.MaxPrimeLengthPlayer : (float)model.MaxPrimeLengthOpp,
-                isWhite ? (float)model.MaxPrimeLengthOpp : (float)model.MaxPrimeLengthPlayer,
-                isWhite ? (float)model.HomebarCountPlayer : (float)model.HomebarCountOpp,
-                isWhite ? (float)model.HomebarCountOpp : (float)model.HomebarCountPlayer,
-                isWhite ? (float)model.BlotCount : (float)model.BlotCountOpp,
-                isWhite ? (float)model.BlotCountOpp : (float)model.BlotCount,
-                isWhite ? (float)model.AnchorCountInFrontPlayer : (float)model.AnchorCountInFrontOpp,
-                isWhite ? (float)model.AnchorCountInFrontOpp : (float)model.AnchorCountInFrontPlayer,
-                isWhite ? (float)model.AverageStackHeightPlayer : (float)model.AverageStackHeightOpp,
-                isWhite ? (float)model.AverageStackHeightOpp : (float)model.AverageStackHeightPlayer,
-                isWhite ? (float)model.AverageDistanceToBearOffPlayer : (float)model.AverageDistanceToBearOffOpp,
-                isWhite ? (float)model.AverageDistanceToBearOffOpp : (float)model.AverageDistanceToBearOffPlayer,
-                isWhite ? (float)model.AverageGapSizePlayer : (float)model.AverageGapSizeOpp,
-                isWhite ? (float)model.AverageGapSizeOpp  : (float)model.AverageGapSizePlayer,
-                isWhite ? (float)model.CheckersInPrimeZonePlayer : (float)model.CheckersInPrimeZoneOpp,
-                isWhite ? (float)model.CheckersInPrimeZoneOpp : (float)model.CheckersInPrimeZonePlayer,
-                // race features
-                isWhite ? (float)model.PipToBearOff : (float)model.PipToBearOffOpp,
-                isWhite ? (float)model.PipToBearOffOpp : (float)model.PipToBearOff,
-                isWhite ? (float)model.PipDifference  : -(float)model.PipDifference,
-                // race feature flag
-                model.Race ? 1f : 0f,
-                // raw board feature tensors
-                isWhite ? 1f : 0f,
-                isWhite ? boardCopy.BearOffCountWhite / 15f : boardCopy.BearOffCountBlack / 15f,
-                isWhite ? boardCopy.BearOffCountBlack / 15f : boardCopy.BearOffCountWhite / 15f,
-                turnNumber / 100f,
-            ];
+            // we always extract the feature vectors from active players perspective
+            features[featureIndex++] = (float)model.MaxPrimeLengthPlayer;
+            features[featureIndex++] = (float)model.MaxPrimeLengthOpp;
+            features[featureIndex++] = (float)model.HomebarCountPlayer;
+            features[featureIndex++] = (float)model.HomebarCountOpp;
+            features[featureIndex++] = (float)model.BlotCount;
+            features[featureIndex++] = (float)model.BlotCountOpp;
+            features[featureIndex++] = (float)model.AnchorCountInFrontPlayer;
+            features[featureIndex++] = (float)model.AnchorCountInFrontOpp;
+            features[featureIndex++] = (float)model.AverageStackHeightPlayer;
+            features[featureIndex++] = (float)model.AverageStackHeightOpp;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffPlayer;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffOpp;
+            features[featureIndex++] = (float)model.AverageGapSizePlayer;
+            features[featureIndex++] = (float)model.AverageGapSizeOpp;
+            features[featureIndex++] = (float)model.CheckersInPrimeZonePlayer;
+            features[featureIndex++] = (float)model.CheckersInPrimeZoneOpp;
+            features[featureIndex++] = (float)model.PipToBearOff;
+            features[featureIndex++] = (float)model.PipToBearOffOpp;
+            features[featureIndex++] = (float)model.PipDifference;
+            features[featureIndex++] = model.Race ? 1f : 0f;
+            features[featureIndex++] = 0f;
+            features[featureIndex++] = (isWhite ? board.BearOffCountWhite : board.BearOffCountBlack) / 15f;
+            features[featureIndex++] = (isWhite ? board.BearOffCountBlack : board.BearOffCountWhite) / 15f;
+            features[featureIndex++] = turnNumber / 100f;
 
             // we add the raw board as input
-            var fields = boardCopy.Fields;
-            for (var i = 0; i < boardCopy.Fields.Length; i++)
+            var fields = board.Fields;
+            for (var i = 0; i < fields.Length; i++)
             {
-                // white players view are positive values, opponent displayed as negative values
-                var v = fields[i];
-                features.Add(v >= 1 ? 1f : 0f);  // own blot
-                features.Add(v >= 2 ? 1f : 0f);  // own anchor
-                features.Add(v >= 3 ? 1f : 0f);  // own 3+
-                features.Add(v >= 4 ? 1f : 0f);  // own 4+
-                features.Add(v <= -1 ? 1f : 0f); // opp blot
-                features.Add(v <= -2 ? 1f : 0f); // opp anchor
-                features.Add(v <= -3 ? 1f : 0f); // opp 3+
-                features.Add(v <= -4 ? 1f : 0f); // opp 4+
+                // we invert the board, so that the perspective always reflects the active player
+                // white i=0 takes board.Fields[0] and black i=0 takes board.Fields[23]
+                // the active player checker count (v) is always negative, the opponent checker count (v) is always positive
+                var v = isWhite ? fields[i] : -fields[fields.Length - 1 - i];
+                features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
+                features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor
+                features[featureIndex++] = v >= 3 ? 1f : 0f;  // own 3+
+                features[featureIndex++] = v >= 4 ? 1f : 0f;  // own 4+
+                features[featureIndex++] = v <= -1 ? 1f : 0f; // opp blot
+                features[featureIndex++] = v <= -2 ? 1f : 0f; // opp anchor
+                features[featureIndex++] = v <= -3 ? 1f : 0f; // opp 3+
+                features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
             }
 
-            return features.ToArray();
+            return features;
         }
     }
 }

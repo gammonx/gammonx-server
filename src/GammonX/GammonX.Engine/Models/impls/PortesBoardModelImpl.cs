@@ -60,10 +60,10 @@ namespace GammonX.Engine.Models
 		public override int[] Fields { get; protected set; }
 
 		// <inheritdoc />
-		public override Range HomeRangeWhite => new(18, 23);
+		public override Range HomeRangeWhite { get; } = new(18, 23);
 
 		// <inheritdoc />
-		public override Range HomeRangeBlack => new(5, 0);
+		public override Range HomeRangeBlack { get; } = new(5, 0);
 
 		// <inheritdoc />
 		public override int BlockAmount => 2;

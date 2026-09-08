@@ -10,24 +10,20 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var blotCount = 0;
+            var pinModel = board as IPinModel;
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var whiteBlots = board.Fields.Index().Where(i => i.Item == -1);
-                if (board is IPinModel pinModel)
+                var isBlot = isWhite
+                    ? board.Fields[index] == -1
+                    : board.Fields[index] == 1;
+                if (isBlot && (pinModel is null || pinModel.PinnedFields[index] == 0))
                 {
-                    whiteBlots = whiteBlots.Where(wb => pinModel.PinnedFields[wb.Index] == 0);
+                    blotCount++;
                 }
-                return whiteBlots.Count();
             }
-            else
-            {
-                var blackBlots = board.Fields.Index().Where(i => i.Item == 1);
-                if (board is IPinModel pinModel)
-                {
-                    blackBlots = blackBlots.Where(wb => pinModel.PinnedFields[wb.Index] == 0);
-                }
-                return blackBlots.Count();
-            }
+
+            return blotCount;
         }
     }
 }

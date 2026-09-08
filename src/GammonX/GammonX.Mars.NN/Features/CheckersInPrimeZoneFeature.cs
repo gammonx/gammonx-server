@@ -17,55 +17,37 @@ namespace GammonX.Mars.NN.Features
         {
             if (board.Modus == GameModus.Fevga)
             {
-                // fevga has a different behavior and start board layout
-                if (isWhite)
-                {
-                    var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
-                    if (whitePositions.Count != 0)
-                    {
-                        var primeZone = board.StartRangeBlack.Start.Value..(board.StartRangeBlack.End.Value + 6);
-                        var primeCheckers = whitePositions.Where(wp => wp.Index >= primeZone.Start.Value && wp.Index <= primeZone.End.Value);
-                        return Math.Abs(primeCheckers.Sum(pc => pc.Item));
-                    }
-                    return 0;
-                }
-                else
-                {
-                    var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
-                    if (blackPositions.Count != 0)
-                    {
-                        var primeZone = board.StartRangeWhite.Start.Value..(board.StartRangeWhite.End.Value + 6);
-                        var primeCheckers = blackPositions.Where(bp => bp.Index >= primeZone.Start.Value && bp.Index <= primeZone.End.Value);
-                        return primeCheckers.Sum(pc => pc.Item);
-                    }
-                    return 0;
-                }
+                var primeZoneStart = isWhite
+                    ? board.StartRangeBlack.Start.Value
+                    : board.StartRangeWhite.Start.Value;
+                var primeZoneEnd = isWhite
+                    ? board.StartRangeBlack.End.Value + 6
+                    : board.StartRangeWhite.End.Value + 6;
+                return SumCheckersInRange(board, isWhite, primeZoneStart, primeZoneEnd);
             }
-            else
+
+            var standardZoneStart = board.StartRangeWhite.End.Value + 1;
+            var standardZoneEnd = board.StartRangeBlack.End.Value - 1;
+            return SumCheckersInRange(board, isWhite, standardZoneStart, standardZoneEnd);
+        }
+
+        private static int SumCheckersInRange(IBoardModel board, bool isWhite, int start, int end)
+        {
+            var checkers = 0;
+            for (var index = start; index <= end; index++)
             {
-                if (isWhite)
+                var field = board.Fields[index];
+                if (isWhite && field < 0)
                 {
-                    var whitePositions = board.Fields.Index().Where(i => i.Item < 0).ToList();
-                    if (whitePositions.Count != 0)
-                    {
-                        var primeZone = (board.StartRangeWhite.End.Value + 1)..(board.StartRangeBlack.End.Value - 1);
-                        var primeCheckers = whitePositions.Where(wp => wp.Index >= primeZone.Start.Value && wp.Index <= primeZone.End.Value);
-                        return Math.Abs(primeCheckers.Sum(pc => pc.Item));
-                    }
-                    return 0;
+                    checkers += field;
                 }
-                else
+                else if (!isWhite && field > 0)
                 {
-                    var blackPositions = board.Fields.Index().Where(i => i.Item > 0).ToList();
-                    if (blackPositions.Count != 0)
-                    {
-                        var primeZone = (board.StartRangeWhite.End.Value + 1)..(board.StartRangeBlack.End.Value - 1);
-                        var primeCheckers = blackPositions.Where(bp => bp.Index >= primeZone.Start.Value && bp.Index <= primeZone.End.Value);
-                        return primeCheckers.Sum(pc => pc.Item);
-                    }
-                    return 0;
+                    checkers += field;
                 }
             }
+
+            return isWhite ? Math.Abs(checkers) : checkers;
         }
     }
 }

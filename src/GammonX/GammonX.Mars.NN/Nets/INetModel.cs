@@ -7,21 +7,66 @@ using static TorchSharp.torch;
 namespace GammonX.Mars.NN.Nets
 {
     /// <summary>
+    /// Provides different neural network architecture sizes for different network models.
+    /// </summary>
+    /// <remarks>
+    /// Each model implementation interprets the architecture sizes differently, so the sizes are not necessarily comparable across models.
+    /// </remarks>
+    public enum NetArchitecture
+    {
+        A = 0,
+        B = 1
+    }
+
+    /// <summary>
     /// Encapsulates a neural network model that can be used for evaluation.
     /// </summary>
+    /// <remarks>
+    /// Implementations accept and return TorchSharp tensors. For the five-head outcome models,
+    /// the output columns are ordered as win, win gammon, win backgammon, lose gammon, and lose backgammon.
+    /// </remarks>
     public interface INetModel
     {
+        /// <summary>
+        /// Evaluates a batch of input feature rows.
+        /// </summary>
+        /// <param name="x">The input tensor, typically shaped as <c>[batch, featureCount]</c>.</param>
+        /// <returns>The model predictions for each input row.</returns>
         Tensor Forward(Tensor x);
 
+        /// <summary>
+        /// Loads model parameters from the specified file location.
+        /// </summary>
+        /// <param name="location">The model file path.</param>
         void Load(string location);
 
+        /// <summary>
+        /// Saves model parameters to the specified file location.
+        /// </summary>
+        /// <param name="location">The destination model file path.</param>
         void Save(string location);
 
+        /// <summary>
+        /// Switches the model to evaluation mode.
+        /// </summary>
         void Eval();
 
+        /// <summary>
+        /// Switches the model to training mode.
+        /// </summary>
         void Train();
 
+        /// <summary>
+        /// Gets the trainable parameters used by an optimizer.
+        /// </summary>
+        /// <returns>An enumerable sequence of model parameters.</returns>
         IEnumerable<Parameter> GetParameters();
+
+        /// <summary>
+        /// Moves model parameters and buffers to the specified TorchSharp device.
+        /// </summary>
+        /// <param name="device">The target CPU or accelerator device.</param>
+        void MoveTo(Device device);
     }
 
     public static class NetModelExtensions
@@ -48,17 +93,41 @@ namespace GammonX.Mars.NN.Nets
 
     public static class NetModelFactory
     {
-        public static INetModel Create(GameModus modus)
+        public static INetModel CreateNew(GameModus modus, Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
         {
             INetModel netModel = modus switch
             {
-                GameModus.Plakoto => new PlakotoNet(),
-                GameModus.Fevga => new FevgaNet(),
-                GameModus.Backgammon => new DefaultNet(),
-                GameModus.Tavla => new DefaultNet(),
-                GameModus.Portes => new DefaultNet(),
+                GameModus.Plakoto => new PlakotoNet(device),
+                GameModus.Fevga => new FevgaNet(device),
+                GameModus.Backgammon => new DefaultNet(device, outputMode, architecture),
+                GameModus.Tavla => new DefaultNet(device, outputMode, architecture),
+                GameModus.Portes => new DefaultNet(device, outputMode, architecture),
                 _ => throw new NotSupportedException($"Modus {modus} has no net model.")
             };
+
+            if (modus is GameModus.Plakoto or GameModus.Fevga && outputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
+            {
+                throw new ArgumentException($"Output mode {outputMode} is only supported by five-head game modes.", nameof(outputMode));
+            }
+
+            return netModel;
+        }
+
+        /// <summary>
+        /// Create a neural net model for the specified <paramref name="modelPath"/>.
+        /// </summary>
+        /// <remarks>
+        /// Reads the metadata sidecar file to determine the model type, architecture, and output mode.
+        /// </remarks>
+        /// <param name="modus">The game mode.</param>
+        /// <param name="modelPath">The path to the model file.</param>
+        /// <param name="device">The target device for the model.</param>
+        /// <returns>The created neural net model.</returns>
+        public static INetModel CreateForModel(GameModus modus, string modelPath, Device device)
+        {
+            var metadata = NetModelMetadata.ReadOrLegacy(modelPath, modus);
+            var netModel = CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
+            netModel.Load(modelPath);
             return netModel;
         }
     }

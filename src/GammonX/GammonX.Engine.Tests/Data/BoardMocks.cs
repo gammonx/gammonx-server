@@ -2,6 +2,10 @@
 {
     internal static class BoardMocks
     {
+        public const string DefaultBoard1 = "{\"fields\":[-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],\"bearOffCountWhite\":14,\"bearOffCountBlack\":14,\"pipCountWhite\":24,\"pipCountBlack\":24,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+
+        public const string DefaultBoard2 = "{\"fields\":[-2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],\"bearOffCountWhite\":13,\"bearOffCountBlack\":13,\"pipCountWhite\":48,\"pipCountBlack\":48,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+
         public static int[] StandardCanBearOffBoard = new int[24]
         {
              5, // 0 – Black Home

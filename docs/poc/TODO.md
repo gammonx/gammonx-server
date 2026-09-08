@@ -4,7 +4,16 @@
 ## Active
 - ?
 
+## Beta Preparation
+- push most recent nn models
+- validate dynamodb layer
+- validte re-connect handling
+
 ## TODO
+- verify lambda functions and dynamodb items
+    - datetime/timespan formats
+    - missing/invalid values
+    - lambda handler (player stats update)
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow
