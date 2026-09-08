@@ -28,6 +28,7 @@
 	{
 		Roll = 0,
 		Move = 1,
-		Hit = 2
+		Hit = 2,
+		Cube = 3,
 	}
 }

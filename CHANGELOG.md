@@ -1,5 +1,26 @@
 # Changelog
 
+## 18.08.2026
+
+### NEW
+- cube actions as history events
+
+### FIXES
+- fixed cube eval when using nn model
+- fixed some recover roll quirks in the implementation
+- some fixes in cube eval on edge cases (e.g. re-double)
+- fixed backgammon board contract deserialization
+
+## 14.06.2026
+
+### NEW
+- upgraded all projects to net10
+- unified package reference managment into build props
+- upgraded game service and lambda container image to net10
+
+### FIXES
+- patched some package references with known vulnerabilities
+
 ## 13.06.2026
 
 ### NEW

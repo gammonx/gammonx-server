@@ -75,13 +75,13 @@ namespace GammonX.Server.Tests.Integration
                 }
             });
 
-            await setup.Player1Connection.StartAsync();
-            await setup.Player2Connection.StartAsync();
+            await setup.Player1Connection.StartAsync(TestContext.Current.CancellationToken);
+            await setup.Player2Connection.StartAsync(TestContext.Current.CancellationToken);
 
 
             while (!timeout1Received || !timeout2Received)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
             Assert.True(timeout1Received);
@@ -89,12 +89,12 @@ namespace GammonX.Server.Tests.Integration
             timeout1Received = false;
             timeout2Received = false;
 
-            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString());
-            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString());
+            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
+            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
             while (!timeout1Received || !timeout2Received)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
             Assert.True(timeout1Received);
@@ -102,12 +102,12 @@ namespace GammonX.Server.Tests.Integration
             timeout1Received = false;
             timeout2Received = false;
 
-            await setup.Player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, setup.MatchId);
-            await setup.Player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, setup.MatchId);
+            await setup.Player1Connection.InvokeAsync(ServerCommands.StartMatchCommand, setup.MatchId, TestContext.Current.CancellationToken);
+            await setup.Player2Connection.InvokeAsync(ServerCommands.StartMatchCommand, setup.MatchId, TestContext.Current.CancellationToken);
 
             while (!onePlayerResigned)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
             Assert.True(onePlayerResigned);

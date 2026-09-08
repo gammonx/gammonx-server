@@ -23,18 +23,19 @@ namespace GammonX.Mars.NN.Tests.Services
         public void GetMETLooksUpCorrectTableValue()
         {
             Assert.Equal(0.50, MatchEquityCalculator.GetMET(1, 1), 10);
-            Assert.Equal(0.75, MatchEquityCalculator.GetMET(1, 3), 10);
+            Assert.Equal(0.67736, MatchEquityCalculator.GetMET(1, 2), 10);
+            Assert.Equal(0.75076, MatchEquityCalculator.GetMET(1, 3), 10);
             Assert.Equal(0.50, MatchEquityCalculator.GetMET(5, 5), 10);
-            Assert.Equal(0.44, MatchEquityCalculator.GetMET(8, 7), 10);
+            Assert.Equal(0.44520, MatchEquityCalculator.GetMET(8, 7), 10);
         }
 
         [Fact]
         public void GetMETClampsToTableSize()
         {
-            var expected = MatchEquityCalculator.GetMET(15, 15);
+            var expected = MatchEquityCalculator.GetMET(25, 25);
 
-            Assert.Equal(expected, MatchEquityCalculator.GetMET(16, 15), 10);
-            Assert.Equal(expected, MatchEquityCalculator.GetMET(15, 16), 10);
+            Assert.Equal(expected, MatchEquityCalculator.GetMET(26, 25), 10);
+            Assert.Equal(expected, MatchEquityCalculator.GetMET(25, 26), 10);
             Assert.Equal(expected, MatchEquityCalculator.GetMET(100, 100), 10);
         }
 
@@ -207,6 +208,70 @@ namespace GammonX.Mars.NN.Tests.Services
 
             Assert.NotEqual(cube1, cube2);
             Assert.True(cube2 > cube1);
+        }
+
+        [Fact]
+        public void CalculateEquityAfterAcceptedDoubleUsesAutomaticRecubeAtBoundary()
+        {
+            var outcome = new GameOutcomeModel(new[] { 0.40f, 0.00f, 0.00f, 0.00f, 0.00f });
+            var model = new GameEquityModel(outcome);
+
+            var withoutAutomaticRecube = MatchEquityCalculator.CalculateEquity(
+                model,
+                pointsAway: 4,
+                pointsAwayOpp: 2,
+                cubeValue: 2);
+            var withAutomaticRecube = MatchEquityCalculator.CalculateEquityAfterAcceptedDouble(
+                model,
+                pointsAway: 4,
+                pointsAwayOpp: 2,
+                cubeValue: 1,
+                currentPlayerIsTaker: true);
+
+            Assert.Equal(0.20, withoutAutomaticRecube, 5);
+            Assert.Equal(0.40, withAutomaticRecube, 5);
+        }
+
+        [Fact]
+        public void CalculateEquityAfterAcceptedDoubleDoesNotRecubeAboveBoundary()
+        {
+            var outcome = new GameOutcomeModel(new[] { 0.40f, 0.00f, 0.00f, 0.00f, 0.00f });
+            var model = new GameEquityModel(outcome);
+
+            var expected = MatchEquityCalculator.CalculateEquity(
+                model,
+                pointsAway: 4,
+                pointsAwayOpp: 3,
+                cubeValue: 2);
+            var actual = MatchEquityCalculator.CalculateEquityAfterAcceptedDouble(
+                model,
+                pointsAway: 4,
+                pointsAwayOpp: 3,
+                cubeValue: 1,
+                currentPlayerIsTaker: true);
+
+            Assert.Equal(expected, actual, 10);
+        }
+
+        [Fact]
+        public void CalculateEquityAfterAcceptedDoubleUsesNonTakerForOpponentTake()
+        {
+            var outcome = new GameOutcomeModel(new[] { 0.60f, 0.00f, 0.00f, 0.00f, 0.00f });
+            var model = new GameEquityModel(outcome);
+
+            var expected = MatchEquityCalculator.CalculateEquity(
+                model,
+                pointsAway: 2,
+                pointsAwayOpp: 4,
+                cubeValue: 4);
+            var actual = MatchEquityCalculator.CalculateEquityAfterAcceptedDouble(
+                model,
+                pointsAway: 2,
+                pointsAwayOpp: 4,
+                cubeValue: 1,
+                currentPlayerIsTaker: false);
+
+            Assert.Equal(expected, actual, 10);
         }
 
         [Fact]

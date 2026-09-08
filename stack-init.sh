@@ -44,10 +44,11 @@ create_and_map_sqs_zip_lambda() {
 
   awslocal lambda create-function \
     --function-name $function_name \
-    --runtime provided.al2 \
+    --runtime provided.al2023 \
     --handler bootstrap \
       --environment "Variables={
         DOTNET_RUNNING_IN_CONTAINER=true,
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true,
         AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000,
         AWS__AWS_ACCESS_KEY_ID=local,
         AWS__AWS_SECRET_ACCESS_KEY=local,
@@ -69,10 +70,11 @@ create_api_gateway_zip_lambda() {
 
   awslocal lambda create-function \
     --function-name $function_name \
-    --runtime provided.al2 \
+    --runtime provided.al2023 \
     --handler bootstrap \
     --environment "Variables={
       DOTNET_RUNNING_IN_CONTAINER=true,
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true,
       AWS__DYNAMODB_SERVICEURL=http://dynamodb-local:8000,
       AWS__AWS_ACCESS_KEY_ID=local,
       AWS__AWS_SECRET_ACCESS_KEY=local,

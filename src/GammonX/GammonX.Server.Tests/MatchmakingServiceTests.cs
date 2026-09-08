@@ -147,7 +147,7 @@ namespace GammonX.Server.Tests
                 matcher.Enqueue(entry);
             }
 
-            var matchTask = Task.Run(() => matcher.MatchQueuedPlayersAsync());
+            var matchTask = Task.Run(() => matcher.MatchQueuedPlayersAsync(), TestContext.Current.CancellationToken);
 
             var enqueueTask = Task.Run(() =>
             {
@@ -155,7 +155,8 @@ namespace GammonX.Server.Tests
                 {
                     matcher.Enqueue(CreateQueueEntry(queueKey, 1500));
                 }
-            });
+            },
+            TestContext.Current.CancellationToken);
 
             await Task.WhenAll(matchTask, enqueueTask);
 

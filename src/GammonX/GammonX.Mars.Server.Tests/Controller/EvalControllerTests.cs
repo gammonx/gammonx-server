@@ -43,8 +43,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 IsWhite = isWhite
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var boardEval = JsonConvert.DeserializeObject<ResponseContract<BoardEvalPayload>>(json);
 
             Assert.NotNull(boardEval);
@@ -75,8 +75,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var boardEval = JsonConvert.DeserializeObject<ResponseContract<BoardEvalPayload>>(json);
 
             Assert.NotNull(boardEval);
@@ -110,8 +110,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 IsWhite = isWhite
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var boardEval = JsonConvert.DeserializeObject<ResponseContract<BoardEvalPayload>>(json);
 
             Assert.NotNull(boardEval);
@@ -151,8 +151,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var moveEval = JsonConvert.DeserializeObject<ResponseContract<MoveEvalPayload>>(json);
 
             Assert.NotNull(moveEval);
@@ -185,8 +185,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var moveEval = JsonConvert.DeserializeObject<ResponseContract<MoveEvalPayload>>(json);
 
             Assert.NotNull(moveEval);
@@ -215,8 +215,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/move", moveRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var moveEval = JsonConvert.DeserializeObject<ResponseContract<MoveEvalPayload>>(json);
 
             Assert.NotNull(moveEval);
@@ -250,21 +250,15 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var cubeEval = JsonConvert.DeserializeObject<ResponseContract<CubeEvalPayload>>(json);
 
             Assert.NotNull(cubeEval);
             Assert.Equal("OK", cubeEval.Type);
             Assert.IsType<CubeEvalPayload>(cubeEval.Payload);
-            if (!isWhite)
-            {
-                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.ShouldOffer);
-            }
-            else
-            {
-                Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.ShouldOffer);
-            }
+            Assert.Equal(CubeAction.TooGood, cubeEval.Payload.ShouldOffer);
+            Assert.Equal(CubeAction.Take, cubeEval.Payload.ShouldTake);
         }
 
         [Theory]
@@ -294,8 +288,8 @@ namespace GammonX.Mars.Server.Tests.Controller
                 BotLevel = BotLevel.Hard
             };
 
-            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await client.PostAsJsonAsync("/bot/mars/api/eval/cube", cubeRequest, TestContext.Current.CancellationToken);
+            var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             var cubeEval = JsonConvert.DeserializeObject<ResponseContract<RequestErrorPayload>>(json);
 
             Assert.NotNull(cubeEval);

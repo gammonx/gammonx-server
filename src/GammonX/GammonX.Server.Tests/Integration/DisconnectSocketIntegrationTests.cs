@@ -77,33 +77,33 @@ namespace GammonX.Server.Tests.Integration
                 }
             });
 
-            await setup.Player1Connection.StartAsync();
-            await setup.Player2Connection.StartAsync();
+            await setup.Player1Connection.StartAsync(TestContext.Current.CancellationToken);
+            await setup.Player2Connection.StartAsync(TestContext.Current.CancellationToken);
 
-            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString());
-            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString());
+            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
+            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
-            await Task.Delay(2500);
+            await Task.Delay(2500, TestContext.Current.CancellationToken);
 
-            await setup.Player1Connection.StopAsync();
+            await setup.Player1Connection.StopAsync(TestContext.Current.CancellationToken);
 
             while (!player1Disconnected)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
-            await setup.Player1Connection.StartAsync();
+            await setup.Player1Connection.StartAsync(TestContext.Current.CancellationToken);
 
             while (!player1Connected)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
-            await setup.Player1Connection.InvokeAsync(ServerCommands.MatchStateCommand, setup.MatchId);
+            await setup.Player1Connection.InvokeAsync(ServerCommands.MatchStateCommand, setup.MatchId, TestContext.Current.CancellationToken);
 
             while (!player1CanStartMatch)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
             Assert.True(player1CanStartMatch);
@@ -132,26 +132,26 @@ namespace GammonX.Server.Tests.Integration
                 }
             });
 
-            await setup.Player1Connection.StartAsync();
-            await setup.Player2Connection.StartAsync();
+            await setup.Player1Connection.StartAsync(TestContext.Current.CancellationToken);
+            await setup.Player2Connection.StartAsync(TestContext.Current.CancellationToken);
 
-            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString());
-            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString());
+            await setup.Player1Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
+            await setup.Player2Connection.InvokeAsync(ServerCommands.JoinMatchCommand, setup.MatchId, setup.Player2.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
-            await Task.Delay(2500);
+            await Task.Delay(2500, TestContext.Current.CancellationToken);
 
-            await setup.Player1Connection.StopAsync();
+            await setup.Player1Connection.StopAsync(TestContext.Current.CancellationToken);
 
             while (!player1Disconnected)
             {
-                await Task.Delay(250);
+                await Task.Delay(250, TestContext.Current.CancellationToken);
             }
 
-            await setup.Player2Connection.StopAsync();
+            await setup.Player2Connection.StopAsync(TestContext.Current.CancellationToken);
             // we cannot receive events after connection is gone
             player2Disconnected = true;
 
-            await Task.Delay(1000);
+            await Task.Delay(1000, TestContext.Current.CancellationToken);
 
             Assert.True(player1Disconnected);
             Assert.True(player2Disconnected);

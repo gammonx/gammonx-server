@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
+		<TargetFramework>$(TargetFramework)</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<UserSecretsId>1de8c2b2-6bed-40a8-b818-37a4c9adc521</UserSecretsId>
@@ -14,9 +14,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DotNetEnv" Version="3.1.1" />
-		<PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+		<PackageReference Include="DotNetEnv" Version="$(DotNetEnvVersion)" />
+		<PackageReference Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="$(SerilogSinksConsoleVersion)" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -66,8 +66,8 @@ namespace GammonX.Server.Tests.Integration
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
 			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame);
-			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1);
-			var resultJson1 = await response1.Content.ReadAsStringAsync();
+			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
+			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
 			var joinPayload1 = joinResponse1?.Payload;
 			Assert.NotNull(joinPayload1);
@@ -206,35 +206,35 @@ namespace GammonX.Server.Tests.Integration
 				}
 			});
 
-			await player1Connection.StartAsync();
+			await player1Connection.StartAsync(TestContext.Current.CancellationToken);
 
 			// join the match
-			await player1Connection.SendAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString());
+			await player1Connection.SendAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
 
 			// start the game
-			await player1Connection.SendAsync(ServerCommands.StartMatchCommand, matchId);
+			await player1Connection.SendAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
 
 			// player 1 can directly move with the initial rolled dices
 			// await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
 
 			while (nextMove == null)
 			{
-				await Task.Delay(250);
+				await Task.Delay(250, TestContext.Current.CancellationToken);
 			}
 
 			// player 1 moves first checker
-			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To);
+			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To, TestContext.Current.CancellationToken);
 
 			// player 1 moves second checker
-			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To);
+			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To, TestContext.Current.CancellationToken);
 
 			// player 1 ends his turn
-			await player1Connection.SendAsync(ServerCommands.EndTurnCommand, matchId);
+			await player1Connection.SendAsync(ServerCommands.EndTurnCommand, matchId, TestContext.Current.CancellationToken);
 
 			// bot has its turn
 
 			// player 1 rolls for his second turn
-			await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
+			await player1Connection.SendAsync(ServerCommands.RollCommand, matchId, TestContext.Current.CancellationToken);
 
 			await player1Connection.DisposeAsync();
 			client.Dispose();
