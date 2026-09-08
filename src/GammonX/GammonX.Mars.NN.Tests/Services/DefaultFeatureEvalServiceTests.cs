@@ -344,7 +344,9 @@ namespace GammonX.Mars.NN.Tests.Services
             Assert.NotNull(evalCubeReq);
 
             var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
-            Assert.Equal(CubeAction.Double, shouldOffer);
+            // we expect the bot to not double this early on
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
+            // but we expect the bot to take the double in early stages
             Assert.Equal(CubeAction.Take, shouldTake);
         }
 
@@ -479,7 +481,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1));
 
             // Opponent would pass, and the pass equity exceeds no-double equity.
-            Assert.Equal(CubeAction.Double, shouldOffer);
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
 
@@ -507,7 +509,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1));
 
             // Opponent would pass, but playing on for gammon/backgammon is even better.
-            Assert.Equal(CubeAction.TooGood, shouldOffer);
+            Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
 

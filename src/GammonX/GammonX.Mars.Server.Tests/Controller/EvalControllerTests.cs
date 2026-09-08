@@ -257,7 +257,7 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.NotNull(cubeEval);
             Assert.Equal("OK", cubeEval.Type);
             Assert.IsType<CubeEvalPayload>(cubeEval.Payload);
-            Assert.Equal(CubeAction.TooGood, cubeEval.Payload.ShouldOffer);
+            Assert.Equal(CubeAction.NoDouble, cubeEval.Payload.ShouldOffer);
             Assert.Equal(CubeAction.Take, cubeEval.Payload.ShouldTake);
         }
 

@@ -10,13 +10,10 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	internal sealed class FevgaBoardModelImpl : BoardBaseImpl, IHomeBarModel, IFevgaBoardModel
     {
-        private readonly Func<bool, int, int, int> _recoverRollOperator;
-        private readonly Func<bool, int, bool> _isInHomeOperator;
-
         internal FevgaBoardModelImpl(BoardModelContract contract)
         {
-            _recoverRollOperator = RecoverRoll;
-            _isInHomeOperator = IsInHomeRange;
+            RecoverRollOperator = RecoverRoll;
+            IsInHomeOperator = IsInHomeRange;
             Fields = contract.Fields;
             BearOffCountWhite = contract.BearOffCountWhite;
             BearOffCountBlack = contract.BearOffCountBlack;
@@ -26,8 +23,8 @@ namespace GammonX.Engine.Models
 
         public FevgaBoardModelImpl()
         {
-            _recoverRollOperator = RecoverRoll;
-            _isInHomeOperator = IsInHomeRange;
+            RecoverRollOperator = RecoverRoll;
+            IsInHomeOperator = IsInHomeRange;
             Fields = new int[24]
             {
                 -1, // Field 1  :: 1 White Checkers
@@ -101,7 +98,7 @@ namespace GammonX.Engine.Models
         }
 
 		// <inheritdoc />
-        public override Func<bool, int, int, int> RecoverRollOperator => _recoverRollOperator;
+        public override Func<bool, int, int, int> RecoverRollOperator { get; }
 
         private int RecoverRoll(bool isWhite, int from, int to)
         {
@@ -116,6 +113,21 @@ namespace GammonX.Engine.Models
             }
             else
             {
+                // we return 24 if the checker is moved from the homebar (24 magic number, real index is 11) to the bearoff (100 magic number, real index is 12)
+                if (from == BoardPositions.HomeBarBlack && to == BoardPositions.BearOffBlack)
+                {
+                    return 25;
+                }
+                // we return 23 if the checker is moved from the first index (12) to the bearoff
+                if (to == BoardPositions.BearOffBlack && from == StartRangeBlack.Start.Value)
+                {
+                    return 24;
+                }
+                // we do some magic conversions between wellknown board positions and the actual indices to calculate the roll correctly
+                if (from == BoardPositions.HomeBarBlack)
+                {
+                    from = 11;
+                }
                 if (to == BoardPositions.BearOffBlack)
                 {
                     to = HomeRangeBlack.End.Value + 1;
@@ -125,6 +137,7 @@ namespace GammonX.Engine.Models
                 {
                     from = 11;
                 }
+
                 // black moves forward (wraps from 23 -> 0)
                 int roll = (to - from + Fields.Length) % Fields.Length;
                 return roll;
@@ -188,7 +201,7 @@ namespace GammonX.Engine.Models
         }
 
         // <inheritdoc />
-        public override Func<bool, int, bool> IsInHomeOperator => _isInHomeOperator;
+        public override Func<bool, int, bool> IsInHomeOperator { get; }
 
         private bool IsInHomeRange(bool isWhite, int position)
         {
