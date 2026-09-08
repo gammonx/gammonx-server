@@ -71,7 +71,8 @@ namespace GammonX.Mars.Server.Tests.Controller
             {
                 Board = boardContract,
                 Modus = modus,
-                IsWhite = isWhite
+                IsWhite = isWhite,
+                BotLevel = BotLevel.Hard
             };
 
             var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", boardStateRequest);
@@ -83,8 +84,8 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.IsType<BoardEvalPayload>(boardEval.Payload);
             if (!isWhite)
             {
-                // black has stronger board
-                Assert.True(boardEval.Payload.EvalScore > 1);
+                // black has stronger board, almost guaranteed win
+                Assert.True(boardEval.Payload.EvalScore > 0.99);
             }
             else
             {

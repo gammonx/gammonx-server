@@ -504,7 +504,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BearOffCountWhite = originalContract.BearOffCountWhite,
                 BearOffCountBlack = originalContract.BearOffCountBlack,
                 HomeBarCountWhite = originalContract.HomeBarCountWhite,
-                HomeBarCountBlack = originalContract.HomeBarCountBlack
+                HomeBarCountBlack = originalContract.HomeBarCountBlack,
             });
             foreach (var move in moveSequence.Moves)
             {
@@ -514,25 +514,22 @@ namespace GammonX.Mars.NN.Tests.Services
             var neural = new PipAdvantageNeuralEvalService();
             var service = new DefaultFeatureEvalService(neural, modus);
             var contactWeights = EvalWeights.GetContactWeights(modus);
+
             var immediateScore = await service.EvalBoardStateAsync(
                 new EvalBoardRequestContract
                 {
                     Modus = modus,
                     IsWhite = true,
-                    Board = immediateBoard.ToContract(false)
+                    Board = immediateBoard.ToContract(false),
+                    BotLevel = BotLevel.Hard
                 },
                 contactWeights);
-            var onePlyScore = (await service.EvalMoveSequenceAsync(
-                originalContract,
-                true,
-                moveSequence,
-                contactWeights)).Score;
-            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(
-                originalContract,
-                true,
-                [moveSequence],
-                contactWeights,
-                BotLevel.TwoPly))[0].Score;
+
+            var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights))
+                .Score;
+
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.TwoPly))
+                [0].Score;
 
             Assert.Equal(immediateScore, onePlyScore);
             Assert.NotEqual(immediateScore, twoPlyScore);

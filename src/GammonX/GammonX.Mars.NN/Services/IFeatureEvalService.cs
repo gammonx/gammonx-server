@@ -96,12 +96,14 @@ namespace GammonX.Mars.NN.Services
         /// <param name="contract">Contains the board state.</param>
         /// <param name="isWhite">Indicates if the player is white.</param>
         /// <param name="moveSequence">The sequence of moves to evaluate.</param>
+        /// <param name="botLevel">The search level to use for the evaluation.</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <returns>The final eval result for the given <paramref name="moveSequence"/></returns>
         Task<FinalEvalResultModel> EvalMoveSequenceAsync(
             BoardModelContract contract,
             bool isWhite,
             MoveSequenceModel moveSequence,
+            BotLevel botLevel,
             ContactWeightModel contactWeights);
     }
 }

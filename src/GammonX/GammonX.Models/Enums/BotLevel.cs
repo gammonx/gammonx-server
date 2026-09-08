@@ -18,7 +18,7 @@
         /// </summary>
         Hard = 2,
         /// <summary>
-        /// Represents the bot level which makes use of 2ply deep search.
+        /// Represents the bot level which makes use of 2ply deep search. // TODO: we should differentiate between search depth and bot level
         /// </summary>
         TwoPly = 3,
         /// <summary>

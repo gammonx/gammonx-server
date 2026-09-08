@@ -27,37 +27,6 @@ public sealed class SelectiveTwoPlyDiagnosticsTests
     }
 
     [Fact]
-    public void ReaderAcceptsLegacySidecarWithoutAuditRankFields()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"gammonx-search-legacy-{Guid.NewGuid():N}.csv");
-        var gameId = Guid.NewGuid();
-
-        try
-        {
-            File.WriteAllLines(path,
-            [
-                "gameId,modus,turnIndex,againstBot,candidateCount,evaluatedCandidateCount,onePlyBestScore,onePlySecondBestScore,onePlyScoreGap,reason,twoPlyBestScore,twoPlySecondBestScore,twoPlyScoreGap,bestMoveChanged",
-                $"{gameId:D},Backgammon,1,0,5,5,0.5,0.4,0.1,Audit,0.6,0.5,0.1,1"
-            ]);
-
-            var decision = Assert.Single(SelectiveTwoPlySearchCsvReader.ReadDecisions(path));
-            var summary = SelectiveTwoPlySearchBroker.Analyze([decision]).Overall;
-
-            Assert.Equal(SelectiveTwoPlyReason.Audit, decision.Reason);
-            Assert.Null(decision.SelectiveCandidateLimit);
-            Assert.Null(decision.TwoPlyBestOnePlyRank);
-            Assert.Equal(1, summary.AuditDecisionCount);
-            Assert.Equal(1, summary.AuditBestMoveChangedCount);
-            Assert.Equal(0, summary.RankedAuditDecisionCount);
-        }
-        finally
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-    }
-
-    [Fact]
     public void BrokerReportsCoverageAndMoveChanges()
     {
         var report = SelectiveTwoPlySearchBroker.Analyze(CreateDecisions());

@@ -32,12 +32,9 @@ public static class SelectiveTwoPlySearchCsvReader
             var columns = line.Split(',');
             var expectedColumnCount = 16;
             if (columns.Length != expectedColumnCount)
+            {
                 throw new InvalidDataException($"Selective two-ply search sidecar line {lineNumber} has {columns.Length} columns instead of {expectedColumnCount}.");
-
-            int? selectiveCandidateLimit = null;
-            int? twoPlyBestOnePlyRank = null;
-
-            const int scoreOffset = 1;
+            }
 
             if (!Guid.TryParse(columns[0], out var gameId)
                 || !Enum.TryParse<GameModus>(columns[1], out var modus)
@@ -45,14 +42,16 @@ public static class SelectiveTwoPlySearchCsvReader
                 || !TryParseBoolean(columns[3], out var againstBot)
                 || !int.TryParse(columns[4], NumberStyles.Integer, InvariantCulture, out var candidateCount)
                 || !int.TryParse(columns[5], NumberStyles.Integer, InvariantCulture, out var evaluatedCandidateCount)
-                || !double.TryParse(columns[6 + scoreOffset], NumberStyles.Float, InvariantCulture, out var onePlyBestScore)
-                || !TryParseOptionalDouble(columns[7 + scoreOffset], out var onePlySecondBestScore)
-                || !TryParseOptionalDouble(columns[8 + scoreOffset], out var onePlyScoreGap)
-                || !Enum.TryParse<SelectiveTwoPlyReason>(columns[9 + scoreOffset], out var reason)
-                || !TryParseOptionalDouble(columns[10 + scoreOffset], out var twoPlyBestScore)
-                || !TryParseOptionalDouble(columns[11 + scoreOffset], out var twoPlySecondBestScore)
-                || !TryParseOptionalDouble(columns[12 + scoreOffset], out var twoPlyScoreGap)
-                || !TryParseOptionalBoolean(columns[13 + scoreOffset], out var bestMoveChanged))
+                || !int.TryParse(columns[6], NumberStyles.Integer, InvariantCulture, out var selectiveCandidateLimit)
+                || !double.TryParse(columns[7], NumberStyles.Float, InvariantCulture, out var onePlyBestScore)
+                || !TryParseOptionalDouble(columns[8], out var onePlySecondBestScore)
+                || !TryParseOptionalDouble(columns[9], out var onePlyScoreGap)
+                || !Enum.TryParse<SelectiveTwoPlyReason>(columns[10], out var reason)
+                || !TryParseOptionalDouble(columns[11], out var twoPlyBestScore)
+                || !TryParseOptionalDouble(columns[12], out var twoPlySecondBestScore)
+                || !TryParseOptionalDouble(columns[13], out var twoPlyScoreGap)
+                || !TryParseOptionalBoolean(columns[14], out var bestMoveChanged)
+                || !TryParseOptionalInteger(columns[15], out var twoPlyBestOnePlyRank))
             {
                 throw new InvalidDataException($"Selective two-ply search sidecar line {lineNumber} contains an invalid value.");
             }
@@ -110,6 +109,24 @@ public static class SelectiveTwoPlySearchCsvReader
         }
 
         if (double.TryParse(value, NumberStyles.Float, InvariantCulture, out var parsed))
+        {
+            result = parsed;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
+
+    private static bool TryParseOptionalInteger(string value, out int? result)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            result = null;
+            return true;
+        }
+
+        if (int.TryParse(value, NumberStyles.Integer, InvariantCulture, out var parsed))
         {
             result = parsed;
             return true;

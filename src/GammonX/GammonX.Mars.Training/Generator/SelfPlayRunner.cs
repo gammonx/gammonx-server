@@ -106,13 +106,14 @@ namespace GammonX.Mars.Training.Generator
                 var isModelATurn = _entryB == null || isWhite == modelAWhite;
                 var activeEvalService = isModelATurn ? modelAEvalService : modelBEvalService ?? modelAEvalService;
 
+                var botLevel = isModelATurn ? _entryA?.BotLevel ?? BotLevel.Hard : _entryB?.BotLevel ?? BotLevel.Hard;
                 var evalRequest = new EvalMoveRequestContract
                 {
                     Board = board.ToContract(false),
                     IsWhite = isWhite,
                     Modus = _modus,
                     Rolls = rolls,
-                    BotLevel = isModelATurn ? _entryA?.BotLevel ?? BotLevel.Hard : _entryB?.BotLevel ?? BotLevel.Hard
+                    BotLevel = botLevel
                 };
                 
                 var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
@@ -130,7 +131,8 @@ namespace GammonX.Mars.Training.Generator
                             moveSequences,
                             contactWeights,
                             turnCount,
-                            false)
+                            false,
+                            botLevel)
                         : moveSequences[0];
 
                     foreach (var move in resultToPlay.MoveSequence.Moves)
@@ -249,12 +251,13 @@ namespace GammonX.Mars.Training.Generator
 
                 MoveSequenceModel nextMoves;
                 FinalEvalResultModel? evalResultModel = null;
+                var botLevel = _entryA?.BotLevel ?? BotLevel.Hard;
                 if (activePlayerId == wildbgPlayerId)
                 {
                     // wildbg turn
                     nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId);
                     var boardContract = board.ToContract(false);
-                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, contactWeights);
+                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, botLevel, contactWeights);
                 }
                 else
                 {
@@ -266,7 +269,7 @@ namespace GammonX.Mars.Training.Generator
                         IsWhite = isWhite,
                         Modus = modus,
                         Rolls = rolls,
-                        BotLevel = _entryA?.BotLevel ?? BotLevel.Hard
+                        BotLevel = botLevel
                     };
                     var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
 
@@ -282,7 +285,8 @@ namespace GammonX.Mars.Training.Generator
                             result,
                             contactWeights,
                             turnCount,
-                            true);
+                            true,
+                            botLevel);
 
                         nextMoves = evalResultModel.MoveSequence;
                     }
@@ -384,6 +388,7 @@ namespace GammonX.Mars.Training.Generator
         /// <param name="contactWeights">The weights used when re-evaluating a random legal move.</param>
         /// <param name="turnCount">The one-based turn number used by the exploration policy and diagnostics.</param>
         /// <param name="againstBot">Whether this decision is being made in a game against another bot service.</param>
+        /// <param name="botLevel">The bot level to use for evaluation.</param>
         /// <returns>The evaluated move sequence selected by the exploration policy.</returns>
         /// <exception cref="InvalidOperationException">Thrown when ranked results are not ordered by descending score.</exception>
         /// <remarks>
@@ -401,7 +406,8 @@ namespace GammonX.Mars.Training.Generator
             FinalEvalResultModels rankedResults,
             ContactWeightModel contactWeights,
             int turnCount,
-            bool againstBot)
+            bool againstBot,
+            BotLevel botLevel)
         {
             if (_selectiveTwoPlyOptions.Enabled)
             {
@@ -476,7 +482,7 @@ namespace GammonX.Mars.Training.Generator
                 {
                     var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
                     // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, contactWeights);
+                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, botLevel, contactWeights);
                     selectedRank = null;
                 }
             }

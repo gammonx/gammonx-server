@@ -40,7 +40,9 @@
 		<EmbeddedResource Include="NeuralNets\Fevga\training_net.dat" />
 		<EmbeddedResource Include="NeuralNets\Plakoto\training_net.dat" />
 		<EmbeddedResource Include="NeuralNets\Portes\training_net.dat" />
+		<EmbeddedResource Include="NeuralNets\Portes\training_net.dat.meta.json"/>
 		<EmbeddedResource Include="NeuralNets\Tavla\training_net.dat" />
+		<EmbeddedResource Include="NeuralNets\Tavla\training_net.dat.meta.json" />
 	</ItemGroup>
 
 </Project>
