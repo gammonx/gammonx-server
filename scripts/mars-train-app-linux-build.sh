@@ -8,10 +8,12 @@ PROJECT="$REPO_ROOT/src/GammonX/GammonX.Mars.Training/GammonX.Mars.Training.cspr
 BUILD_ARTIFACTS="$REPO_ROOT/src/GammonX/artifacts/bin/mars-training-publish-build"
 OUTPUT_DIR="$REPO_ROOT/src/GammonX/artifacts/bin/GammonX.Mars.Training/linux-x64"
 
+dotnet restore "$PROJECT" -r linux-x64
+
 dotnet build "$PROJECT" \
 	-c Release \
 	-r linux-x64 \
-	--self-contained false \
+	--self-contained true \
 	--artifacts-path "$BUILD_ARTIFACTS"
 
 dotnet publish "$PROJECT" \
