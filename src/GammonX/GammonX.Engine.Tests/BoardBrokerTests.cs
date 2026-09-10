@@ -1,10 +1,13 @@
 ﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
 using GammonX.Engine.Tests.Data;
+
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Moq;
+
 using Newtonsoft.Json;
 
 namespace GammonX.Engine.Tests

@@ -1,85 +1,83 @@
-﻿using GammonX.Models.Contracts;
+﻿using GammonX.Engine.Services;
 
-using GammonX.Engine.Services;
-
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Models
 {
 	/// <summary>
 	/// Portes implementation
-	/// <seealso cref="https://www.bkgm.com/variants/Plakoto.html"/>
-	/// <seealso cref="https://www.bkgm.com/variants/Tavli.html"/>
+	/// <seealso href="https://www.bkgm.com/variants/Plakoto.html"/>
+	/// <seealso href="https://www.bkgm.com/variants/Tavli.html"/>
 	/// </summary>
 	internal sealed class PlakotoBoardModelImpl : BoardBaseImpl, IPinModel
-    {
-        internal PlakotoBoardModelImpl(BoardModelContract contract)
-        {
-            Fields = contract.Fields;
-            BearOffCountWhite = contract.BearOffCountWhite;
-            BearOffCountBlack = contract.BearOffCountBlack;
-            PinnedFields = contract.PinnedFields ?? new int[24];
-        }
+	{
+		internal PlakotoBoardModelImpl(BoardModelContract contract)
+		{
+			Fields = contract.Fields;
+			BearOffCountWhite = contract.BearOffCountWhite;
+			BearOffCountBlack = contract.BearOffCountBlack;
+			PinnedFields = contract.PinnedFields ?? new int[24];
+		}
 
-        public PlakotoBoardModelImpl()
-        {
-            Fields = new int[24]
-            {
-                -15,// Field 1  :: Black Home  :: 15 White Checkers
-                0,  // Field 2  :: Black Home
-                0,  // Field 3  :: Black Home
-                0,  // Field 4  :: Black Home
-                0,  // Field 5  :: Black Home
-                0,  // Field 6  :: Black Home
-                0,  // Field 7
-                0,  // Field 8
-                0,  // Field 9
-                0,  // Field 10
-                0,  // Field 11
-                0,  // Field 12
-                0,  // Field 13
-                0,  // Field 14
-                0,  // Field 15
-                0,  // Field 16
-                0,  // Field 17
-                0,  // Field 18
-                0,  // Field 19 :: White Home
-                0,  // Field 20 :: White Home
-                0,  // Field 21 :: White Home
-                0,  // Field 22 :: White Home
-                0,  // Field 23 :: White Home 
-                15, // Field 24 :: White Home :: 15 Black Checkers
-            };
+		public PlakotoBoardModelImpl()
+		{
+			Fields =
+			[
+				-15, // Field 1  :: Black Home  :: 15 White Checkers
+				0, // Field 2  :: Black Home
+				0, // Field 3  :: Black Home
+				0, // Field 4  :: Black Home
+				0, // Field 5  :: Black Home
+				0, // Field 6  :: Black Home
+				0, // Field 7
+				0, // Field 8
+				0, // Field 9
+				0, // Field 10
+				0, // Field 11
+				0, // Field 12
+				0, // Field 13
+				0, // Field 14
+				0, // Field 15
+				0, // Field 16
+				0, // Field 17
+				0, // Field 18
+				0, // Field 19 :: White Home
+				0, // Field 20 :: White Home
+				0, // Field 21 :: White Home
+				0, // Field 22 :: White Home
+				0, // Field 23 :: White Home 
+				15 // Field 24 :: White Home :: 15 Black Checkers
+			];
 
-            PinnedFields = new int[24]
-            {
-                0,  // Field 1  :: Black Home
-                0,  // Field 2  :: Black Home
-                0,  // Field 3  :: Black Home
-                0,  // Field 4  :: Black Home
-                0,  // Field 5  :: Black Home
-                0,  // Field 6  :: Black Home
-                0,  // Field 7
-                0,  // Field 8
-                0,  // Field 9
-                0,  // Field 10
-                0,  // Field 11
-                0,  // Field 12
-                0,  // Field 13
-                0,  // Field 14
-                0,  // Field 15
-                0,  // Field 16
-                0,  // Field 17
-                0,  // Field 18
-                0,  // Field 19 :: White Home
-                0,  // Field 20 :: White Home
-                0,  // Field 21 :: White Home
-                0,  // Field 22 :: White Home
-                0,  // Field 23 :: White Home 
-                0,  // Field 24 :: White Home
-
-            };
-        }
+			PinnedFields =
+			[
+				0, // Field 1  :: Black Home
+				0, // Field 2  :: Black Home
+				0, // Field 3  :: Black Home
+				0, // Field 4  :: Black Home
+				0, // Field 5  :: Black Home
+				0, // Field 6  :: Black Home
+				0, // Field 7
+				0, // Field 8
+				0, // Field 9
+				0, // Field 10
+				0, // Field 11
+				0, // Field 12
+				0, // Field 13
+				0, // Field 14
+				0, // Field 15
+				0, // Field 16
+				0, // Field 17
+				0, // Field 18
+				0, // Field 19 :: White Home
+				0, // Field 20 :: White Home
+				0, // Field 21 :: White Home
+				0, // Field 22 :: White Home
+				0, // Field 23 :: White Home 
+				0 // Field 24 :: White Home
+			];
+		}
 
 		// <inheritdoc />
 		public override GameModus Modus => GameModus.Plakoto;
@@ -87,8 +85,8 @@ namespace GammonX.Engine.Models
 		// <inheritdoc />
 		public override int[] Fields { get; protected set; }
 
-        // <inheritdoc />
-        public int[] PinnedFields { get; private init; }
+		// <inheritdoc />
+		public int[] PinnedFields { get; private init; }
 
 		// <inheritdoc />
 		public override Range HomeRangeWhite { get; } = new(18, 23);
@@ -113,9 +111,9 @@ namespace GammonX.Engine.Models
 				BearOffCountBlack = BearOffCountWhite,
 				// assign black values to white
 				BearOffCountWhite = BearOffCountBlack,
-				// inverted board fieds
+				// inverted board fields
 				Fields = invertedFields,
-                PinnedFields = invertedPinnedFields
+				PinnedFields = invertedPinnedFields
 			};
 		}
 
@@ -128,7 +126,7 @@ namespace GammonX.Engine.Models
 				BearOffCountBlack = BearOffCountBlack,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
-                PinnedFields = (int[])PinnedFields.Clone()
+				PinnedFields = (int[])PinnedFields.Clone()
 			};
 		}
 
@@ -136,16 +134,30 @@ namespace GammonX.Engine.Models
 		protected override int GetPipCount(bool isWhite)
 		{
 			var pipCount = base.GetPipCount(isWhite);
-            var fieldsCopy = PinnedFields.ToArray();
+			var fieldsCopy = PinnedFields.ToArray();
 			if (isWhite)
-            {
+			{
 				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy, HomeRangeWhite.End.Value, (i) => i < 0);
 			}
-            else
-            {
+			else
+			{
 				pipCount += GetPipeCountForBoard(isWhite, fieldsCopy, HomeRangeBlack.End.Value, (i) => i > 0);
 			}
-            return pipCount;
+
+			return pipCount;
+		}
+
+		// <inheritdoc />
+		protected override bool EqualsVariantState(BoardBaseImpl other)
+		{
+			return other is PlakotoBoardModelImpl otherBoard
+			       && PinnedFields.SequenceEqual(otherBoard.PinnedFields);
+		}
+
+		// <inheritdoc />
+		protected override void AddVariantStateHash(ref HashCode hash)
+		{
+			AddArrayHash(ref hash, PinnedFields);
 		}
 	}
 }

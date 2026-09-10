@@ -60,7 +60,7 @@ namespace GammonX.Engine.Services
             var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
             // We only return move sequences which are unique in their board state when the sequence was played
             var sequences = new List<MoveSequenceModel>();
-            var seen = new HashSet<int>();
+            var seen = new HashSet<IBoardModel>();
             foreach (var item in sequencesByBoardHash)
             {
                 if (seen.Add(item.Item1))
@@ -442,11 +442,11 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private List<(int, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
+        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
         {
             var sortedRolls = rolls.ToList();
             sortedRolls.Sort();
-            var results = new List<(int, MoveSequenceModel)>();
+            var results = new List<(IBoardModel, MoveSequenceModel)>();
             ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results);
             return results;
         }
@@ -457,7 +457,7 @@ namespace GammonX.Engine.Services
             List<int> remainingRolls,
             List<MoveModel> currentMoves,
             List<int> usedDices,
-            List<(int, MoveSequenceModel)> results)
+            List<(IBoardModel, MoveSequenceModel)> results)
         {
             var anyMovePossible = false;
 
@@ -500,10 +500,8 @@ namespace GammonX.Engine.Services
                 var moveSeq = new MoveSequenceModel();
                 moveSeq.Moves.AddRange(currentMoves);
                 moveSeq.UsedDices.AddRange(usedDices);
-                // TODO: implement proper hash in base models
-                var boardHash = board.Fields.Aggregate(0, HashCode.Combine);
-                // we allow the same end board hash because in some cases we want to return all known move combinations
-                results.Add(new ValueTuple<int, MoveSequenceModel>(boardHash, moveSeq));
+                var boardSnapshot = (IBoardModel)((ICloneable)board).Clone();
+                results.Add(new ValueTuple<IBoardModel, MoveSequenceModel>(boardSnapshot, moveSeq));
             }
         }
 
@@ -593,7 +591,7 @@ namespace GammonX.Engine.Services
             return moves;
         }
 
-        private static IEnumerable<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel> sequences, int[] rolls)
+        private static IEnumerable<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel>? sequences, int[] rolls)
         {
             // if possible: only sequences that use all dice
             // if not possible: only sequences that use the highest dice

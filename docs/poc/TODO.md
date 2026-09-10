@@ -5,7 +5,6 @@
 - ?
 
 ## Beta Preparation
-- push most recent nn models
 - validate dynamodb layer
 - validte re-connect handling
 
@@ -19,7 +18,6 @@
     - client side workflow
     - match equity/stats after match :: win percentage to user
 - bot services as lambda containers/functions
-- verify dynamodb items (e.g. datetime)
 - validate start index for fevga/plakoto
 - resilience patterns
     - retry/timeouts
@@ -34,10 +32,7 @@
         - client connects with routing hint
         - load balancer routes based on hint
         - direct task routing ECS Service Discovery (AWS Cloud Map)
-- mars bot MET tables
-    - match equity for all match variants
 - update nn arch of plakoto/fevga to > 5
-- subscription service (clients ide?)
 
 ## Open Points
 - export matches to sgf/.mat format
