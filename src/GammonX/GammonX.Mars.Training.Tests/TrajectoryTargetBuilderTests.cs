@@ -1,5 +1,6 @@
 using GammonX.Mars.Training.Sidecars;
 using GammonX.Mars.Training.Validation;
+
 using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Training.Tests;

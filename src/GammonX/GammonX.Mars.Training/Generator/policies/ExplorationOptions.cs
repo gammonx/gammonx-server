@@ -41,12 +41,12 @@
         public bool ScoreGapAwareExplorationEnabled { get; init; }
 
         /// <summary>
-        /// Gets a lower score gap threshold which identicates identical scores.
+        /// Gets a lower score gap threshold which indicates identical scores.
         /// </summary>
         public double ScoreGapSmallThreshold { get; init; } = 0.1d;
 
         /// <summary>
-        /// Gets a higher score gap threshhold which identicates a significant score gap.
+        /// Gets a higher score gap threshold which indicates a significant score gap.
         /// </summary>
         public double ScoreGapLargeThreshold { get; init; } = 0.5d;
 

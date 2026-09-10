@@ -24,7 +24,7 @@ public sealed class TrajectoryCsvWriterTests
             TrajectoryCsvWriter.WritePositions(path, [row]);
 
             var lines = File.ReadAllLines(path);
-            Assert.Equal("gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss", lines[0]);
+            Assert.Equal(WellKnownCsvHeaders.TrajectorySidecarHeader, lines[0]);
             var columns = lines[1].Split(',');
             Assert.Equal(gameId.ToString("D"), columns[0]);
             Assert.Equal("2", columns[1]);
@@ -54,7 +54,7 @@ public sealed class TrajectoryCsvWriterTests
                 [new GameMetadata(gameId, 12, true, GameResult.Gammon, GameResult.LostGammon)]);
 
             var lines = File.ReadAllLines(path);
-            Assert.Equal("gameId,totalTurns,whiteWon,winnerResult,loserResult", lines[0]);
+            Assert.Equal(WellKnownCsvHeaders.GamesSidecarHeader, lines[0]);
             Assert.Equal($"{gameId:D},12,1,Gammon,LostGammon", lines[1]);
         }
         finally

@@ -2,6 +2,7 @@ using System.Globalization;
 
 using GammonX.Mars.Training.Data;
 using GammonX.Mars.Training.Sidecars;
+
 using GammonX.Models.Enums;
 
 namespace GammonX.Mars.Training.Tests;

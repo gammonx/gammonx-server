@@ -2,7 +2,7 @@
 
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-using GammonX.Mars.Training.Validation;
+
 using GammonX.Models.Enums;
 
 using TorchSharp;
@@ -31,14 +31,12 @@ public static class NetTrainer
         GameOutcomeOutputMode outputMode = GameOutcomeOutputMode.MonotonicCumulative,
         NetArchitecture architecture = NetArchitecture.A)
     {
-        // we expect a higher learing rate for a bigger batch size
+        // we expect a higher learning rate for a bigger batch size
         // combination: batchSize=40960, learningRate=1e-4f (until default gen9)
-        // result: 5.32M samples / 40,960 batche size ≈ 130 optimizer updates per epoch
+        // result: 5.32M samples / 40,960 batch size ≈ 130 optimizer updates per epoch
 
         // combination: batchSize=16384, learningRate=1e-4f (since default gen9-1)
-        // result: 5.32M samples / 16,384 batche size ≈ 325 optimizer updates per epoch
-
-        // TODO: write all settings into model metadata
+        // result: 5.32M samples / 16,384 batch size ≈ 325 optimizer updates per epoch
 
         // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
@@ -178,15 +176,6 @@ public static class NetTrainer
 
             scheduler.step(valMetrics.Loss);
 
-            // enable if output constraint metrics are needed for debugging
-            //if (trainMetrics.ConstraintMetrics != null && valMetrics.ConstraintMetrics != null)
-            //{
-            //    // We log metrics for the constraint validator, which checks that the model outputs are consistent with the game rules
-            //    Console.WriteLine("Constraint Metrics:");
-            //    Console.WriteLine($"  train: {FormatConstraintMetrics(trainMetrics.ConstraintMetrics)}");
-            //    Console.WriteLine($"  val  : {FormatConstraintMetrics(valMetrics.ConstraintMetrics)}");
-            //}
-
             if (epochsWithoutImprovement >= earlyStoppingPatience)
             {
                 Console.WriteLine($"Early stopping — best val_loss={bestValLoss:F5} at epoch {bestEpoch}");
@@ -248,14 +237,5 @@ public static class NetTrainer
             : ["pWin", "pGW", "pBgW", "pGL", "pBgL"];
 
         return string.Join(", ", names.Zip(losses, (name, value) => $"{name}={value:F5}"));
-    }
-
-    private static string FormatConstraintMetrics(ConstraintMetricsResult metrics)
-    {
-        return $"invalid={metrics.InvalidRowCount}/{metrics.RowCount} ({metrics.InvalidRate:P2}), " +
-            $"rules={metrics.RuleViolationCount}, avgSev={metrics.AverageSeverity:G4}, maxSev={metrics.MaxSeverity:G4}, " +
-            $"range={metrics.RangeViolationRows}, GW={metrics.WinGammonHierarchyViolationRows}, " +
-            $"BgW={metrics.WinBackgammonHierarchyViolationRows}, loseCompl={metrics.LoseGammonComplementViolationRows}, " +
-            $"BgL={metrics.LoseBackgammonHierarchyViolationRows}";
     }
 }

@@ -23,7 +23,7 @@ namespace GammonX.Mars.Training.Sidecars
         {
             // The reader expects this exact header and column order.
             using var writer = new StreamWriter(path, append: false, Encoding.UTF8);
-            writer.WriteLine(Constants.ExplorationCsvHeader);
+            writer.WriteLine(WellKnownCsvHeaders.ExplorationSidecarHeader);
 
             foreach (var decision in decisions)
             {

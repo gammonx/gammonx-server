@@ -22,7 +22,7 @@ internal sealed record EpochMetricsResult(
 /// and the final metrics require only one device-to-host read.
 /// </summary>
 /// <remarks>
-/// Add each batchs summed per-output losses together with its row count. For example,
+/// Add each batch summed per-output losses together with its row count. For example,
 /// two batches containing 32 and 16 rows are averaged using 48 total rows rather than
 /// averaging the two batch means equally. When enabled, prediction constraint metrics
 /// are accumulated alongside the loss metrics.

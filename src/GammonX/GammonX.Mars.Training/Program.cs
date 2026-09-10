@@ -427,17 +427,16 @@ static void WriteShuffledCsv(
 
 static void MergeGameMetadataCsv(IReadOnlyList<string> inputPaths, string outputPath)
 {
-    const string expectedHeader = "gameId,totalTurns,whiteWon,winnerResult,loserResult";
     var gameIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8);
-    writer.WriteLine(expectedHeader);
+    writer.WriteLine(WellKnownCsvHeaders.GamesSidecarHeader);
 
     foreach (var path in inputPaths)
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
-        if (header != expectedHeader)
+        if (header != WellKnownCsvHeaders.GamesSidecarHeader)
             throw new InvalidDataException($"Unexpected game metadata header in '{path}'.");
 
         string? line;

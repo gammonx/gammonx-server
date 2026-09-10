@@ -1,4 +1,3 @@
-using GammonX.Mars.Training.Data;
 using static TorchSharp.torch;
 
 namespace GammonX.Mars.Training.Tests;
@@ -79,8 +78,7 @@ public sealed class BinaryBatchEnumeratorTests
         try
         {
             File.WriteAllText(csvPath, "f0,f1,pWin\n1,10,0.25\n");
-            File.WriteAllText(sidecarPath, "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss\n" +
-                $"{Guid.NewGuid():D},0,1,1,0.5,0,0,0,0\n");
+            File.WriteAllText(sidecarPath,  WellKnownCsvHeaders.TrajectorySidecarHeader + "\n" + $"{Guid.NewGuid():D},0,1,1,0.5,0,0,0,0\n");
 
             var (featureCount, rowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(csvPath, binaryPath, labelCount: 1);
 

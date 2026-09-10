@@ -12,7 +12,7 @@ public static class TrajectoryCsvWriter
     public static void WritePositions(string path, IEnumerable<TrainingDataRow> rows)
     {
         using var writer = new StreamWriter(path, append: false, Encoding.UTF8);
-        writer.WriteLine("gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss");
+        writer.WriteLine(WellKnownCsvHeaders.TrajectorySidecarHeader);
 
         foreach (var row in rows)
         {
@@ -41,7 +41,7 @@ public static class TrajectoryCsvWriter
     public static void WriteGames(string path, IEnumerable<GameMetadata> games)
     {
         using var writer = new StreamWriter(path, append: false, Encoding.UTF8);
-        writer.WriteLine("gameId,totalTurns,whiteWon,winnerResult,loserResult");
+        writer.WriteLine(WellKnownCsvHeaders.GamesSidecarHeader);
 
         foreach (var game in games)
         {

@@ -33,7 +33,7 @@ public readonly record struct SelectiveTwoPlyDecision(SelectiveTwoPlyReason Reas
 }
 
 /// <summary>
-/// Represents a policy for selectively perfoming a 2-ply evaluation of candidate moves based on the results of a 1-ply evaluation.
+/// Represents a policy for selectively performing a 2-ply evaluation of candidate moves based on the results of a 1-ply evaluation.
 /// </summary>
 /// <remarks>
 /// This policy is designed to reduce the number of 2-ply evaluations performed during training by only performing a 2-ply evaluation
