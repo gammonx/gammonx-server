@@ -33,7 +33,7 @@ public sealed class SelfPlayRunnerTests
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 3),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.TwoPly))
+                BotLevel.Expert))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
@@ -126,7 +126,7 @@ public sealed class SelfPlayRunnerTests
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 5),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.TwoPly))
+                BotLevel.Expert))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
@@ -222,7 +222,7 @@ public sealed class SelfPlayRunnerTests
         var exception = Assert.Throws<ArgumentException>(() => new SelfPlayRunner(
             recorder,
             modus,
-            new SelfPlayEntry(model, BotLevel.TwoPly),
+            new SelfPlayEntry(model, BotLevel.Expert),
             selectiveTwoPlyOptions: new SelectiveTwoPlyOptions { Enabled = true }));
 
         Assert.Equal("selectiveTwoPlyOptions", exception.ParamName);

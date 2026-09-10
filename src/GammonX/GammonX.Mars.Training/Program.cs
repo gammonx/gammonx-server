@@ -167,9 +167,9 @@ static async Task RunTournamentAsync()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
-    var modelBBotLevel = PromptEnum("Model B bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelBBotLevel = PromptEnum("Model B bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
     var evalBatchSize = PromptInt("Eval Batch Size", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
@@ -203,7 +203,7 @@ static async Task RunBotServiceTournamentAsync()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
     var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
 
     if (!File.Exists(modelAPath))
@@ -978,9 +978,9 @@ static async Task RunGenerateTrainingDataAsync()
     var outputPath = PromptString("Output CSV path", "training_data.csv");
     var validationSplitSeed = PromptInt("Validation split seed", GameGroupedShuffler.DefaultValidationSplitSeed);
     var modelAPath = PromptString("Model A path. Leave blank for linear.", "");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var modelBPath = PromptString("Model B path. Leave blank for single-model or linear.", "");
-    var modelBBotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelBBotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     // we expect with a lambda below < 1.0 smooth intermediate labels, not just binary 1/0.
     // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
     // we also expect near-0.5 positions to increase above 0.0%
@@ -1044,7 +1044,7 @@ static async Task RunGenerateTrainingDataAsync()
         return;
     }
 
-    if (selectiveTwoPlyEnabled && modelABotLevel == BotLevel.TwoPly)
+    if (selectiveTwoPlyEnabled && modelABotLevel == BotLevel.Expert)
     {
         Console.WriteLine("Selective 2-ply search requires a 1-ply Model A bot level.");
         return;

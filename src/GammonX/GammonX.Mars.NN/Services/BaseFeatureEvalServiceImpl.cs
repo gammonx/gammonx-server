@@ -117,8 +117,9 @@ namespace GammonX.Mars.NN.Services
             var boardContract = contract.Board;
             var board = BoardService.CreateBoard(boardContract);
             var isWhite = contract.IsWhite;
+            var searchDepth = contract.BotLevel.ToSearchDepth();
 
-            if (contract.BotLevel == BotLevel.TwoPly && _neuralEvalService != null)
+            if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
             {
                 // we calculate the score based on a two-ply evaluation of the resulting board state
                 var twoPlyScore = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);
@@ -209,6 +210,7 @@ namespace GammonX.Mars.NN.Services
             BotLevel botLevel)
         {
             var evals = new List<FinalEvalResultModel>();
+            var searchDepth = botLevel.ToSearchDepth();
 
             for (var idx = 0; idx < evalCount; idx++)
             {
@@ -228,7 +230,7 @@ namespace GammonX.Mars.NN.Services
                     var evalModel = NormalizedEvalResultModel.From(eval);
                     var score = 0d;
 
-                    if (botLevel == BotLevel.TwoPly && _neuralEvalService != null)
+                    if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the score based on a two-ply evaluation of the resulting board state
                         score = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);

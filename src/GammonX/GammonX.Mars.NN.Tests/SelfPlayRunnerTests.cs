@@ -399,7 +399,7 @@ namespace GammonX.Mars.NN.Tests
             var diceService = new DiceServiceFactory().Create(DiceServiceType.Simple);
 
             var isWhite = true;
-            var whiteBotLevel = BotLevel.TwoPly;
+            var whiteBotLevel = BotLevel.Expert;
             var blackBotLevel = BotLevel.Hard;
             const int maxTurns = 1000;
             var turnCount = 0;

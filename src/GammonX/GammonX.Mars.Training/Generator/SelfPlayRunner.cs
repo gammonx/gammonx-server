@@ -76,7 +76,7 @@ namespace GammonX.Mars.Training.Generator
 
             if (_selectiveTwoPlyOptions.Enabled && _entryA?.EvalService == null)
                 throw new ArgumentException("Selective two-ply search requires a neural Model A.", nameof(selectiveTwoPlyOptions));
-            if (_selectiveTwoPlyOptions.Enabled && _entryA?.BotLevel == BotLevel.TwoPly)
+            if (_selectiveTwoPlyOptions.Enabled && _entryA?.BotLevel == BotLevel.Expert)
                 throw new ArgumentException("Selective two-ply search requires a one-ply Model A bot level.", nameof(selectiveTwoPlyOptions));
         }
 
@@ -561,7 +561,7 @@ namespace GammonX.Mars.Training.Generator
                     isWhite,
                     candidates,
                     contactWeights,
-                    BotLevel.TwoPly);
+                    BotLevel.Expert);
 
                 if (evaluatedResults.Count != candidates.Length)
                     throw new InvalidOperationException("Candidate evaluation must return one result per requested move sequence.");

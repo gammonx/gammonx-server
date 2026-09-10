@@ -1,5 +1,4 @@
 ﻿using GammonX.Engine.Models;
-
 using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Models
@@ -11,9 +10,15 @@ namespace GammonX.Mars.NN.Models
     /// <seealso cref="FinalEvalResultModel"/>
     public class FinalEvalResultModels : List<FinalEvalResultModel>
     {
-        public FinalEvalResultModels() : base() { }
-            
-        public FinalEvalResultModels(IEnumerable<FinalEvalResultModel> collection) : base(collection) { }
+        public FinalEvalResultModels()
+        {
+            // pass
+        }
+
+        public FinalEvalResultModels(IEnumerable<FinalEvalResultModel> collection) : base(collection)
+        {
+            // pass
+        }
 
         /// <summary>
         /// Select a move sequence based on the given <paramref name="botLevel"/>.
@@ -32,9 +37,10 @@ namespace GammonX.Mars.NN.Models
                     {
                         // we want to return a random move from the worst half (third and fourth quartile)
                         var moveSeqIndex = Random.Shared.Next(halfCount - 1, Count - 1);
-                        return this[moveSeqIndex]?.MoveSequence ?? new MoveSequenceModel();
+                        return this[moveSeqIndex].MoveSequence;
                     }
                 }
+
                 return new MoveSequenceModel();
             }
 
@@ -49,10 +55,11 @@ namespace GammonX.Mars.NN.Models
                     var moveSeqIndex = Random.Shared.Next(startIndex, endIndex - 1);
                     return this[moveSeqIndex].MoveSequence;
                 }
+
                 return new MoveSequenceModel();
             }
 
-            if (botLevel == BotLevel.Hard || botLevel == BotLevel.TwoPly)
+            if (botLevel == BotLevel.Hard || botLevel == BotLevel.Expert)
             {
                 // we always return the best move possible
                 return this.FirstOrDefault()?.MoveSequence ?? new MoveSequenceModel();
@@ -84,6 +91,6 @@ namespace GammonX.Mars.NN.Models
             Score = score;
             MoveSequence = moveSequence;
             EvalResult = evalResult;
-        }    
+        }
     }
 }

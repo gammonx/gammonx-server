@@ -66,7 +66,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
-                BotLevel = BotLevel.TwoPly
+                BotLevel = BotLevel.Expert
             };
             var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights);
             Assert.NotNull(resultWhite);
@@ -602,7 +602,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
         [Theory]
         [InlineData(BotLevel.Hard)]
-        [InlineData(BotLevel.TwoPly)]
+        [InlineData(BotLevel.Expert)]
         public async Task EvalBoardStateUsesSameTerminalEquityAtEverySearchDepth(BotLevel botLevel)
         {
             var neural = new Mock<INeuralEvalService>();
@@ -656,7 +656,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 {
                     Modus = modus,
                     IsWhite = true,
-                    BotLevel = BotLevel.TwoPly,
+                    BotLevel = BotLevel.Expert,
                     Board = board
                 },
                 contactWeights);
@@ -709,7 +709,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights))
                 .Score;
 
-            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.TwoPly))
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.Expert))
                 [0].Score;
 
             Assert.Equal(immediateScore, onePlyScore);
