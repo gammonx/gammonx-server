@@ -101,6 +101,25 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Theory]
+        [InlineData(-3.0, 3.0)]
+        [InlineData(-0.75, 0.75)]
+        [InlineData(0.0, 0.0)]
+        [InlineData(0.75, -0.75)]
+        [InlineData(3.0, -3.0)]
+        public async Task PreservesLeafEquityUnitsWhenConvertingPerspective(
+            double opponentEquity,
+            double expectedActivePlayerEquity)
+        {
+            var harness = CreateHarness(_ => [CreateSequence(1)]);
+            var evaluator = CreateEvaluator(harness, (_, _) => Task.FromResult(opponentEquity));
+
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+
+            Assert.Equal(expectedActivePlayerEquity, score, 10);
+            Assert.InRange(score, -3.0, 3.0);
+        }
+
+        [Theory]
         [InlineData(true, false)]
         [InlineData(false, true)]
         public async Task PassesWhenOpponentHasNoLegalResponseAndRestoresTheBoard(
