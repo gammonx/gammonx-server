@@ -77,7 +77,7 @@ public sealed class ConstrainedTrainingTests
         };
 
         using var writer = new StreamWriter(path);
-        writer.WriteLine(string.Join(',', Enumerable.Range(0, 216).Select(index => $"f{index}")) + ",pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss");
+        writer.WriteLine(string.Join(',', Enumerable.Range(0, 216).Select(index => $"f{index}")) + "," + WellKnownCsvHeaders.TrainingDataHeader);
         foreach (var row in labels)
         {
             writer.WriteLine(

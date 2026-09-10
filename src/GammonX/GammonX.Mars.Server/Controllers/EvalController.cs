@@ -67,7 +67,7 @@ namespace GammonX.Mars.Server.Controllers
         {
             try
             {
-                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus); ;
+                var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
                 contactWeights.Validate();
                 var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights);

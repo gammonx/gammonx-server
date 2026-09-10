@@ -1,4 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+prepare_lambda_zip() {
+  local zip_file=/tmp/lambdas/lambda.zip
+  local package_dir=/tmp/lambda-package
+
+  if [ ! -f "$zip_file" ]; then
+    echo "$zip_file not found!"
+    return 1
+  fi
+
+  rm -rf "$package_dir"
+  mkdir -p "$package_dir"
+  unzip -q "$zip_file" -d "$package_dir"
+  chmod 755 "$package_dir/bootstrap" "$package_dir/GammonX.Lambda"
+
+  if ! (cd "$package_dir" && zip -q -r -X "$zip_file" .); then
+    rm -rf "$package_dir"
+    return 1
+  fi
+
+  rm -rf "$package_dir"
+}
+
 delete_mappings() {
   local function_name=$1
 
@@ -173,6 +195,7 @@ update_env_value() {
 }
 
 ### API GATEWAY ###
+prepare_lambda_zip || exit 1
 api_lambda_fn="API_GATEWAY_HANDLER"
 create_api_gateway_zip_lambda "$api_lambda_fn"
 api_id=$(create_rest_api "gammonx")

@@ -5,14 +5,12 @@ namespace GammonX.Mars.Training.Sidecars;
 
 public static class SelectiveTwoPlySearchCsvWriter
 {
-    public const string Header = "gameId,modus,turnIndex,againstBot,candidateCount,evaluatedCandidateCount,selectiveCandidateLimit,onePlyBestScore,onePlySecondBestScore,onePlyScoreGap,reason,twoPlyBestScore,twoPlySecondBestScore,twoPlyScoreGap,bestMoveChanged,twoPlyBestOnePlyRank";
-
     private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
     public static void WriteDecisions(string path, IEnumerable<SelectiveTwoPlySearchDecision> decisions)
     {
         using var writer = new StreamWriter(path, append: false, Encoding.UTF8);
-        writer.WriteLine(Header);
+        writer.WriteLine(WellKnownCsvHeaders.SelectiveTwoPlySearchSidecarHeader);
 
         foreach (var decision in decisions)
         {

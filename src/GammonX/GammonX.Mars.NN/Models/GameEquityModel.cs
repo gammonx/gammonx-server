@@ -42,10 +42,11 @@
         public double LoseBackgammonP { get; }
 
         /// <summary>
-        /// Gets the computed game equity.
+        /// Gets the cubeless game equity: the expected number of points won or lost at cube value 1, in the range [-3, 3].
         /// </summary>
         /// <summary>
         /// Gets the expected game equity, where wins are positive and losses are negative.
+        /// Backgammon Formula = E = P(SW) + 2P(GW) + 3P(BGW) − P(SL) − 2P(GL) − 3P(BGL)
         /// </summary>
         public double Equity { get; private set; }
 
@@ -101,7 +102,7 @@
         }
 
         /// <summary>
-        /// Calculates expected equity by weighting each atomic result by its game value.
+        /// Calculates expected equity (cubeless game points) by weighting each atomic result by its game value.
         /// </summary>
         private static double CalculateEquity(GameEquityModel model)
         {

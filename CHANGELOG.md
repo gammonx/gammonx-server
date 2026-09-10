@@ -1,5 +1,10 @@
 # Changelog
 
+## 10.09.2026
+- updated default nn model to gen11
+- proper equality and hashcode implementation for base board models
+- some general cleanup regarding test environment, setup and others
+
 ## 08.09.2026
 ### Mars Bot
 - updated default nn model to gen10
@@ -14,12 +19,12 @@
 	- implemented monotonic cumulative output mode for default models
 	- removed cheap and race feature eval, always run full eval
 	- memory optimizations for feature extractors
-	- fixed forward TD view caulculator
+	- fixed forward TD view calculator
 - training console modes
 	- added rank aware exploration and its analysis
 	- added selective 2-ply search and its analysis
 	- allow a per game group shuffle
-	- added different sidecards to recalculate existing training data
+	- added different sidecars to recalculate existing training data
 	- made use of a binary file format for reading and processing training data
 ### Engine
 - refactored legal move generation for bot purposes returning a list of move which results in unique end board state (`GetUniqueLegalMoveSequences`)

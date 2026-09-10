@@ -76,7 +76,7 @@ public static class TrajectoryConstraintAuditor
 
         if (currentModelPath is null)
         {
-            // Without a current model, the trajectorys stored predictions are the source to audit.
+            // Without a current model, the trajectories stored predictions are the source to audit.
             foreach (var prediction in TrajectoryCsvReader.ReadPredictions(trajectoryCsvPath))
             {
                 sourceMetrics?.AddRow(prediction);

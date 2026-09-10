@@ -21,7 +21,7 @@ Console.WriteLine("===========================================");
 Console.WriteLine();
 Console.WriteLine("  1  Generate Training Data");
 Console.WriteLine("  2  Train Mode");
-Console.WriteLine("  3  Shuffle Mode");
+Console.WriteLine("  3  Merge and Shuffle Mode");
 Console.WriteLine("  4  Noise floor Mode");
 Console.WriteLine("  5  Tournament Mode");
 Console.WriteLine("  6  Tournament Mode against wildbg");
@@ -97,7 +97,7 @@ static void RunTrainModel()
     var outputModelPath = PromptString("Output model path", "training_net.dat");
     var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
     // we assume that a batch size of 4096 takes up 10MB of GPU RAM
-    // batch size influneces the amount of optimizer updates per epoch, so a smaller batch size will result in more updates and potentially better convergence
+    // batch size influences the amount of optimizer updates per epoch, so a smaller batch size will result in more updates and potentially better convergence
     var batchSize = PromptInt("Batch size", 16384);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
@@ -107,7 +107,8 @@ static void RunTrainModel()
     if (string.IsNullOrEmpty(inputModelPath))
     {
         netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
-        outputMode = PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative);
+        outputMode = PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid],
+            GameOutcomeOutputMode.MonotonicCumulative);
     }
     else
     {
@@ -166,21 +167,23 @@ static async Task RunTournamentAsync()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
     var modelAPath = PromptString("Model A path (model to evaluate)", "model_a.dat");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var modelBPath = PromptString("Model B path (model to play against)", "model_b.dat");
-    var modelBBotLevel = PromptEnum("Model B bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelBBotLevel = PromptEnum("Model B bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
-    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var evalBatchSize = PromptInt("Eval Batch Size", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
     if (!File.Exists(modelAPath))
     {
-        Console.WriteLine($"Model A not found: {modelAPath}"); return;
+        Console.WriteLine($"Model A not found: {modelAPath}");
+        return;
     }
 
     if (!File.Exists(modelBPath))
     {
-        Console.WriteLine($"Model B not found: {modelBPath}"); return;
+        Console.WriteLine($"Model B not found: {modelBPath}");
+        return;
     }
 
     var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
@@ -188,7 +191,7 @@ static async Task RunTournamentAsync()
 
     var contactWeights = EvalWeights.GetContactWeights(modus);
 
-    var result = await TournamentRunner.RunAsync(modus, entryA, entryB, totalGames, contactWeights,evalBatchSize, processCount);
+    var result = await TournamentRunner.RunAsync(modus, entryA, entryB, totalGames, contactWeights, evalBatchSize, processCount);
 
     TournamentRunner.PrintReport(result);
 }
@@ -200,16 +203,17 @@ static async Task RunBotServiceTournamentAsync()
     // backgammon, tavla and portes share the same neural net and feature tensors
     var modus = PromptEnum("Game modus", [GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Backgammon);
     var modelAPath = PromptString("Model path (model to evaluate)", "model_a.dat");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var totalGames = PromptInt("Total games", 1000);
 
     if (!File.Exists(modelAPath))
     {
-        Console.WriteLine($"Model A not found: {modelAPath}"); return;
+        Console.WriteLine($"Model A not found: {modelAPath}");
+        return;
     }
 
     var contactWeights = EvalWeights.GetContactWeights(modus);
-    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var evalBatchSize = PromptInt("Eval Batch Size", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
 
     var entryA = new TournamentEntry(modelAPath, modelABotLevel, null, null);
@@ -245,6 +249,7 @@ static void RunShuffleCsv()
             Console.WriteLine($"  File not found, skipping: {input}");
             continue;
         }
+
         inputPaths.Add(input);
     }
 
@@ -262,21 +267,11 @@ static void RunShuffleCsv()
     string? header = null;
     string? trajectoryHeader = null;
     var trajectoryPaths = inputPaths.Select(path => Path.ChangeExtension(path, ".trajectory.csv")).ToArray();
-    var trajectorySidecarsPresent = trajectoryPaths.Any(File.Exists);
-    if (trajectorySidecarsPresent && trajectoryPaths.Any(path => !File.Exists(path)))
-        throw new InvalidDataException("Either all input trajectory sidecars must exist or none may exist.");
-    if (!trajectorySidecarsPresent)
-    {
-        Console.WriteLine("Game-grouped shuffle requires a matching .trajectory.csv for every input CSV.");
-        return;
-    }
 
     var gameMetadataPaths = inputPaths
         .Select(GetGameMetadataPath)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .ToArray();
-    if (trajectorySidecarsPresent && gameMetadataPaths.Any(path => !File.Exists(path)))
-        throw new InvalidDataException("Trajectory sidecars require a matching .games.csv file for every input.");
 
     var rowIndices = new List<(int fileIndex, long offset, int rowNumber)>();
     var rowGameIds = new List<Guid>();
@@ -295,29 +290,27 @@ static void RunShuffleCsv()
             throw new InvalidDataException($"Header mismatch: {Path.GetFileName(path)} does not match the first input file.");
         }
 
-        if (trajectorySidecarsPresent)
+        var trajectoryIndex = CsvBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
+        if (trajectoryHeader == null)
+            trajectoryHeader = trajectoryIndex.header;
+        else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
+            throw new InvalidDataException($"Trajectory header mismatch: {Path.GetFileName(trajectoryPaths[fileIndex])} does not match the first input sidecar.");
+
+        if (trajectoryIndex.totalRows != rowIndex.totalRows)
+            throw new InvalidDataException($"Trajectory row count mismatch for {Path.GetFileName(path)}.");
+
+        trajectoryOffsets.Add(trajectoryIndex.offsets);
+
+        var gameIds = TrajectoryCsvReader.ReadGameIds(trajectoryPaths[fileIndex]);
+        if (gameIds.Count != rowIndex.totalRows)
+            throw new InvalidDataException($"Trajectory game ID count mismatch for {Path.GetFileName(path)}.");
+
+        for (var rowNumber = 0; rowNumber < rowIndex.offsets.Length; rowNumber++)
         {
-            var trajectoryIndex = CsvBatchEnumerator.BuildRowIndex(trajectoryPaths[fileIndex], labelCount: 0);
-            if (trajectoryHeader == null)
-                trajectoryHeader = trajectoryIndex.header;
-            else if (!string.Equals(trajectoryHeader, trajectoryIndex.header, StringComparison.Ordinal))
-                throw new InvalidDataException($"Trajectory header mismatch: {Path.GetFileName(trajectoryPaths[fileIndex])} does not match the first input sidecar.");
-
-            if (trajectoryIndex.totalRows != rowIndex.totalRows)
-                throw new InvalidDataException($"Trajectory row count mismatch for {Path.GetFileName(path)}.");
-
-            trajectoryOffsets.Add(trajectoryIndex.offsets);
-
-            var gameIds = TrajectoryCsvReader.ReadGameIds(trajectoryPaths[fileIndex]);
-            if (gameIds.Count != rowIndex.totalRows)
-                throw new InvalidDataException($"Trajectory game ID count mismatch for {Path.GetFileName(path)}.");
-
-            for (var rowNumber = 0; rowNumber < rowIndex.offsets.Length; rowNumber++)
-            {
-                rowIndices.Add((fileIndex, rowIndex.offsets[rowNumber], rowNumber));
-                rowGameIds.Add(gameIds[rowNumber]);
-            }
+            rowIndices.Add((fileIndex, rowIndex.offsets[rowNumber], rowNumber));
+            rowGameIds.Add(gameIds[rowNumber]);
         }
+
 
         fileIndex++;
         Console.WriteLine($"  Indexed {rowIndex.totalRows:N0} rows from {Path.GetFileName(path)}");
@@ -341,6 +334,7 @@ static void RunShuffleCsv()
         Console.WriteLine("The stable validation split produced an empty partition. Use more games or a different validation split seed.");
         return;
     }
+
     Console.WriteLine($"Train={split.Training.Count:N0}  Validation={split.Validation.Count:N0}  Seed={validationSplitSeed}");
     Console.WriteLine("Writing CSV files...");
 
@@ -349,20 +343,17 @@ static void RunShuffleCsv()
     // We keep all input file streams open for random-access reading
     var streams = new FileStream[inputPaths.Count];
     var readers = new StreamReader[inputPaths.Count];
-    var trajectoryStreams = trajectorySidecarsPresent ? new FileStream[inputPaths.Count] : [];
-    var trajectoryReaders = trajectorySidecarsPresent ? new StreamReader[inputPaths.Count] : [];
+    var trajectoryStreams = new FileStream[inputPaths.Count];
+    var trajectoryReaders = new StreamReader[inputPaths.Count];
+
     try
     {
         for (var f = 0; f < inputPaths.Count; f++)
         {
             streams[f] = new FileStream(inputPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
             readers[f] = new StreamReader(streams[f]);
-
-            if (trajectorySidecarsPresent)
-            {
-                trajectoryStreams[f] = new FileStream(trajectoryPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
-                trajectoryReaders[f] = new StreamReader(trajectoryStreams[f]);
-            }
+            trajectoryStreams[f] = new FileStream(trajectoryPaths[f], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1 << 16);
+            trajectoryReaders[f] = new StreamReader(trajectoryStreams[f]);
         }
 
         if (string.IsNullOrEmpty(header))
@@ -372,14 +363,10 @@ static void RunShuffleCsv()
 
         WriteShuffledCsv(outputPath, header!, split.Training, rowIndices, streams, readers);
         WriteShuffledCsv(valPath, header!, split.Validation, rowIndices, streams, readers);
-
-        if (trajectorySidecarsPresent)
-        {
-            var trajectoryOutputPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
-            var trajectoryValPath = Path.ChangeExtension(valPath, ".trajectory.csv");
-            WriteShuffledCsv(trajectoryOutputPath, trajectoryHeader!, split.Training, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
-            WriteShuffledCsv(trajectoryValPath, trajectoryHeader!, split.Validation, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
-        }
+        var trajectoryOutputPath = Path.ChangeExtension(outputPath, ".trajectory.csv");
+        var trajectoryValPath = Path.ChangeExtension(valPath, ".trajectory.csv");
+        WriteShuffledCsv(trajectoryOutputPath, trajectoryHeader!, split.Training, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
+        WriteShuffledCsv(trajectoryValPath, trajectoryHeader!, split.Validation, rowIndices, trajectoryStreams, trajectoryReaders, trajectoryOffsets);
     }
     finally
     {
@@ -387,29 +374,19 @@ static void RunShuffleCsv()
         {
             readers[f].Dispose();
             streams[f].Dispose();
-
-            if (trajectorySidecarsPresent)
-            {
-                trajectoryReaders[f].Dispose();
-                trajectoryStreams[f].Dispose();
-            }
+            trajectoryReaders[f].Dispose();
+            trajectoryStreams[f].Dispose();
         }
     }
 
-    if (trajectorySidecarsPresent)
-    {
-        var gamesOutputPath = Path.ChangeExtension(outputPath, ".games.csv");
-        MergeGameMetadataCsv(gameMetadataPaths, gamesOutputPath);
-    }
+    var gamesOutputPath = Path.ChangeExtension(outputPath, ".games.csv");
+    MergeGameMetadataCsv(gameMetadataPaths, gamesOutputPath);
 
     Console.WriteLine($"Written: {outputPath}");
     Console.WriteLine($"Written: {valPath}");
-    if (trajectorySidecarsPresent)
-    {
-        Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".trajectory.csv")}");
-        Console.WriteLine($"Written: {Path.ChangeExtension(valPath, ".trajectory.csv")}");
-        Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".games.csv")}");
-    }
+    Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".trajectory.csv")}");
+    Console.WriteLine($"Written: {Path.ChangeExtension(valPath, ".trajectory.csv")}");
+    Console.WriteLine($"Written: {Path.ChangeExtension(outputPath, ".games.csv")}");
     Console.WriteLine("Complete.");
 }
 
@@ -450,17 +427,16 @@ static void WriteShuffledCsv(
 
 static void MergeGameMetadataCsv(IReadOnlyList<string> inputPaths, string outputPath)
 {
-    const string expectedHeader = "gameId,totalTurns,whiteWon,winnerResult,loserResult";
     var gameIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     using var writer = new StreamWriter(outputPath, append: false, encoding: System.Text.Encoding.UTF8);
-    writer.WriteLine(expectedHeader);
+    writer.WriteLine(WellKnownCsvHeaders.GamesSidecarHeader);
 
     foreach (var path in inputPaths)
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
-        if (header != expectedHeader)
+        if (header != WellKnownCsvHeaders.GamesSidecarHeader)
             throw new InvalidDataException($"Unexpected game metadata header in '{path}'.");
 
         string? line;
@@ -524,11 +500,13 @@ static void RunSelectRandomGames()
             Console.WriteLine($"  File not found, skipping: {input}");
             continue;
         }
+
         if (inputPaths.Any(path => string.Equals(path, input, StringComparison.OrdinalIgnoreCase)))
         {
             Console.WriteLine($"  File already added, skipping: {input}");
             continue;
         }
+
         inputPaths.Add(input);
     }
 
@@ -647,6 +625,7 @@ static void RunSelectRandomGames()
                 gameRows = [];
                 rowsByGame.Add(gameId, gameRows);
             }
+
             gameRows.Add(globalRowIndex);
         }
 
@@ -671,6 +650,7 @@ static void RunSelectRandomGames()
             gameIdsToRemove.Add(gameId);
         }
     }
+
     gameIdsToRemove.ForEach(gameId => rowsByGame.Remove(gameId));
 
     var random = new Random(effectiveSeed);
@@ -743,10 +723,10 @@ static void RunAnalyzeExploration()
     PrintExplorationSummary(report.Overall);
 
     foreach (var group in report.Groups
-        .OrderBy(pair => pair.Key.Modus)
-        .ThenBy(pair => pair.Key.AgainstBot)
-        .ThenBy(pair => pair.Key.EarlyPhase ? 0 : 1)
-        .ThenBy(pair => pair.Key.CandidateBucket))
+                 .OrderBy(pair => pair.Key.Modus)
+                 .ThenBy(pair => pair.Key.AgainstBot)
+                 .ThenBy(pair => pair.Key.EarlyPhase ? 0 : 1)
+                 .ThenBy(pair => pair.Key.CandidateBucket))
     {
         var key = group.Key;
         Console.WriteLine();
@@ -828,6 +808,7 @@ static void PrintSelectiveTwoPlySummary(SelectiveTwoPlySearchSummary summary)
     {
         Console.WriteLine($"    Winner outside K: {summary.AuditWinnerOutsideCandidateLimitCount:N0} ({summary.AuditWinnerOutsideCandidateLimitRate:P2})");
     }
+
     if (summary.AuditWinnerOnePlyRankCounts.Count > 0)
     {
         Console.WriteLine("    Winner 1-ply ranks");
@@ -836,6 +817,7 @@ static void PrintSelectiveTwoPlySummary(SelectiveTwoPlySearchSummary summary)
             Console.WriteLine($"      {rank.Key,3}: {rank.Value:N0}");
         }
     }
+
     Console.WriteLine("  Reasons");
     foreach (var reason in Enum.GetValues<SelectiveTwoPlyReason>())
     {
@@ -996,15 +978,15 @@ static async Task RunGenerateTrainingDataAsync()
     var outputPath = PromptString("Output CSV path", "training_data.csv");
     var validationSplitSeed = PromptInt("Validation split seed", GameGroupedShuffler.DefaultValidationSplitSeed);
     var modelAPath = PromptString("Model A path. Leave blank for linear.", "");
-    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelABotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     var modelBPath = PromptString("Model B path. Leave blank for single-model or linear.", "");
-    var modelBBotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.TwoPly], BotLevel.Hard);
+    var modelBBotLevel = PromptEnum("Model A bot level", [BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert], BotLevel.Hard);
     // we expect with a lambda below < 1.0 smooth intermediate labels, not just binary 1/0.
     // train/val mean should stay below 0.53 to ensure the model does not learn asymmetric win/loss patterns
     // we also expect near-0.5 positions to increase above 0.0%
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
     var playAgainstBotService = PromptBool("Play against wildbg bot", false);
-    var evalBatchSize = PromptInt("Eval Batchsize", 64);
+    var evalBatchSize = PromptInt("Eval Batch Size", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
     // we configure the rank aware exploration parameters (selecting the best move exploration)
     var collectScoreGapDiagnostics = PromptBool("Write score-gap diagnostics", false);
@@ -1062,7 +1044,7 @@ static async Task RunGenerateTrainingDataAsync()
         return;
     }
 
-    if (selectiveTwoPlyEnabled && modelABotLevel == BotLevel.TwoPly)
+    if (selectiveTwoPlyEnabled && modelABotLevel == BotLevel.Expert)
     {
         Console.WriteLine("Selective 2-ply search requires a 1-ply Model A bot level.");
         return;

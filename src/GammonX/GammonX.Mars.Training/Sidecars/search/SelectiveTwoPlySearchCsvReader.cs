@@ -15,7 +15,7 @@ public static class SelectiveTwoPlySearchCsvReader
 
         using var reader = new StreamReader(path);
         var header = reader.ReadLine()?.TrimStart('\uFEFF');
-        var validFormat = string.Equals(header, SelectiveTwoPlySearchCsvWriter.Header, StringComparison.Ordinal);
+        var validFormat = string.Equals(header, WellKnownCsvHeaders.SelectiveTwoPlySearchSidecarHeader, StringComparison.Ordinal);
         if (!validFormat)
         {
             throw new InvalidOperationException($"Incompatible CSV header: {header}");

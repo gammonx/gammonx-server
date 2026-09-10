@@ -14,8 +14,10 @@ public static class TrajectoryCsvReader
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
-        if (header != "gameId,totalTurns,whiteWon,winnerResult,loserResult")
+        if (header != WellKnownCsvHeaders.GamesSidecarHeader)
+        {
             throw new InvalidDataException($"Unexpected game metadata header in '{path}'.");
+        }
 
         var games = new List<GameMetadata>();
         var gameIds = new HashSet<Guid>();
@@ -55,7 +57,7 @@ public static class TrajectoryCsvReader
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
-        if (header != "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss")
+        if (header != WellKnownCsvHeaders.TrajectorySidecarHeader)
             throw new InvalidDataException($"Unexpected trajectory header in '{path}'.");
 
         var gameIds = new List<Guid>();
@@ -81,7 +83,7 @@ public static class TrajectoryCsvReader
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
-        if (header != "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss")
+        if (header != WellKnownCsvHeaders.TrajectorySidecarHeader)
             throw new InvalidDataException($"Unexpected trajectory header in '{path}'.");
 
         var lineNumber = 1;
@@ -126,7 +128,7 @@ public static class TrajectoryCsvReader
         var trajectoryHeader = trajectoryReader.ReadLine();
         if (string.IsNullOrWhiteSpace(trainingHeader))
             throw new InvalidDataException($"Training CSV '{trainingCsvPath}' has no header.");
-        if (trajectoryHeader != "gameId,turnIndex,isWhite,isTerminal,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss")
+        if (trajectoryHeader != WellKnownCsvHeaders.TrajectorySidecarHeader)
             throw new InvalidDataException($"Unexpected trajectory header in '{trajectoryCsvPath}'.");
 
         var trainingColumnCount = trainingHeader.Split(',').Length;

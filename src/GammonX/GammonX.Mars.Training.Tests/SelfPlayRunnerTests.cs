@@ -1,9 +1,13 @@
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
+
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
+
 using GammonX.Mars.Training.Generator;
+
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Moq;
@@ -25,16 +29,16 @@ public sealed class SelfPlayRunnerTests
         var evalService = new Mock<IFeatureEvalService>();
         evalService
             .Setup(service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<GammonX.Models.Contracts.BoardModelContract>(),
+                It.IsAny<BoardModelContract>(),
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 3),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.TwoPly))
+                BotLevel.Expert))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
             evalService.Object,
-            new GammonX.Models.Contracts.BoardModelContract { Fields = new int[24] },
+            new BoardModelContract { Fields = new int[24] },
             true,
             onePlyResults,
             EvalWeights.GetContactWeights(GameModus.Backgammon),
@@ -72,7 +76,7 @@ public sealed class SelfPlayRunnerTests
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
             evalService.Object,
-            new GammonX.Models.Contracts.BoardModelContract { Fields = new int[24] },
+            new BoardModelContract { Fields = new int[24] },
             true,
             onePlyResults,
             EvalWeights.GetContactWeights(GameModus.Backgammon),
@@ -95,7 +99,7 @@ public sealed class SelfPlayRunnerTests
         Assert.Null(result.Decision.TwoPlyBestScore);
         evalService.Verify(
             service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<GammonX.Models.Contracts.BoardModelContract>(),
+                It.IsAny<BoardModelContract>(),
                 It.IsAny<bool>(),
                 It.IsAny<IReadOnlyList<MoveSequenceModel>>(),
                 It.IsAny<ContactWeightModel>(),
@@ -118,16 +122,16 @@ public sealed class SelfPlayRunnerTests
         var evalService = new Mock<IFeatureEvalService>();
         evalService
             .Setup(service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<GammonX.Models.Contracts.BoardModelContract>(),
+                It.IsAny<BoardModelContract>(),
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 5),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.TwoPly))
+                BotLevel.Expert))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
             evalService.Object,
-            new GammonX.Models.Contracts.BoardModelContract { Fields = new int[24] },
+            new BoardModelContract { Fields = new int[24] },
             true,
             onePlyResults,
             EvalWeights.GetContactWeights(GameModus.Backgammon),
@@ -218,7 +222,7 @@ public sealed class SelfPlayRunnerTests
         var exception = Assert.Throws<ArgumentException>(() => new SelfPlayRunner(
             recorder,
             modus,
-            new SelfPlayEntry(model, BotLevel.TwoPly),
+            new SelfPlayEntry(model, BotLevel.Expert),
             selectiveTwoPlyOptions: new SelectiveTwoPlyOptions { Enabled = true }));
 
         Assert.Equal("selectiveTwoPlyOptions", exception.ParamName);

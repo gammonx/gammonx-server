@@ -26,7 +26,7 @@ namespace GammonX.Server.Tests
 
 		public MatchesControllerTests(WebApplicationFactory<Program> factory)
 		{
-			_factory = factory.WithWebHostBuilder(builder =>
+			_factory = factory.WithWebHostBuilder(_ =>
 			{
 				// pass
 			});
@@ -82,13 +82,13 @@ namespace GammonX.Server.Tests
 			{
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
 			}
-			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
+			while (result1.Status == QueueEntryStatus.WaitingForOpponent);
 
 			do
 			{
 				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
 			}
-			while (result2?.Status == QueueEntryStatus.WaitingForOpponent);
+			while (result2.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			Assert.NotNull(result2);

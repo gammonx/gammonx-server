@@ -24,7 +24,7 @@ namespace GammonX.Mars.Training.Sidecars
 
             using var reader = new StreamReader(path);
             var header = reader.ReadLine()?.TrimStart('\uFEFF');
-            if (!string.Equals(header, Constants.ExplorationCsvHeader, StringComparison.Ordinal))
+            if (!string.Equals(header, WellKnownCsvHeaders.ExplorationSidecarHeader, StringComparison.Ordinal))
                 throw new InvalidDataException("The exploration sidecar header is invalid.");
 
             string? line;

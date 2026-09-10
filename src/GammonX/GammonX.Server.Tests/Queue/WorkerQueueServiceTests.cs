@@ -1,6 +1,8 @@
 ﻿using Amazon.Runtime;
 using Amazon.SQS;
 
+using DotNetEnv;
+
 using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
@@ -17,13 +19,33 @@ namespace GammonX.Server.Tests.Queue
 {
     public class WorkerQueueServiceTests
     {
+        static WorkerQueueServiceTests()
+        {
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true")
+            {
+                var envLocal = Path.Combine(AppContext.BaseDirectory, ".env.local");
+                var env = Path.Combine(AppContext.BaseDirectory, ".env");
+
+                if (File.Exists(envLocal))
+                {
+                    Env.Load(envLocal);
+                }
+                else if (File.Exists(env))
+                {
+                    Env.Load(env);
+                }
+            }
+        }
+
+        public static bool IsAwsEnvironment => Environment.GetEnvironmentVariable("TEST_ENVIRONMENT") == "AWS";
+
         private readonly IServiceProvider _serviceProvider;
 
         public WorkerQueueServiceTests()
         {
             var services = new ServiceCollection();
 
-            services.AddSingleton<IAmazonSQS>(sp =>
+            services.AddSingleton<IAmazonSQS>(_ =>
             {
                 // local docker instance
                 var accessKeyId = "local";
@@ -36,28 +58,28 @@ namespace GammonX.Server.Tests.Queue
                 return new AmazonSQSClient(credentials, sqsConfig);
             });
 
-            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, key) =>
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
                 return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/GAME_COMPLETED_QUEUE", WorkQueueType.GameCompleted.GetName());
             });
 
-            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, key) =>
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
                 return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/MATCH_COMPLETED_QUEUE", WorkQueueType.MatchCompleted.GetName());
             });
-            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, key) =>
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
                 return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/PLAYER_CREATED_QUEUE", WorkQueueType.PlayerCreated.GetName());
             });
-            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, key) =>
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
                 return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE", WorkQueueType.StatsUpdated.GetName());
             });
-            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, key) =>
+            services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
                 return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/RATING_UPDATED_QUEUE", WorkQueueType.RatingUpdated.GetName());
@@ -67,7 +89,7 @@ namespace GammonX.Server.Tests.Queue
 
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanEnqueueRatingUpdateRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -75,7 +97,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanEnqueueStatUpdateRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -83,7 +105,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanEnqueueMatchRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
@@ -91,7 +113,7 @@ namespace GammonX.Server.Tests.Queue
             await service.EnqueueMatchResultAsync(match, CancellationToken.None);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanEnqueueGameRecord()
         {
             var service = new WorkQueueService(_serviceProvider);

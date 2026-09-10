@@ -15,11 +15,11 @@ public static class TrainingCsvWriter
     {
         using var writer = new StreamWriter(path);
 
-        // TODO: implement 5 head ouput for fevga and plakoto
+        // TODO: implement 5 head output for fevga and plakoto
         var singleHead = modus is GameModus.Fevga or GameModus.Plakoto;
         var labelHeaders = singleHead
-            ? "pWin"
-            : "pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss";
+            ? WellKnownCsvHeaders.TrainingDataHeaderLegacy
+            : WellKnownCsvHeaders.TrainingDataHeader;
 
         writer.WriteLine(string.Join(",", Enumerable.Range(0, featureCount).Select(index => $"f{index}")) + "," + labelHeaders);
 

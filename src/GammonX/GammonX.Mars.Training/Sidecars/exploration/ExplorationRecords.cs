@@ -4,17 +4,6 @@ using GammonX.Models.Enums;
 namespace GammonX.Mars.Training.Sidecars
 {
     /// <summary>
-    /// Defines constants shared by exploration sidecar readers and writers.
-    /// </summary>
-    public static class Constants
-    {
-        /// <summary>
-        /// Gets the comma-separated header for the twelve-column exploration decision format.
-        /// </summary>
-        public const string ExplorationCsvHeader = "gameId,modus,turnIndex,earlyPhase,againstBot,candidateCount,bestScore,secondBestScore,scoreGap,choice,selectedRank,selectedScore";
-    }
-
-    /// <summary>
     /// Provides diagnostic methods for exploration policies.
     /// </summary>
     /// <param name="GameId">Unique game identifier.</param>

@@ -66,7 +66,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
-                BotLevel = BotLevel.TwoPly
+                BotLevel = BotLevel.Expert
             };
             var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights);
             Assert.NotNull(resultWhite);
@@ -600,6 +600,72 @@ namespace GammonX.Mars.NN.Tests.Services
                 It.IsAny<bool>()), Times.Never);
         }
 
+        [Theory]
+        [InlineData(BotLevel.Hard)]
+        [InlineData(BotLevel.Expert)]
+        public async Task EvalBoardStateUsesSameTerminalEquityAtEverySearchDepth(BotLevel botLevel)
+        {
+            var neural = new Mock<INeuralEvalService>();
+            var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
+            var request = new EvalBoardRequestContract
+            {
+                Modus = GameModus.Backgammon,
+                IsWhite = true,
+                BotLevel = botLevel,
+                Board = new BoardModelContract
+                {
+                    Fields = new int[24],
+                    BearOffCountWhite = 15,
+                    HomeBarCountBlack = 1
+                }
+            };
+
+            var score = await service.EvalBoardStateAsync(
+                request,
+                EvalWeights.GetContactWeights(GameModus.Backgammon));
+
+            Assert.Equal(3.0, score);
+            neural.Verify(neuralService => neuralService.PredictAsync(
+                It.IsAny<NormalizedEvalResultModel>(),
+                It.IsAny<IBoardModel>(),
+                It.IsAny<bool>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task EvalBoardStateUsesSameCubelessEquityUnitsAtEverySearchDepth()
+        {
+            var modus = GameModus.Backgammon;
+            var service = new DefaultFeatureEvalService(new FixedPerspectiveNeuralEvalService(), modus);
+            var contactWeights = EvalWeights.GetContactWeights(modus);
+            var board = new BoardModelContract
+            {
+                Fields = CreateRaceFields()
+            };
+
+            var onePlyScore = await service.EvalBoardStateAsync(
+                new EvalBoardRequestContract
+                {
+                    Modus = modus,
+                    IsWhite = true,
+                    BotLevel = BotLevel.Hard,
+                    Board = board
+                },
+                contactWeights);
+            var twoPlyScore = await service.EvalBoardStateAsync(
+                new EvalBoardRequestContract
+                {
+                    Modus = modus,
+                    IsWhite = true,
+                    BotLevel = BotLevel.Expert,
+                    Board = board
+                },
+                contactWeights);
+
+            Assert.Equal(0.5, onePlyScore, 6);
+            Assert.Equal(onePlyScore, twoPlyScore, 6);
+            Assert.InRange(twoPlyScore, -3.0, 3.0);
+        }
+
         [Fact]
         public async Task ExplicitTwoPlyMoveScoreDiffersFromImmediatePositionScore()
         {
@@ -643,7 +709,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights))
                 .Score;
 
-            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.TwoPly))
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.Expert))
                 [0].Score;
 
             Assert.Equal(immediateScore, onePlyScore);
@@ -687,6 +753,15 @@ namespace GammonX.Mars.NN.Tests.Services
                     : board.PipCountWhite - board.PipCountBlack;
                 var winProbability = Math.Clamp(0.5f + (float)advantage / 200f, 0.01f, 0.99f);
                 return Task.FromResult(new [] { winProbability, 0f, 0f, 0f, 0f });
+            }
+        }
+
+        private sealed class FixedPerspectiveNeuralEvalService : INeuralEvalService
+        {
+            public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+            {
+                var winProbability = isWhite ? 0.75f : 0.25f;
+                return Task.FromResult(new[] { winProbability, 0f, 0f, 0f, 0f });
             }
         }
     }

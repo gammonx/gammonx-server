@@ -1,6 +1,4 @@
-﻿using GammonX.DynamoDb.Items;
-
-namespace GammonX.DynamoDb.Repository
+﻿namespace GammonX.DynamoDb.Repository
 {
 	/// <summary>
 	/// Provides capabilities to interact with the GammonX dynamo db table.

@@ -88,5 +88,15 @@ namespace GammonX.Models.Tests.Enums
             Assert.Equal(0, (int)HistoryFormat.MAT);
             Assert.Equal(99, (int)HistoryFormat.Unknown);
         }
+
+        [Theory]
+        [InlineData(BotLevel.Easy, SearchDepth.OnePly)]
+        [InlineData(BotLevel.Medium, SearchDepth.OnePly)]
+        [InlineData(BotLevel.Hard, SearchDepth.OnePly)]
+        [InlineData(BotLevel.Expert, SearchDepth.TwoPly)]
+        public void EnsureBotLevelToSearchDepthConversion(BotLevel botLevel, SearchDepth expectedSearchDepth)
+        {
+            Assert.Equal(expectedSearchDepth, botLevel.ToSearchDepth());
+        }
     }
 }

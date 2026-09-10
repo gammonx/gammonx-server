@@ -127,6 +127,10 @@ namespace GammonX.Mars.NN.Services
                     await _workerTask.ConfigureAwait(false);
                 }
             }
+            catch (ObjectDisposedException)
+            {
+                // pass
+            }
             catch (ChannelClosedException)
             {
                 // pass

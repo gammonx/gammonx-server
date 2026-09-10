@@ -72,6 +72,41 @@ namespace GammonX.Mars.NN.Tests.Models
             Assert.Equal(-1.0, model.Equity);
         }
 
+        [Theory]
+        [InlineData(0.0f, -1.0)]
+        [InlineData(0.25f, -0.5)]
+        [InlineData(0.5f, 0.0)]
+        [InlineData(0.75f, 0.5)]
+        [InlineData(1.0f, 1.0)]
+        public void WinProbabilityOnlyConvertsToSinglePointEquity(float winProbability, double expectedEquity)
+        {
+            var outcome = new GameOutcomeModel([winProbability, 0.0f, 0.0f, 0.0f, 0.0f]);
+
+            var model = new GameEquityModel(outcome);
+
+            Assert.Equal(expectedEquity, model.Equity, 10);
+        }
+
+        [Theory]
+        [InlineData(1.0f, 1.0f, 1.0f, 0.0f, 0.0f)]
+        [InlineData(0.0f, 0.0f, 0.0f, 1.0f, 1.0f)]
+        [InlineData(0.5f, 1.0f, 1.0f, 1.0f, 1.0f)]
+        [InlineData(-1.0f, 2.0f, -1.0f, 2.0f, -1.0f)]
+        public void EquityRemainsWithinCubelessGamePointRange(
+            float winProbability,
+            float winGammonProbability,
+            float winBackgammonProbability,
+            float loseGammonProbability,
+            float loseBackgammonProbability)
+        {
+            var outcome = new GameOutcomeModel(
+                [winProbability, winGammonProbability, winBackgammonProbability, loseGammonProbability, loseBackgammonProbability]);
+
+            var model = new GameEquityModel(outcome);
+
+            Assert.InRange(model.Equity, -3.0, 3.0);
+        }
+
         [Fact]
         public void MixedProbabilitiesComputesCorrectEquity()
         {
