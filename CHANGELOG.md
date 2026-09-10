@@ -3,6 +3,7 @@
 ## 10.09.2026
 - updated default nn model to gen11
 - proper equality and hashcode implementation for base board models
+- some general cleanup regarding test environment, setup and others
 
 ## 08.09.2026
 ### Mars Bot

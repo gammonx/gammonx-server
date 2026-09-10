@@ -8,15 +8,12 @@ namespace GammonX.Server.Tests.Repository
 {
     public class ApiGatewayRepositoryTests
     {
-        private readonly ApiGatewayClient _client;
-
-        public ApiGatewayRepositoryTests()
+        static ApiGatewayRepositoryTests()
         {
-            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-            if (!isDocker)
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true")
             {
-                var envLocal = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
-                var env = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+                var envLocal = Path.Combine(AppContext.BaseDirectory, ".env.local");
+                var env = Path.Combine(AppContext.BaseDirectory, ".env");
 
                 if (File.Exists(envLocal))
                 {
@@ -27,20 +24,27 @@ namespace GammonX.Server.Tests.Repository
                     Env.Load(env);
                 }
             }
+        }
 
+        public static bool IsAwsEnvironment => Environment.GetEnvironmentVariable("TEST_ENVIRONMENT") == "AWS";
+
+        private readonly ApiGatewayClient _client;
+
+        public ApiGatewayRepositoryTests()
+        {
             var baseUrl = Environment.GetEnvironmentVariable("REPOSITORY__BASEURL");
             Assert.NotNull(baseUrl);
 
-            var httpClinet = new HttpClient
+            var client = new HttpClient
             {
                 BaseAddress = new Uri(baseUrl),
                 Timeout = TimeSpan.FromSeconds(20)
             };
-            _client = new ApiGatewayClient(httpClinet);
+            _client = new ApiGatewayClient(client);
             Assert.Equal(baseUrl, _client.BaseUrl);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanGetPlayersGamesFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");
@@ -49,7 +53,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.NotNull(games.Games);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task ReturnsNullOnUnknownPlayer()
         {
             var unknownPlayerId = Guid.NewGuid();
@@ -57,7 +61,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Null(games);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanGetRatingFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
@@ -66,7 +70,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating > 1200);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CanGetRatingFromRepository2()
         {
             var existingPlayer1Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
@@ -75,7 +79,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.True(rating.Rating < 1200);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CannotGetRatingOnWrongPlayerId()
         {
             var existingPlayer1Id = Guid.Empty;
@@ -85,7 +89,7 @@ namespace GammonX.Server.Tests.Repository
             Assert.Equal(1200, rating.Rating);
         }
 
-        [Fact(Skip = "AWS_STACK")]
+        [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
         public async Task CannotGetRatingOnWrongVariant()
         {
             var existingPlayer1Id = Guid.Empty;

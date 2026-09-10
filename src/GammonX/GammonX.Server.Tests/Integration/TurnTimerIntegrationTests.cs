@@ -13,7 +13,7 @@ namespace GammonX.Server.Tests.Integration
 
         public TurnTimerIntegrationTests(WebApplicationFactory<Program> factory)
         {
-            _factory = factory.WithWebHostBuilder(builder =>
+            _factory = factory.WithWebHostBuilder(_ =>
             {
                 // nothing to modify
             });
@@ -32,6 +32,7 @@ namespace GammonX.Server.Tests.Integration
                 var contract = JsonConvert.DeserializeObject<EventResponseContract<EventTurnTimerPayload>>(response.ToString() ?? "");
                 if (contract?.Payload is EventTurnTimerPayload payload)
                 {
+                    Assert.NotNull(payload);
                     timeout1Received = true;
                 }
             });
@@ -42,6 +43,7 @@ namespace GammonX.Server.Tests.Integration
                 var contract = JsonConvert.DeserializeObject<EventResponseContract<EventTurnTimerPayload>>(response.ToString() ?? "");
                 if (contract?.Payload is EventTurnTimerPayload payload)
                 {
+                    Assert.NotNull(payload);
                     timeout2Received = true;
                 }
             });

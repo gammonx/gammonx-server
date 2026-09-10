@@ -40,10 +40,6 @@ services:
     networks:
     - gammonx-network
 
-  # Benchmark-only. The game service never routes to wildbg (MatchLobbyHub resolves
-  # the mars bot); this exists so BotServiceTests.MarsCanPlayAgainstWildBg can score
-  # the mars nets against an external engine. Start it explicitly when running that
-  # test: `docker compose up wildbg-service`. Requires gammonx-wildbg cloned alongside.
   wildbg-service:
     image: gammonx/wildbg-service
     build:
@@ -254,7 +250,8 @@ services:
     - gammonx-network   
 
   aws-stack-local:
-    image: localstack/localstack:latest
+    # We cannot use any newer localstack version without creating an account and provide an auth token
+    image: localstack/localstack:4.4.0
     environment:
       - SERVICES=sqs,lambda,apigateway
       - DOTNET_RUNNING_IN_CONTAINER=true
@@ -269,8 +266,8 @@ services:
       - "4566:4566"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - ./stack-init.sh:/etc/localstack/init/ready.d/init.sh
-      - ./src/GammonX/GammonX.Lambda/zip/:/tmp/lambdas
+      - ./scripts/stack-init.sh:/etc/localstack/init/ready.d/init.sh
+      - ./src/GammonX/GammonX.Lambda/bin/zip/:/tmp/lambdas
       - ./src/GammonX/GammonX.Server/:/tmp/game-service
     networks:
       - gammonx-network

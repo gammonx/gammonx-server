@@ -1064,7 +1064,6 @@ namespace GammonX.Engine.Tests
 		[InlineData(GameModus.Backgammon)]
 		[InlineData(GameModus.Portes)]
 		[InlineData(GameModus.Tavla)]
-		[InlineData(GameModus.Fevga, Skip = "need to create proper mock board")]
 		[InlineData(GameModus.Plakoto)]
 		public void BothDicesHasToBeUsedBlack(GameModus modus)
 		{
@@ -1115,7 +1114,6 @@ namespace GammonX.Engine.Tests
 		[InlineData(GameModus.Backgammon)]
 		[InlineData(GameModus.Portes)]
 		[InlineData(GameModus.Tavla)]
-		[InlineData(GameModus.Fevga, Skip = "need to create proper mock board")]
 		[InlineData(GameModus.Plakoto)]
 		public void HigherDiceHasToBeUsedBlack(GameModus modus)
 		{

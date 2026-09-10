@@ -29,7 +29,7 @@ namespace GammonX.Lambda.Handlers
             {
                 if (_repo == null)
                 {
-                    context.Logger.LogInformation($"Setting up DI services...");
+                    context.Logger.LogInformation("Setting up DI services...");
                     var services = Startup.Configure();
                     _repo = services.GetRequiredService<IDynamoDbRepository>();
                 }
