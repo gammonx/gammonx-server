@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -36,12 +38,12 @@ namespace GammonX.DynamoDb.Items
                 Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
                 Type = Enum.Parse<MatchType>(item["Type"].S, true),
                 Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
-                Rating = double.Parse(item["Rating"].N),
-                RatingDeviation = double.Parse(item["RatingDeviation"].N),
-                Sigma = double.Parse(item["Sigma"].N),
-                HighestRating = double.Parse(item["HighestRating"].N),
-                LowestRating = double.Parse(item["LowestRating"].N),
-                MatchesPlayed = int.Parse(item["MatchesPlayed"].N)
+                Rating = double.Parse(item["Rating"].N, CultureInfo.InvariantCulture),
+                RatingDeviation = double.Parse(item["RatingDeviation"].N, CultureInfo.InvariantCulture),
+                Sigma = double.Parse(item["Sigma"].N, CultureInfo.InvariantCulture),
+                HighestRating = double.Parse(item["HighestRating"].N, CultureInfo.InvariantCulture),
+                LowestRating = double.Parse(item["LowestRating"].N, CultureInfo.InvariantCulture),
+                MatchesPlayed = int.Parse(item["MatchesPlayed"].N, CultureInfo.InvariantCulture)
             };
             return playerRatingItem;
         }
@@ -61,12 +63,12 @@ namespace GammonX.DynamoDb.Items
                 { "Variant", new AttributeValue(variantStr) },
                 { "Modus", new AttributeValue(modusStr) },
                 { "Type", new AttributeValue(typeStr) },
-                { "Rating", new AttributeValue() { N = item.Rating.ToString() } },
-                { "RatingDeviation", new AttributeValue() { N = item.RatingDeviation.ToString() } },
-                { "Sigma", new AttributeValue() { N = item.Sigma.ToString() } },
-                { "HighestRating", new AttributeValue() { N = item.HighestRating.ToString() } },
-                { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString() } },
-                { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString() } }
+                { "Rating", new AttributeValue() { N = item.Rating.ToString(CultureInfo.InvariantCulture) } },
+                { "RatingDeviation", new AttributeValue() { N = item.RatingDeviation.ToString(CultureInfo.InvariantCulture) } },
+                { "Sigma", new AttributeValue() { N = item.Sigma.ToString(CultureInfo.InvariantCulture) } },
+                { "HighestRating", new AttributeValue() { N = item.HighestRating.ToString(CultureInfo.InvariantCulture) } },
+                { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString(CultureInfo.InvariantCulture) } },
+                { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString(CultureInfo.InvariantCulture) } }
             };
             return itemDict;
         }

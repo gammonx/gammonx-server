@@ -203,6 +203,7 @@ root_id=$(get_root_resource_id "$api_id")
 
 players_id=$(create_api_resource "$api_id" "$root_id" "players")
 id_id=$(create_api_resource "$api_id" "$players_id" "{id}")
+games_id=$(create_api_resource "$api_id" "$id_id" "games")
 rating_id=$(create_api_resource "$api_id" "$id_id" "rating")
 variant_id=$(create_api_resource "$api_id" "$rating_id" "{variant}")
 
@@ -212,6 +213,7 @@ lambda_arn=$(awslocal lambda get-function \
   --output text)
 
 attach_lambda_to_method "$api_id" "$variant_id" "GET" "$lambda_arn"
+attach_lambda_to_method "$api_id" "$games_id" "GET" "$lambda_arn"
 
 awslocal apigateway create-deployment \
   --rest-api-id $api_id \

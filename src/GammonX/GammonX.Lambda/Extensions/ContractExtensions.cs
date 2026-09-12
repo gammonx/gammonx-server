@@ -125,7 +125,7 @@ namespace GammonX.Lambda.Extensions
                     Length = item.Length,
                     StartedAt = item.StartedAt,
                     EndedAt = item.EndedAt,
-                    Duration = item.Duration,
+                    DurationMilliseconds = item.Duration.Ticks / TimeSpan.TicksPerMillisecond,
                     PipesLeft = item.PipesLeft,
                     DiceDoubles = item.DiceDoubles,
                     DoublingCubeValue = item.DoublingCubeValue,
@@ -138,7 +138,7 @@ namespace GammonX.Lambda.Extensions
 			var lostGamesCount = contract.Games.Count(g => g.PipesLeft > 0);
 			if (lostGamesCount > 0)
 			{
-				return contract.Games.Sum(g => g.PipesLeft) / lostGamesCount;
+				return contract.Games.Sum(g => (double)g.PipesLeft) / lostGamesCount;
 			}
 			return 0.0;
 		}

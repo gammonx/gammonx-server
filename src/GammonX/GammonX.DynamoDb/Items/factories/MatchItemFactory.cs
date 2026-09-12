@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -44,23 +46,23 @@ namespace GammonX.DynamoDb.Items
 			{
 				Id = Guid.Parse(item["Id"].S),
 				PlayerId = Guid.Parse(item["PlayerId"].S),
-				Points = int.Parse(item["Points"].N),
-				Length = int.Parse(item["Length"].N),
+				Points = int.Parse(item["Points"].N, CultureInfo.InvariantCulture),
+				Length = int.Parse(item["Length"].N, CultureInfo.InvariantCulture),
 				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
 				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
 				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
 				BotLevel = botLevel,
-				StartedAt = DateTimeHelper.ParseFlexible(item["StartedAt"].S),
-				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
-				Duration = TimeSpan.Parse(item["Duration"].S),
-				AvgDuration = TimeSpan.Parse(item["AvgDuration"].S),
+				StartedAt = DateTimeHelper.ParseUtc(item["StartedAt"].S),
+				EndedAt = DateTimeHelper.ParseUtc(item["EndedAt"].S),
+				Duration = DateTimeHelper.ParseDurationTicks(item["Duration"].N),
+				AvgDuration = DateTimeHelper.ParseDurationTicks(item["AvgDuration"].N),
 				Result = Enum.Parse<MatchResult>(item["Result"].S, true),
-				AvgDoubleDices = double.Parse(item["AvgDoubleDices"].N),
-				AvgPipesLeft = double.Parse(item["AvgPipesLeft"].N),
-				AvgTurns = int.Parse(item["AvgTurns"].N),
-				Backgammons = int.Parse(item["BackGammons"].N),
-				Gammons = int.Parse(item["Gammons"].N),
-				AvgDoubles = double.Parse(item["AvgDoubles"].N)
+				AvgDoubleDices = double.Parse(item["AvgDoubleDices"].N, CultureInfo.InvariantCulture),
+				AvgPipesLeft = double.Parse(item["AvgPipesLeft"].N, CultureInfo.InvariantCulture),
+				AvgTurns = int.Parse(item["AvgTurns"].N, CultureInfo.InvariantCulture),
+				Backgammons = int.Parse(item["BackGammons"].N, CultureInfo.InvariantCulture),
+				Gammons = int.Parse(item["Gammons"].N, CultureInfo.InvariantCulture),
+				AvgDoubles = double.Parse(item["AvgDoubles"].N, CultureInfo.InvariantCulture)
 			};
 			return matchItem;
 		}
@@ -81,22 +83,22 @@ namespace GammonX.DynamoDb.Items
 				{ "ItemType", new AttributeValue(item.ItemType) },
 				{ "Id", new AttributeValue(item.Id.ToString()) },
 				{ "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
-				{ "Points", new AttributeValue() { N = item.Points.ToString() } },
-				{ "Length", new AttributeValue() { N = item.Length.ToString() } },
+				{ "Points", new AttributeValue() { N = item.Points.ToString(CultureInfo.InvariantCulture) } },
+				{ "Length", new AttributeValue() { N = item.Length.ToString(CultureInfo.InvariantCulture) } },
 				{ "Variant", new AttributeValue(variantStr) },
 				{ "Modus", new AttributeValue(modusStr) },
 				{ "Type", new AttributeValue(typeStr) },
 				{ "BotLevel", new AttributeValue(item.BotLevel.ToString()) },
-				{ "StartedAt", new AttributeValue { S = item.StartedAt.ToString() } },
-				{ "EndedAt", new AttributeValue { S = item.EndedAt.ToString() } },
-				{ "AvgPipesLeft", new AttributeValue { N = item.AvgPipesLeft.ToString() } },
-				{ "AvgDoubleDices", new AttributeValue { N = item.AvgDoubleDices.ToString() } },
-				{ "Gammons", new AttributeValue { N = item.Gammons.ToString() } },
-				{ "BackGammons", new AttributeValue { N = item.Backgammons.ToString() } },
-				{ "AvgTurns", new AttributeValue { N = item.AvgTurns.ToString() } },
-				{ "AvgDoubles", new AttributeValue { N = item.AvgDoubles.ToString() } },
-				{ "Duration", new AttributeValue { S = item.Duration.ToString() } },
-				{ "AvgDuration", new AttributeValue { S = item.AvgDuration.ToString() } },
+				{ "StartedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.StartedAt) } },
+				{ "EndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.EndedAt) } },
+				{ "AvgPipesLeft", new AttributeValue { N = item.AvgPipesLeft.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgDoubleDices", new AttributeValue { N = item.AvgDoubleDices.ToString(CultureInfo.InvariantCulture) } },
+				{ "Gammons", new AttributeValue { N = item.Gammons.ToString(CultureInfo.InvariantCulture) } },
+				{ "BackGammons", new AttributeValue { N = item.Backgammons.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgTurns", new AttributeValue { N = item.AvgTurns.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgDoubles", new AttributeValue { N = item.AvgDoubles.ToString(CultureInfo.InvariantCulture) } },
+				{ "Duration", new AttributeValue { N = DateTimeHelper.FormatDurationTicks(item.Duration) } },
+				{ "AvgDuration", new AttributeValue { N = DateTimeHelper.FormatDurationTicks(item.AvgDuration) } },
 				{ "Result", new AttributeValue(resultStr) },
 			};
 			return itemDict;

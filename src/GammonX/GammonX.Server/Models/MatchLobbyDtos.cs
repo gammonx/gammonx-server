@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
@@ -56,12 +57,17 @@ namespace GammonX.Server.Models
         /// <summary>
         /// Gets the date time in utc when the entry was enqueued.
         /// </summary>
-        public DateTime EnqueuedAtUtc { get; internal set; }
+        public DateTime EnqueuedAtUtc
+        {
+            get;
+            internal set => field = DateTimeHelper.RequireUtc(value, nameof(EnqueuedAtUtc));
+        }
 
         /// <summary>
         /// Gets the current ranked rating of the player for the given variant.
         /// Only relevant for ranked queues. In other cases, this value is 0.
         /// </summary>
+        // ReSharper disable once RedundantDefaultMemberInitializer
         public double CurrentRating { get; } = 0;
 
         /// <summary>
@@ -71,7 +77,7 @@ namespace GammonX.Server.Models
         public DateTime LastSeenUtc
         {
             get => new(Interlocked.Read(ref _lastSeenTicks), DateTimeKind.Utc);
-            set => Interlocked.Exchange(ref _lastSeenTicks, value.Ticks);
+            set => Interlocked.Exchange(ref _lastSeenTicks, DateTimeHelper.RequireUtc(value, nameof(LastSeenUtc)).Ticks);
         }
 
         /// <summary>

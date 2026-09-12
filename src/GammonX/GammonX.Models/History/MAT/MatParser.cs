@@ -11,13 +11,13 @@ namespace GammonX.Models.History.MAT
 		[GeneratedRegex(@";\[(.+?) '(.+?)'\]", RegexOptions.Compiled)]
 		protected partial Regex GameHeaderRegex();
 
-		[GeneratedRegex(@"^(White|Black) Roll ([0-9 ]+)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Roll ([0-9 ]+)$", RegexOptions.Compiled)]
 		protected partial Regex RollRegex();
 
-		[GeneratedRegex(@"^(White|Black) Move ([a-zA-Z0-9]+)/([a-zA-Z0-9]+)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Move ([a-zA-Z0-9]+)/([a-zA-Z0-9]+)$", RegexOptions.Compiled)]
 		protected partial Regex MoveRegex();
 
-		[GeneratedRegex(@"^(White|Black) Cube (Offer|Take|Pass)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Cube (Offer|Take|Pass)$", RegexOptions.Compiled)]
 		protected partial Regex CubeActionRegex();
 
 		// <inheritdoc />
@@ -86,7 +86,6 @@ namespace GammonX.Models.History.MAT
 				if (TryParseCubeAction(game, line, out var cubeEvent))
                 {
                     game.Events.Add(cubeEvent);
-                    continue;
                 }
             }
 
@@ -106,8 +105,8 @@ namespace GammonX.Models.History.MAT
 				case "Name": match.Name = value; break;
 				case "Player 1 White Checkers": match.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": match.Player2Id = Guid.Parse(value); break;
-				case "Started At": match.StartedAt = DateTimeHelper.ParseFlexible(value); break;
-				case "Ended At": match.EndedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Started At": match.StartedAt = DateTimeHelper.ParseMatUtc(value); break;
+				case "Ended At": match.EndedAt = DateTimeHelper.ParseMatUtc(value); break;
 				case "Length": match.Length = int.Parse(value); break;
 			}
 		}
@@ -122,8 +121,8 @@ namespace GammonX.Models.History.MAT
 				case "Game Modus": game.Modus = Enum.Parse<GameModus>(value); break;
 				case "Winner": game.Winner = Guid.Parse(value); break;
 				case "Points": game.Points = int.Parse(value); break;
-				case "Started At": game.StartedAt = DateTimeHelper.ParseFlexible(value); break;
-				case "Ended At": game.EndedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Started At": game.StartedAt = DateTimeHelper.ParseMatUtc(value); break;
+				case "Ended At": game.EndedAt = DateTimeHelper.ParseMatUtc(value); break;
 				case "Player 1 White Checkers": game.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": game.Player2Id = Guid.Parse(value); break;
 			}

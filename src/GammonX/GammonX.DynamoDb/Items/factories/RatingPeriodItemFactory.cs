@@ -42,13 +42,13 @@ namespace GammonX.DynamoDb.Items
                 Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
                 Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
                 Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
-                PlayerRating = double.Parse(item["PlayerRating"].N),
-                PlayerRatingDeviation = double.Parse(item["PlayerRatingDeviation"].N),
-                PlayerSigma = double.Parse(item["PlayerSigma"].N),
-                OpponentRating = double.Parse(item["OpponentRating"].N),
-                OpponentRatingDeviation = double.Parse(item["OpponentRatingDeviation"].N),
-                OpponentSigma = double.Parse(item["OpponentSigma"].N),
-                CreatedAt = DateTimeHelper.ParseFlexible(item["CreatedAt"].S)
+                PlayerRating = double.Parse(item["PlayerRating"].N, CultureInfo.InvariantCulture),
+                PlayerRatingDeviation = double.Parse(item["PlayerRatingDeviation"].N, CultureInfo.InvariantCulture),
+                PlayerSigma = double.Parse(item["PlayerSigma"].N, CultureInfo.InvariantCulture),
+                OpponentRating = double.Parse(item["OpponentRating"].N, CultureInfo.InvariantCulture),
+                OpponentRatingDeviation = double.Parse(item["OpponentRatingDeviation"].N, CultureInfo.InvariantCulture),
+                OpponentSigma = double.Parse(item["OpponentSigma"].N, CultureInfo.InvariantCulture),
+                CreatedAt = DateTimeHelper.ParseUtc(item["CreatedAt"].S)
             };
             return ratingPeriodItem;
         }
@@ -71,13 +71,13 @@ namespace GammonX.DynamoDb.Items
                 { "Variant", new AttributeValue(variantStr) },
                 { "Modus", new AttributeValue(modusStr) },
                 { "Type", new AttributeValue(typeStr) },
-                { "PlayerRating", new AttributeValue() { N = item.PlayerRating.ToString() } },
-                { "PlayerRatingDeviation", new AttributeValue() { N = item.PlayerRatingDeviation.ToString() } },
-                { "PlayerSigma", new AttributeValue() { N = item.PlayerSigma.ToString() } },
-                { "OpponentRating", new AttributeValue() { N = item.OpponentRating.ToString() } },
-                { "OpponentRatingDeviation", new AttributeValue() { N = item.OpponentRatingDeviation.ToString() } },
-                { "OpponentSigma", new AttributeValue() { N = item.OpponentSigma.ToString() } },
-                { "CreatedAt", new AttributeValue { S = item.CreatedAt.ToString("o") } },
+                { "PlayerRating", new AttributeValue() { N = item.PlayerRating.ToString(CultureInfo.InvariantCulture) } },
+                { "PlayerRatingDeviation", new AttributeValue() { N = item.PlayerRatingDeviation.ToString(CultureInfo.InvariantCulture) } },
+                { "PlayerSigma", new AttributeValue() { N = item.PlayerSigma.ToString(CultureInfo.InvariantCulture) } },
+                { "OpponentRating", new AttributeValue() { N = item.OpponentRating.ToString(CultureInfo.InvariantCulture) } },
+                { "OpponentRatingDeviation", new AttributeValue() { N = item.OpponentRatingDeviation.ToString(CultureInfo.InvariantCulture) } },
+                { "OpponentSigma", new AttributeValue() { N = item.OpponentSigma.ToString(CultureInfo.InvariantCulture) } },
+                { "CreatedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.CreatedAt) } },
             };
             return itemDict;
         }

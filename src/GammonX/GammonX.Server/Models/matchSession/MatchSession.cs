@@ -10,7 +10,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public abstract class MatchSession : IMatchSessionModel, IAsyncStateMutex
+	public abstract class MatchSession : IMatchSessionModel
     {
         private readonly SemaphoreSlim _stateMutex = new(1, 1);
 
@@ -40,13 +40,24 @@ namespace GammonX.Server.Models
         public BotLevel BotLevel { get; }
 
 		// <inheritdoc />
-		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
+		public DateTime? StartedAt { get; private set; }
 
 		// <inheritdoc />
-		public DateTime? EndedAt { get; private set; } = DateTime.MaxValue;
+		public DateTime? EndedAt { get; private set; }
 
 		// <inheritdoc />
-		public long Duration => (StartedAt - (DateTime)(EndedAt == null ? DateTime.UtcNow : EndedAt)).Duration().Milliseconds;
+		public long Duration
+		{
+			get
+			{
+				if (!StartedAt.HasValue)
+					return 0;
+
+				var end = EndedAt ?? DateTime.UtcNow;
+				var elapsedTicks = (end - StartedAt.Value).Ticks;
+				return Math.Max(0L, elapsedTicks / TimeSpan.TicksPerMillisecond);
+			}
+		}
 
 		// <inheritdoc />
 		public MatchPlayerModel Player1 { get; private set; }
@@ -54,7 +65,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public MatchPlayerModel Player2 { get; private set; }
 
-		public MatchSession(
+		protected MatchSession(
 			Guid id, 
 			QueueKey queueKey, 
 			IGameSessionFactory gameSessionFactory)
@@ -508,7 +519,7 @@ namespace GammonX.Server.Models
 		protected abstract GameResultModel ConcludeGame(Guid playerId);
 
 		/// <summary>
-		/// Calculates the amout of points for the score of the non-resigning player.
+		/// Calculates the amount of points for the score of the non-resigning player.
 		/// </summary>
 		/// <returns>Amount of points/score.</returns>
 		protected abstract int CalculateResignGamePoints();

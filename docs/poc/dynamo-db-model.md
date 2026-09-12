@@ -3,8 +3,10 @@
 This document describes the schema currently produced by the item factories in
 `src/GammonX/GammonX.DynamoDb/Items`. The examples show logical item values;
 IDs and keys are stored as DynamoDB strings, numeric values as DynamoDB numbers,
-and `DateTime`, `TimeSpan`, history data, and enum values as strings unless
-otherwise noted.
+and enum values as strings. UTC timestamps use the canonical
+`yyyy-MM-dd'T'HH:mm:ss.fffffffZ` string format. Durations are DynamoDB numbers
+containing `TimeSpan.Ticks`, formatted with invariant culture. Nullable values
+such as `LastMatch` use DynamoDB `NULL` when no value exists.
 
 | PK | SK | ItemType |
 | --- | --- | --- |
@@ -29,7 +31,7 @@ unique.
   "Id": "{guid}",
   "ItemType": "Player",
   "Username": "{name}",
-  "CreatedAt": "{DateTime}"
+  "CreatedAt": "2026-01-01T12:00:00.0000000Z"
 }
 ```
 
@@ -55,7 +57,7 @@ variant, type, modus, and match ID are all part of the sort key.
   "OpponentRating": "{double}",
   "OpponentRatingDeviation": "{double}",
   "OpponentSigma": "{double}",
-  "CreatedAt": "{DateTime}"
+  "CreatedAt": "2026-01-01T12:00:00.0000000Z"
 }
 ```
 
@@ -103,9 +105,9 @@ property on the C# item. For example, a Backgammon SevenPointGame rating uses
   "WinRate": 0.4762,
   "WinStreak": 2,
   "LongestWinStreak": 5,
-  "TotalPlayTime": "{TimeSpan}",
-  "AvgDuration": "{TimeSpan}",
-  "LastMatch": "{DateTime}",
+  "TotalPlayTime": 1800000000000,
+  "AvgDuration": 15000000000,
+  "LastMatch": "2026-01-01T12:00:00.0000000Z",
   "MatchesLast7": 10,
   "MatchesLast30": 15,
   "AvgGammons": 0.5,
@@ -114,9 +116,12 @@ property on the C# item. For example, a Backgammon SevenPointGame rating uses
   "WAvgDoubleDices": 0.4,
   "WAvgTurns": 15.0,
   "WAvgDoubles": 0.3,
-  "WAvgDuration": "{TimeSpan}"
+  "WAvgDuration": 16200000000
 }
 ```
+
+If a player has no completed match, `LastMatch` is stored as DynamoDB
+`NULL` instead of a sentinel timestamp.
 
 ## Match
 Two records are written for a completed match, one for each player. The
@@ -137,10 +142,10 @@ records share the match partition key and differ by outcome in the sort key.
   "Type": "SevenPointGame",
   "Modus": "Ranked",
   "BotLevel": "Unknown",
-  "StartedAt": "{DateTime}",
-  "EndedAt": "{DateTime}",
-  "Duration": "{TimeSpan}",
-  "AvgDuration": "{TimeSpan}",
+  "StartedAt": "2026-01-01T12:00:00.0000000Z",
+  "EndedAt": "2026-01-01T12:40:00.0000000Z",
+  "Duration": 24000000000,
+  "AvgDuration": 6000000000,
   "AvgPipesLeft": "{double}",
   "AvgDoubleDices": "{double}",
   "Gammons": "{int}",
@@ -169,9 +174,9 @@ records.
   "Points": 1,
   "Length": 55,
   "Modus": "Portes",
-  "StartedAt": "{DateTime}",
-  "EndedAt": "{DateTime}",
-  "Duration": "{TimeSpan}",
+  "StartedAt": "2026-01-01T12:00:00.0000000Z",
+  "EndedAt": "2026-01-01T12:10:00.0000000Z",
+  "Duration": 6000000000,
   "PipesLeft": "{int}",
   "DiceDoubles": "{int}",
   "Result": "{GameResult}",

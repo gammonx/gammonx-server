@@ -46,7 +46,7 @@ namespace GammonX.DynamoDb.Items
 		public Guid MatchId { get; set; } = Guid.Empty;
 
 		/// <summary>
-		/// Gets or sets the points awarded to the given palyer.
+		/// Gets or sets the points awarded to the given player.
 		/// If the game was lost the amount of points must be <c>0</c>.
 		/// </summary>
 		public int Points { get; set; } = 0;

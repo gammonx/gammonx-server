@@ -1,6 +1,8 @@
 ﻿using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
-using Newtonsoft.Json;
+using GammonX.Models.Helpers;
+
+using System.Text.Json;
 
 namespace GammonX.Server.Repository
 {
@@ -8,9 +10,14 @@ namespace GammonX.Server.Repository
     public class ApiGatewayClient : IRepositoryClient
     {
         private readonly HttpClient _client;
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new UtcDateTimeJsonConverter() }
+        };
 
         // <inheritdoc />
-        public string BaseUrl => _client?.BaseAddress?.ToString() ?? string.Empty;
+        public string BaseUrl => _client.BaseAddress?.ToString() ?? string.Empty;
 
         public ApiGatewayClient(HttpClient client)
         {
@@ -26,12 +33,12 @@ namespace GammonX.Server.Repository
                 using var response = await _client.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
                 var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-                var rating = JsonConvert.DeserializeObject<PlayerRatingResponseContract>(responseJson);
+                var rating = JsonSerializer.Deserialize<PlayerRatingResponseContract>(responseJson, JsonOptions);
                 return rating;
             }
             catch (Exception ex) 
             {
-                Serilog.Log.Error(ex, $"An error occurred while requesting rating for '{playerId}' and variant '{variant}'");
+                Serilog.Log.Error(ex, "An error occurred while requesting rating for '{PlayerId}' and variant '{Variant}'", playerId, variant);
                 return null;
             } 
         }
@@ -45,12 +52,12 @@ namespace GammonX.Server.Repository
                 using var response = await _client.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
                 var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-                var games = JsonConvert.DeserializeObject<PlayerGamesResponseContract>(responseJson);
+                var games = JsonSerializer.Deserialize<PlayerGamesResponseContract>(responseJson, JsonOptions);
                 return games;
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, $"An error occurred while requesting games for '{playerId}'");
+                Serilog.Log.Error(ex, "An error occurred while requesting games for '{PlayerId}'", playerId);
                 return null;
             }
         }

@@ -20,13 +20,13 @@ namespace GammonX.Models.Contracts
         public Guid MatchId { get; set; } = Guid.Empty;
 
 		[DataMember(Name = "PipesLeft")]
-		public int PipesLeft { get; set; } = 0;
+		public int PipesLeft { get; set; }
 
 		[DataMember(Name = "Result")]
 		public GameResult Result { get; set; } = GameResult.Unknown;
 
 		[DataMember(Name = "DoublingCubeValue")]
-		public int? DoublingCubeValue { get; set; } = null;
+		public int? DoublingCubeValue { get; set; }
 
 		[DataMember(Name = "GameHistory")]
 		public string GameHistory { get; set; } = string.Empty;

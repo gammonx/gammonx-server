@@ -54,7 +54,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets the match start time.
 		/// </summary>
-		DateTime StartedAt { get; }
+		DateTime? StartedAt { get; }
 
 		/// <summary>
 		/// Gets game utc end/stop time.
@@ -200,7 +200,7 @@ namespace GammonX.Server.Models
 		EventMatchStatePayload ToPayload(Guid callingPlayerId);
 
 		/// <summary>
-		/// Gets the history of all contained gamesession, board and the match itself.
+		/// Gets the history of all contained game session, board and the match itself.
 		/// </summary>
 		/// <returns>Returns an instance of <see cref="IMatchHistory"/>.</returns>
 		IMatchHistory GetHistory();

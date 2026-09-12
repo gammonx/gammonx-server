@@ -58,7 +58,8 @@ namespace GammonX.Server.Tests.Repository
         {
             var unknownPlayerId = Guid.NewGuid();
             var games = await _client.GetPlayersGames(unknownPlayerId, CancellationToken.None);
-            Assert.Null(games);
+            Assert.NotNull(games);
+            Assert.Empty(games.Games);
         }
 
         [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]

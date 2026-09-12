@@ -32,7 +32,7 @@ namespace GammonX.DynamoDb.Items
             {
                 Id = Guid.Parse(item["Id"].S),
                 UserName = item["Username"].S,
-                CreatedAt = DateTimeHelper.ParseFlexible(item["CreatedAt"].S)
+                CreatedAt = DateTimeHelper.ParseUtc(item["CreatedAt"].S)
             };
         }
 
@@ -46,7 +46,7 @@ namespace GammonX.DynamoDb.Items
                 { "Id", new AttributeValue(item.Id.ToString()) },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Username", new AttributeValue(item.UserName) },
-                { "CreatedAt", new AttributeValue { S = item.CreatedAt.ToString("o") } }
+                { "CreatedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.CreatedAt) } }
             };
             return itemDict;
         }

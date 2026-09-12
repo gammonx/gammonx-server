@@ -5,6 +5,7 @@ using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
 using GammonX.Models.Contracts;
+using GammonX.Models.Helpers;
 
 using GammonX.Lambda.Services;
 
@@ -101,7 +102,13 @@ namespace GammonX.Lambda
             return new APIGatewayProxyResponse
             {
                 StatusCode = httpCode,
-                Body = JsonConvert.SerializeObject(response),
+                Body = JsonConvert.SerializeObject(response, new JsonSerializerSettings
+                {
+                    Culture = System.Globalization.CultureInfo.InvariantCulture,
+                    DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+                    DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                    Converters = { new CanonicalUtcDateTimeConverter() }
+                }),
                 Headers = new Dictionary<string, string>
                 {
                     {"Content-Type", "application/json"}
@@ -126,6 +133,36 @@ namespace GammonX.Lambda
             stream.Position = 0;
             using var reader = new StreamReader(stream);
             return await reader.ReadToEndAsync();
+        }
+
+        private sealed class CanonicalUtcDateTimeConverter : JsonConverter
+        {
+            public override bool CanConvert(Type objectType)
+            {
+                return objectType == typeof(DateTime) || objectType == typeof(DateTime?);
+            }
+
+            public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+            {
+                if (value is null)
+                {
+                    writer.WriteNull();
+                    return;
+                }
+
+                writer.WriteValue(DateTimeHelper.FormatUtc((DateTime)value));
+            }
+
+            public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+            {
+                if (reader.TokenType == JsonToken.Null && objectType == typeof(DateTime?))
+                    return null;
+
+                if (reader.TokenType != JsonToken.String)
+                    throw new JsonSerializationException("A UTC timestamp must be a JSON string.");
+
+                return DateTimeHelper.ParseUtc((string)reader.Value!);
+            }
         }
     }
 }

@@ -37,7 +37,7 @@ namespace GammonX.DynamoDb.Tests.Helper
             var playerItem = new PlayerItem()
             {
                 Id = id,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 UserName = $"babahaft-{id}"
             };
             return playerItem;
@@ -64,8 +64,8 @@ namespace GammonX.DynamoDb.Tests.Helper
                 MatchId = matchItem.Id,
                 Modus = modus,
                 Result = result,
-                StartedAt = DateTime.Now.AddMinutes(-10),
-                EndedAt = DateTime.Now,
+                StartedAt = DateTime.UtcNow.AddMinutes(-10),
+                EndedAt = DateTime.UtcNow,
                 Duration = TimeSpan.FromMinutes(10),
                 Points = hasWon ? 1 : 0,
                 PipesLeft = hasWon ? 0 : 55,

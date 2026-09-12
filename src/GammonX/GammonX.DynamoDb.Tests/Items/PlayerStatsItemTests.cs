@@ -86,7 +86,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(5, statFromRepo.WinStreak);
             Assert.Equal(10, statFromRepo.LongestWinStreak);
             Assert.Equal(TimeSpan.FromHours(50), statFromRepo.TotalPlayTime);
-            Assert.Equal(playerStats.LastMatch.Date, statFromRepo.LastMatch.Date);
+            Assert.Equal(playerStats.LastMatch, statFromRepo.LastMatch);
             Assert.Equal(20, statFromRepo.MatchesLast7);
             Assert.Equal(80, statFromRepo.MatchesLast30);
             Assert.Equal(2.5, statFromRepo.AvgGammons);

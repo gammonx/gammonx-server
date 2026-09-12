@@ -5,6 +5,7 @@ using DotNetEnv;
 
 using GammonX.Engine.Services;
 
+using GammonX.Models;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
@@ -141,6 +142,13 @@ namespace GammonX.Server.Tests.Queue
             match.JoinSession(player2);
 
             match.StartMatch(match.Player1.Id);
+            var gameSession = match.GetGameSession(match.GameRound);
+            Assert.NotNull(gameSession);
+            gameSession.StopGame(new GameResultModel(
+                player1Id,
+                GameResult.Gammon,
+                GameResult.LostGammon,
+                2));
             return match;
         }
     }

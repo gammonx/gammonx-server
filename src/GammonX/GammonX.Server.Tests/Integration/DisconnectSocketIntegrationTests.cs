@@ -1,5 +1,4 @@
 ﻿using GammonX.Server.Contracts;
-using GammonX.Server.Models;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -14,7 +13,7 @@ namespace GammonX.Server.Tests.Integration
 
         public DisconnectSocketIntegrationTests(WebApplicationFactory<Program> factory)
         {
-            _factory = factory.WithWebHostBuilder(builder =>
+            _factory = factory.WithWebHostBuilder(_ =>
             {
                 // nothing to modify
             });
@@ -35,7 +34,7 @@ namespace GammonX.Server.Tests.Integration
                 var contract = JsonConvert.DeserializeObject<EventResponseContract<EventDisconnectedPayload>>(response.ToString() ?? "");
                 if (contract?.Payload is EventDisconnectedPayload payload)
                 {
-                    Assert.Equal(TimeSpan.FromSeconds(30), payload.GracePeriod);
+                    Assert.Equal(30_000, payload.GracePeriod);
                     Assert.True(payload.Expiration > DateTime.UtcNow);
                     player1Disconnected = true;
                     player1Connected = false;
@@ -63,7 +62,6 @@ namespace GammonX.Server.Tests.Integration
                         player1Disconnected = false;
                     }
                 }
-                ;
             });
 
             setup.Player1Connection.On<object>(ServerEventTypes.MatchStateEvent, response =>
@@ -126,7 +124,7 @@ namespace GammonX.Server.Tests.Integration
                 var contract = JsonConvert.DeserializeObject<EventResponseContract<EventDisconnectedPayload>>(response.ToString() ?? "");
                 if (contract?.Payload is EventDisconnectedPayload payload)
                 {
-                    Assert.Equal(TimeSpan.FromSeconds(30), payload.GracePeriod);
+                    Assert.Equal(30_000, payload.GracePeriod);
                     Assert.True(payload.Expiration > DateTime.UtcNow);
                     player1Disconnected = true;
                 }

@@ -43,8 +43,9 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => session.CanEndTurn(Guid.Empty));
 			Assert.Throws<InvalidOperationException>(() => session.GetGameState(Guid.Empty));
 			Assert.IsAssignableFrom<MatchSession>(session);
-			Assert.Equal(DateTime.MinValue, session.StartedAt);
-			Assert.Equal(DateTime.MaxValue, session.EndedAt);
+			Assert.Null(session.StartedAt);
+			Assert.Null(session.EndedAt);
+			Assert.Equal(0, session.Duration);
 		}
 
 		[Theory]
@@ -193,6 +194,7 @@ namespace GammonX.Server.Tests.Match
 			session.Player2.AcceptNextGame();
 			Assert.True(session.CanStartNextGame());
 			var gameSession = session.StartMatch(session.Player1.Id);
+            Assert.NotNull(gameSession);
 			var player2Id = session.Player2.Id;
 			Assert.Throws<InvalidOperationException>(() => session.RollDices(player2Id));
 		}
@@ -602,20 +604,20 @@ namespace GammonX.Server.Tests.Match
 				Assert.True(session.Player2.Points > session.Player1.Points);
 				Assert.False(session.CanStartNextGame());
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
-				var sessionInstace = session as MatchSession;
-				Assert.NotNull(sessionInstace);
-				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				var sessionInstance = session as MatchSession;
+				Assert.NotNull(sessionInstance);
+				Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(1)?.Phase);
                 if (matchType == MatchType.CashGame)
 				{
                     Assert.Equal(3, session.GameRound);
-                    Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
-                    Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+                    Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(2)?.Phase);
+                    Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(3)?.Phase);
                 }
 				else
 				{
                     Assert.Equal(1, session.GameRound);
-                    Assert.Null(sessionInstace.GetGameSession(2)?.Phase);
-                    Assert.Null(sessionInstace.GetGameSession(3)?.Phase);
+                    Assert.Null(sessionInstance.GetGameSession(2)?.Phase);
+                    Assert.Null(sessionInstance.GetGameSession(3)?.Phase);
                 }
             }
 
@@ -675,20 +677,20 @@ namespace GammonX.Server.Tests.Match
 				Assert.True(session.Player1.Points > session.Player2.Points);
 				Assert.False(session.CanStartNextGame());
 				Assert.Throws<InvalidOperationException>(() => session.StartNextGame(session.Player1.Id));
-				var sessionInstace = session as MatchSession;
-				Assert.NotNull(sessionInstace);
-				Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(1)?.Phase);
+				var sessionInstance = session as MatchSession;
+				Assert.NotNull(sessionInstance);
+				Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(1)?.Phase);
                 if (matchType == MatchType.CashGame)
                 {
                     Assert.Equal(3, session.GameRound);
-                    Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(2)?.Phase);
-                    Assert.Equal(GamePhase.GameOver, sessionInstace.GetGameSession(3)?.Phase);
+                    Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(2)?.Phase);
+                    Assert.Equal(GamePhase.GameOver, sessionInstance.GetGameSession(3)?.Phase);
                 }
                 else
                 {
                     Assert.Equal(1, session.GameRound);
-                    Assert.Null(sessionInstace.GetGameSession(2)?.Phase);
-                    Assert.Null(sessionInstace.GetGameSession(3)?.Phase);
+                    Assert.Null(sessionInstance.GetGameSession(2)?.Phase);
+                    Assert.Null(sessionInstance.GetGameSession(3)?.Phase);
                 }
             }
 
@@ -745,6 +747,7 @@ namespace GammonX.Server.Tests.Match
 			if (type == MatchType.CashGame)
 			{
 				var gameSessions = matchSession.GetGameSessions();
+                Assert.NotNull(gameSessions);
 				var connection1 = new PlayerConnection(Guid.NewGuid());
 				connection1.SetConnectionId(Guid.NewGuid().ToString());
 				matchSession.JoinSession(connection1);

@@ -106,8 +106,8 @@ namespace GammonX.Models.Tests
                 GameHistory = gameHistory
             };
 
-            var matchHistorypath = Path.Combine("Data", "TavliMatchHistory.txt");
-            var matchHistory = File.ReadAllText(matchHistorypath);
+            var matchHistoryPath = Path.Combine("Data", "TavliMatchHistory.txt");
+            var matchHistory = File.ReadAllText(matchHistoryPath);
             var matchRecord = new MatchRecordContract()
             {
                 Id = matchId,
@@ -117,7 +117,7 @@ namespace GammonX.Models.Tests
                 Type = MatchType.CashGame,
                 Variant = MatchVariant.Tavli,
                 BotLevel = BotLevel.Hard,
-                Games = new GameRecordContract[] { gameRecord },
+                Games = [gameRecord],
                 Format = HistoryFormat.MAT,
                 MatchHistory = matchHistory
             };
@@ -151,7 +151,7 @@ namespace GammonX.Models.Tests
             Assert.Equal(Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8"), matchRecord.PlayerId);
             Assert.Equal(MatchResult.Won, matchRecord.Result);
             Assert.Equal(MatchModus.Normal, matchRecord.Modus);
-            Assert.Equal(MatchType.CashGame, matchRecord.Type);
+            Assert.Equal(MatchType.SevenPointGame, matchRecord.Type);
             Assert.Equal(MatchVariant.Tavli, matchRecord.Variant);
             Assert.Equal(BotLevel.Hard, matchRecord.BotLevel);
             Assert.Equal(HistoryFormat.MAT, matchRecord.Format);

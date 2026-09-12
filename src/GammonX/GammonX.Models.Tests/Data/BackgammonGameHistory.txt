@@ -4,8 +4,8 @@
 ;[Game Modus 'Backgammon']
 ;[Winner '7b717dc4-11d3-4a9e-b102-d62f23f03af8']
 ;[Points '4']
-;[Started At '14/06/2026 19:40:35']
-;[Ended At '14/06/2026 19:40:37']
+;[Started At '2026-06-14T19:40:35.0000000Z']
+;[Ended At '2026-06-14T19:40:37.0000000Z']
 White Roll 3 5
 White Move 18/21
 White Move 16/21

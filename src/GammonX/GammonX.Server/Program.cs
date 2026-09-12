@@ -3,6 +3,7 @@ using DotNetEnv;
 using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using GammonX.Server;
 using GammonX.Server.Bot;
@@ -131,7 +132,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+    });
 builder.Services.AddHealthChecks();
 var app = builder.Build();
 

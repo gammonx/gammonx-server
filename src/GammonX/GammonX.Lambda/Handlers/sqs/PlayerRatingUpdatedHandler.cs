@@ -37,7 +37,7 @@ namespace GammonX.Lambda.Handlers
         /// <summary>
         /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
         /// </summary>
-        public PlayerRatingUpdatedHandler() : base()
+        public PlayerRatingUpdatedHandler()
         {
             // pass
         }
@@ -50,7 +50,7 @@ namespace GammonX.Lambda.Handlers
 			{
                 if (_repo == null)
                 {
-                    context.Logger.LogInformation($"Setting up DI services...");
+                    context.Logger.LogInformation("Setting up DI services...");
                     var services = Startup.Configure();
                     _repo = services.GetRequiredService<IDynamoDbRepository>();
                 }
@@ -85,8 +85,8 @@ namespace GammonX.Lambda.Handlers
                         await _repo.SaveAsync(result.Item2);
                     }
 
-                    context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch?.PlayerId}' after match '{wonMatch?.Id}'");
-                    context.Logger.LogInformation($"Processed rating update for player with id '{lostMatch?.PlayerId}' after match '{lostMatch?.Id}'");
+                    context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch.PlayerId}' after match '{wonMatch.Id}'");
+                    context.Logger.LogInformation($"Processed rating update for player with id '{lostMatch.PlayerId}' after match '{lostMatch.Id}'");
                 }
                 else
                 {
@@ -108,9 +108,9 @@ namespace GammonX.Lambda.Handlers
             if (_repo == null)
                 throw new NullReferenceException("db repo must not be null");
 
-            ArgumentNullException.ThrowIfNull(wonMatch, nameof(wonMatch));
-			ArgumentNullException.ThrowIfNull(lostMatch, nameof(lostMatch));
-            ArgumentNullException.ThrowIfNull(playerId, nameof(playerId));
+            ArgumentNullException.ThrowIfNull(wonMatch);
+			ArgumentNullException.ThrowIfNull(lostMatch);
+            ArgumentNullException.ThrowIfNull(playerId);
 
             var wonMatchHistory = wonMatch.ToMatchHistory();
 			var wonParser = HistoryParserFactory.Create<IMatchHistoryParser>(wonMatchHistory.Format);

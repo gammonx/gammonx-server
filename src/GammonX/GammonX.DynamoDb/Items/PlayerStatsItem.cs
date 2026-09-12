@@ -50,7 +50,7 @@ namespace GammonX.DynamoDb.Items
 
 		public TimeSpan TotalPlayTime { get; set; } = TimeSpan.Zero;
 
-		public DateTime LastMatch { get; set; } = DateTime.MinValue;
+		public DateTime? LastMatch { get; set; }
 
 		public int MatchesLast7 { get; set; } = 0;
 

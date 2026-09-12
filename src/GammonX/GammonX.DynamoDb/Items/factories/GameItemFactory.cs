@@ -46,16 +46,16 @@ namespace GammonX.DynamoDb.Items
 				Id = Guid.Parse(item["Id"].S),
 				PlayerId = Guid.Parse(item["PlayerId"].S),
                 MatchId = Guid.Parse(item["MatchId"].S),
-                Points = int.Parse(item["Points"].N),
-				Length = int.Parse(item["Length"].N),
+				Points = int.Parse(item["Points"].N, CultureInfo.InvariantCulture),
+				Length = int.Parse(item["Length"].N, CultureInfo.InvariantCulture),
 				Modus = Enum.Parse<GameModus>(item["Modus"].S, true),
-				StartedAt = DateTimeHelper.ParseFlexible(item["StartedAt"].S),
-				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
+				StartedAt = DateTimeHelper.ParseUtc(item["StartedAt"].S),
+				EndedAt = DateTimeHelper.ParseUtc(item["EndedAt"].S),
 				Result = Enum.Parse<GameResult>(item["Result"].S, true),
-				DiceDoubles = int.Parse(item["DiceDoubles"].N),
+				DiceDoubles = int.Parse(item["DiceDoubles"].N, CultureInfo.InvariantCulture),
 				DoublingCubeValue = doublingCubeValue,
-				Duration = TimeSpan.Parse(item["Duration"].S),
-				PipesLeft = int.Parse(item["PipesLeft"].N)
+				Duration = DateTimeHelper.ParseDurationTicks(item["Duration"].N),
+				PipesLeft = int.Parse(item["PipesLeft"].N, CultureInfo.InvariantCulture)
 			};
 			return gameItem;
 		}
@@ -75,18 +75,18 @@ namespace GammonX.DynamoDb.Items
 				{ "Id", new AttributeValue(item.Id.ToString()) },
 				{ "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
                 { "MatchId", new AttributeValue(item.MatchId.ToString()) },
-                { "Points", new AttributeValue() { N = item.Points.ToString() } },
-				{ "Length", new AttributeValue() { N = item.Length.ToString() } },
+				{ "Points", new AttributeValue() { N = item.Points.ToString(CultureInfo.InvariantCulture) } },
+				{ "Length", new AttributeValue() { N = item.Length.ToString(CultureInfo.InvariantCulture) } },
 				{ "Modus", new AttributeValue(modusStr) },
-				{ "StartedAt", new AttributeValue { S = item.StartedAt.ToString("o") } },
-				{ "EndedAt", new AttributeValue { S = item.EndedAt.ToString("o") } },
+				{ "StartedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.StartedAt) } },
+				{ "EndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.EndedAt) } },
 				{ "Result", new AttributeValue(resultStr) },
-				{ "DiceDoubles", new AttributeValue { N = item.DiceDoubles.ToString() } },
+				{ "DiceDoubles", new AttributeValue { N = item.DiceDoubles.ToString(CultureInfo.InvariantCulture) } },
 				{ "DoublingCubeValue", item.DoublingCubeValue.HasValue
 					? new AttributeValue { N = item.DoublingCubeValue.Value.ToString(CultureInfo.InvariantCulture) }
 					: new AttributeValue { NULL = true } },
-				{ "Duration", new AttributeValue { S = item.Duration.ToString() } },
-				{ "PipesLeft", new AttributeValue { N = item.PipesLeft.ToString() } }
+				{ "Duration", new AttributeValue { N = DateTimeHelper.FormatDurationTicks(item.Duration) } },
+				{ "PipesLeft", new AttributeValue { N = item.PipesLeft.ToString(CultureInfo.InvariantCulture) } }
 			};
 			return itemDict;
 		}

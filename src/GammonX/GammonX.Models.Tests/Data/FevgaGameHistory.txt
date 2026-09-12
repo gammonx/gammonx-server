@@ -4,8 +4,8 @@
 ;[Game Modus 'Fevga']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '1']
-;[Started At '29/11/2025 09:33:39']
-;[Ended At '29/11/2025 09:33:41']
+;[Started At '2025-11-29T09:33:39.0000000Z']
+;[Ended At '2025-11-29T09:33:41.0000000Z']
 White Roll 6 4
 White Move bar/5
 White Move 5/9
