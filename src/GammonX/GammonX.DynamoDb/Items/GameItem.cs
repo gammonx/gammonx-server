@@ -117,7 +117,7 @@ namespace GammonX.DynamoDb.Items
 				return value.Value ? "WON" : "LOST";
 			}
 			// we append the player id to the sk in order to make it unique
-			return $"NOTFINISHED#{PlayerId}";
+			return $"NOTFINISHED#{PlayerId:D}";
 		}
 	}
 }

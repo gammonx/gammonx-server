@@ -11,12 +11,12 @@ namespace GammonX.DynamoDb.Items
     internal class RatingPeriodItemFactory : IItemFactory<RatingPeriodItem>
     {
         // <inheritdoc />
-        public string PKFormat => "PLAYER#{0}";
+        public string PKFormat => "PLAYER#{0:D}";
 
         /// <summary>
         /// Gets the sk format for a rating period. E.g. MATCH#{variant}#{type}#{modus}#{matchId}.
         /// </summary>
-        public string SKFormat => "MATCH#{0}#{1}#{2}#{3}";
+        public string SKFormat => "MATCH#{0}#{1}#{2}#{3:D}";
 
         // <inheritdoc />
         public string SKPrefix => "MATCH#";
@@ -63,9 +63,9 @@ namespace GammonX.DynamoDb.Items
             {
                 { "PK", new AttributeValue(item.PK) },
                 { "SK", new AttributeValue(item.SK) },
-                { "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
-                { "OpponentId", new AttributeValue(item.OpponentId.ToString()) },
-                { "MatchId", new AttributeValue(item.MatchId.ToString()) },
+                { "PlayerId", new AttributeValue(item.PlayerId.ToString("D")) },
+                { "OpponentId", new AttributeValue(item.OpponentId.ToString("D")) },
+                { "MatchId", new AttributeValue(item.MatchId.ToString("D")) },
                 { "MatchScore", new AttributeValue() { N = item.MatchScore.ToString(CultureInfo.InvariantCulture) } },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Variant", new AttributeValue(variantStr) },

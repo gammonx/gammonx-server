@@ -12,7 +12,7 @@ namespace GammonX.DynamoDb.Items
     public class PlayerRatingItemFactory : IItemFactory<PlayerRatingItem>
     {
         // <inheritdoc />
-        public string PKFormat => "PLAYER#{0}";
+        public string PKFormat => "PLAYER#{0:D}";
 
         // <inheritdoc />
         public string SKFormat => "RATING#{0}#{1}";
@@ -58,7 +58,7 @@ namespace GammonX.DynamoDb.Items
             {
                 { "PK", new AttributeValue(item.PK) },
                 { "SK", new AttributeValue(item.SK) },
-                { "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
+                { "PlayerId", new AttributeValue(item.PlayerId.ToString("D")) },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Variant", new AttributeValue(variantStr) },
                 { "Modus", new AttributeValue(modusStr) },

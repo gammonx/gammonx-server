@@ -7,7 +7,7 @@ namespace GammonX.DynamoDb.Items
 	public class GameHistoryItemFactory : IItemFactory<GameHistoryItem>
 	{
 		// <inheritdoc />
-		public string PKFormat => "GAME#{0}";
+		public string PKFormat => "GAME#{0:D}";
 
 		// <inheritdoc />
 		public string SKFormat => "HISTORY";
@@ -45,7 +45,7 @@ namespace GammonX.DynamoDb.Items
 				{ "PK", new AttributeValue(item.PK) },
 				{ "SK", new AttributeValue(item.SK) },
 				{ "ItemType", new AttributeValue(item.ItemType) },
-				{ "GameId", new AttributeValue(item.GameId.ToString()) },
+				{ "GameId", new AttributeValue(item.GameId.ToString("D")) },
 				{ "Format", new AttributeValue(formatString) },
 				{ "Data", new AttributeValue(item.Data) },
 			};

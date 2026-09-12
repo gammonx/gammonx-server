@@ -110,8 +110,8 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var ratingPeriodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
             Assert.NotNull(ratingPeriodFactory);
-            Assert.Equal("PLAYER#{0}", ratingPeriodFactory.PKFormat);
-            Assert.Equal("MATCH#{0}#{1}#{2}#{3}", ratingPeriodFactory.SKFormat);
+            Assert.Equal("PLAYER#{0:D}", ratingPeriodFactory.PKFormat);
+            Assert.Equal("MATCH#{0}#{1}#{2}#{3:D}", ratingPeriodFactory.SKFormat);
             Assert.Equal("MATCH#", ratingPeriodFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => ratingPeriodFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => ratingPeriodFactory.GSI1SKFormat);

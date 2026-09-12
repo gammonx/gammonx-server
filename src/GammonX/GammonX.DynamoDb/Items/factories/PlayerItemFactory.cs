@@ -8,7 +8,7 @@ namespace GammonX.DynamoDb.Items
     public class PlayerItemFactory : IItemFactory<PlayerItem>
     {
         // <inheritdoc />
-        public string PKFormat => "PLAYER#{0}";
+        public string PKFormat => "PLAYER#{0:D}";
 
         // <inheritdoc />
         public string SKFormat => "PROFILE";
@@ -43,7 +43,7 @@ namespace GammonX.DynamoDb.Items
             {
                 { "PK", new AttributeValue(item.PK) },
                 { "SK", new AttributeValue(item.SK) },
-                { "Id", new AttributeValue(item.Id.ToString()) },
+                { "Id", new AttributeValue(item.Id.ToString("D")) },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Username", new AttributeValue(item.UserName) },
                 { "CreatedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.CreatedAt) } }

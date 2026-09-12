@@ -11,16 +11,16 @@ namespace GammonX.DynamoDb.Items
 	public class GameItemFactory : IItemFactory<GameItem>
 	{
 		// <inheritdoc />
-		public string PKFormat => "MATCH#{0}";
+		public string PKFormat => "MATCH#{0:D}";
 
 		// <inheritdoc />
 		public string SKPrefix => "GAME#";
 
 		// <inheritdoc />
-		public string SKFormat => "GAME#{0}#{1}";
+		public string SKFormat => "GAME#{0:D}#{1}";
 
 		// <inheritdoc />
-		public string GSI1PKFormat => "PLAYER#{0}";
+		public string GSI1PKFormat => "PLAYER#{0:D}";
 
 		/// <summary>
 		/// Format for GSI1SK like 'GAME#{GameModus}#{WON|LOST|NOTFINISHED#{PlayerId}'.
@@ -72,9 +72,9 @@ namespace GammonX.DynamoDb.Items
 				{ "GSI1PK", new AttributeValue(item.GSI1PK) },
 				{ "GSI1SK", new AttributeValue(item.GSI1SK) },
 				{ "ItemType", new AttributeValue(item.ItemType) },
-				{ "Id", new AttributeValue(item.Id.ToString()) },
-				{ "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
-                { "MatchId", new AttributeValue(item.MatchId.ToString()) },
+				{ "Id", new AttributeValue(item.Id.ToString("D")) },
+				{ "PlayerId", new AttributeValue(item.PlayerId.ToString("D")) },
+                { "MatchId", new AttributeValue(item.MatchId.ToString("D")) },
 				{ "Points", new AttributeValue() { N = item.Points.ToString(CultureInfo.InvariantCulture) } },
 				{ "Length", new AttributeValue() { N = item.Length.ToString(CultureInfo.InvariantCulture) } },
 				{ "Modus", new AttributeValue(modusStr) },

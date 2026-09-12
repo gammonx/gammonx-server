@@ -139,10 +139,10 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var matchItemFactory = ItemFactoryCreator.Create<MatchItem>();
             Assert.NotNull(matchItemFactory);
-            Assert.Equal("MATCH#{0}", matchItemFactory.PKFormat);
+            Assert.Equal("MATCH#{0:D}", matchItemFactory.PKFormat);
             Assert.Equal("DETAILS#{0}", matchItemFactory.SKFormat);
             Assert.Equal("DETAILS#", matchItemFactory.SKPrefix);
-            Assert.Equal("PLAYER#{0}", matchItemFactory.GSI1PKFormat);
+            Assert.Equal("PLAYER#{0:D}", matchItemFactory.GSI1PKFormat);
             Assert.Equal("MATCH#{0}#{1}#{2}#{3}", matchItemFactory.GSI1SKFormat);
             Assert.Equal("MATCH#", matchItemFactory.GSI1SKPrefix);
             Assert.Equal("MATCH#{0}#{1}#{2}", ((MatchItemFactory)matchItemFactory).GSI1SKAllFormat);

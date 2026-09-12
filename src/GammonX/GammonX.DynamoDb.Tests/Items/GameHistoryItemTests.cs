@@ -60,7 +60,7 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var gameHistoryItemFactory = ItemFactoryCreator.Create<GameHistoryItem>();
             Assert.NotNull(gameHistoryItemFactory);
-            Assert.Equal("GAME#{0}", gameHistoryItemFactory.PKFormat);
+            Assert.Equal("GAME#{0:D}", gameHistoryItemFactory.PKFormat);
             Assert.Equal("HISTORY", gameHistoryItemFactory.SKFormat);
             Assert.Equal("HISTORY", gameHistoryItemFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => gameHistoryItemFactory.GSI1PKFormat);

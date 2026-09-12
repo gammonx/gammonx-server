@@ -3,7 +3,8 @@
 This document describes the schema currently produced by the item factories in
 `src/GammonX/GammonX.DynamoDb/Items`. The examples show logical item values;
 IDs and keys are stored as DynamoDB strings, numeric values as DynamoDB numbers,
-and enum values as strings. UTC timestamps use the canonical
+and enum values as strings. UUID values use lowercase hyphenated `D` format
+(`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`). UTC timestamps use the canonical
 `yyyy-MM-dd'T'HH:mm:ss.fffffffZ` string format. Durations are DynamoDB numbers
 containing `TimeSpan.Ticks`, formatted with invariant culture. Nullable values
 such as `LastMatch` use DynamoDB `NULL` when no value exists.

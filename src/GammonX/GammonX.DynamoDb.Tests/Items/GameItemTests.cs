@@ -156,10 +156,10 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var gameItemFactory = ItemFactoryCreator.Create<GameItem>();
             Assert.NotNull(gameItemFactory);
-            Assert.Equal("MATCH#{0}", gameItemFactory.PKFormat);
-            Assert.Equal("GAME#{0}#{1}", gameItemFactory.SKFormat);
+            Assert.Equal("MATCH#{0:D}", gameItemFactory.PKFormat);
+            Assert.Equal("GAME#{0:D}#{1}", gameItemFactory.SKFormat);
             Assert.Equal("GAME#", gameItemFactory.SKPrefix);
-            Assert.Equal("PLAYER#{0}", gameItemFactory.GSI1PKFormat);
+            Assert.Equal("PLAYER#{0:D}", gameItemFactory.GSI1PKFormat);
             Assert.Equal("GAME#{0}#{1}", gameItemFactory.GSI1SKFormat);
             Assert.Equal("GAME#", gameItemFactory.GSI1SKPrefix);
         }

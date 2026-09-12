@@ -118,7 +118,7 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var playerItemFactory = ItemFactoryCreator.Create<PlayerStatsItem>();
             Assert.NotNull(playerItemFactory);
-            Assert.Equal("PLAYER#{0}", playerItemFactory.PKFormat);
+            Assert.Equal("PLAYER#{0:D}", playerItemFactory.PKFormat);
             Assert.Equal("STATS#{0}#{1}#{2}", playerItemFactory.SKFormat);
             Assert.Equal("STATS#", playerItemFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1PKFormat);

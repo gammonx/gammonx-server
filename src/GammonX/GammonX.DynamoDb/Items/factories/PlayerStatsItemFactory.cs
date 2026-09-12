@@ -16,7 +16,7 @@ namespace GammonX.DynamoDb.Items
 		/// <summary>
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
-		public string PKFormat => "PLAYER#{0}";
+		public string PKFormat => "PLAYER#{0:D}";
 
 		/// <summary>
 		/// Gets a sort key like 'STATS#{Variant}#{Type}#{Modus}'
@@ -79,7 +79,7 @@ namespace GammonX.DynamoDb.Items
 				{ "PK", new AttributeValue(item.PK) },
 				{ "SK", new AttributeValue(item.SK) },
 				{ "ItemType", new AttributeValue(item.ItemType) },
-				{ "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
+				{ "PlayerId", new AttributeValue(item.PlayerId.ToString("D")) },
 				{ "Variant", new AttributeValue(variantStr) },
 				{ "Modus", new AttributeValue(modusStr) },
 				{ "Type", new AttributeValue(typeStr) },
