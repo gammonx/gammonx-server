@@ -12,13 +12,13 @@ namespace GammonX.DynamoDb.Repository
 	public class DynamoDbRepository : IDynamoDbRepository
 	{
 		private readonly IAmazonDynamoDB _client;
-		private readonly IDynamoDBContext _context;
-		private readonly string _tableName = string.Empty;
+        
+		private readonly string _tableName;
 
 		public DynamoDbRepository(IAmazonDynamoDB client, IDynamoDBContext context, IOptions<DynamoDbOptions> options)
 		{
 			_client = client;
-			_context = context;
+			_ = context;
 			_tableName = options.Value.DYNAMODB_TABLENAME;
 		}
 
@@ -67,8 +67,8 @@ namespace GammonX.DynamoDb.Repository
         public async Task<IEnumerable<T>> GetItemsByGSIPKAsync<T>(Guid gsi1PkId)
 		{
 			var factory = ItemFactoryCreator.Create<T>();
-			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
-			var gsi1sk = factory.GSI1SKPrefix;
+			var gsi1PK = string.Format(factory.GSI1PKFormat, gsi1PkId);
+			var gsi1SK = factory.GSI1SKPrefix;
 			var request = new QueryRequest
 			{
 				TableName = _tableName,
@@ -76,8 +76,8 @@ namespace GammonX.DynamoDb.Repository
 				KeyConditionExpression = "GSI1PK = :gsi1pk and begins_with(GSI1SK, :gsi1skPrefix)",
 				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
 				{
-					{ ":gsi1pk", new AttributeValue(gsi1pk) },
-					{ ":gsi1skPrefix", new AttributeValue(gsi1sk) }
+					{ ":gsi1pk", new AttributeValue(gsi1PK) },
+					{ ":gsi1skPrefix", new AttributeValue(gsi1SK) }
 				}
 			};
 			var response = await _client.QueryAsync(request);
@@ -88,7 +88,7 @@ namespace GammonX.DynamoDb.Repository
 		public async Task<IEnumerable<T>> GetItemsByGSIPKAsync<T>(Guid gsi1PkId, string gsi1Sk)
 		{
 			var factory = ItemFactoryCreator.Create<T>();
-			var gsi1pk = string.Format(factory.GSI1PKFormat, gsi1PkId);
+			var gsi1PK = string.Format(factory.GSI1PKFormat, gsi1PkId);
 			var request = new QueryRequest
 			{
 				TableName = _tableName,
@@ -96,7 +96,7 @@ namespace GammonX.DynamoDb.Repository
 				KeyConditionExpression = "GSI1PK = :gsi1pk and begins_with(GSI1SK, :gsi1sk)",
 				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
 				{
-					{ ":gsi1pk", new AttributeValue(gsi1pk) },
+					{ ":gsi1pk", new AttributeValue(gsi1PK) },
 					{ ":gsi1sk", new AttributeValue(gsi1Sk) }
 				}
 			};

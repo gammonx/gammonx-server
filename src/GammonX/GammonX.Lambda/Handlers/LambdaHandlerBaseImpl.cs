@@ -4,23 +4,23 @@ namespace GammonX.Lambda.Handlers
 {
 	public abstract class LambdaHandlerBaseImpl
 	{
-		protected private IDynamoDbRepository? _repo;
+		private protected IDynamoDbRepository? Repo;
 
 		/// <summary>
 		/// Custom runtime constructor with DI services.
 		/// </summary>
 		/// <param name="repo">DI service.</param>
-		public LambdaHandlerBaseImpl(IDynamoDbRepository repo)
+		protected LambdaHandlerBaseImpl(IDynamoDbRepository repo)
 		{
-			_repo = repo;
+			Repo = repo;
 		}
 
 		/// <summary>
 		/// ZIP based runtime constructor without DI services.
 		/// </summary>
-		public LambdaHandlerBaseImpl()
+		protected LambdaHandlerBaseImpl()
 		{
-			_repo = null;
+			Repo = null;
 		}
 	}
 }

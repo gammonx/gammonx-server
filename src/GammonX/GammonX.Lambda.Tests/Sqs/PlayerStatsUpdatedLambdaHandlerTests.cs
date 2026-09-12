@@ -1,8 +1,13 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+using GammonX.DynamoDb.Items;
+using GammonX.DynamoDb.Repository;
+using GammonX.Lambda.Handlers;
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
+using Moq;
 
 using Newtonsoft.Json;
 
@@ -168,5 +173,130 @@ namespace GammonX.Lambda.Tests.Sqs
             Assert.Contains($"Processed stat update for player with id '{player1Id}'", logger.Buffer.ToString());
             Assert.Contains($"Processed stat update for player with id '{player2Id}'", logger.Buffer.ToString());
         }
+
+		[Fact]
+		public async Task OnPlayerStatsUpdatedUsesPlayerIdAndAccumulatesExistingMatches()
+		{
+			var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+			var existingMatchId = Guid.NewGuid();
+			var newMatchId = Guid.NewGuid();
+			var existingMatch = new MatchItem
+			{
+				Id = existingMatchId,
+				PlayerId = playerId,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Result = Models.Enums.MatchResult.Won,
+				Length = 3,
+				Duration = TimeSpan.FromMinutes(30),
+				AvgDuration = TimeSpan.FromMinutes(10),
+				EndedAt = DateTime.UtcNow.AddDays(-1)
+			};
+			var matchHistory = await File.ReadAllTextAsync(
+				Path.Combine("Data", "TavliMatchHistory.txt"),
+				TestContext.Current.CancellationToken);
+
+			var newMatch = new MatchRecordContract
+			{
+				Id = newMatchId,
+				PlayerId = playerId,
+				Result = Models.Enums.MatchResult.Won,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Format = Models.Enums.HistoryFormat.MAT,
+				MatchHistory = matchHistory,
+				Games = Array.Empty<GameRecordContract>()
+			};
+
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(new[] { existingMatch });
+
+			var savedStats = new List<PlayerStatsItem>();
+			repository
+				.Setup(repo => repo.SaveAsync(It.IsAny<PlayerStatsItem>()))
+				.Callback<PlayerStatsItem>(savedStats.Add)
+				.Returns(Task.CompletedTask);
+
+			var handler = new PlayerStatsUpdatedHandler(repository.Object);
+			var context = new TestLambdaContext { Logger = new TestLambdaLogger() };
+			var @event = new SQSEvent
+			{
+				Records = new List<SQSEvent.SQSMessage>
+				{
+					new()
+					{
+						MessageId = Guid.NewGuid().ToString(),
+						Body = JsonConvert.SerializeObject(newMatch)
+					}
+				}
+			};
+
+			await handler.HandleAsync(@event, context);
+
+			repository.Verify(
+				repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"),
+				Times.Once);
+
+			var stats = Assert.Single(savedStats);
+			Assert.Equal(2, stats.MatchesPlayed);
+			Assert.Equal(2, stats.MatchesWon);
+			Assert.Equal(2, stats.WinStreak);
+			Assert.Equal(2, stats.LongestWinStreak);
+		}
+
+		[Fact]
+		public async Task OnPlayerStatsUpdatedContinuesAfterMalformedMessage()
+		{
+			var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+			var matchHistory = await File.ReadAllTextAsync(
+				Path.Combine("Data", "TavliMatchHistory.txt"),
+				TestContext.Current.CancellationToken);
+			var validMatch = new MatchRecordContract
+			{
+				Id = Guid.NewGuid(),
+				PlayerId = playerId,
+				Result = Models.Enums.MatchResult.Won,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Format = Models.Enums.HistoryFormat.MAT,
+				MatchHistory = matchHistory,
+				Games = Array.Empty<GameRecordContract>()
+			};
+
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(Array.Empty<MatchItem>());
+
+			var savedStats = new List<PlayerStatsItem>();
+			repository
+				.Setup(repo => repo.SaveAsync(It.IsAny<PlayerStatsItem>()))
+				.Callback<PlayerStatsItem>(savedStats.Add)
+				.Returns(Task.CompletedTask);
+
+			var invalidMessageId = Guid.NewGuid().ToString();
+			var validMessageId = Guid.NewGuid().ToString();
+			var logger = new TestLambdaLogger();
+			var handler = new PlayerStatsUpdatedHandler(repository.Object);
+			var @event = new SQSEvent
+			{
+				Records = new List<SQSEvent.SQSMessage>
+				{
+					new() { MessageId = invalidMessageId, Body = "{" },
+					new() { MessageId = validMessageId, Body = JsonConvert.SerializeObject(validMatch) }
+				}
+			};
+
+			await handler.HandleAsync(@event, new TestLambdaContext { Logger = logger });
+
+			Assert.Contains($"Processing message with id '{validMessageId}'", logger.Buffer.ToString());
+			Assert.Contains($"Processed stat update for player with id '{playerId}'", logger.Buffer.ToString());
+			Assert.Single(savedStats);
+		}
 	}
 }

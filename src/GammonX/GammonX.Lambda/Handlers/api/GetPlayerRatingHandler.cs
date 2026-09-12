@@ -31,14 +31,14 @@ namespace GammonX.Lambda.Handlers
         {
             try
             {
-                if (_repo == null)
+                if (Repo == null)
                 {
                     context.Logger.LogInformation("Setting up DI services...");
                     var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
+                    Repo = services.GetRequiredService<IDynamoDbRepository>();
                 }
 
-                if (_repo == null)
+                if (Repo == null)
                     throw new NullReferenceException("db repo must not be null");
 
                 var playerIdStr = request.PathParameters["id"];
@@ -48,7 +48,7 @@ namespace GammonX.Lambda.Handlers
 
                 var playerRatingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
                 var sk = string.Format(playerRatingFactory.SKFormat, variant, MatchType.SevenPointGame);
-                var ratings = await _repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
+                var ratings = await Repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
 
                 if (ratings.Count() == 1)
                 {

@@ -22,59 +22,55 @@ namespace GammonX.Lambda.Handlers
 	/// </summary>
 	public class PlayerStatsUpdatedHandler : LambdaHandlerBaseImpl, ISqsLambdaHandler
 	{
-        /// <summary>
-        /// Default constructor for container based lambda execution. 
-        /// This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
-        /// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
-        /// region the Lambda function is executed in.
-        /// </summary>
-        public PlayerStatsUpdatedHandler(IDynamoDbRepository repo) : base(repo)
+		/// <summary>
+		/// Default constructor for container based lambda execution.
+		/// This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
+		/// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
+		/// region the Lambda function is executed in.
+		/// </summary>
+		public PlayerStatsUpdatedHandler(IDynamoDbRepository repo) : base(repo)
 		{
 			// pass
 		}
 
-        /// <summary>
-        /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
-        /// </summary>
-        public PlayerStatsUpdatedHandler() : base()
-        {
-            // pass
-        }
-
-        // <inheritdoc />
-        [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+		/// <summary>
+		/// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
+		/// </summary>
+		public PlayerStatsUpdatedHandler()
 		{
-			try
+			// pass
+		}
+
+		// <inheritdoc />
+		[LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
+		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+		{
+			if (Repo == null)
 			{
-                if (_repo == null)
-                {
-                    context.Logger.LogInformation($"Setting up DI services...");
-                    var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+				context.Logger.LogInformation("Setting up DI services...");
+				var services = Startup.Configure();
+				Repo = services.GetRequiredService<IDynamoDbRepository>();
+			}
 
-                foreach (var message in @event.Records)
-                {
-                    await ProcessMessageAsync(message, context);
-                }
-            }
-            catch (Exception ex)
-            {
-                foreach (var record in @event.Records)
-                {
-                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
-
-                }
-            }
-        }
+			foreach (var message in @event.Records)
+			{
+				try
+				{
+					await ProcessMessageAsync(message, context);
+				}
+				catch (Exception ex)
+				{
+					context.Logger.LogError(ex, $"An error occurred while processing stats update. Message id: '{message.MessageId}'");
+				}
+			}
+		}
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-            if (_repo == null)
-                throw new NullReferenceException("db repo must not be null");
+			if (Repo == null)
+				throw new NullReferenceException("db repo must not be null");
 
-            context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
+			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
 
 			var json = message.Body;
 			var matchRecord = JsonConvert.DeserializeObject<MatchRecordContract>(json);
@@ -96,7 +92,10 @@ namespace GammonX.Lambda.Handlers
 			var typeStr = matchRecord.Type.ToString();
 			var modusStr = matchRecord.Modus.ToString();
 			var matchGsiSk = string.Format(matchItemFactory.GSI1SKAllFormat, variantStr, typeStr, modusStr);
-			var playerMatches = (await _repo.GetItemsByGSIPKAsync<MatchItem>(newMatchId, matchGsiSk)).ToList();
+			var queriedMatches = await Repo.GetItemsByGSIPKAsync<MatchItem>(playerId, matchGsiSk);
+			var playerMatches = (queriedMatches is null ? Enumerable.Empty<MatchItem>() : queriedMatches)
+				.Where(match => match is not null)
+				.ToList();
 
 			// we check if the finished match was already posted to the db
 			if (!playerMatches.Any(pm => pm.Id.Equals(matchRecord.Id)))
@@ -115,7 +114,7 @@ namespace GammonX.Lambda.Handlers
 				matchRecord.Modus,
 				playerMatches);
 
-			await _repo.SaveAsync(playerStatsItem);
+			await Repo.SaveAsync(playerStatsItem);
 
 			context.Logger.LogInformation($"Processed stat update for player with id '{playerId}' after match '{newMatchId}'");
 		}

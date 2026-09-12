@@ -1,4 +1,5 @@
 ﻿using GammonX.DynamoDb.Stats;
+using GammonX.DynamoDb.Items;
 
 namespace GammonX.DynamoDb.Tests
 {
@@ -100,6 +101,57 @@ namespace GammonX.DynamoDb.Tests
             var expected = TimeSpan.FromSeconds(80);
             TimeSpan result = StatsAggregator.WeightedAverage(items, v => v.Time, v => v.Weight);
             Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void WeightedAverageDoubleIgnoresInvalidWeightsAndValues()
+        {
+            var items = new[]
+            {
+                new ValueWeight(100, -1),
+                new ValueWeight(double.NaN, 2),
+                new ValueWeight(20, 2)
+            };
+
+            var result = StatsAggregator.WeightedAverage(items, v => v.Value, v => v.Weight);
+
+            Assert.Equal(20, result);
+        }
+
+        [Fact]
+        public void CalculateWinStreaksIgnoresUnfinishedMatches()
+        {
+            var now = DateTime.UtcNow;
+            var matches = new[]
+            {
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now.AddDays(-3) },
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now.AddDays(-2) },
+                new MatchItem { Result = Models.Enums.MatchResult.Unknown, EndedAt = now.AddDays(-1) },
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now }
+            };
+
+            var (currentStreak, longestStreak) = StatsAggregator.CalculateWinStreaks(matches);
+
+            Assert.Equal(3, currentStreak);
+            Assert.Equal(3, longestStreak);
+        }
+
+        [Fact]
+        public void CalculateWinStreaksResetsOnlyAfterLosses()
+        {
+            var now = DateTime.UtcNow;
+            var matches = new[]
+            {
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now.AddDays(-3) },
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now.AddDays(-2) },
+                new MatchItem { Result = Models.Enums.MatchResult.Lost, EndedAt = now.AddDays(-1) },
+                new MatchItem { Result = Models.Enums.MatchResult.Won, EndedAt = now }
+            };
+
+            var (currentStreak, longestStreak) = StatsAggregator.CalculateWinStreaks(matches);
+
+            Assert.Equal(1, currentStreak);
+            Assert.Equal(2, longestStreak);
         }
     }
 }

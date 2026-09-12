@@ -146,6 +146,7 @@ namespace GammonX.Models.Tests
 
             var matchRecord = JsonConvert.DeserializeObject<MatchRecordContract>(recordJsonStr);
             Assert.NotNull(matchRecord);
+            Assert.NotNull(matchRecord.Games);
             Assert.NotEmpty(matchRecord.Games);
             Assert.Equal(Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e"), matchRecord.Id);
             Assert.Equal(Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8"), matchRecord.PlayerId);

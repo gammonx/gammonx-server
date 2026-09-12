@@ -48,11 +48,11 @@ namespace GammonX.Lambda.Handlers
 		{
 			try
 			{
-                if (_repo == null)
+                if (Repo == null)
                 {
                     context.Logger.LogInformation("Setting up DI services...");
                     var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
+                    Repo = services.GetRequiredService<IDynamoDbRepository>();
                 }
 
                 // we expect exactly to match records, one for the winner and one for the loser
@@ -80,9 +80,9 @@ namespace GammonX.Lambda.Handlers
 					foreach (var result in results)
 					{
 						// we persist the updated player rating
-						await _repo.SaveAsync(result.Item1);
+						await Repo.SaveAsync(result.Item1);
                         // we persist the rating period entry
-                        await _repo.SaveAsync(result.Item2);
+                        await Repo.SaveAsync(result.Item2);
                     }
 
                     context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch.PlayerId}' after match '{wonMatch.Id}'");
@@ -105,7 +105,7 @@ namespace GammonX.Lambda.Handlers
 
 		private async Task<(PlayerRatingItem, RatingPeriodItem)> ProcessMessageAsync(Guid? playerId, MatchRecordContract? wonMatch, MatchRecordContract? lostMatch)
 		{
-            if (_repo == null)
+            if (Repo == null)
                 throw new NullReferenceException("db repo must not be null");
 
             ArgumentNullException.ThrowIfNull(wonMatch);
@@ -122,7 +122,7 @@ namespace GammonX.Lambda.Handlers
             var lostParsedHistory = lostParser.ParseMatch(lostMatchHistory.Data);
             var lostMatchItem = lostMatch.ToMatch(lostParsedHistory);
 
-            var result = await _repo.CalculatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
+            var result = await Repo.CalculatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
 			return result;
 		}
 	}

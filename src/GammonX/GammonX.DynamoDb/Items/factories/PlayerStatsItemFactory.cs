@@ -114,32 +114,29 @@ namespace GammonX.DynamoDb.Items
 			MatchModus modus,
 			IEnumerable<MatchItem> matchItems)
 		{
-			var matches = matchItems.OrderBy(mi => mi.EndedAt).ToList();
+			ArgumentNullException.ThrowIfNull(matchItems);
+
+			var matches = matchItems
+				.Where(match => match is not null && (match.Result == MatchResult.Won || match.Result == MatchResult.Lost))
+				.OrderBy(match => match.EndedAt)
+				.ToList();
 
 			if (matches.Count == 0)
-				throw new ArgumentException("The match list must not be empty for stat calculation");
+				throw new ArgumentException("The match list must contain at least one completed match for stat calculation", nameof(matchItems));
 
 			var matchesPlayed = matches.Count;
 			var matchesWon = matches.Count(m => m.Result == MatchResult.Won);
 			var matchesLost = matches.Count(m => m.Result == MatchResult.Lost);
 			var winRate = (double)matchesWon / matchesPlayed;
 			var (currentStreak, longestStreak) = StatsAggregator.CalculateWinStreaks(matches);
-			var winStreak = currentStreak;
-			var longestWinStreak = longestStreak;
-			var lastMatch = matches.Last().EndedAt;
-			var totalPlayTime = TimeSpan.FromTicks(matches.Sum(m => m.Duration.Ticks));
+            var lastMatch = matches.Last().EndedAt;
+			var totalPlayTime = SumDurations(matches);
 			var now = DateTime.UtcNow;
 			var matchesLast7 = matches.Count(m => m.EndedAt > now.AddDays(-7));
 			var matchesLast30 = matches.Count(m => m.EndedAt > now.AddDays(-30));
-			var gammonCount = matches.Sum(m => m.Gammons);
-			var avgGammons = 0.0;
-			if (gammonCount > 0)
-				avgGammons = (double)gammonCount / matchesPlayed;
-			var backgammonCount = matches.Sum(m => m.Backgammons);
-			var avgBackgammons = 0.0;
-			if (backgammonCount > 0)
-				avgBackgammons = (double)backgammonCount / matchesPlayed;
-			var avgDuration = TimeSpan.FromTicks((long)matches.Average(m => m.Duration.Ticks));
+			var avgGammons = matches.Average(m => Math.Max(m.Gammons, 0));
+			var avgBackgammons = matches.Average(m => Math.Max(m.Backgammons, 0));
+			var avgDuration = AverageDuration(matches);
 			var wAvgPipesLeft = StatsAggregator.WeightedAverage(matches, m => m.AvgPipesLeft, m => m.Length);
 			var wAvgDoubleDices = StatsAggregator.WeightedAverage(matches, m => m.AvgDoubleDices, m => m.Length);
 			var wAvgTurns = StatsAggregator.WeightedAverage(matches, m => m.AvgTurns, m => m.Length);
@@ -156,8 +153,8 @@ namespace GammonX.DynamoDb.Items
 				MatchesWon = matchesWon,
 				MatchesLost = matchesLost,
 				WinRate = winRate,
-				WinStreak = winStreak,
-				LongestWinStreak = longestWinStreak,
+				WinStreak = currentStreak,
+				LongestWinStreak = longestStreak,
 				TotalPlayTime = totalPlayTime,
 				LastMatch = lastMatch,
 				MatchesLast7 = matchesLast7,
@@ -172,6 +169,38 @@ namespace GammonX.DynamoDb.Items
 				WAvgDuration = wAvgDuration
 			};
 			return playerStatsItem;
+		}
+
+		private static TimeSpan SumDurations(IEnumerable<MatchItem> matches)
+		{
+			var totalTicks = matches
+				.Where(match => match.Duration >= TimeSpan.Zero)
+				.Sum(match => (decimal)match.Duration.Ticks);
+
+			return TimeSpan.FromTicks(ToTicks(totalTicks));
+		}
+
+		private static TimeSpan AverageDuration(IEnumerable<MatchItem> matches)
+		{
+			var durations = matches
+				.Where(match => match.Duration >= TimeSpan.Zero)
+				.Select(match => (decimal)match.Duration.Ticks)
+				.ToList();
+
+			if (durations.Count == 0)
+				return TimeSpan.Zero;
+
+			return TimeSpan.FromTicks(ToTicks(durations.Sum() / durations.Count));
+		}
+
+		private static long ToTicks(decimal ticks)
+		{
+			if (ticks >= TimeSpan.MaxValue.Ticks)
+				return TimeSpan.MaxValue.Ticks;
+			if (ticks <= TimeSpan.MinValue.Ticks)
+				return TimeSpan.MinValue.Ticks;
+
+			return decimal.ToInt64(decimal.Truncate(ticks));
 		}
 	}
 }

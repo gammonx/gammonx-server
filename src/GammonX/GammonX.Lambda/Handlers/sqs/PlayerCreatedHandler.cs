@@ -41,11 +41,11 @@ namespace GammonX.Lambda.Handlers
 		{
             try
             {
-                if (_repo == null)
+                if (Repo == null)
                 {
                     context.Logger.LogInformation($"Setting up DI services...");
                     var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
+                    Repo = services.GetRequiredService<IDynamoDbRepository>();
                 }
 
                 foreach (var message in @event.Records)
@@ -65,7 +65,7 @@ namespace GammonX.Lambda.Handlers
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-            if (_repo == null)
+            if (Repo == null)
                 throw new NullReferenceException("db repo must not be null");
 
             context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
@@ -83,7 +83,7 @@ namespace GammonX.Lambda.Handlers
 
 			var playerItem = playerRecord.ToPlayer();
 
-            await _repo.SaveAsync(playerItem);
+            await Repo.SaveAsync(playerItem);
 
             context.Logger.LogInformation($"Processed created player with id '{playerRecord.Id}'");
         }

@@ -267,6 +267,23 @@ namespace GammonX.Lambda.Tests.Contracts
         }
 
         [Fact]
+        public void ToMatchTreatsMissingGamesAsEmpty()
+        {
+            var contract = new MatchRecordContract
+            {
+                Id = Guid.NewGuid(),
+                PlayerId = Guid.NewGuid(),
+                Games = null!
+            };
+
+            var result = contract.ToMatch(new FakeMatchHistory());
+
+            Assert.Equal(0, result.AvgPipesLeft);
+            Assert.Equal(0, result.Gammons);
+            Assert.Equal(0, result.Backgammons);
+        }
+
+        [Fact]
         public void ToMatchNegativeStatisticValues()
         {
             var contract = new MatchRecordContract { Id = Guid.NewGuid(), PlayerId = Guid.NewGuid() };
