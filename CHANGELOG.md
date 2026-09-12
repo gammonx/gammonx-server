@@ -1,7 +1,15 @@
 # Changelog
 
 ## 12.09.2026
-- ?
+### Breaking changes
+- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) renamed to `DurationMilliseconds` (`long`) Milliseconds
+- `EventDisconnectedPayload` (`TimeSpan`) to (`long`) Milliseconds
+- match/game history is now persisted as strict binary MAT data in DynamoDB
+- canonical persistence formats for UUIDs, timestamps, durations, and numbers
+
+### Fixes
+- hardened player statistics for consecutive matches, unfinished data, and invalid or missing values
+- fixed player-scoped match lookup during statistics updates
 
 ## 10.09.2026
 - updated default nn model to gen11
