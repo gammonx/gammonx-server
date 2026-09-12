@@ -67,5 +67,21 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Throws<InvalidOperationException>(() => gameHistoryItemFactory.GSI1SKFormat);
             Assert.Throws<InvalidOperationException>(() => gameHistoryItemFactory.GSI1SKPrefix);
         }
+
+        [Fact]
+        public void GameHistoryFactoryStoresDataAsBinary()
+        {
+            var historyItem = ItemFactory.CreateGameHistory(Guid.NewGuid());
+            historyItem.Data = ";[Game 'history']\r\nWhite Roll 1 2\n";
+            var factory = ItemFactoryCreator.Create<GameHistoryItem>();
+
+            var attributes = factory.CreateItem(historyItem);
+
+            Assert.NotNull(attributes["Data"].B);
+            Assert.NotEqual(0, attributes["Data"].B.Length);
+            Assert.Null(attributes["Data"].S);
+            Assert.Equal(HistoryFormat.MAT.ToString(), attributes["Format"].S);
+            Assert.Equal(historyItem.Data, factory.CreateItem(attributes).Data);
+        }
     }
 }

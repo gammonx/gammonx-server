@@ -208,5 +208,32 @@ namespace GammonX.Models.Tests
             Assert.Equal(2, match.AvgDoubleOfferCount(whitePlayer));
             Assert.Equal(1, match.AvgDoubleOfferCount(blackPlayer));
         }
+
+        [Fact]
+        public void MATBinaryRoundTripPreservesHistoryText()
+        {
+            var parser = HistoryParserFactory.Create<MATParser>(HistoryFormat.MAT);
+            var gameHistory = File.ReadAllText(Path.Combine("Data", "BackgammonGameHistory.txt"));
+            var matchHistory = File.ReadAllText(Path.Combine("Data", "BackgammonMatchHistory.txt"));
+            var textWithUnicodeAndMixedLineEndings = "Ä player\r\nWhite Roll 1 2\n";
+
+            Assert.Equal(gameHistory, parser.DecodeBinary(parser.EncodeBinary(gameHistory)));
+            Assert.Equal(matchHistory, parser.DecodeBinary(parser.EncodeBinary(matchHistory)));
+            Assert.Equal(string.Empty, parser.DecodeBinary(parser.EncodeBinary(string.Empty)));
+            Assert.Equal(
+                textWithUnicodeAndMixedLineEndings,
+                parser.DecodeBinary(parser.EncodeBinary(textWithUnicodeAndMixedLineEndings)));
+        }
+
+        [Fact]
+        public void MATBinaryDecodeRejectsMalformedAndTruncatedPayloads()
+        {
+            var parser = HistoryParserFactory.Create<MATParser>(HistoryFormat.MAT);
+            var encoded = parser.EncodeBinary("history");
+            var truncated = encoded[..^1];
+
+            Assert.Throws<FormatException>(() => parser.DecodeBinary([1, 2, 3]));
+            Assert.Throws<FormatException>(() => parser.DecodeBinary(truncated));
+        }
     }
 }

@@ -60,18 +60,33 @@ variant, type, modus, and match ID are all part of the sort key.
   "OpponentSigma": "{double}",
   "CreatedAt": "2026-01-01T12:00:00.0000000Z"
 }
+
+History items are the exception to the general string rule for their `Data`
+attribute. The logical value remains MAT text in the item models and all
+server/client/Lambda contracts, but the history factories use the concrete
+`MATParser` binary API to store UTF-8 MAT text compressed with GZip as a
+DynamoDB `B` (Binary) attribute. DynamoDB tools may display that binary value
+as base64. `Format` remains the logical `MAT` enum value and is stored as a
+string.
+
+`Data` is stored as a compressed DynamoDB `B` value. The example shows the
+logical MAT content represented by the item model before persistence.
+
 ```
 
 ## Player Rating
 The sort key contains the variant and match type. Ratings are created and
 updated only for Ranked matches; `Modus` remains a stored attribute.
 
-```json
+  "Data": "{MatchHistoryInFormatX}",
 {
   "PK": "PLAYER#{PlayerId}",
   "SK": "RATING#Backgammon#SevenPointGame",
   "PlayerId": "{guid}",
   "ItemType": "PlayerRating",
+
+`Data` is stored as a compressed DynamoDB `B` value. The example shows the
+logical MAT content represented by the item model before persistence.
   "Variant": "Backgammon",
   "Type": "SevenPointGame",
   "Modus": "Ranked",
@@ -83,6 +98,11 @@ updated only for Ranked matches; `Modus` remains a stored attribute.
   "MatchesPlayed": "{int}"
 }
 ```
+
+The binary history representation is intentionally not backward compatible
+with older plaintext `Data` string attributes. Existing plaintext records must
+be recreated or converted separately before using this storage format; this
+change does not provide a migration, fallback, or dual-read path.
 
 The persisted `PlayerId` attribute contains the same GUID as the `PlayerId`
 property on the C# item. For example, a Backgammon SevenPointGame rating uses
