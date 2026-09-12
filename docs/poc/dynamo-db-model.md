@@ -9,7 +9,7 @@ otherwise noted.
 | PK | SK | ItemType |
 | --- | --- | --- |
 | `PLAYER#<PlayerId>` | `PROFILE` | Player |
-| `PLAYER#<PlayerId>` | `RATING#<Variant>` | PlayerRating |
+| `PLAYER#<PlayerId>` | `RATING#<Variant>#<Type>` | PlayerRating |
 | `PLAYER#<PlayerId>` | `STATS#<Variant>#<Type>#<Modus>` | PlayerStats |
 | `PLAYER#<PlayerId>` | `MATCH#<Variant>#<Type>#<Modus>#<MatchId>` | RatingPeriod |
 | `MATCH#<MatchId>` | `DETAILS#<Outcome>` | Match |
@@ -48,7 +48,7 @@ variant, type, modus, and match ID are all part of the sort key.
   "MatchId": "{guid}",
   "PlayerId": "{guid}",
   "OpponentId": "{guid}",
-  "MatchScore": "{number}",
+  "MatchScore": 0.6,
   "PlayerRating": "{double}",
   "PlayerRatingDeviation": "{double}",
   "PlayerSigma": "{double}",
@@ -60,14 +60,14 @@ variant, type, modus, and match ID are all part of the sort key.
 ```
 
 ## Player Rating
-The sort key contains only the variant. `Type` and `Modus` are stored
-attributes and are not part of the key.
+The sort key contains the variant and match type. Ratings are created and
+updated only for Ranked matches; `Modus` remains a stored attribute.
 
 ```json
 {
   "PK": "PLAYER#{PlayerId}",
-  "SK": "RATING#Backgammon",
-  "Id": "{guid}",
+  "SK": "RATING#Backgammon#SevenPointGame",
+  "PlayerId": "{guid}",
   "ItemType": "PlayerRating",
   "Variant": "Backgammon",
   "Type": "SevenPointGame",
@@ -81,11 +81,12 @@ attributes and are not part of the key.
 }
 ```
 
-The persisted `Id` attribute contains the same GUID as the `PlayerId`
-property on the C# item.
+The persisted `PlayerId` attribute contains the same GUID as the `PlayerId`
+property on the C# item. For example, a Backgammon SevenPointGame rating uses
+`PK = PLAYER#<guid>` and `SK = RATING#Backgammon#SevenPointGame`.
 
 ## Player Stats
-`WinRate` is stored as a percentage, for example `60.0` means 60 percent.
+`WinRate` is stored as a ratio from 0 to 1, for example `0.6` means 60 percent.
 
 ```json
 {
@@ -99,7 +100,7 @@ property on the C# item.
   "MatchesPlayed": 42,
   "MatchesWon": 20,
   "MatchesLost": 22,
-  "WinRate": 47.62,
+  "WinRate": 0.4762,
   "WinStreak": 2,
   "LongestWinStreak": 5,
   "TotalPlayTime": "{TimeSpan}",
@@ -135,6 +136,7 @@ records share the match partition key and differ by outcome in the sort key.
   "Variant": "Backgammon",
   "Type": "SevenPointGame",
   "Modus": "Ranked",
+  "BotLevel": "Unknown",
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
   "Duration": "{TimeSpan}",
@@ -173,7 +175,7 @@ records.
   "PipesLeft": "{int}",
   "DiceDoubles": "{int}",
   "Result": "{GameResult}",
-  "DoublingCubeValue": "{int?}"
+  "DoublingCubeValue": 2
 }
 ```
 
@@ -225,7 +227,7 @@ history items are not indexed by `GSI1`.
 - Query `PK = PLAYER#123` and `SK = PROFILE`
 
 ### Get Player Rating for Matchmaking
-- Query `PK = PLAYER#123` and `SK = RATING#Backgammon`
+- Query `PK = PLAYER#123` and `SK = RATING#Backgammon#SevenPointGame`
 
 ### Get Player Stats
 - Query `PK = PLAYER#123` and `SK = STATS#Backgammon#SevenPointGame#Ranked`

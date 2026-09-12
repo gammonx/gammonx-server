@@ -21,7 +21,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PKFormat => "PLAYER#{0}";
 
 		/// <summary>
-		/// Format for GSI1SK like 'MATCH#{variant}#{type}#{modus}#{WON|LOST|NOTFINISHED}'
+		/// Format for GSI1SK like 'MATCH#{Variant}#{Type}#{Modus}#{WON|LOST|NOTFINISHED#{PlayerId}'.
 		/// </summary>
 		public string GSI1SKFormat => "MATCH#{0}#{1}#{2}#{3}";
 
@@ -36,6 +36,10 @@ namespace GammonX.DynamoDb.Items
 		// <inheritdoc />
 		public MatchItem CreateItem(Dictionary<string, AttributeValue> item)
 		{
+			var botLevel = BotLevel.Unknown;
+			if (item.TryGetValue("BotLevel", out var botLevelAttribute) && botLevelAttribute.S is { Length: > 0 } botLevelValue)
+				botLevel = Enum.Parse<BotLevel>(botLevelValue, true);
+
 			var matchItem = new MatchItem
 			{
 				Id = Guid.Parse(item["Id"].S),
@@ -45,6 +49,7 @@ namespace GammonX.DynamoDb.Items
 				Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
 				Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
 				Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
+				BotLevel = botLevel,
 				StartedAt = DateTimeHelper.ParseFlexible(item["StartedAt"].S),
 				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
 				Duration = TimeSpan.Parse(item["Duration"].S),
@@ -81,6 +86,7 @@ namespace GammonX.DynamoDb.Items
 				{ "Variant", new AttributeValue(variantStr) },
 				{ "Modus", new AttributeValue(modusStr) },
 				{ "Type", new AttributeValue(typeStr) },
+				{ "BotLevel", new AttributeValue(item.BotLevel.ToString()) },
 				{ "StartedAt", new AttributeValue { S = item.StartedAt.ToString() } },
 				{ "EndedAt", new AttributeValue { S = item.EndedAt.ToString() } },
 				{ "AvgPipesLeft", new AttributeValue { N = item.AvgPipesLeft.ToString() } },

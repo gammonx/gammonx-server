@@ -1,5 +1,6 @@
 ﻿using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
+
 using GammonX.DynamoDb.Tests.Helper;
 
 using GammonX.Models.Enums;
@@ -81,7 +82,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(100, statFromRepo.MatchesPlayed);
             Assert.Equal(60, statFromRepo.MatchesWon);
             Assert.Equal(40, statFromRepo.MatchesLost);
-            Assert.Equal(60.0, statFromRepo.WinRate);
+            Assert.Equal(0.6, statFromRepo.WinRate);
             Assert.Equal(5, statFromRepo.WinStreak);
             Assert.Equal(10, statFromRepo.LongestWinStreak);
             Assert.Equal(TimeSpan.FromHours(50), statFromRepo.TotalPlayTime);

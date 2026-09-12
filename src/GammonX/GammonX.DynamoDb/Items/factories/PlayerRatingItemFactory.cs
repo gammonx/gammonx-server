@@ -13,7 +13,7 @@ namespace GammonX.DynamoDb.Items
         public string PKFormat => "PLAYER#{0}";
 
         // <inheritdoc />
-        public string SKFormat => "RATING#{0}";
+        public string SKFormat => "RATING#{0}#{1}";
 
         // <inheritdoc />
         public string SKPrefix => "RATING#";
@@ -32,7 +32,7 @@ namespace GammonX.DynamoDb.Items
         {
             var playerRatingItem = new PlayerRatingItem
             {
-                PlayerId = Guid.Parse(item["Id"].S),
+                PlayerId = Guid.Parse(item["PlayerId"].S),
                 Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
                 Type = Enum.Parse<MatchType>(item["Type"].S, true),
                 Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
@@ -56,7 +56,7 @@ namespace GammonX.DynamoDb.Items
             {
                 { "PK", new AttributeValue(item.PK) },
                 { "SK", new AttributeValue(item.SK) },
-                { "Id", new AttributeValue(item.PlayerId.ToString()) },
+                { "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Variant", new AttributeValue(variantStr) },
                 { "Modus", new AttributeValue(modusStr) },
@@ -78,6 +78,7 @@ namespace GammonX.DynamoDb.Items
                 PlayerId = playerId,
                 MatchesPlayed = 0,
                 Variant = variant,
+                Modus = MatchModus.Ranked,
                 Type = type,
             };
         }

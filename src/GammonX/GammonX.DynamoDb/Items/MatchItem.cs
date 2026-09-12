@@ -15,7 +15,7 @@ namespace GammonX.DynamoDb.Items
 		public string PK => ConstructPK();
 
         /// <summary>
-        /// Gets a sort key like 'DETAILS#{WON|LOST|NOTFINISHED}'
+		/// Gets a sort key like 'DETAILS#{WON|LOST|NOTFINISHED#{PlayerId}'.
         /// </summary>
         [DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
@@ -27,7 +27,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "MATCH#888#Backgammon#7PointGame#Ranked#{WON|LOST|NOTFINISHED}")
+		/// Gets the global search index sort key. (e.g. "MATCH#Backgammon#SevenPointGame#Ranked#WON")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
@@ -38,7 +38,7 @@ namespace GammonX.DynamoDb.Items
 		public Guid Id { get; set; } = Guid.Empty;
 
 		/// <summary>
-		/// Gets or sets the id of the <see cref="MatchItem"/> this rating belongs to."/>
+		/// Gets or sets the id of the <see cref="PlayerItem"/> this match belongs to.
 		/// </summary>
 		public Guid PlayerId { get; set; } = Guid.Empty;
 
@@ -57,6 +57,9 @@ namespace GammonX.DynamoDb.Items
 
 		public MatchType Type { get; set; } = MatchType.Unknown;
 
+		/// <summary>
+		/// Gets or sets the bot level when this match is against a bot; otherwise, <see cref="BotLevel.Unknown"/>.
+		/// </summary>
 		public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
 
 		public DateTime StartedAt { get; set; } = DateTime.UtcNow;

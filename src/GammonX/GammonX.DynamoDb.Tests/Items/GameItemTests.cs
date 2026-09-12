@@ -190,6 +190,26 @@ namespace GammonX.DynamoDb.Tests.Items
         }
 
         [Fact]
+        public void GameItemFactoryRoundTripsDoublingCubeValue()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var match = ItemFactory.CreateMatch(Guid.NewGuid(), player, MatchResult.Won, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var game = ItemFactory.CreateGame(Guid.NewGuid(), match, player, GameResult.Single, GameModus.Portes);
+            var factory = ItemFactoryCreator.Create<GameItem>();
+
+            game.DoublingCubeValue = 2;
+            var attributes = factory.CreateItem(game);
+            Assert.Equal("2", attributes["DoublingCubeValue"].N);
+            Assert.Null(attributes["DoublingCubeValue"].S);
+            Assert.Equal(2, factory.CreateItem(attributes).DoublingCubeValue);
+
+            game.DoublingCubeValue = null;
+            attributes = factory.CreateItem(game);
+            Assert.True(attributes["DoublingCubeValue"].NULL);
+            Assert.Null(factory.CreateItem(attributes).DoublingCubeValue);
+        }
+
+        [Fact]
         public void GameItemConstructsCorrectGsiKeys()
         {
             var item = new GameItem

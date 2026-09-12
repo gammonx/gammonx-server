@@ -2,33 +2,33 @@
 using GammonX.DynamoDb.Stats;
 
 using GammonX.Models.Enums;
-using System.Net.NetworkInformation;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.DynamoDb.Tests.Helper
 {
     internal static class ItemFactory
     {
-        private readonly static MatchVariant[] _variants = new[]
-        {
+        private static readonly MatchVariant[] _variants =
+        [
             MatchVariant.Backgammon,
             MatchVariant.Tavli,
             MatchVariant.Tavla
-        };
+        ];
 
-        private readonly static MatchModus[] _modi = new[]
-        {
+        private static readonly MatchModus[] _modi =
+        [
             MatchModus.Ranked,
             MatchModus.Bot,
             MatchModus.Normal
-        };
+        ];
 
-        private readonly static MatchType[] _types = new[]
-        {
+        private static readonly MatchType[] _types =
+        [
             MatchType.CashGame,
             MatchType.FivePointGame,
             MatchType.SevenPointGame
-        };
+        ];
 
 
         public static PlayerItem CreatePlayer()
@@ -148,7 +148,7 @@ namespace GammonX.DynamoDb.Tests.Helper
                 OpponentSigma = Glicko2Constants.DefaultSigma,
                 CreatedAt = DateTime.UtcNow,
                 MatchId = matchItem.Id,
-                MatchScore = 1
+                MatchScore = 0.6
                 
             };
             return ratingPeriodItem;
@@ -165,7 +165,7 @@ namespace GammonX.DynamoDb.Tests.Helper
                 MatchesPlayed = 100,
                 MatchesWon = 60,
                 MatchesLost = 40,
-                WinRate = 60.0,
+                WinRate = 0.6,
                 WinStreak = 5,
                 LongestWinStreak = 10,
                 TotalPlayTime = TimeSpan.FromHours(50),

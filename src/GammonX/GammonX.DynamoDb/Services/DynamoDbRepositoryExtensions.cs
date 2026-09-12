@@ -2,6 +2,8 @@
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Stats;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.DynamoDb.Services
 {
     public static class DynamoDbRepositoryExtensions
@@ -11,7 +13,7 @@ namespace GammonX.DynamoDb.Services
         /// <paramref name="lostMatch"/>. The Glicko2 rating mechanism is used for its calculation.
         /// </summary>
         /// <remarks>
-        /// The rating is not peristed yet to the database. Instead it just returns the updated rating instance.
+        /// The rating is not persisted yet to the database. Instead it just returns the updated rating instance.
         /// Both players must first be evaluated before their rating period item can be committed.
         /// </remarks>
         /// <param name="repo">Repo to operate on.</param>
@@ -21,25 +23,22 @@ namespace GammonX.DynamoDb.Services
         /// <returns>Returns updated player rating item and the related rating period item.</returns>
         public static async Task<(PlayerRatingItem, RatingPeriodItem)> CalculatePlayerRatingAsync(this IDynamoDbRepository repo, Guid playerId, MatchItem wonMatch, MatchItem lostMatch)
         {
-            // won and lost match have the same variant, mouds and type
+            if (wonMatch.Modus != MatchModus.Ranked || lostMatch.Modus != MatchModus.Ranked)
+                throw new InvalidOperationException("Player rating updates are only supported for Ranked matches.");
+
+            // won and lost match have the same variant, modus and type
             var variant = wonMatch.Variant;
             var modus = wonMatch.Modus;
             var type = wonMatch.Type;
 
             var ratingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
-            var sk = string.Format(ratingFactory.SKFormat, variant);
+            var sk = string.Format(ratingFactory.SKFormat, variant, type);
 
             // we check if the calling player already has a rating for the given variant
             var currentPlayerRating = (await repo.GetItemsAsync<PlayerRatingItem>(playerId, sk)).FirstOrDefault();
             if (currentPlayerRating == null)
             {
-                currentPlayerRating = new PlayerRatingItem()
-                {
-                    PlayerId = playerId,
-                    Variant = variant,
-                    Modus = modus,
-                    Type = type
-                };
+                currentPlayerRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, type);
             }
             var playerGlicko = Glicko2Rating.From(currentPlayerRating);
 
@@ -48,13 +47,7 @@ namespace GammonX.DynamoDb.Services
             var currentOpponentRating = (await repo.GetItemsAsync<PlayerRatingItem>(opponentId, sk)).FirstOrDefault();
             if (currentOpponentRating == null)
             {
-                currentOpponentRating = new PlayerRatingItem()
-                {
-                    PlayerId = opponentId,
-                    Variant = variant,
-                    Modus = modus,
-                    Type = type
-                };
+                currentOpponentRating = PlayerRatingItemFactory.CreateInitial(opponentId, variant, type);
             }
 
             // we get the last 9 rating periods of the given player

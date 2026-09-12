@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -21,7 +23,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PKFormat => "PLAYER#{0}";
 
 		/// <summary>
-		/// Format for GSI1SK like 'GAME#{gameModus}#{WINNER|LOSER}'
+		/// Format for GSI1SK like 'GAME#{GameModus}#{WON|LOST|NOTFINISHED#{PlayerId}'.
 		/// </summary>
 		public string GSI1SKFormat => "GAME#{0}#{1}";
 
@@ -31,7 +33,14 @@ namespace GammonX.DynamoDb.Items
 		// <inheritdoc />
 		public GameItem CreateItem(Dictionary<string, AttributeValue> item)
 		{
-			var value = item["DoublingCubeValue"].N;
+			int? doublingCubeValue = null;
+			if (item.TryGetValue("DoublingCubeValue", out var cubeAttribute) && cubeAttribute.NULL != true)
+			{
+				var value = string.IsNullOrWhiteSpace(cubeAttribute.N) ? cubeAttribute.S : cubeAttribute.N;
+				if (!string.IsNullOrWhiteSpace(value))
+					doublingCubeValue = int.Parse(value, CultureInfo.InvariantCulture);
+			}
+
 			var gameItem = new GameItem
 			{
 				Id = Guid.Parse(item["Id"].S),
@@ -44,7 +53,7 @@ namespace GammonX.DynamoDb.Items
 				EndedAt = DateTimeHelper.ParseFlexible(item["EndedAt"].S),
 				Result = Enum.Parse<GameResult>(item["Result"].S, true),
 				DiceDoubles = int.Parse(item["DiceDoubles"].N),
-				DoublingCubeValue = value != null ? int.Parse(value) : null,
+				DoublingCubeValue = doublingCubeValue,
 				Duration = TimeSpan.Parse(item["Duration"].S),
 				PipesLeft = int.Parse(item["PipesLeft"].N)
 			};
@@ -73,7 +82,9 @@ namespace GammonX.DynamoDb.Items
 				{ "EndedAt", new AttributeValue { S = item.EndedAt.ToString("o") } },
 				{ "Result", new AttributeValue(resultStr) },
 				{ "DiceDoubles", new AttributeValue { N = item.DiceDoubles.ToString() } },
-				{ "DoublingCubeValue", new AttributeValue { S = item.DoublingCubeValue.ToString() } },
+				{ "DoublingCubeValue", item.DoublingCubeValue.HasValue
+					? new AttributeValue { N = item.DoublingCubeValue.Value.ToString(CultureInfo.InvariantCulture) }
+					: new AttributeValue { NULL = true } },
 				{ "Duration", new AttributeValue { S = item.Duration.ToString() } },
 				{ "PipesLeft", new AttributeValue { N = item.PipesLeft.ToString() } }
 			};

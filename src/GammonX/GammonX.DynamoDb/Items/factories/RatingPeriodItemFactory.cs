@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.Model;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -36,7 +38,7 @@ namespace GammonX.DynamoDb.Items
                 PlayerId = Guid.Parse(item["PlayerId"].S),
                 OpponentId = Guid.Parse(item["OpponentId"].S),
                 MatchId = Guid.Parse(item["MatchId"].S),
-                MatchScore = int.Parse(item["MatchScore"].N),
+                MatchScore = double.Parse(item["MatchScore"].N, CultureInfo.InvariantCulture),
                 Variant = Enum.Parse<MatchVariant>(item["Variant"].S, true),
                 Type = Enum.Parse<Models.Enums.MatchType>(item["Type"].S, true),
                 Modus = Enum.Parse<MatchModus>(item["Modus"].S, true),
@@ -64,7 +66,7 @@ namespace GammonX.DynamoDb.Items
                 { "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
                 { "OpponentId", new AttributeValue(item.OpponentId.ToString()) },
                 { "MatchId", new AttributeValue(item.MatchId.ToString()) },
-                { "MatchScore", new AttributeValue() { N = item.MatchScore.ToString() } },
+                { "MatchScore", new AttributeValue() { N = item.MatchScore.ToString(CultureInfo.InvariantCulture) } },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Variant", new AttributeValue(variantStr) },
                 { "Modus", new AttributeValue(modusStr) },

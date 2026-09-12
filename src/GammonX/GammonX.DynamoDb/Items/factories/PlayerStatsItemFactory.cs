@@ -2,6 +2,8 @@
 
 using GammonX.DynamoDb.Stats;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -45,7 +47,7 @@ namespace GammonX.DynamoDb.Items
 				MatchesPlayed = int.Parse(item["MatchesPlayed"].N),
 				MatchesWon = int.Parse(item["MatchesWon"].N),
 				MatchesLost = int.Parse(item["MatchesLost"].N),
-				WinRate = double.Parse(item["WinRate"].N),
+				WinRate = double.Parse(item["WinRate"].N, CultureInfo.InvariantCulture),
 				WinStreak = int.Parse(item["WinStreak"].N),
 				LongestWinStreak = int.Parse(item["LongestWinStreak"].N),
 				TotalPlayTime = TimeSpan.Parse(item["TotalPlayTime"].S),
@@ -82,7 +84,7 @@ namespace GammonX.DynamoDb.Items
 				{ "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString() } },
 				{ "MatchesWon", new AttributeValue() { N = item.MatchesWon.ToString() } },
 				{ "MatchesLost", new AttributeValue() { N = item.MatchesLost.ToString() } },
-				{ "WinRate", new AttributeValue() { N = item.WinRate.ToString() } },
+				{ "WinRate", new AttributeValue() { N = item.WinRate.ToString(CultureInfo.InvariantCulture) } },
 				{ "WinStreak", new AttributeValue() { N = item.WinStreak.ToString() } },
 				{ "LongestWinStreak", new AttributeValue() { N = item.LongestWinStreak.ToString() } },
 				{ "TotalPlayTime", new AttributeValue() { S = item.TotalPlayTime.ToString() } },
@@ -116,7 +118,7 @@ namespace GammonX.DynamoDb.Items
 			var matchesPlayed = matches.Count;
 			var matchesWon = matches.Count(m => m.Result == MatchResult.Won);
 			var matchesLost = matches.Count(m => m.Result == MatchResult.Lost);
-			var winRate = (double)matchesWon / matchesPlayed * 100.0;
+			var winRate = (double)matchesWon / matchesPlayed;
 			var (CurrentStreak, LongestStreak) = StatsAggregator.CalculateWinStreaks(matches);
 			var winStreak = CurrentStreak;
 			var longestWinStreak = LongestStreak;

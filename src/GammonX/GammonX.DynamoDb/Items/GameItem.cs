@@ -13,7 +13,7 @@ namespace GammonX.DynamoDb.Items
 		public string PK => ConstructPK();
 
 		/// <summary>
-		/// Gets a sort key like 'GAME#{gameId}#{WON|LOST|NOTFINISHED}'
+		/// Gets a sort key like 'GAME#{GameId}#{WON|LOST|NOTFINISHED#{PlayerId}'.
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
@@ -25,7 +25,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "GAME#Portes#{WON|LOST|NOTFINISHED}")
+		/// Gets the global search index sort key. (e.g. "GAME#Portes#WON")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();

@@ -1,5 +1,6 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
@@ -26,6 +27,7 @@ namespace GammonX.Lambda.Tests.Sqs
             var portesPath = Path.Combine("Data", "PortesGameHistory.txt");
             var portesGameHistory = File.ReadAllText(portesPath);
             var parsedPortesHistory = parser.ParseGame(portesGameHistory);
+            Assert.NotNull(parsedPortesHistory);
             var wonPortesGame = new GameRecordContract()
             {
                 Id = portesGameId,
@@ -49,8 +51,9 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 2 :: PLAKOTO
             var plakotoGameId = Guid.Parse("3cf7ebbe-e0dd-4a2d-baa8-361014efa989");
             var plakotoPath = Path.Combine("Data", "PlakotoGameHistory.txt");
-            var plakotoGameHistory = File.ReadAllText(plakotoPath);
+            var plakotoGameHistory = await File.ReadAllTextAsync(plakotoPath, TestContext.Current.CancellationToken);
             var parsedPlakotoHistory = parser.ParseGame(plakotoGameHistory);
+            Assert.NotNull(parsedPlakotoHistory);
             var wonPlakotoGame = new GameRecordContract()
             {
                 Id = plakotoGameId,
@@ -74,8 +77,9 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 3 :: FEVGA
             var fevgaGameId = Guid.Parse("48fb1a93-9c2b-4245-803b-8361be6c6838");
             var fevgaPath = Path.Combine("Data", "FevgaGameHistory.txt");
-            var fevgaGameHistory = File.ReadAllText(fevgaPath);
+            var fevgaGameHistory = await File.ReadAllTextAsync(fevgaPath, TestContext.Current.CancellationToken);
             var parsedFevgaHistory = parser.ParseGame(fevgaGameHistory);
+            Assert.NotNull(parsedFevgaHistory);
             var wonFevgaGame = new GameRecordContract()
             {
                 Id = fevgaGameId,
@@ -101,14 +105,14 @@ namespace GammonX.Lambda.Tests.Sqs
             // MATCH 1 :: TAVLI
             var matchId = Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e");
             var path = Path.Combine("Data", "TavliMatchHistory.txt");
-            var matchHistory = File.ReadAllText(path);
+            var matchHistory = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             var wonTavliMatch = new MatchRecordContract()
             {
                 Id = matchId,
                 PlayerId = player1Id,
                 Result = Models.Enums.MatchResult.Won,
                 Variant = Models.Enums.MatchVariant.Tavli,
-                Modus = Models.Enums.MatchModus.Normal,
+                Modus = Models.Enums.MatchModus.Ranked,
                 Type = Models.Enums.MatchType.CashGame,
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
@@ -121,7 +125,7 @@ namespace GammonX.Lambda.Tests.Sqs
                 PlayerId = player2Id,
                 Result = Models.Enums.MatchResult.Lost,
                 Variant = Models.Enums.MatchVariant.Tavli,
-                Modus = Models.Enums.MatchModus.Normal,
+                Modus = Models.Enums.MatchModus.Ranked,
                 Type = Models.Enums.MatchType.CashGame,
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,

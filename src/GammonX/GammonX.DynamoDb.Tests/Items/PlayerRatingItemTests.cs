@@ -1,6 +1,8 @@
 ﻿using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
+using GammonX.DynamoDb.Services;
 using GammonX.DynamoDb.Stats;
+
 using GammonX.DynamoDb.Tests.Helper;
 
 using GammonX.Models.Enums;
@@ -24,9 +26,9 @@ namespace GammonX.DynamoDb.Tests.Items
         }
 
         [Theory]
-        [InlineData("RATING#Backgammon", MatchVariant.Backgammon)]
-        [InlineData("RATING#Tavla", MatchVariant.Tavla)]
-        [InlineData("RATING#Tavli", MatchVariant.Tavli)]
+        [InlineData("RATING#Backgammon#SevenPointGame", MatchVariant.Backgammon)]
+        [InlineData("RATING#Tavla#SevenPointGame", MatchVariant.Tavla)]
+        [InlineData("RATING#Tavli#SevenPointGame", MatchVariant.Tavli)]
         public async Task CanCreateAndSearchMultipleRatingsPerPlayer(string oneSk, MatchVariant expVariant)
         {
             var player = ItemFactory.CreatePlayer();
@@ -59,6 +61,10 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var player = ItemFactory.CreatePlayer();
             var playerRatings = ItemFactory.CreatePlayerRating(player, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame);
+            var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            var attributes = factory.CreateItem(playerRatings);
+            Assert.True(attributes.ContainsKey("PlayerId"));
+            Assert.False(attributes.ContainsKey("Id"));
             // create
             await _repo.SaveAsync(playerRatings);
             // read
@@ -67,7 +73,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Single(ratings);
             var ratingFromRepo = ratings.First();
             Assert.Equal($"PLAYER#{player.Id}", ratingFromRepo.PK);
-            Assert.Equal($"RATING#Backgammon", ratingFromRepo.SK);
+            Assert.Equal($"RATING#Backgammon#SevenPointGame", ratingFromRepo.SK);
             Assert.Equal(player.Id, ratingFromRepo.PlayerId);
             Assert.Equal(ItemTypes.PlayerRatingItemType, ratingFromRepo.ItemType);
             Assert.Equal(MatchVariant.Backgammon, ratingFromRepo.Variant);
@@ -88,7 +94,7 @@ namespace GammonX.DynamoDb.Tests.Items
             ratingFromRepo = ratings.First();
             Assert.Equal(31, ratingFromRepo.MatchesPlayed);
             // delete
-            var deleted = await _repo.DeleteAsync<PlayerRatingItem>(player.Id, "RATING#Backgammon");
+            var deleted = await _repo.DeleteAsync<PlayerRatingItem>(player.Id, "RATING#Backgammon#SevenPointGame");
             Assert.True(deleted);
             ratings = await _repo.GetItemsAsync<PlayerRatingItem>(player.Id);
             Assert.NotNull(ratings);
@@ -101,11 +107,45 @@ namespace GammonX.DynamoDb.Tests.Items
             var playerItemFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
             Assert.NotNull(playerItemFactory);
             Assert.Equal("PLAYER#{0}", playerItemFactory.PKFormat);
-            Assert.Equal("RATING#{0}", playerItemFactory.SKFormat);
+            Assert.Equal("RATING#{0}#{1}", playerItemFactory.SKFormat);
             Assert.Equal("RATING#", playerItemFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKPrefix);
+        }
+
+        [Fact]
+        public async Task PlayerRatingSortKeyIncludesMatchType()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var sevenPointRating = ItemFactory.CreatePlayerRating(player, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame);
+            var fivePointRating = ItemFactory.CreatePlayerRating(player, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.FivePointGame);
+
+            await _repo.SaveAsync(sevenPointRating);
+            await _repo.SaveAsync(fivePointRating);
+
+            var ratings = (await _repo.GetItemsAsync<PlayerRatingItem>(player.Id)).ToList();
+            Assert.Equal(2, ratings.Count);
+            Assert.Contains(ratings, rating => rating.SK == "RATING#Backgammon#SevenPointGame");
+            Assert.Contains(ratings, rating => rating.SK == "RATING#Backgammon#FivePointGame");
+
+            await _repo.DeleteAsync<PlayerRatingItem>(player.Id, sevenPointRating.SK);
+            await _repo.DeleteAsync<PlayerRatingItem>(player.Id, fivePointRating.SK);
+        }
+
+        [Fact]
+        public async Task NonRankedRatingUpdateIsRejected()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var opponent = ItemFactory.CreatePlayer();
+            var matchId = Guid.NewGuid();
+            var wonMatch = ItemFactory.CreateMatch(matchId, player, MatchResult.Won, MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var lostMatch = ItemFactory.CreateMatch(matchId, opponent, MatchResult.Lost, MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _repo.CalculatePlayerRatingAsync(player.Id, wonMatch, lostMatch));
+
+            Assert.Contains("Ranked", exception.Message);
         }
     }
 }

@@ -75,6 +75,31 @@ namespace GammonX.Lambda.Tests.Gateway
             await _repo.DeleteAsync<PlayerRatingItem>(playerRating.PlayerId, playerRating.SK);
         }
 
+        [Fact]
+        public async Task GetPlayerRatingUsesSevenPointGameRatingKey()
+        {
+            var playerId = Guid.NewGuid();
+            var rating = new PlayerRatingItem
+            {
+                PlayerId = playerId,
+                Variant = MatchVariant.Backgammon,
+                Modus = MatchModus.Ranked,
+                Type = Models.Enums.MatchType.SevenPointGame,
+                Rating = 1200
+            };
+            var mockRepo = new Mock<IDynamoDbRepository>();
+            mockRepo.Setup(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#SevenPointGame"))
+                .ReturnsAsync(new[] { rating });
+
+            var handler = new GetPlayerRatingHandler(mockRepo.Object);
+            var context = new TestLambdaContext { Logger = new TestLambdaLogger() };
+
+            var result = await handler.HandleAsync(MakeRequest(playerId, MatchVariant.Backgammon), context);
+
+            Assert.IsType<PlayerRatingResponseContract>(result);
+            mockRepo.Verify(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#SevenPointGame"), Times.Once);
+        }
+
         [Theory]
         [InlineData(MatchVariant.Backgammon)]
         [InlineData(MatchVariant.Tavli)]
@@ -214,6 +239,7 @@ namespace GammonX.Lambda.Tests.Gateway
             Assert.Equal(initialPlayerRating.Rating, ratingResult.Rating);
             Assert.Equal(initialPlayerRating.HighestRating, ratingResult.Rating);
             Assert.Equal(initialPlayerRating.LowestRating, ratingResult.Rating);
+            Assert.Equal(MatchModus.Ranked, initialPlayerRating.Modus);
         }
 
         private static APIGatewayProxyRequest MakeRequest(Guid playerId, MatchVariant variant)

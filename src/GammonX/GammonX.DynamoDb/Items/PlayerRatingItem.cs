@@ -15,13 +15,13 @@ namespace GammonX.DynamoDb.Items
 		public string PK => ConstructPK();
 
 		/// <summary>
-		/// Gets a sort key like 'RATING#{Variant}'. Ratings only exists for ranked (modus) and a single type.
+		/// Gets a sort key like 'RATING#{Variant}#{Type}'. Ratings exist only for Ranked matches.
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
 
 		/// <summary>
-		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to."/>
+		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to. It is persisted as the <c>PlayerId</c> attribute.
 		/// </summary>
 		public Guid PlayerId { get; set; } = Guid.Empty;
 
@@ -83,7 +83,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructSK()
 		{
             var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
-            return string.Format(factory.SKFormat, Variant);
+            return string.Format(factory.SKFormat, Variant, Type);
 		}
 	}
 }

@@ -47,7 +47,7 @@ namespace GammonX.Lambda.Handlers
                 var variant = Enum.Parse<MatchVariant>(variantStr);
 
                 var playerRatingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
-                var sk = string.Format(playerRatingFactory.SKFormat, variant);
+                var sk = string.Format(playerRatingFactory.SKFormat, variant, MatchType.SevenPointGame);
                 var ratings = await _repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
 
                 if (ratings.Count() == 1)
