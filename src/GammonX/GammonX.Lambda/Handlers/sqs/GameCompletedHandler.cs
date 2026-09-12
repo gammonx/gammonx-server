@@ -35,7 +35,7 @@ namespace GammonX.Lambda.Handlers
 		/// <summary>
 		/// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
 		/// </summary>
-		public GameCompletedHandler() : base()
+		public GameCompletedHandler()
 		{
 			// pass
 		}
@@ -48,7 +48,7 @@ namespace GammonX.Lambda.Handlers
 			{
 				if (_repo == null)
 				{
-                    context.Logger.LogInformation($"Setting up DI services...");
+                    context.Logger.LogInformation("Setting up DI services...");
                     var services = Startup.Configure();
 					_repo = services.GetRequiredService<IDynamoDbRepository>();
 				}

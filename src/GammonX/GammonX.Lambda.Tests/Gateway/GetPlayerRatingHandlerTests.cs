@@ -187,7 +187,7 @@ namespace GammonX.Lambda.Tests.Gateway
         [InlineData(MatchVariant.Backgammon)]
         [InlineData(MatchVariant.Tavli)]
         [InlineData(MatchVariant.Tavla)]
-        public async Task LambdaFactoryShouldReturnNullOnUnknownAPIRoute(MatchVariant variant)
+        public void LambdaFactoryShouldReturnNullOnUnknownAPIRoute(MatchVariant variant)
         {
             var logger = new TestLambdaLogger();
             var context = new TestLambdaContext { Logger = logger };

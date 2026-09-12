@@ -37,7 +37,7 @@ builder.Configuration.AddEnvironmentVariables();
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------
-builder.Host.UseSerilog((context, services, configuration) =>
+builder.Host.UseSerilog((_, _, configuration) =>
 {
     configuration
         .Enrich.FromLogContext()

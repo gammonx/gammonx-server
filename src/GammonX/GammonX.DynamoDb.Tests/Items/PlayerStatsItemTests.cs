@@ -34,9 +34,9 @@ namespace GammonX.DynamoDb.Tests.Items
             // create all combinations of player stats (27 total)
             var allPlayerStats = ItemFactory.CreateAllPlayerStats(player);
             // create them all!
-            foreach (var playeStat in allPlayerStats)
+            foreach (var playerStat in allPlayerStats)
             {
-                await _repo.SaveAsync(playeStat);
+                await _repo.SaveAsync(playerStat);
             }
             // read and query them
             var all = await _repo.GetItemsAsync<PlayerStatsItem>(player.Id);
@@ -74,7 +74,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Single(stats);
             var statFromRepo = stats.First();
             Assert.Equal($"PLAYER#{player.Id}", statFromRepo.PK);
-            Assert.Equal($"STATS#Backgammon#CashGame#Ranked", statFromRepo.SK);
+            Assert.Equal("STATS#Backgammon#CashGame#Ranked", statFromRepo.SK);
             Assert.Equal(player.Id, statFromRepo.PlayerId);
             Assert.Equal(MatchVariant.Backgammon, statFromRepo.Variant);
             Assert.Equal(MatchModus.Ranked, statFromRepo.Modus);

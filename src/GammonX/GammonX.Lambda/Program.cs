@@ -33,23 +33,23 @@ namespace GammonX.Lambda
 
                     if (deserializedInput is SQSEvent sqsEvent)
                     {
-                        context.Logger.LogInformation($"Received SQS event. Creating dedicated function handler...");
+                        context.Logger.LogInformation("Received SQS event. Creating dedicated function handler...");
                         return await HandleSqsEventAsync(context, services, sqsEvent);
                     }
                     else if (deserializedInput is APIGatewayProxyRequest apiRequest)
                     {
-                        context.Logger.LogInformation($"Received API Gateway request. Creating dedicated function handler...");
+                        context.Logger.LogInformation("Received API Gateway request. Creating dedicated function handler...");
                         return await HandleGatewayRequestAsync(context, services, apiRequest);
                     }
                     else
                     {
-                        context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
+                        context.Logger.LogInformation("Received unknown function input. Unable to create function handler. Returning empty response.");
                         return new object();
                     }
                 }                
                 else
                 {
-                    context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
+                    context.Logger.LogInformation("Received unknown function input. Unable to create function handler. Returning empty response.");
                     return new object();
                 }
 			}

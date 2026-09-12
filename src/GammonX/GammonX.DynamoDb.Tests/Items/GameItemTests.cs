@@ -52,7 +52,7 @@ namespace GammonX.DynamoDb.Tests.Items
 
             // get all games from a match
             var allGamesFromMatch = await _repo.GetItemsAsync<GameItem>(matchId, "GAME#");
-            Assert.True(allGamesFromMatch.All(agfm => agfm.MatchId.Equals(matchId)));
+            Assert.True(allGamesFromMatch.All(agFm => agFm.MatchId.Equals(matchId)));
             Assert.Equal(6, allGamesFromMatch.Count());
             // get all portes games from a match
             var allPortesGames = await _repo.GetItemsAsync<GameItem>(matchId, $"GAME#{portesId}");
@@ -122,7 +122,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal($"MATCH#{match.Id}", gameFromRepo.PK);
             Assert.Equal($"GAME#{game.Id}#WON", gameFromRepo.SK);
             Assert.Equal($"PLAYER#{player.Id}", gameFromRepo.GSI1PK);
-            Assert.Equal($"GAME#Portes#WON", gameFromRepo.GSI1SK);
+            Assert.Equal("GAME#Portes#WON", gameFromRepo.GSI1SK);
             Assert.Equal(ItemTypes.GameItemType, gameFromRepo.ItemType);
             Assert.Equal(game.Id, gameFromRepo.Id);
             Assert.Equal(player.Id, gameFromRepo.PlayerId);

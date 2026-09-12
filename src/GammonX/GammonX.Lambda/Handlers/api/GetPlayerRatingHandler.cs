@@ -55,7 +55,7 @@ namespace GammonX.Lambda.Handlers
                     var ratingItem =  ratings.First();
                     return ratingItem.ToResponse();
                 }
-                else if (ratings.Count() == 0)
+                else if (!ratings.Any())
                 {
                     context.Logger.LogInformation($"Create new player rating for Player: '{playerId}' Variant: '{variant}' Type: '{MatchType.SevenPointGame}'");
                     // the player has no rating yet, we create one

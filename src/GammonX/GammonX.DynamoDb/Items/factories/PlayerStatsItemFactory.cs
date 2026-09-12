@@ -119,9 +119,9 @@ namespace GammonX.DynamoDb.Items
 			var matchesWon = matches.Count(m => m.Result == MatchResult.Won);
 			var matchesLost = matches.Count(m => m.Result == MatchResult.Lost);
 			var winRate = (double)matchesWon / matchesPlayed;
-			var (CurrentStreak, LongestStreak) = StatsAggregator.CalculateWinStreaks(matches);
-			var winStreak = CurrentStreak;
-			var longestWinStreak = LongestStreak;
+			var (currentStreak, longestStreak) = StatsAggregator.CalculateWinStreaks(matches);
+			var winStreak = currentStreak;
+			var longestWinStreak = longestStreak;
 			var lastMatch = matches.Last().EndedAt;
 			var totalPlayTime = TimeSpan.FromTicks(matches.Sum(m => m.Duration.Ticks));
 			var now = DateTime.UtcNow;

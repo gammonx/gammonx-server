@@ -50,7 +50,7 @@
 
 ### NEW
 - upgraded all projects to net10
-- unified package reference managment into build props
+- unified package reference management into build props
 - upgraded game service and lambda container image to net10
 
 ### FIXES
@@ -75,7 +75,7 @@
 ### NEW
 - Mars Bot Project
 	- minor refactorings towards extensibility for future game modus support
-	- added additional library for centralizing torchsharp access
+	- added additional library for centralizing TorchSharp access
 	- made mars server ready for neural net usage
 	- added console app for training data generation and model training
 	- neural net for plakoto (gen6)
@@ -99,7 +99,7 @@
 
 ### NEW
 - Mars Bot Project ALPHA
-	- Fevga bot implementation based on features and 1ply lookaheaad
+	- Fevga bot implementation based on features and 1ply lookahead
 	- Plakoto bot implementation based on features and 1ply lookahead
 	- new container service
 ### FIXES
@@ -111,7 +111,7 @@
 
 ### NEW
 - `double-accepted` event with game state if a double offer is accepted
-- matchmkaing queue entry ttl if no touch from poll (30s)
+- matchmaking queue entry ttl if no touch from poll (30s)
 - REST Controller and SignalR accepts jwt bearer token
 	- processes claims `playerId` + `matchId`
     - required for disconnect handling
@@ -130,7 +130,7 @@
 - turn timers for players
     - new event `turn-timer` with `EventTurnTimerPayload`
     - `EventTurnTimerPayload` contains expiration date until the next expected command must be called
-	- affects both players simultenously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
+	- affects both players simultaneously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
     - event is sent halfway through the full timeout. Full timeout 60s, event sent at 30s
     - if expiration date is exceeded the game/match is resigned
 - the matches controller offers new endpoint `queues/{queueId}/cancel`
@@ -141,5 +141,5 @@
 - improved game flow. On socket connected event, client receives allowed command to join the match
 - fixed an issue where `StartMatch` event is not sent if bot wins opening roll
 	- https://github.com/gammonx/gammonx-server/issues/22
-- fixed an issue where `game-waiting` event was missused when waiting for a pending double offer
+- fixed an issue where `game-waiting` event was misused when waiting for a pending double offer
 	- https://github.com/gammonx/gammonx-server/issues/21

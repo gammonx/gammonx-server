@@ -4,7 +4,7 @@ using DotNetEnv;
 
 using GammonX.DynamoDb;
 using GammonX.DynamoDb.Extensions;
-using GammonX.DynamoDb.Items;
+
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Services;
 

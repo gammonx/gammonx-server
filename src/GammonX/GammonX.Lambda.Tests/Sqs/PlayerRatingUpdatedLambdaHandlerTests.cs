@@ -25,7 +25,7 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 1 :: PORTES
             var portesGameId = Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09");
             var portesPath = Path.Combine("Data", "PortesGameHistory.txt");
-            var portesGameHistory = File.ReadAllText(portesPath);
+            var portesGameHistory = await File.ReadAllTextAsync(portesPath, TestContext.Current.CancellationToken);
             var parsedPortesHistory = parser.ParseGame(portesGameHistory);
             Assert.NotNull(parsedPortesHistory);
             var wonPortesGame = new GameRecordContract()
@@ -117,7 +117,7 @@ namespace GammonX.Lambda.Tests.Sqs
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
-                Games = new[] { wonPortesGame, wonPlakotoGame, wonFevgaGame }
+                Games = [wonPortesGame, wonPlakotoGame, wonFevgaGame]
             };
             var lostTavliMatch = new MatchRecordContract()
             {
@@ -130,7 +130,7 @@ namespace GammonX.Lambda.Tests.Sqs
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
-                Games = new[] { lostPortesGame, lostPlakotoGame, lostFevgaGame }
+                Games = [lostPortesGame, lostPlakotoGame, lostFevgaGame]
             };
 
             var messageId1 = Guid.NewGuid().ToString();

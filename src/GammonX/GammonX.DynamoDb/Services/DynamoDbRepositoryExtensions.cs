@@ -57,8 +57,8 @@ namespace GammonX.DynamoDb.Services
             var lastRatingPeriods = ratingPeriods.OrderBy(rp => rp.CreatedAt).Take(Glicko2Constants.RatingPeriod - 1).ToList();
 
             // we calculate the match score
-            var wonMatchInput = MatchScoreCalculator.From(wonMatch);
-            var lostMatchInput = MatchScoreCalculator.From(lostMatch);
+            var wonMatchInput = wonMatch.From();
+            var lostMatchInput = lostMatch.From();
             var matchScore = MatchScoreCalculator.Calculate(playerId, wonMatchInput, lostMatchInput);
 
             // we create a rating period for the current match

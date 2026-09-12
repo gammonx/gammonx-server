@@ -94,9 +94,9 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Single(matches);
             var matchFromRepo = matches.First();
             Assert.Equal($"MATCH#{match.Id}", matchFromRepo.PK);
-            Assert.Equal($"DETAILS#WON", matchFromRepo.SK);
+            Assert.Equal("DETAILS#WON", matchFromRepo.SK);
             Assert.Equal($"PLAYER#{player.Id}", matchFromRepo.GSI1PK);
-            Assert.Equal($"MATCH#Backgammon#CashGame#Ranked#WON", matchFromRepo.GSI1SK);
+            Assert.Equal("MATCH#Backgammon#CashGame#Ranked#WON", matchFromRepo.GSI1SK);
             Assert.Equal(player.Id, matchFromRepo.PlayerId);
             Assert.Equal(MatchVariant.Backgammon, matchFromRepo.Variant);
             Assert.Equal(MatchModus.Ranked, matchFromRepo.Modus);

@@ -73,7 +73,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Single(ratings);
             var ratingFromRepo = ratings.First();
             Assert.Equal($"PLAYER#{player.Id}", ratingFromRepo.PK);
-            Assert.Equal($"RATING#Backgammon#SevenPointGame", ratingFromRepo.SK);
+            Assert.Equal("RATING#Backgammon#SevenPointGame", ratingFromRepo.SK);
             Assert.Equal(player.Id, ratingFromRepo.PlayerId);
             Assert.Equal(ItemTypes.PlayerRatingItemType, ratingFromRepo.ItemType);
             Assert.Equal(MatchVariant.Backgammon, ratingFromRepo.Variant);
