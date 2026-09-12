@@ -2,10 +2,9 @@
 - see changelog 
 
 ## Active
-- ?
+- validate dynamodb layer
 
 ## Beta Preparation
-- validate dynamodb layer
 - validte re-connect handling
 
 ## TODO

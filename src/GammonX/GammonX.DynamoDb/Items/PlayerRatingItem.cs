@@ -70,7 +70,7 @@ namespace GammonX.DynamoDb.Items
 		/// Gets or sets the amount of matches played by the given player for the given variant, type and modus.
 		/// </summary>
 		/// <remarks>
-		/// The Glicko2 rating system needs atleast 10 matches played in order to calculate a proper rating value.
+		/// The Glicko2 rating system needs at least 10 matches played in order to calculate a proper rating value.
 		/// </remarks>
 		public int MatchesPlayed { get; set; } = 0;
 

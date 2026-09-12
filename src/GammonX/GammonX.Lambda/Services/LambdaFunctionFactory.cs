@@ -58,7 +58,7 @@ namespace GammonX.Lambda.Services
 					}
 
 					var handler = services.GetRequiredKeyedService<IApiLambdaHandler>(route.Value);
-					context.Logger.LogInformation($"Handler instance created successfully");
+					context.Logger.LogInformation("Handler instance created successfully");
 					return handler;
 				}
 			}

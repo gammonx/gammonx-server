@@ -1,15 +1,25 @@
 ## Single Table Design
 
-| PK                  | SK                               | ItemType     |
-| ------------------- | -------------------------------- | ------------ |
-| `PLAYER#<PlayerId>` | `PROFILE`                        | Player       |
-| `PLAYER#<PlayerId>` | `RATING#<Variant>#<Type>`        | PlayerRating |
-| `PLAYER#<PlayerId>` | `STATS#<Variant>#<Type>#<Modus>` | PlayerStats  |
-| `MATCH#<MatchId>`   | `DETAILS`                        | Match        |
-| `MATCH#<MatchId>`   | `GAME#<GameId>`                  | Game         |
-| `MATCH#<MatchId>`   | `HISTORY`                        | MatchHistory |
-| `GAME#<GameId>`     | `HISTORY`                        | GameHistory  |
-| `PLAYER#<PlayerId>` | `MATCH#<Va>#<Ty>#<Mo>#<MatchId>` | RatingPeriod |
+This document describes the schema currently produced by the item factories in
+`src/GammonX/GammonX.DynamoDb/Items`. The examples show logical item values;
+IDs and keys are stored as DynamoDB strings, numeric values as DynamoDB numbers,
+and `DateTime`, `TimeSpan`, history data, and enum values as strings unless
+otherwise noted.
+
+| PK | SK | ItemType |
+| --- | --- | --- |
+| `PLAYER#<PlayerId>` | `PROFILE` | Player |
+| `PLAYER#<PlayerId>` | `RATING#<Variant>` | PlayerRating |
+| `PLAYER#<PlayerId>` | `STATS#<Variant>#<Type>#<Modus>` | PlayerStats |
+| `PLAYER#<PlayerId>` | `MATCH#<Variant>#<Type>#<Modus>#<MatchId>` | RatingPeriod |
+| `MATCH#<MatchId>` | `DETAILS#<Outcome>` | Match |
+| `MATCH#<MatchId>` | `GAME#<GameId>#<Outcome>` | Game |
+| `MATCH#<MatchId>` | `HISTORY` | MatchHistory |
+| `GAME#<GameId>` | `HISTORY` | GameHistory |
+
+`<Outcome>` is `WON` or `LOST` for completed records. For an unfinished
+record it is `NOTFINISHED#<PlayerId>` so the two player-specific records remain
+unique.
 
 ## Player
 ```json
@@ -24,111 +34,137 @@
 ```
 
 ## Rating Period
-The Glicko2 rating algorithm needs the last 10 matchups of the given player in order to properly calculate the rating change for a given match. The match variant, type and modus is implictly set by the given match id.
+The Glicko2 rating algorithm uses recent rating periods for a player. The
+variant, type, modus, and match ID are all part of the sort key.
+
 ```json
 {
-  "PK": "PLAYER#{playerId}",
-  "SK": "MATCH#{variant}#{type}#{modus}#{matchId}",
+  "PK": "PLAYER#{PlayerId}",
+  "SK": "MATCH#Backgammon#SevenPointGame#Ranked#{MatchId}",
+  "ItemType": "RatingPeriod",
   "Variant": "Backgammon",
-  "Type": "7PointGame",
+  "Type": "SevenPointGame",
   "Modus": "Ranked",
   "MatchId": "{guid}",
   "PlayerId": "{guid}",
   "OpponentId": "{guid}",
-  "MatchScore": "{int}",
+  "MatchScore": "{number}",
   "PlayerRating": "{double}",
   "PlayerRatingDeviation": "{double}",
   "PlayerSigma": "{double}",
   "OpponentRating": "{double}",
   "OpponentRatingDeviation": "{double}",
   "OpponentSigma": "{double}",
-  "CreatedAt": "{DateTime}",
+  "CreatedAt": "{DateTime}"
 }
 ```
 
 ## Player Rating
-No modus required in `SK`, implicitly `Ranked` and `SeventPointGame`.
+The sort key contains only the variant. `Type` and `Modus` are stored
+attributes and are not part of the key.
+
 ```json
 {
   "PK": "PLAYER#{PlayerId}",
   "SK": "RATING#Backgammon",
-  "PlayerId": "{guid}",
+  "Id": "{guid}",
   "ItemType": "PlayerRating",
   "Variant": "Backgammon",
-  "Type": "7PointGame",
+  "Type": "SevenPointGame",
   "Modus": "Ranked",
   "Rating": "{double}",
   "RatingDeviation": "{double}",
   "Sigma": "{double}",
   "LowestRating": "{double}",
   "HighestRating": "{double}",
-  "MatchesPlayed": "{int}",
+  "MatchesPlayed": "{int}"
 }
 ```
 
+The persisted `Id` attribute contains the same GUID as the `PlayerId`
+property on the C# item.
+
 ## Player Stats
+`WinRate` is stored as a percentage, for example `60.0` means 60 percent.
+
 ```json
 {
   "PK": "PLAYER#{PlayerId}",
-  "SK": "STATS#Backgammon#7PointGame#Ranked",
+  "SK": "STATS#Backgammon#SevenPointGame#Ranked",
   "PlayerId": "{guid}",
   "ItemType": "PlayerStats",
   "Variant": "Backgammon",
-  "Type": "7PointGame",
+  "Type": "SevenPointGame",
   "Modus": "Ranked",
   "MatchesPlayed": 42,
   "MatchesWon": 20,
   "MatchesLost": 22,
-  "WinRate": 0.57,
+  "WinRate": 47.62,
   "WinStreak": 2,
   "LongestWinStreak": 5,
-  "TotalPlayTime": "{timeSpan}",
-  "AvgDuration": "{timeSpan}",
+  "TotalPlayTime": "{TimeSpan}",
+  "AvgDuration": "{TimeSpan}",
   "LastMatch": "{DateTime}",
   "MatchesLast7": 10,
   "MatchesLast30": 15,
-  "AvgGammons": "{int}",
-  "AvgBackgammons": "{int}",
-  "WAvgPipesLeft": "{int}",
-  "WAvgDoubleDices": "{int}",
-  "WAvgTurns": "{int}",
-  "WAvgDoubles": "{int}"
+  "AvgGammons": 0.5,
+  "AvgBackgammons": 0.1,
+  "WAvgPipesLeft": 2.5,
+  "WAvgDoubleDices": 0.4,
+  "WAvgTurns": 15.0,
+  "WAvgDoubles": 0.3,
+  "WAvgDuration": "{TimeSpan}"
 }
 ```
 
 ## Match
-We create two entries, one for the winner and one for the loser
+Two records are written for a completed match, one for each player. The
+records share the match partition key and differ by outcome in the sort key.
+
 ```json
 {
   "PK": "MATCH#{Id}",
-  "SK": "DETAILS#{WON|LOST}",
+  "SK": "DETAILS#WON",
+  "GSI1PK": "PLAYER#{PlayerId}",
+  "GSI1SK": "MATCH#Backgammon#SevenPointGame#Ranked#WON",
   "Id": "{guid}",
   "ItemType": "Match",
   "PlayerId": "{guid}",
   "Points": 7,
+  "Length": 3,
   "Variant": "Backgammon",
-  "Type": "7PointGame",
+  "Type": "SevenPointGame",
   "Modus": "Ranked",
   "StartedAt": "{DateTime}",
   "EndedAt": "{DateTime}",
-  "Length": 3,
-  "Result": "{MatchResult}",
-  "GSI1PK": "PLAYER#{PlayerId}",
-  "GSI1SK": "MATCH#Backgammon#7PointGame#Ranked#{WON|LOST|NOTFINISHED}"
+  "Duration": "{TimeSpan}",
+  "AvgDuration": "{TimeSpan}",
+  "AvgPipesLeft": "{double}",
+  "AvgDoubleDices": "{double}",
+  "Gammons": "{int}",
+  "BackGammons": "{int}",
+  "AvgTurns": "{int}",
+  "AvgDoubles": "{double}",
+  "Result": "{MatchResult}"
 }
 ```
 
 ## Game
-We create two entries, one for the winner and one for the loser
+Two records are written for a completed game, one for each player. Game
+aggregate statistics are stored on the related Match records, not on Game
+records.
+
 ```json
 {
   "PK": "MATCH#{MatchId}",
-  "SK": "GAME#{Id}#{WON|LOST}",
+  "SK": "GAME#{Id}#WON",
+  "GSI1PK": "PLAYER#{PlayerId}",
+  "GSI1SK": "GAME#Portes#WON",
   "Id": "{guid}",
   "MatchId": "{guid}",
   "ItemType": "Game",
   "PlayerId": "{guid}",
-  "Points": 7,
+  "Points": 1,
   "Length": 55,
   "Modus": "Portes",
   "StartedAt": "{DateTime}",
@@ -137,16 +173,7 @@ We create two entries, one for the winner and one for the loser
   "PipesLeft": "{int}",
   "DiceDoubles": "{int}",
   "Result": "{GameResult}",
-  "DoublingCubeValue": "{int?}",
-  "AvgPipesLeft": "{int}",
-  "AvgDoubleDices": "{double}",
-  "Gammons": "{int}",
-  "BackGammons": "{int}",
-  "AvgTurns": "{int}",
-  "AvgDuration": "{timeSpan}",
-  "AvgDoubles": "{double}",
-  "GSI1PK": "PLAYER#{PlayerId}",
-  "GSI1SK": "GAME#Portes#{WON|LOST|NOTFINISHED}"
+  "DoublingCubeValue": "{int?}"
 }
 ```
 
@@ -169,61 +196,76 @@ We create two entries, one for the winner and one for the loser
   "SK": "HISTORY",
   "GameId": "{guid}",
   "ItemType": "GameHistory",
-  "Data": "{MatchHistoryInFormatX}",
+  "Data": "{GameHistoryInFormatX}",
   "Format": "MAT"
 }
 ```
 
-## Global Search Indexes
+## Global Secondary Index
+The table is created with a global secondary index named `GSI1`:
+
+| Index | Partition key | Sort key | Projection |
+| --- | --- | --- | --- |
+| `GSI1` | `GSI1PK` | `GSI1SK` | `ALL` |
+
+Only `Match` and `Game` items have GSI attributes. Player, rating, stats, and
+history items are not indexed by `GSI1`.
+
+### Match GSI keys
+- `GSI1PK = PLAYER#<PlayerId>`
+- `GSI1SK = MATCH#<Variant>#<Type>#<Modus>#<Outcome>`
+
+### Game GSI keys
+- `GSI1PK = PLAYER#<PlayerId>`
+- `GSI1SK = GAME#<GameModus>#<Outcome>`
 
 ## Example Requests
 
 ### Get Player
-- Query `PK = PLAYER#123`
+- Query `PK = PLAYER#123` and `SK = PROFILE`
 
 ### Get Player Rating for Matchmaking
-- Query `PK = PLAYER#123` and `SK = RATING#Backgammon#7PointGame` 
+- Query `PK = PLAYER#123` and `SK = RATING#Backgammon`
+
+### Get Player Stats
+- Query `PK = PLAYER#123` and `SK = STATS#Backgammon#SevenPointGame#Ranked`
+
+### Get Rating Periods for a Player
+- Query `PK = PLAYER#123` and `SK` starts with `MATCH#Backgammon`
 
 ### Get all Games of a Match
 - Query `PK = MATCH#888` and `SK` starts with `GAME#`
 
 ### Get Match/Game History
-- Query `PK = MATCH#888` and `SK == History`
-- Query `PK = GAME#888` and `SK == History`
+- Query `PK = MATCH#888` and `SK = HISTORY`
+- Query `PK = GAME#888` and `SK = HISTORY`
 
-### Get all Matches of Player
+### Get all Matches of a Player
 - Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#`
 
-### Get all Games of Player
+### Get all Games of a Player
 - Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#`
 
-### Get all Matches of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#Backgammon#7PointGame#Ranked`
+### Get Matches by Variant, Type, and Modus
+- Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `MATCH#Backgammon#SevenPointGame#Ranked`
 
-### Get all Games of Player for Variant/Modus/Type
+### Get Games by Game Modus
 - Query `GSI1PK = PLAYER#123` and `GSI1SK` starts with `GAME#Portes`
 
-### Get all lost/won Matches of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#7PointGame#Ranked#WON`
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#7PointGame#Ranked#LOST`
+### Get Won or Lost Matches
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#SevenPointGame#Ranked#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = MATCH#Backgammon#SevenPointGame#Ranked#LOST`
 
-### Get all lost/won Games of Player for Variant/Modus/Type
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Backgammon#7PointGame#Ranked#WON`
-- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Backgammon#7PointGame#Ranked#LOST`
-
-### Calculate Player Stats after Match/Game
-- Send Match/Game History in `MAT` format to SQS, trigger lambda and fill dynamo db table
-- Include Player Rating calculation if `ranked`?
+### Get Won or Lost Games
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Portes#WON`
+- Query `GSI1PK = PLAYER#123` and `GSI1SK = GAME#Portes#LOST`
 
 ## Use Cases
-- Get Player Rating for Variant in Ranked Mode
-  - Server calls API Gateway
-  - API Gateway calls Read lambda function
-- Match Ended Event
-  - Server puts Match/Game Result in SQS
-  - SQS calls lambda function
-  - lambda function computes
-    - player stats
-    - player rating if ranked
-    - creates match entity
-    - create game entities
+- Get player rating for a variant:
+  - Server calls API Gateway.
+  - API Gateway calls the read Lambda function.
+- Match or game completed event:
+  - Server puts the result and history in SQS.
+  - SQS invokes the Lambda handler.
+  - The handler computes player stats and, for ranked matches, player rating.
+  - The handler writes match, game, history, rating, and rating-period items.

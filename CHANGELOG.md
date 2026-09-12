@@ -1,5 +1,8 @@
 # Changelog
 
+## 12.09.2026
+- ?
+
 ## 10.09.2026
 - updated default nn model to gen11
 - proper equality and hashcode implementation for base board models
