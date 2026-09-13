@@ -65,9 +65,7 @@ namespace GammonX.Lambda
 
             var eventType = sqsEvent.Records.First().MessageAttributes["EVENT_TYPE"].StringValue;
             var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, eventType);
-            await handler.HandleAsync(sqsEvent, context);
-
-            return new object();
+            return await handler.HandleAsync(sqsEvent, context);
         }
 
         private static async Task<object> HandleGatewayRequestAsync(ILambdaContext context, IServiceProvider services, APIGatewayProxyRequest apiRequest)

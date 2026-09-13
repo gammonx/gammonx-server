@@ -293,7 +293,7 @@ namespace GammonX.Lambda.Tests.Sqs
 		}
 
 		[Fact]
-		public async Task OnPlayerStatsUpdatedContinuesAfterMalformedMessage()
+		public async Task OnPlayerStatsUpdatedStopsAfterMalformedMessageToPreserveFifoOrder()
 		{
 			var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
 			var matchHistory = await File.ReadAllTextAsync(
@@ -333,23 +333,29 @@ namespace GammonX.Lambda.Tests.Sqs
 				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
 				.Returns(Task.CompletedTask);
 
-			var invalidMessageId = Guid.NewGuid().ToString();
 			var validMessageId = Guid.NewGuid().ToString();
+			var invalidMessageId = Guid.NewGuid().ToString();
+			var deferredMessageId = Guid.NewGuid().ToString();
 			var logger = new TestLambdaLogger();
 			var handler = new PlayerStatsUpdatedHandler(repository.Object);
 			var @event = new SQSEvent
 			{
 				Records = new List<SQSEvent.SQSMessage>
 				{
+					new() { MessageId = validMessageId, Body = JsonConvert.SerializeObject(validMatch) },
 					new() { MessageId = invalidMessageId, Body = "{" },
-					new() { MessageId = validMessageId, Body = JsonConvert.SerializeObject(validMatch) }
+					new() { MessageId = deferredMessageId, Body = JsonConvert.SerializeObject(validMatch) }
 				}
 			};
 
-			await Assert.ThrowsAsync<AggregateException>(() => handler.HandleAsync(@event, new TestLambdaContext { Logger = logger }));
+			var response = await handler.HandleAsync(@event, new TestLambdaContext { Logger = logger });
 
 			Assert.Contains($"Processing message with id '{validMessageId}'", logger.Buffer.ToString());
 			Assert.Contains($"Processed stat update for player with id '{playerId}'", logger.Buffer.ToString());
+			Assert.Contains(invalidMessageId, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
+			Assert.Contains(deferredMessageId, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
+			Assert.DoesNotContain(validMessageId, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
+			Assert.DoesNotContain($"Processing message with id '{deferredMessageId}'", logger.Buffer.ToString());
 			transactionWriter.Verify(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()), Times.Once);
 		}
 
@@ -367,11 +373,13 @@ namespace GammonX.Lambda.Tests.Sqs
 
 			var handler = new PlayerStatsUpdatedHandler(repository.Object);
 
-			await Assert.ThrowsAsync<AggregateException>(() => handler.HandleAsync(
-				CreateEvent(record),
-				new TestLambdaContext { Logger = new TestLambdaLogger() }));
+			var @event = CreateEvent(record);
+			var response = await handler.HandleAsync(
+				@event,
+				new TestLambdaContext { Logger = new TestLambdaLogger() });
 
 			transactionWriter.Verify(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()), Times.Never);
+			Assert.Contains(@event.Records[0].MessageId, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
 		}
 
 		[Theory]

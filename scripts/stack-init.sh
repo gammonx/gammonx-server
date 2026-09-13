@@ -53,6 +53,7 @@ create_and_map_sqs_container_lambda() {
   awslocal lambda create-event-source-mapping \
     --function-name $function_name \
     --batch-size 10 \
+    --function-response-types ReportBatchItemFailures \
     --event-source-arn arn:aws:sqs:us-east-1:000000000000:$queue_name
 }
 
@@ -89,6 +90,7 @@ create_and_map_sqs_zip_lambda() {
   awslocal lambda create-event-source-mapping \
     --function-name $function_name \
     --batch-size 10 \
+    --function-response-types ReportBatchItemFailures \
     --event-source-arn arn:aws:sqs:us-east-1:000000000000:$queue_name
 }
 

@@ -23,6 +23,7 @@
 	- protects concurrent rating updates with strongly consistent reads, optimistic revisions, and bounded recalculation retries.
 	- orders stats work per player through an SQS FIFO queue and deduplicates messages by match and player.
 	- requires persisted source matches and prevents stale stats messages from overwriting newer aggregates.
+	- reports failed SQS records individually so successful records in the same Lambda batch are not retried.
 
 ## 10.09.2026
 - updated default nn model to gen11

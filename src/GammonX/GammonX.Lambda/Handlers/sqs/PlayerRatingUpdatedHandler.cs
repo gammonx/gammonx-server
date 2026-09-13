@@ -47,18 +47,19 @@ namespace GammonX.Lambda.Handlers
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			try
-			{
-                if (Repo == null)
-                {
-                    context.Logger.LogInformation("Setting up DI services...");
-                    var services = Startup.Configure();
-                    Repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+            if (Repo == null)
+            {
+                context.Logger.LogInformation("Setting up DI services...");
+                var services = Startup.Configure();
+                Repo = services.GetRequiredService<IDynamoDbRepository>();
+            }
 
-                foreach (var message in @event.Records)
+            var failures = new List<SQSBatchResponse.BatchItemFailure>();
+            foreach (var message in @event.Records)
+            {
+                try
                 {
                     context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
                     var work = JsonConvert.DeserializeObject<RatingUpdateWorkContract>(message.Body);
@@ -72,17 +73,14 @@ namespace GammonX.Lambda.Handlers
                     var action = updated ? "Processed" : "Skipped duplicate";
                     context.Logger.LogInformation($"{action} rating update for players '{winner.PlayerId}' and '{loser.PlayerId}' after match '{winner.Id}'");
                 }
-            }
-			catch (Exception ex) 
-			{
-				foreach (var record in @event.Records)
-				{
-					context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
-
+                catch (Exception ex)
+                {
+                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{message.MessageId}'");
+                    failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
                 }
+            }
 
-                throw;
-			}
+            return new SQSBatchResponse(failures);
 		}
 
         private async Task<bool> ProcessMessageAsync(MatchRecordContract wonMatch, MatchRecordContract lostMatch)

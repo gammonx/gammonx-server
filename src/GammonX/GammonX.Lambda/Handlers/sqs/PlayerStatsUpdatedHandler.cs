@@ -42,7 +42,7 @@ namespace GammonX.Lambda.Handlers
 
 		// <inheritdoc />
 		[LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-		public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+		public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
 			if (Repo == null)
 			{
@@ -51,9 +51,10 @@ namespace GammonX.Lambda.Handlers
 				Repo = services.GetRequiredService<IDynamoDbRepository>();
 			}
 
-			var failures = new List<Exception>();
-			foreach (var message in @event.Records)
+			var failures = new List<SQSBatchResponse.BatchItemFailure>();
+			for (var index = 0; index < @event.Records.Count; index++)
 			{
+				var message = @event.Records[index];
 				try
 				{
 					await ProcessMessageAsync(message, context);
@@ -61,14 +62,20 @@ namespace GammonX.Lambda.Handlers
 				catch (Exception ex)
 				{
 					context.Logger.LogError(ex, $"An error occurred while processing stats update. Message id: '{message.MessageId}'");
-					failures.Add(ex);
+					failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
+					for (var remainingIndex = index + 1; remainingIndex < @event.Records.Count; remainingIndex++)
+					{
+						failures.Add(new SQSBatchResponse.BatchItemFailure
+						{
+							ItemIdentifier = @event.Records[remainingIndex].MessageId
+						});
+					}
+                    // We stop the current stat processing for this batch in order to ensure the FIFO order
+					break;
 				}
 			}
 
-			if (failures.Count > 0)
-			{
-				throw new AggregateException("One or more stats updates failed.", failures);
-			}
+			return new SQSBatchResponse(failures);
 		}
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)

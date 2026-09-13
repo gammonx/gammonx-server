@@ -42,30 +42,30 @@ namespace GammonX.Lambda.Handlers
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			try
-			{
-                if (Repo == null)
-                {
-                    context.Logger.LogInformation("Setting up DI services...");
-                    var services = Startup.Configure();
-                    Repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+            if (Repo == null)
+            {
+                context.Logger.LogInformation("Setting up DI services...");
+                var services = Startup.Configure();
+                Repo = services.GetRequiredService<IDynamoDbRepository>();
+            }
 
-                foreach (var message in @event.Records)
+            var failures = new List<SQSBatchResponse.BatchItemFailure>();
+            foreach (var message in @event.Records)
+            {
+                try
                 {
                     await ProcessMessageAsync(message, context);
                 }
-            }
-            catch (Exception ex)
-            {
-                foreach (var record in @event.Records)
+                catch (Exception ex)
                 {
-                    context.Logger.LogError(ex, $"An error occurred while processing match completed. Message id: '{record.MessageId}'");
-
+                    context.Logger.LogError(ex, $"An error occurred while processing match completed. Message id: '{message.MessageId}'");
+                    failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
                 }
             }
+
+            return new SQSBatchResponse(failures);
         }
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
@@ -82,8 +82,7 @@ namespace GammonX.Lambda.Handlers
 
             if (work == null)
 			{
-				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
-				return;
+                throw new InvalidOperationException($"Unable to deserialize match completed message '{message.MessageId}'.");
 			}
             
             var (winner, loser) = work.GetValidatedRecords();
