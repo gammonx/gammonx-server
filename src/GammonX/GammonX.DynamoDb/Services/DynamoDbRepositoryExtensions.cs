@@ -35,7 +35,7 @@ namespace GammonX.DynamoDb.Services
             var sk = string.Format(ratingFactory.SKFormat, variant, type);
 
             // we check if the calling player already has a rating for the given variant
-            var currentPlayerRating = (await repo.GetItemsAsync<PlayerRatingItem>(playerId, sk)).FirstOrDefault();
+            var currentPlayerRating = (await GetRatingItemsAsync<PlayerRatingItem>(repo, playerId, sk)).FirstOrDefault();
             if (currentPlayerRating == null)
             {
                 currentPlayerRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, type);
@@ -44,7 +44,7 @@ namespace GammonX.DynamoDb.Services
 
             // we check if the opponent player already has a rating for the given variant
             var opponentId = wonMatch.PlayerId == playerId ? lostMatch.PlayerId : wonMatch.PlayerId;
-            var currentOpponentRating = (await repo.GetItemsAsync<PlayerRatingItem>(opponentId, sk)).FirstOrDefault();
+            var currentOpponentRating = (await GetRatingItemsAsync<PlayerRatingItem>(repo, opponentId, sk)).FirstOrDefault();
             if (currentOpponentRating == null)
             {
                 currentOpponentRating = PlayerRatingItemFactory.CreateInitial(opponentId, variant, type);
@@ -96,6 +96,7 @@ namespace GammonX.DynamoDb.Services
 
             // we increase the amount of matches played by 1
             currentPlayerRating.MatchesPlayed += 1;
+            currentPlayerRating.Revision += 1;
 
             return (currentPlayerRating, currentRatingPeriod);
         }
@@ -125,6 +126,13 @@ namespace GammonX.DynamoDb.Services
             var deleted = await repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
             if (!deleted)
                 throw new InvalidOperationException($"Failed to delete player '{playerId}'.");
+        }
+
+        private static Task<IEnumerable<T>> GetRatingItemsAsync<T>(IDynamoDbRepository repo, Guid playerId, string sk)
+        {
+            return repo is IDynamoDbConsistentReader consistentReader
+                ? consistentReader.GetItemsConsistentlyAsync<T>(playerId, sk)
+                : repo.GetItemsAsync<T>(playerId, sk);
         }
     }
 }

@@ -95,9 +95,14 @@ logical MAT content represented by the item model before persistence.
   "Sigma": "{double}",
   "LowestRating": "{double}",
   "HighestRating": "{double}",
+  "Revision": "{int}",
   "MatchesPlayed": "{int}"
 }
 ```
+
+`Revision` is incremented for every committed rating period and used for
+optimistic concurrency checks. Existing rating items without this attribute are
+treated as revision `0` and receive revision `1` on their next update.
 
 The binary history representation is intentionally not backward compatible
 with older plaintext `Data` string attributes. Existing plaintext records must

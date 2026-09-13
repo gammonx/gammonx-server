@@ -84,6 +84,26 @@ namespace GammonX.DynamoDb.Tests.Repository
         }
 
         [Fact]
+        public async Task ConsistentReadSetsQueryConsistency()
+        {
+            QueryRequest? capturedRequest = null;
+            var client = new Mock<IAmazonDynamoDB>();
+            client
+                .Setup(value => value.QueryAsync(It.IsAny<QueryRequest>(), It.IsAny<CancellationToken>()))
+                .Callback<QueryRequest, CancellationToken>((request, _) => capturedRequest = request)
+                .ReturnsAsync(new QueryResponse { Items = [], LastEvaluatedKey = [] });
+            
+            var context = new Mock<IDynamoDBContext>();
+            var options = Options.Create(new DynamoDbOptions { DYNAMODB_TABLENAME = "GammonX" });
+            var repository = new DynamoDbRepository(client.Object, context.Object, options);
+
+            await repository.GetItemsConsistentlyAsync<PlayerRatingItem>(Guid.NewGuid(), "RATING#Backgammon#SevenPointGame");
+
+            Assert.NotNull(capturedRequest);
+            Assert.True(capturedRequest.ConsistentRead);
+        }
+
+        [Fact]
         public async Task BatchDeleteChunksRequestsAndRetriesOnlyUnprocessedItems()
         {
             var client = new Mock<IAmazonDynamoDB>();
@@ -131,7 +151,8 @@ namespace GammonX.DynamoDb.Tests.Repository
             var repository = new DynamoDbRepository(client.Object, context.Object, options);
 
             var playerId = Guid.NewGuid();
-            var match = CreateMatch(playerId);
+            var rating = PlayerRatingItemFactory.CreateInitial(playerId, MatchVariant.Backgammon, MatchType.SevenPointGame);
+            rating.Revision = 4;
             var player = new PlayerItem
             {
                 Id = playerId,
@@ -139,15 +160,9 @@ namespace GammonX.DynamoDb.Tests.Repository
                 CreatedAt = DateTime.UtcNow
             };
 
-            var revisionValue = new AttributeValue { N = "3" };
-
             var operations = new[]
             {
-                DynamoDbPutOperation.Create(
-                    match,
-                    "attribute_not_exists(PK) AND #revision = :revision",
-                    new Dictionary<string, string> { { "#revision", "Revision" } },
-                    new Dictionary<string, AttributeValue> { { ":revision", revisionValue } }),
+                DynamoDbPutOperation.CreateVersioned(rating, 3),
                 DynamoDbPutOperation.Create(player)
             };
 
@@ -155,12 +170,14 @@ namespace GammonX.DynamoDb.Tests.Repository
 
             Assert.NotNull(capturedRequest);
             Assert.Equal(2, capturedRequest.TransactItems.Count);
-            var matchPut = capturedRequest.TransactItems[0].Put;
-            Assert.Equal("GammonX", matchPut.TableName);
-            Assert.Equal(match.Id.ToString("D"), matchPut.Item["Id"].S);
-            Assert.Equal("attribute_not_exists(PK) AND #revision = :revision", matchPut.ConditionExpression);
-            Assert.Equal("Revision", matchPut.ExpressionAttributeNames["#revision"]);
-            Assert.Same(revisionValue, matchPut.ExpressionAttributeValues[":revision"]);
+            
+            var ratingPut = capturedRequest.TransactItems[0].Put;
+            
+            Assert.Equal("GammonX", ratingPut.TableName);
+            Assert.Equal("4", ratingPut.Item["Revision"].N);
+            Assert.Equal("attribute_not_exists(#revision) OR #revision = :expectedRevision", ratingPut.ConditionExpression);
+            Assert.Equal("Revision", ratingPut.ExpressionAttributeNames["#revision"]);
+            Assert.Equal("3", ratingPut.ExpressionAttributeValues[":expectedRevision"].N);
             Assert.Equal("player", capturedRequest.TransactItems[1].Put.Item["Username"].S);
         }
 

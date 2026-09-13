@@ -1,13 +1,15 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.Model;
+
 using GammonX.DynamoDb.Items;
+
 using Microsoft.Extensions.Options;
 
 namespace GammonX.DynamoDb.Repository
 {
 	// <inheritdoc />
-	public class DynamoDbRepository : IDynamoDbRepository, IDynamoDbBatchWriter, IDynamoDbTransactionWriter
+	public class DynamoDbRepository : IDynamoDbRepository, IDynamoDbBatchWriter, IDynamoDbTransactionWriter, IDynamoDbConsistentReader
 	{
 		private const int MaxBatchWriteAttempts = 5;
 
@@ -46,11 +48,23 @@ namespace GammonX.DynamoDb.Repository
 		// <inheritdoc />
 		public async Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId, string sk)
 		{
+			return await GetItemsAsync<T>(pkId, sk, false);
+		}
+
+		// <inheritdoc />
+		public async Task<IEnumerable<T>> GetItemsConsistentlyAsync<T>(Guid pkId, string sk)
+		{
+			return await GetItemsAsync<T>(pkId, sk, true);
+		}
+
+		private async Task<IEnumerable<T>> GetItemsAsync<T>(Guid pkId, string sk, bool consistentRead)
+		{
 			var factory = ItemFactoryCreator.Create<T>();
 			var pk = string.Format(factory.PKFormat, pkId);
 			var request = new QueryRequest
 			{
 				TableName = _tableName,
+				ConsistentRead = consistentRead,
 				KeyConditionExpression = "PK = :pk and begins_with(SK, :skPrefix)",
 				ExpressionAttributeValues = new Dictionary<string, AttributeValue>
 				{

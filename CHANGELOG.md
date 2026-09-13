@@ -20,6 +20,7 @@
 	- atomically persists both player detail records with one shared game or match history.
 	- atomically persists both player ratings and rating periods; duplicate match delivery no longer increments ratings twice.
 	- ranked matchmaking now reads ratings for the requested match type instead of always using seven-point ratings.
+	- protects concurrent rating updates with strongly consistent reads, optimistic revisions, and bounded recalculation retries.
 
 ## 10.09.2026
 - updated default nn model to gen11

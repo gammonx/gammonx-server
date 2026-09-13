@@ -67,6 +67,16 @@ namespace GammonX.DynamoDb.Items
 		public double LowestRating { get; set; } = Glicko2Constants.DefaultRating;
 
 		/// <summary>
+		/// Gets or sets the optimistic concurrency revision of this rating.
+		/// </summary>
+		/// <remarks>
+		/// Revision is incremented for every committed rating period and used for
+		/// optimistic concurrency checks. Existing rating items without this attribute are
+		/// treated as revision 0 and receive revision 1 on their next update.
+		/// </remarks>
+		public int Revision { get; set; }
+
+		/// <summary>
 		/// Gets or sets the amount of matches played by the given player for the given variant, type and modus.
 		/// </summary>
 		/// <remarks>

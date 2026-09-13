@@ -43,6 +43,9 @@ namespace GammonX.DynamoDb.Items
                 Sigma = double.Parse(item["Sigma"].N, CultureInfo.InvariantCulture),
                 HighestRating = double.Parse(item["HighestRating"].N, CultureInfo.InvariantCulture),
                 LowestRating = double.Parse(item["LowestRating"].N, CultureInfo.InvariantCulture),
+                Revision = item.TryGetValue("Revision", out var revision)
+                    ? int.Parse(revision.N, CultureInfo.InvariantCulture)
+                    : 0,
                 MatchesPlayed = int.Parse(item["MatchesPlayed"].N, CultureInfo.InvariantCulture)
             };
             return playerRatingItem;
@@ -68,6 +71,7 @@ namespace GammonX.DynamoDb.Items
                 { "Sigma", new AttributeValue() { N = item.Sigma.ToString(CultureInfo.InvariantCulture) } },
                 { "HighestRating", new AttributeValue() { N = item.HighestRating.ToString(CultureInfo.InvariantCulture) } },
                 { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString(CultureInfo.InvariantCulture) } },
+                { "Revision", new AttributeValue() { N = item.Revision.ToString(CultureInfo.InvariantCulture) } },
                 { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString(CultureInfo.InvariantCulture) } }
             };
             return itemDict;

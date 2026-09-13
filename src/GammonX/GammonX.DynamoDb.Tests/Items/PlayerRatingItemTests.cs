@@ -1,4 +1,6 @@
-﻿using GammonX.DynamoDb.Items;
+﻿using Amazon.DynamoDBv2.Model;
+
+using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Services;
 using GammonX.DynamoDb.Stats;
@@ -84,6 +86,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(Glicko2Constants.DefaultSigma, ratingFromRepo.Sigma);
             Assert.Equal(1800, ratingFromRepo.HighestRating);
             Assert.Equal(1000, ratingFromRepo.LowestRating);
+            Assert.Equal(0, ratingFromRepo.Revision);
             Assert.Equal(30, ratingFromRepo.MatchesPlayed);
             // update
             ratingFromRepo.MatchesPlayed++;
@@ -112,6 +115,20 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKPrefix);
+        }
+
+        [Fact]
+        public void LegacyPlayerRatingWithoutRevisionUsesRevisionZero()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var rating = ItemFactory.CreatePlayerRating(player, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame);
+            var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            var attributes = factory.CreateItem(rating);
+            attributes.Remove("Revision");
+
+            var restored = factory.CreateItem(attributes);
+
+            Assert.Equal(0, restored.Revision);
         }
 
         [Fact]
@@ -146,6 +163,37 @@ namespace GammonX.DynamoDb.Tests.Items
                 _repo.CalculatePlayerRatingAsync(player.Id, wonMatch, lostMatch));
 
             Assert.Contains("Ranked", exception.Message);
+        }
+
+        [Fact]
+        public async Task StaleRatingRevisionCannotOverwriteCommittedRating()
+        {
+            var playerId = Guid.NewGuid();
+            var initial = PlayerRatingItemFactory.CreateInitial(playerId, MatchVariant.Backgammon, MatchType.FivePointGame);
+            
+            await _repo.SaveAsync(initial);
+            
+            var transactionWriter = Assert.IsAssignableFrom<IDynamoDbTransactionWriter>(_repo);
+            
+            // We expect the first update to succeed
+            var firstUpdate = PlayerRatingItemFactory.CreateInitial(playerId, MatchVariant.Backgammon, MatchType.FivePointGame);
+            firstUpdate.Rating = 1250;
+            firstUpdate.Revision = 1;
+            
+            // We expect the second update to fail
+            var staleUpdate = PlayerRatingItemFactory.CreateInitial(playerId, MatchVariant.Backgammon, MatchType.FivePointGame);
+            staleUpdate.Rating = 1300;
+            staleUpdate.Revision = 1;
+
+            await transactionWriter.TransactPutAsync([DynamoDbPutOperation.CreateVersioned(firstUpdate, 0)]);
+            await Assert.ThrowsAsync<TransactionCanceledException>(() => transactionWriter.TransactPutAsync([DynamoDbPutOperation.CreateVersioned(staleUpdate, 0)]));
+
+            var persisted = Assert.Single(await _repo.GetItemsAsync<PlayerRatingItem>(playerId, initial.SK));
+            
+            Assert.Equal(1250, persisted.Rating);
+            Assert.Equal(1, persisted.Revision);
+            
+            await _repo.DeleteAsync<PlayerRatingItem>(playerId, initial.SK);
         }
     }
 }
