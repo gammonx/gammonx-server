@@ -2,10 +2,11 @@
 
 ## 12.09.2026
 ### Breaking changes
-- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) to `DurationMilliseconds` (`long`) Milliseconds
+- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) to (`long`) Milliseconds
 - `EventDisconnectedPayload` (`TimeSpan`) to (`long`) Milliseconds
 - match/game history is now persisted as strict binary MAT data in DynamoDB
 - canonical persistence formats for UUIDs, timestamps, durations, and numbers
+- game completion, match completion, and rating SQS messages now contain both player records in one composite work contract
 
 ### Fixes
 - hardened player statistics for consecutive matches, unfinished data, and invalid or missing values
@@ -15,6 +16,8 @@
 	- batched recursive deletion with retry handling.
 	- transactional put API with conditions.
 	- per-match Glicko-2 calculation without historical replay.
+	- atomically persists both player detail records with one shared game or match history.
+	- atomically persists both player ratings and rating periods; duplicate match delivery no longer increments ratings twice.
 
 ## 10.09.2026
 - updated default nn model to gen11

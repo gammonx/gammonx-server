@@ -93,13 +93,13 @@ namespace GammonX.Server.Tests.Integration
 			{
                 result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
             }
-			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
+			while (result1.Status == QueueEntryStatus.WaitingForOpponent);
 
 			do
 			{
                 result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
             }
-			while (result2?.Status == QueueEntryStatus.WaitingForOpponent);
+			while (result2.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			Assert.NotNull(result2);
@@ -110,12 +110,12 @@ namespace GammonX.Server.Tests.Integration
 			// ERROR
 			// ##################################################
 
-			player1Connection.On<object>(ServerEventTypes.ErrorEvent, response =>
+			player1Connection.On<object>(ServerEventTypes.ErrorEvent, _ =>
 			{
 				Assert.Fail();
 			});
 
-			player2Connection.On<object>(ServerEventTypes.ErrorEvent, response =>
+			player2Connection.On<object>(ServerEventTypes.ErrorEvent, _ =>
 			{
 				Assert.Fail();
 			});
@@ -166,7 +166,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventGameStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventGameStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -204,7 +204,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventGameStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventGameStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -275,7 +275,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -342,7 +342,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -381,7 +381,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -420,7 +420,7 @@ namespace GammonX.Server.Tests.Integration
 				}
 				else
 				{
-					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response?.GetType().Name);
+					Assert.Fail("Expected EventResponseContract<EventMatchStatePayload> but got: " + response.GetType().Name);
 				}
 			});
 
@@ -438,7 +438,7 @@ namespace GammonX.Server.Tests.Integration
 					Assert.Empty(payload.AllowedCommands);
 				}
 				Assert.Equal(HubConnectionState.Connected, player1Connection.State);
-				player1Connection.StopAsync().ContinueWith(t =>
+				player1Connection.StopAsync().ContinueWith(_ =>
 				{
 					player1MustDisconnect = true;
 				});
@@ -454,7 +454,7 @@ namespace GammonX.Server.Tests.Integration
 					Assert.Empty(payload.AllowedCommands);
 				}
 				Assert.Equal(HubConnectionState.Connected, player2Connection.State);
-				player2Connection.StopAsync().ContinueWith(t =>
+				player2Connection.StopAsync().ContinueWith(_ =>
 				{
 					player2MustDisconnect = true;
 				});

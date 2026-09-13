@@ -1,9 +1,14 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
 
+using GammonX.DynamoDb.Items;
+using GammonX.DynamoDb.Repository;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
@@ -133,8 +138,8 @@ namespace GammonX.Lambda.Tests.Sqs
                 Games = [lostPortesGame, lostPlakotoGame, lostFevgaGame]
             };
 
-            var messageId1 = Guid.NewGuid().ToString();
-            var messageId2 = Guid.NewGuid().ToString();
+            var work = new RatingUpdateWorkContract { Records = [wonTavliMatch, lostTavliMatch] };
+            var messageId = Guid.NewGuid().ToString();
 
             var sqsEvent = new SQSEvent
             {
@@ -142,13 +147,8 @@ namespace GammonX.Lambda.Tests.Sqs
                 {
                     new SQSEvent.SQSMessage
                     {
-                        Body = JsonConvert.SerializeObject(wonTavliMatch),
-                        MessageId = messageId1,
-                    },
-                    new SQSEvent.SQSMessage
-                    {
-                        Body = JsonConvert.SerializeObject(lostTavliMatch),
-                        MessageId = messageId2,
+                        Body = JsonConvert.SerializeObject(work),
+                        MessageId = messageId,
                     }
                 }
             };
@@ -162,12 +162,44 @@ namespace GammonX.Lambda.Tests.Sqs
             var services = Startup.Configure();
             await Startup.ConfigureDynamoDbTableAsync(services);
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerRatingUpdatedFunc);
+            
+            var repository = services.GetRequiredService<IDynamoDbRepository>();
+            var ratingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            var ratingSk = string.Format(ratingFactory.SKFormat, wonTavliMatch.Variant, wonTavliMatch.Type);
+            var periodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
+            var periodSk = string.Format(
+                periodFactory.SKFormat,
+                wonTavliMatch.Variant,
+                wonTavliMatch.Type,
+                wonTavliMatch.Modus,
+                matchId);
+            
+            await repository.DeleteAsync<PlayerRatingItem>(player1Id, ratingSk);
+            await repository.DeleteAsync<PlayerRatingItem>(player2Id, ratingSk);
+            await repository.DeleteAsync<RatingPeriodItem>(player1Id, periodSk);
+            await repository.DeleteAsync<RatingPeriodItem>(player2Id, periodSk);
 
             await handler.HandleAsync(sqsEvent, context);
-            Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
-            Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
-            Assert.Contains($"Processed rating update for player with id '{player1Id}'", logger.Buffer.ToString());
-            Assert.Contains($"Processed rating update for player with id '{player2Id}'", logger.Buffer.ToString());
+
+            Assert.Contains($"Processing message with id '{messageId}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed rating update for players '{player1Id}' and '{player2Id}'", logger.Buffer.ToString());
+
+            var winnerRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player1Id, ratingSk));
+            var loserRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player2Id, ratingSk));
+
+            Assert.Contains(await repository.GetItemsAsync<RatingPeriodItem>(player1Id), period => period.MatchId == matchId);
+            Assert.Contains(await repository.GetItemsAsync<RatingPeriodItem>(player2Id), period => period.MatchId == matchId);
+
+            await handler.HandleAsync(sqsEvent, context);
+
+            var duplicateWinnerRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player1Id, ratingSk));
+            var duplicateLoserRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player2Id, ratingSk));
+
+            Assert.Equal(winnerRating.MatchesPlayed, duplicateWinnerRating.MatchesPlayed);
+            Assert.Equal(loserRating.MatchesPlayed, duplicateLoserRating.MatchesPlayed);
+            Assert.Equal(winnerRating.Rating, duplicateWinnerRating.Rating);
+            Assert.Equal(loserRating.Rating, duplicateLoserRating.Rating);
+            Assert.Contains($"Skipped duplicate rating update for players '{player1Id}' and '{player2Id}'", logger.Buffer.ToString());
         }
     }
 }

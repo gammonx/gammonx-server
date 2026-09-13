@@ -1,8 +1,15 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
+using GammonX.DynamoDb.Items;
+using GammonX.DynamoDb.Repository;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
+using Microsoft.Extensions.DependencyInjection;
+
 using Newtonsoft.Json;
 using Xunit;
 
@@ -25,6 +32,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			var portesGameHistory = await File.ReadAllTextAsync(portesPath, TestContext.Current.CancellationToken);
 			var parsedPortesHistory = parser.ParseGame(portesGameHistory);
             Assert.NotNull(parsedPortesHistory);
+            
 			var wonPortesGame = new GameRecordContract()
 			{
 				Id = portesGameId,
@@ -51,6 +59,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			var plakotoGameHistory = await File.ReadAllTextAsync(plakotoPath, TestContext.Current.CancellationToken);
 			var parsedPlakotoHistory = parser.ParseGame(plakotoGameHistory);
             Assert.NotNull(parsedPlakotoHistory);
+            
 			var wonPlakotoGame = new GameRecordContract()
 			{
 				Id = plakotoGameId,
@@ -77,6 +86,7 @@ namespace GammonX.Lambda.Tests.Sqs
 			var fevgaGameHistory = await File.ReadAllTextAsync(fevgaPath, TestContext.Current.CancellationToken);
 			var parsedFevgaHistory = parser.ParseGame(fevgaGameHistory);
             Assert.NotNull(parsedFevgaHistory);
+            
 			var wonFevgaGame = new GameRecordContract()
 			{
 				Id = fevgaGameId,
@@ -130,8 +140,8 @@ namespace GammonX.Lambda.Tests.Sqs
 				Games = new[] { lostPortesGame, lostPlakotoGame, lostFevgaGame }
 			};
 
-			var messageId1 = Guid.NewGuid().ToString();
-			var messageId2 = Guid.NewGuid().ToString();
+			var work = new MatchCompletedWorkContract { Records = [wonTavliMatch, lostTavliMatch] };
+			var messageId = Guid.NewGuid().ToString();
 
 			var sqsEvent = new SQSEvent
 			{
@@ -139,13 +149,8 @@ namespace GammonX.Lambda.Tests.Sqs
 				{
 					new SQSEvent.SQSMessage
 					{
-						Body = JsonConvert.SerializeObject(wonTavliMatch),
-						MessageId = messageId1,
-					},
-					new SQSEvent.SQSMessage
-					{
-						Body = JsonConvert.SerializeObject(lostTavliMatch),
-						MessageId = messageId2,
+						Body = JsonConvert.SerializeObject(work),
+						MessageId = messageId,
 					}
 				}
 			};
@@ -161,9 +166,14 @@ namespace GammonX.Lambda.Tests.Sqs
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.MatchCompletedFunc);
 
 			await handler.HandleAsync(sqsEvent, context);
-			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
-			Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
+            
+			Assert.Contains($"Processing message with id '{messageId}'", logger.Buffer.ToString());
 			Assert.Contains($"Processed completed match with id '{matchId}'", logger.Buffer.ToString());
+            
+			var repository = services.GetRequiredService<IDynamoDbRepository>();
+            
+			Assert.Equal(2, (await repository.GetItemsAsync<MatchItem>(matchId)).Count());
+			Assert.Single(await repository.GetItemsAsync<MatchHistoryItem>(matchId));
 		}
 	}
 }

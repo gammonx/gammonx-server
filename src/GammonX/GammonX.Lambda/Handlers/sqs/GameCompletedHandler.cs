@@ -70,34 +70,44 @@ namespace GammonX.Lambda.Handlers
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
 			if (Repo == null)
-				throw new NullReferenceException("db repo must not be null");
+			{
+                throw new NullReferenceException("db repo must not be null");
+			}
 
 			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
 
 			var json = message.Body;
-			var gameRecord = JsonConvert.DeserializeObject<GameRecordContract>(json);
+			var work = JsonConvert.DeserializeObject<GameCompletedWorkContract>(json);
 
-			if (gameRecord == null)
+			if (work == null)
 			{
 				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
 				return;
 			}
+            
+			var (winner, loser) = work.GetValidatedRecords();
 
-			context.Logger.LogInformation($"Processing completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+			context.Logger.LogInformation($"Processing completed game with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 
-			// create game history item
-			var gameHistory = gameRecord.ToGameHistory();
-			// parse game history and calculate some stats
+			var gameHistory = winner.ToGameHistory();
 			var parserFactory = HistoryParserFactory.Create<IGameHistoryParser>(gameHistory.Format);
 			var parsedHistory = parserFactory.ParseGame(gameHistory.Data);
-			// create game item
-			var gameItem = gameRecord.ToGame(parsedHistory);
+			var winnerGame = winner.ToGame(parsedHistory);
+			var loserGame = loser.ToGame(parsedHistory);
 
-			await Repo.SaveAsync(gameItem);
-			// TODO: avoid writing history twice
-			await Repo.SaveAsync(gameHistory);
+			if (Repo is not IDynamoDbTransactionWriter transactionWriter)
+			{
+				throw new InvalidOperationException("Completed game persistence requires transaction support.");
+			}
 
-			context.Logger.LogInformation($"Processed completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+			await transactionWriter.TransactPutAsync(
+			[
+				DynamoDbPutOperation.Create(winnerGame),
+				DynamoDbPutOperation.Create(loserGame),
+				DynamoDbPutOperation.Create(gameHistory)
+			]);
+
+			context.Logger.LogInformation($"Processed completed game with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 		}
 	}
 }

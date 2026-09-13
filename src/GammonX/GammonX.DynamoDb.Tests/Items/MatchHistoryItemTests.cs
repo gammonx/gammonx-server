@@ -35,7 +35,7 @@ namespace GammonX.DynamoDb.Tests.Items
             var historyFromRepo = matches.First();
             Assert.Equal(ItemTypes.MatchHistoryItemType, historyFromRepo.ItemType);
             Assert.Equal($"MATCH#{matchId}", historyFromRepo.PK);
-            Assert.Equal($"HISTORY", historyFromRepo.SK);
+            Assert.Equal("HISTORY", historyFromRepo.SK);
             Assert.Equal(HistoryFormat.MAT, historyFromRepo.Format);
             Assert.Equal("empty", historyFromRepo.Data);
             Assert.Equal(matchId, historyFromRepo.MatchId);
@@ -80,7 +80,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.NotNull(attributes["Data"].B);
             Assert.NotEqual(0, attributes["Data"].B.Length);
             Assert.Null(attributes["Data"].S);
-            Assert.Equal(HistoryFormat.MAT.ToString(), attributes["Format"].S);
+            Assert.Equal(nameof(HistoryFormat.MAT), attributes["Format"].S);
             Assert.Equal(historyItem.Data, factory.CreateItem(attributes).Data);
         }
     }
