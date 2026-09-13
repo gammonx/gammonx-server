@@ -54,6 +54,9 @@ namespace GammonX.DynamoDb.Items
 				LastMatch = item.TryGetValue("LastMatch", out var lastMatchAttribute) && lastMatchAttribute.NULL != true
 					? DateTimeHelper.ParseUtc(lastMatchAttribute.S)
 					: null,
+				SourceMatchEndedAt = item.TryGetValue("SourceMatchEndedAt", out var sourceMatchEndedAtAttribute)
+					? DateTimeHelper.ParseUtc(sourceMatchEndedAtAttribute.S)
+					: null,
 				MatchesLast7 = int.Parse(item["MatchesLast7"].N, CultureInfo.InvariantCulture),
 				MatchesLast30 = int.Parse(item["MatchesLast30"].N, CultureInfo.InvariantCulture),
 				AvgGammons = double.Parse(item["AvgGammons"].N, CultureInfo.InvariantCulture),
@@ -104,6 +107,12 @@ namespace GammonX.DynamoDb.Items
 				{ "WAvgDoubles", new AttributeValue() { N = item.WAvgDoubles.ToString(CultureInfo.InvariantCulture) } },
 				{ "WAvgDuration", new AttributeValue() { N = DateTimeHelper.FormatDurationTicks(item.WAvgDuration) } },
 			};
+
+			if (item.SourceMatchEndedAt.HasValue)
+			{
+				itemDict.Add("SourceMatchEndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.SourceMatchEndedAt.Value) });
+			}
+
 			return itemDict;
 		}
 

@@ -21,6 +21,8 @@
 	- atomically persists both player ratings and rating periods; duplicate match delivery no longer increments ratings twice.
 	- ranked matchmaking now reads ratings for the requested match type instead of always using seven-point ratings.
 	- protects concurrent rating updates with strongly consistent reads, optimistic revisions, and bounded recalculation retries.
+	- orders stats work per player through an SQS FIFO queue and deduplicates messages by match and player.
+	- requires persisted source matches and prevents stale stats messages from overwriting newer aggregates.
 
 ## 10.09.2026
 - updated default nn model to gen11

@@ -61,8 +61,13 @@ create_and_map_sqs_zip_lambda() {
   local function_name=$2
   local image_name=$3
   local handler_class=$4
+  local fifo_queue=${5:-false}
 
-  awslocal sqs create-queue --queue-name $queue_name
+  if [ "$fifo_queue" = "true" ]; then
+    awslocal sqs create-queue --queue-name "$queue_name" --attributes FifoQueue=true
+  else
+    awslocal sqs create-queue --queue-name "$queue_name"
+  fi
 
   awslocal lambda create-function \
     --function-name $function_name \
@@ -249,15 +254,15 @@ pc_handler_class_name="PlayerCreatedHandler"
 create_and_map_sqs_zip_lambda "$pc_queue_name" "$pc_function_name" "$pc_image_name" "$pc_handler_class_name"
 
 ### STATS_UPDATED ###
-ps_queue_name="STATS_UPDATED_QUEUE"
+ps_queue_name="STATS_UPDATED_QUEUE.fifo"
 ps_function_name="STATS_UPDATED"
 ps_image_name="lambda-stats-updated"
 ps_handler_class_name="PlayerStatsUpdatedHandler"
-create_and_map_sqs_zip_lambda "$ps_queue_name" "$ps_function_name" "$ps_image_name" "$ps_handler_class_name"
+create_and_map_sqs_zip_lambda "$ps_queue_name" "$ps_function_name" "$ps_image_name" "$ps_handler_class_name" true
 
 ### RATING_UPDATED ###
 pr_queue_name="RATING_UPDATED_QUEUE"
 pr_function_name="RATING_UPDATED"
 pr_image_name="lambda-rating-updated"
-pr_handler_class_name="PlayerStatsUpdatedHandler"
+pr_handler_class_name="PlayerRatingUpdatedHandler"
 create_and_map_sqs_zip_lambda "$pr_queue_name" "$pr_function_name" "$pr_image_name" "$pr_handler_class_name"

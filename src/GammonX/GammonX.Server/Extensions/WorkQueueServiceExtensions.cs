@@ -77,7 +77,7 @@ namespace GammonX.Server.Extensions
             var gameCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__GAME_COMPLETED_QUEUE_URL");
             if (!string.IsNullOrEmpty(gameCompletedQueueUrl))
             {
-                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, key) =>
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, _) =>
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
@@ -87,7 +87,7 @@ namespace GammonX.Server.Extensions
             var matchCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL");
             if (!string.IsNullOrEmpty(matchCompletedQueueUrl))
             {
-                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, key) =>
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, _) =>
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
@@ -98,7 +98,7 @@ namespace GammonX.Server.Extensions
             var playerCreatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__PLAYER_CREATED_QUEUE_URL");
             if (!string.IsNullOrEmpty(playerCreatedQueueUrl))
             {
-                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, key) =>
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, _) =>
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
@@ -109,7 +109,7 @@ namespace GammonX.Server.Extensions
             var statsUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__STATS_UPDATED_QUEUE_URL");
             if (!string.IsNullOrEmpty(statsUpdatedQueueUrl))
             {
-                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, key) =>
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, _) =>
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
@@ -120,7 +120,7 @@ namespace GammonX.Server.Extensions
             var ratingUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__RATING_UPDATED_QUEUE_URL");
             if (!string.IsNullOrEmpty(ratingUpdatedQueueUrl))
             {
-                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, key) =>
+                services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, _) =>
                 {
                     var sqs = sp.GetRequiredService<IAmazonSQS>();
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;

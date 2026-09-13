@@ -1,14 +1,13 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
+using Amazon.DynamoDBv2.Model;
 
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 
-using GammonX.Lambda.Extensions;
-
 using GammonX.Models.Contracts;
-using GammonX.Models.History;
+using GammonX.Models.Helpers;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -52,6 +51,7 @@ namespace GammonX.Lambda.Handlers
 				Repo = services.GetRequiredService<IDynamoDbRepository>();
 			}
 
+			var failures = new List<Exception>();
 			foreach (var message in @event.Records)
 			{
 				try
@@ -61,7 +61,13 @@ namespace GammonX.Lambda.Handlers
 				catch (Exception ex)
 				{
 					context.Logger.LogError(ex, $"An error occurred while processing stats update. Message id: '{message.MessageId}'");
+					failures.Add(ex);
 				}
+			}
+
+			if (failures.Count > 0)
+			{
+				throw new AggregateException("One or more stats updates failed.", failures);
 			}
 		}
 
@@ -77,8 +83,7 @@ namespace GammonX.Lambda.Handlers
 
 			if (matchRecord == null)
 			{
-				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
-				return;
+				throw new InvalidOperationException($"Could not deserialize stats update message '{message.MessageId}'.");
 			}
 
 			var playerId = matchRecord.PlayerId;
@@ -97,14 +102,11 @@ namespace GammonX.Lambda.Handlers
 				.Where(match => match is not null)
 				.ToList();
 
-			// we check if the finished match was already posted to the db
-			if (!playerMatches.Any(pm => pm.Id.Equals(matchRecord.Id)))
+			var sourceMatch = playerMatches.SingleOrDefault(match => match.Id == newMatchId && match.PlayerId == playerId);
+
+			if (sourceMatch == null)
 			{
-				var matchHistory = matchRecord.ToMatchHistory();
-				var parserFactory = HistoryParserFactory.Create<IMatchHistoryParser>(matchHistory.Format);
-				var parsedHistory = parserFactory.ParseMatch(matchHistory.Data);
-				var matchItem = matchRecord.ToMatch(parsedHistory);
-				playerMatches.Add(matchItem);
+				throw new InvalidOperationException( $"Persisted source match '{newMatchId}' for player '{playerId}' is not available for stats calculation.");
 			}
 
 			var playerStatsItem = PlayerStatsItemFactory.CreateItem(
@@ -114,9 +116,59 @@ namespace GammonX.Lambda.Handlers
 				matchRecord.Modus,
 				playerMatches);
 
-			await Repo.SaveAsync(playerStatsItem);
+            // We set the EndedAt time stamp as the marker in order to identify if the stat update is stale or a duplicate.
+			playerStatsItem.SourceMatchEndedAt = sourceMatch.EndedAt;
+
+			if (Repo is not IDynamoDbTransactionWriter transactionWriter)
+			{
+				throw new InvalidOperationException("Stats persistence requires transaction support.");
+			}
+
+			try
+			{
+				await transactionWriter.TransactPutAsync([CreateStatsPutOperation(playerStatsItem)]);
+			}
+			catch (TransactionCanceledException)
+			{
+				if (await IsStaleOrDuplicateAsync(Repo, playerStatsItem))
+				{
+					context.Logger.LogInformation(
+						$"Skipped stale or duplicate stat update for player with id '{playerId}' after match '{newMatchId}'");
+					return;
+				}
+
+				throw;
+			}
 
 			context.Logger.LogInformation($"Processed stat update for player with id '{playerId}' after match '{newMatchId}'");
+		}
+
+		internal static DynamoDbPutOperation CreateStatsPutOperation(PlayerStatsItem stats)
+		{
+			if (!stats.SourceMatchEndedAt.HasValue)
+			{
+				throw new ArgumentException("A source match completion time is required.", nameof(stats));
+			}
+
+			return DynamoDbPutOperation.Create(
+				stats,
+				"attribute_not_exists(#sourceMatchEndedAt) OR #sourceMatchEndedAt < :sourceMatchEndedAt",
+				new Dictionary<string, string> { { "#sourceMatchEndedAt", "SourceMatchEndedAt" } },
+				new Dictionary<string, AttributeValue>
+				{
+					{ ":sourceMatchEndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(stats.SourceMatchEndedAt.Value) } }
+				});
+		}
+
+		internal static async Task<bool> IsStaleOrDuplicateAsync(IDynamoDbRepository repo, PlayerStatsItem candidate)
+		{
+			var existingItems = repo is IDynamoDbConsistentReader consistentReader
+				? await consistentReader.GetItemsConsistentlyAsync<PlayerStatsItem>(candidate.PlayerId, candidate.SK)
+				: await repo.GetItemsAsync<PlayerStatsItem>(candidate.PlayerId, candidate.SK);
+
+			var existing = existingItems.SingleOrDefault();
+
+			return existing?.SourceMatchEndedAt >= candidate.SourceMatchEndedAt;
 		}
 	}
 }

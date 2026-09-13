@@ -59,5 +59,27 @@ namespace GammonX.Server.Queue
 
             await _sqs.SendMessageBatchAsync(batchRequest, cancellationToken);
         }
+
+        // <inheritdoc />
+        public async Task EnqueueFifoBatchAsync<T>(IEnumerable<FifoWorkMessage<T>> messages, CancellationToken cancellationToken)
+        {
+            var attrs = EventTypeAttribute();
+            var entries = messages
+                .Select((message, index) => new SendMessageBatchRequestEntry
+                {
+                    Id = index.ToString(),
+                    MessageBody = JsonConvert.SerializeObject(message.Message),
+                    MessageAttributes = attrs,
+                    MessageGroupId = message.GroupId,
+                    MessageDeduplicationId = message.DeduplicationId
+                })
+                .ToList();
+
+            await _sqs.SendMessageBatchAsync(new SendMessageBatchRequest
+            {
+                QueueUrl = _queueUrl,
+                Entries = entries
+            }, cancellationToken);
+        }
     }
 }

@@ -81,7 +81,7 @@ namespace GammonX.Server.Tests.Queue
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE", WorkQueueType.StatsUpdated.GetName());
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE.fifo", WorkQueueType.StatsUpdated.GetName());
             });
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, _) =>
             {
@@ -198,6 +198,35 @@ namespace GammonX.Server.Tests.Queue
                     It.Is<RatingUpdateWorkContract>(work => work.Records.Length == 2),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+            queue.Verify(
+                value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task EnqueueStatsUsesPlayerOrderingAndMatchDeduplication()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .Setup(value => value.EnqueueFifoBatchAsync(
+                    It.IsAny<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.StatsUpdated, queue.Object);
+            var service = new WorkQueueService(services.BuildServiceProvider());
+
+            var match = CreateAndCompleteSimpleMatch();
+
+            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+
+            queue.Verify(value => value.EnqueueFifoBatchAsync(
+                It.Is<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(messages =>
+                    messages.Count() == 2 && messages.All(message =>
+                        message.GroupId == message.Message.PlayerId.ToString("D") &&
+                        message.DeduplicationId == $"{message.Message.Id:D}:{message.Message.PlayerId:D}")),
+                It.IsAny<CancellationToken>()), Times.Once);
             queue.Verify(
                 value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
                 Times.Never);

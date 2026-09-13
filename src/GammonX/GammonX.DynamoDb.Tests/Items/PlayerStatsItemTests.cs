@@ -1,9 +1,12 @@
-﻿using GammonX.DynamoDb.Items;
+﻿using Amazon.DynamoDBv2.Model;
+
+using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 
 using GammonX.DynamoDb.Tests.Helper;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -114,6 +117,40 @@ namespace GammonX.DynamoDb.Tests.Items
         }
 
         [Fact]
+        public async Task OlderSourceCannotOverwriteNewerStats()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var transactionWriter = Assert.IsAssignableFrom<IDynamoDbTransactionWriter>(_repo);
+            var newerStats = ItemFactory.CreatePlayerStats(player, MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame);
+            newerStats.SourceMatchEndedAt = DateTime.UtcNow;
+            var olderStats = ItemFactory.CreatePlayerStats(player, MatchVariant.Tavli, MatchModus.Normal, MatchType.SevenPointGame);
+            olderStats.SourceMatchEndedAt = newerStats.SourceMatchEndedAt.Value.AddMinutes(-1);
+            olderStats.MatchesPlayed = 1;
+
+            await transactionWriter.TransactPutAsync([CreateConditionalStatsPut(newerStats)]);
+            await Assert.ThrowsAsync<TransactionCanceledException>(() =>
+                transactionWriter.TransactPutAsync([CreateConditionalStatsPut(olderStats)]));
+
+            var persisted = Assert.Single(await _repo.GetItemsAsync<PlayerStatsItem>(player.Id, newerStats.SK));
+            Assert.Equal(newerStats.SourceMatchEndedAt, persisted.SourceMatchEndedAt);
+            Assert.Equal(newerStats.MatchesPlayed, persisted.MatchesPlayed);
+
+            await _repo.DeleteAsync<PlayerStatsItem>(player.Id, newerStats.SK);
+        }
+
+        [Fact]
+        public void LegacyStatsWithoutSourceWatermarkDeserializeAsNull()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var legacyStats = ItemFactory.CreatePlayerStats(player, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var factory = ItemFactoryCreator.Create<PlayerStatsItem>();
+            var attributes = factory.CreateItem(legacyStats);
+
+            Assert.False(attributes.ContainsKey("SourceMatchEndedAt"));
+            Assert.Null(factory.CreateItem(attributes).SourceMatchEndedAt);
+        }
+
+        [Fact]
         public void PlayerStatsItemDoesNotSupportGlobalSearchIndices()
         {
             var playerItemFactory = ItemFactoryCreator.Create<PlayerStatsItem>();
@@ -124,6 +161,18 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKFormat);
             Assert.Throws<InvalidOperationException>(() => playerItemFactory.GSI1SKPrefix);
+        }
+
+        private static DynamoDbPutOperation CreateConditionalStatsPut(PlayerStatsItem stats)
+        {
+            return DynamoDbPutOperation.Create(
+                stats,
+                "attribute_not_exists(#sourceMatchEndedAt) OR #sourceMatchEndedAt < :sourceMatchEndedAt",
+                new Dictionary<string, string> { { "#sourceMatchEndedAt", "SourceMatchEndedAt" } },
+                new Dictionary<string, AttributeValue>
+                {
+                    { ":sourceMatchEndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(stats.SourceMatchEndedAt!.Value) } }
+                });
         }
     }
 }

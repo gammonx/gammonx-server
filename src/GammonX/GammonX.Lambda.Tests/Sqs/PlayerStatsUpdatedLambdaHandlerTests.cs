@@ -1,11 +1,14 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+using Amazon.DynamoDBv2.Model;
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 using GammonX.Lambda.Handlers;
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
@@ -165,9 +168,38 @@ namespace GammonX.Lambda.Tests.Sqs
 
 			var services = Startup.Configure();
             await Startup.ConfigureDynamoDbTableAsync(services);
+			var repository = services.GetRequiredService<IDynamoDbRepository>();
+			const string statsSk = "STATS#Tavli#SevenPointGame#Normal";
+			await repository.DeleteAsync<PlayerStatsItem>(player1Id, statsSk);
+			await repository.DeleteAsync<PlayerStatsItem>(player2Id, statsSk);
+			var endedAt = DateTime.UtcNow;
+
+			await repository.SaveAsync(new MatchItem
+			{
+				Id = matchId,
+				PlayerId = player1Id,
+				Variant = wonTavliMatch.Variant,
+				Modus = wonTavliMatch.Modus,
+				Type = wonTavliMatch.Type,
+				Result = wonTavliMatch.Result,
+				EndedAt = endedAt
+			});
+
+			await repository.SaveAsync(new MatchItem
+			{
+				Id = matchId,
+				PlayerId = player2Id,
+				Variant = lostTavliMatch.Variant,
+				Modus = lostTavliMatch.Modus,
+				Type = lostTavliMatch.Type,
+				Result = lostTavliMatch.Result,
+				EndedAt = endedAt
+			});
+
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerStatsUpdatedFunc);
 
 			await handler.HandleAsync(sqsEvent, context);
+
 			Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
 			Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
             Assert.Contains($"Processed stat update for player with id '{player1Id}'", logger.Buffer.ToString());
@@ -210,15 +242,29 @@ namespace GammonX.Lambda.Tests.Sqs
 				Games = Array.Empty<GameRecordContract>()
 			};
 
+			var persistedNewMatch = new MatchItem
+			{
+				Id = newMatchId,
+				PlayerId = playerId,
+				Variant = newMatch.Variant,
+				Modus = newMatch.Modus,
+				Type = newMatch.Type,
+				Result = newMatch.Result,
+				Length = 3,
+				Duration = TimeSpan.FromMinutes(20),
+				AvgDuration = TimeSpan.FromMinutes(7),
+				EndedAt = DateTime.UtcNow
+			};
+
 			var repository = new Mock<IDynamoDbRepository>();
 			repository
 				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
-				.ReturnsAsync(new[] { existingMatch });
+				.ReturnsAsync(new[] { existingMatch, persistedNewMatch });
 
-			var savedStats = new List<PlayerStatsItem>();
-			repository
-				.Setup(repo => repo.SaveAsync(It.IsAny<PlayerStatsItem>()))
-				.Callback<PlayerStatsItem>(savedStats.Add)
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+
+			transactionWriter
+				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
 				.Returns(Task.CompletedTask);
 
 			var handler = new PlayerStatsUpdatedHandler(repository.Object);
@@ -241,11 +287,9 @@ namespace GammonX.Lambda.Tests.Sqs
 				repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"),
 				Times.Once);
 
-			var stats = Assert.Single(savedStats);
-			Assert.Equal(2, stats.MatchesPlayed);
-			Assert.Equal(2, stats.MatchesWon);
-			Assert.Equal(2, stats.WinStreak);
-			Assert.Equal(2, stats.LongestWinStreak);
+			transactionWriter.Verify(
+				writer => writer.TransactPutAsync(It.Is<IEnumerable<DynamoDbPutOperation>>(operations => operations.Count() == 1)),
+				Times.Once);
 		}
 
 		[Fact]
@@ -268,15 +312,25 @@ namespace GammonX.Lambda.Tests.Sqs
 				Games = Array.Empty<GameRecordContract>()
 			};
 
+			var persistedMatch = new MatchItem
+			{
+				Id = validMatch.Id,
+				PlayerId = playerId,
+				Variant = validMatch.Variant,
+				Modus = validMatch.Modus,
+				Type = validMatch.Type,
+				Result = validMatch.Result,
+				EndedAt = DateTime.UtcNow
+			};
+
 			var repository = new Mock<IDynamoDbRepository>();
 			repository
 				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
-				.ReturnsAsync(Array.Empty<MatchItem>());
+				.ReturnsAsync(new[] { persistedMatch });
 
-			var savedStats = new List<PlayerStatsItem>();
-			repository
-				.Setup(repo => repo.SaveAsync(It.IsAny<PlayerStatsItem>()))
-				.Callback<PlayerStatsItem>(savedStats.Add)
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+			transactionWriter
+				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
 				.Returns(Task.CompletedTask);
 
 			var invalidMessageId = Guid.NewGuid().ToString();
@@ -292,11 +346,112 @@ namespace GammonX.Lambda.Tests.Sqs
 				}
 			};
 
-			await handler.HandleAsync(@event, new TestLambdaContext { Logger = logger });
+			await Assert.ThrowsAsync<AggregateException>(() => handler.HandleAsync(@event, new TestLambdaContext { Logger = logger }));
 
 			Assert.Contains($"Processing message with id '{validMessageId}'", logger.Buffer.ToString());
 			Assert.Contains($"Processed stat update for player with id '{playerId}'", logger.Buffer.ToString());
-			Assert.Single(savedStats);
+			transactionWriter.Verify(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()), Times.Once);
+		}
+
+		[Fact]
+		public async Task OnPlayerStatsUpdatedRetriesWhenPersistedSourceIsMissing()
+		{
+			var playerId = Guid.NewGuid();
+			var record = CreateMatchRecord(playerId, Guid.NewGuid());
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(Array.Empty<MatchItem>());
+
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+
+			var handler = new PlayerStatsUpdatedHandler(repository.Object);
+
+			await Assert.ThrowsAsync<AggregateException>(() => handler.HandleAsync(
+				CreateEvent(record),
+				new TestLambdaContext { Logger = new TestLambdaLogger() }));
+
+			transactionWriter.Verify(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()), Times.Never);
+		}
+
+		[Theory]
+		[InlineData(0)]
+		[InlineData(1)]
+		public async Task OnPlayerStatsUpdatedSkipsStaleOrDuplicateSourceAfterConditionalConflict(int existingSourceOffsetMinutes)
+		{
+			var playerId = Guid.NewGuid();
+			var record = CreateMatchRecord(playerId, Guid.NewGuid());
+			var sourceEndedAt = DateTime.UtcNow.AddMinutes(-1);
+			var sourceMatch = CreatePersistedMatch(record, sourceEndedAt);
+
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(new[] { sourceMatch });
+			repository
+				.Setup(repo => repo.GetItemsAsync<PlayerStatsItem>(playerId, "STATS#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(new[]
+				{
+					new PlayerStatsItem
+					{
+						PlayerId = playerId,
+						Variant = record.Variant,
+						Modus = record.Modus,
+						Type = record.Type,
+						SourceMatchEndedAt = sourceEndedAt.AddMinutes(existingSourceOffsetMinutes)
+					}
+				});
+
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+			transactionWriter
+				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
+				.ThrowsAsync(new TransactionCanceledException("stale stats update"));
+
+			var handler = new PlayerStatsUpdatedHandler(repository.Object);
+
+			await handler.HandleAsync(
+				CreateEvent(record),
+				new TestLambdaContext { Logger = new TestLambdaLogger() });
+		}
+
+		private static MatchRecordContract CreateMatchRecord(Guid playerId, Guid matchId)
+		{
+			return new MatchRecordContract
+			{
+				Id = matchId,
+				PlayerId = playerId,
+				Result = Models.Enums.MatchResult.Won,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Format = Models.Enums.HistoryFormat.MAT,
+				Games = Array.Empty<GameRecordContract>()
+			};
+		}
+
+		private static MatchItem CreatePersistedMatch(MatchRecordContract record, DateTime endedAt)
+		{
+			return new MatchItem
+			{
+				Id = record.Id,
+				PlayerId = record.PlayerId,
+				Variant = record.Variant,
+				Modus = record.Modus,
+				Type = record.Type,
+				Result = record.Result,
+				EndedAt = endedAt
+			};
+		}
+
+		private static SQSEvent CreateEvent(MatchRecordContract record)
+		{
+			return new SQSEvent
+			{
+				Records = new List<SQSEvent.SQSMessage>
+				{
+					new() { MessageId = Guid.NewGuid().ToString(), Body = JsonConvert.SerializeObject(record) }
+				}
+			};
 		}
 	}
 }

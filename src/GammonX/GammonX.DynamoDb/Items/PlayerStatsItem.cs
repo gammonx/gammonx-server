@@ -52,6 +52,14 @@ namespace GammonX.DynamoDb.Items
 
 		public DateTime? LastMatch { get; set; }
 
+		/// <summary>
+		/// Gets or sets the completion time of the match that triggered this stats update.
+		/// </summary>
+		/// <remarks>
+		/// Requires persisted source matches and prevents stale stats messages from overwriting newer aggregates.
+		/// </remarks>
+		public DateTime? SourceMatchEndedAt { get; set; }
+
 		public int MatchesLast7 { get; set; } = 0;
 
 		public int MatchesLast30 { get; set; } = 0;

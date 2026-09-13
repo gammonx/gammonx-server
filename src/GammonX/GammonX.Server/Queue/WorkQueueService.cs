@@ -97,8 +97,20 @@ namespace GammonX.Server.Queue
             var workQueue = GetWorkQueue(WorkQueueType.StatsUpdated);
             var player1MatchRecord = match.ToRecord(match.Player1.Id);
             var player2MatchRecord = match.ToRecord(match.Player2.Id);
-            var matchRecords = new[] { player1MatchRecord, player2MatchRecord };
-            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+            FifoWorkMessage<MatchRecordContract>[] messages =
+            [
+                CreateStatsMessage(player1MatchRecord),
+                CreateStatsMessage(player2MatchRecord)
+            ];
+            await workQueue.EnqueueFifoBatchAsync(messages, cancellationToken);
+        }
+
+        private static FifoWorkMessage<MatchRecordContract> CreateStatsMessage(MatchRecordContract record)
+        {
+            return new FifoWorkMessage<MatchRecordContract>(
+                record,
+                record.PlayerId.ToString("D"),
+                $"{record.Id:D}:{record.PlayerId:D}");
         }
 
         private IWorkQueue GetWorkQueue(WorkQueueType queueType)
