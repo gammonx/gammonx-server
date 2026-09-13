@@ -1,6 +1,6 @@
 ## SQS Events
 Each SQS events redirects to a own lambda instance with a gvien entrypoint
-- `MATCH_COMPELTED`
+- `MATCH_COMPETED`
 - `GAME_COMPLETED`
 - `RATING_UPDATED`
 - `STATS_UPDATED`
@@ -15,7 +15,7 @@ Each SQS event has it own queue.
 
 #### Match finishes
 - Server sends match state to SQS queue
-    - 2 Match records to `MATCH_COMPELTED` queue, one for each player for `MatchItem`
+    - 2 Match records to `MATCH_COMPETED` queue, one for each player for `MatchItem`
     - 2 Game records to `STATS_UPDATED` queue, one for each player for `PlayerStatsItem`
     - 2 Match records to `RATING_UPDATED` queue, one for each player for `PlayerRatingItem` (for ranked only)
 
@@ -27,4 +27,4 @@ Each SQS event has it own queue.
 - Internal routing of the requested resource
 
 ### Supported API Gateway Resources
-- `GET /players/{id}/rating/{variant}`
+- `GET /players/{id}/rating/{variant}/{type}`

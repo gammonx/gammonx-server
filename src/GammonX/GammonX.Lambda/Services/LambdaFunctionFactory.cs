@@ -71,8 +71,8 @@ namespace GammonX.Lambda.Services
 		/// <summary>
 		/// Checks if a request path matches a route pattern with path parameters.
 		/// </summary>
-		/// <param name="path">The actual request path (e.g., "/players/123/rating/Backgammon")</param>
-		/// <param name="pattern">The route pattern (e.g., "/players/{id}/rating/{variant}")</param>
+		/// <param name="path">The actual request path (e.g., "/players/123/rating/Backgammon/FivePointGame")</param>
+		/// <param name="pattern">The route pattern (e.g., "/players/{id}/rating/{variant}/{type}")</param>
 		/// <param name="pathParameters">Dictionary of extracted path parameters if matched</param>
 		/// <returns>True if the path matches the pattern.</returns>
 		private static bool MatchesPathPattern(string path, string pattern, out Dictionary<string, string> pathParameters)
@@ -109,7 +109,7 @@ namespace GammonX.Lambda.Services
         private static readonly Dictionary<(string method, string pattern), Type> ApiRoutes =
 			new()
 			{
-				{ ("GET", "/players/{id}/rating/{variant}"), typeof(GetPlayerRatingHandler) },
+				{ ("GET", "/players/{id}/rating/{variant}/{type}"), typeof(GetPlayerRatingHandler) },
 				{ ("GET", "/players/{id}/games"), typeof(GetPlayerGamesHandler) },
 				{ ("GET", "/auth/config"), typeof(AuthConfigHandler) },
 			};

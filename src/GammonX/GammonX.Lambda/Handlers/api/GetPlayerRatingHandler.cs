@@ -15,8 +15,8 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Lambda.Handlers
 {
-    /// <summary>variant}/
-    /// GET /players/{id}/rating/{variant} > Lambda: GetPlayerRatingHandler
+    /// <summary>
+    /// GET /players/{id}/rating/{variant}/{type} > Lambda: GetPlayerRatingHandler
     /// </summary>
     public class GetPlayerRatingHandler : LambdaHandlerBaseImpl, IApiLambdaHandler
     {
@@ -45,9 +45,11 @@ namespace GammonX.Lambda.Handlers
                 var playerId = Guid.Parse(playerIdStr);
                 var variantStr = request.PathParameters["variant"];
                 var variant = Enum.Parse<MatchVariant>(variantStr);
+                var typeStr = request.PathParameters["type"];
+                var type = Enum.Parse<MatchType>(typeStr);
 
                 var playerRatingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
-                var sk = string.Format(playerRatingFactory.SKFormat, variant, MatchType.SevenPointGame);
+                var sk = string.Format(playerRatingFactory.SKFormat, variant, type);
                 var ratings = await Repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
 
                 if (ratings.Count() == 1)
@@ -57,14 +59,14 @@ namespace GammonX.Lambda.Handlers
                 }
                 else if (!ratings.Any())
                 {
-                    context.Logger.LogInformation($"Create new player rating for Player: '{playerId}' Variant: '{variant}' Type: '{MatchType.SevenPointGame}'");
+                    context.Logger.LogInformation($"Create new player rating for Player: '{playerId}' Variant: '{variant}' Type: '{type}'");
                     // the player has no rating yet, we create one
-                    var newRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, MatchType.SevenPointGame);
+                    var newRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, type);
                     return newRating.ToResponse();
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Multiple player ratings found for the given player '{playerId}' and variant '{variant}'");
+                    throw new InvalidOperationException($"Multiple player ratings found for player '{playerId}', variant '{variant}', and type '{type}'");
                 }
             }
             catch (Exception ex)

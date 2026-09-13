@@ -222,7 +222,7 @@ awslocal apigateway create-deployment \
 api_url="http://localhost:4566/restapis/${api_id}/dev/_user_request_/"
 
 echo "API Gateway BaseURL: $api_url"
-echo "Get PlayerRating: http://localhost:4566/restapis/${api_id}/dev/_user_request_/players/{playerId}/rating/{variant}"
+echo "Get PlayerRating: http://localhost:4566/restapis/${api_id}/dev/_user_request_/players/{playerId}/rating/{variant}/{type}"
 
 # only works if game service is started on localhost
 update_env_value "REPOSITORY__BASEURL" "$api_url" "/tmp/game-service/.env.local"
@@ -236,7 +236,7 @@ create_and_map_sqs_zip_lambda "$gc_queue_name" "$gc_function_name" "$gc_image_na
 
 ### MATCH_COMPLETED ###
 mc_queue_name="MATCH_COMPLETED_QUEUE"
-mc_function_name="MATCH_COMPELTED"
+mc_function_name="MATCH_COMPLETED"
 mc_image_name="lambda-match-completed"
 mc_handler_class_name="MatchCompletedHandler"
 create_and_map_sqs_zip_lambda "$mc_queue_name" "$mc_function_name" "$mc_image_name" "$mc_handler_class_name"

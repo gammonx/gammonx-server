@@ -1,6 +1,8 @@
 ﻿using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Repository
 {
     /// <summary>
@@ -14,16 +16,17 @@ namespace GammonX.Server.Repository
         public string BaseUrl { get; }
 
         /// <summary>
-        /// Gets the ranked rating for the given <paramref name="playerId"/> and <paramref name="variant"/>.
+        /// Gets the ranked rating for the given player, variant, and match type.
         /// </summary>
         /// <remarks>
-        /// GET /players/{id}/rating/{variant}
+        /// GET /players/{id}/rating/{variant}/{type}
         /// </remarks>
         /// <param name="playerId">Player to search for.</param>
         /// <param name="variant">Variant to search for.</param>
+        /// <param name="type">Match type to search for.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>An intsance of <see cref="PlayerRatingResponseContract"/>.</returns>
-        Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, CancellationToken cancellationToken);
+        /// <returns>An instance of <see cref="PlayerRatingResponseContract"/>.</returns>
+        Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, MatchType type, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets the games for the given <paramref name="playerId"/>.

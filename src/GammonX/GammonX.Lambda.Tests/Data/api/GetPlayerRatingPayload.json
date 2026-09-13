@@ -1,5 +1,5 @@
 {
-  "Resource": "/players/{id}/rating/{variant}",
+  "Resource": "/players/{id}/rating/{variant}/{type}",
   "Path": null,
   "HttpMethod": "GET",
   "Headers": null,
@@ -8,7 +8,8 @@
   "MultiValueQueryStringParameters": null,
   "PathParameters": {
     "id": "aa79360d-6016-405d-834e-c1e59b424c4f",
-    "variant": "Tavli"
+    "variant": "Tavli",
+    "type": "SevenPointGame"
   },
   "StageVariables": null,
   "RequestContext": null,

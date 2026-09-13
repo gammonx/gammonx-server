@@ -4,6 +4,8 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Repository;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Tests.Repository
 {
     public class ApiGatewayRepositoryTests
@@ -66,7 +68,7 @@ namespace GammonX.Server.Tests.Repository
         public async Task CanGetRatingFromRepository1()
         {
             var existingPlayer1Id = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
-            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, CancellationToken.None);
+            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, MatchType.SevenPointGame, CancellationToken.None);
             Assert.NotNull(rating);
             Assert.True(rating.Rating > 1200);
         }
@@ -75,7 +77,7 @@ namespace GammonX.Server.Tests.Repository
         public async Task CanGetRatingFromRepository2()
         {
             var existingPlayer1Id = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
-            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, CancellationToken.None);
+            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, MatchType.SevenPointGame, CancellationToken.None);
             Assert.NotNull(rating);
             Assert.True(rating.Rating < 1200);
         }
@@ -84,7 +86,7 @@ namespace GammonX.Server.Tests.Repository
         public async Task CannotGetRatingOnWrongPlayerId()
         {
             var existingPlayer1Id = Guid.Empty;
-            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, CancellationToken.None);
+            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Tavli, MatchType.SevenPointGame, CancellationToken.None);
             Assert.NotNull(rating);
             // we expect a default value for the rating
             Assert.Equal(1200, rating.Rating);
@@ -94,7 +96,7 @@ namespace GammonX.Server.Tests.Repository
         public async Task CannotGetRatingOnWrongVariant()
         {
             var existingPlayer1Id = Guid.Empty;
-            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Unknown, CancellationToken.None);
+            var rating = await _client.GetRatingAsync(existingPlayer1Id, MatchVariant.Unknown, MatchType.SevenPointGame, CancellationToken.None);
             Assert.NotNull(rating);
             // we expect a default value for the rating
             Assert.Equal(1200, rating.Rating);

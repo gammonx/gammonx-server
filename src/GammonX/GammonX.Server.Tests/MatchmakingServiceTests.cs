@@ -1,8 +1,11 @@
-﻿using GammonX.Models.Enums;
+﻿using GammonX.Models.Contracts;
+using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Repository;
 using GammonX.Server.Services;
+
+using Moq;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
@@ -10,6 +13,29 @@ namespace GammonX.Server.Tests
 {
     public class MatchmakingServiceTests
     {
+        [Fact]
+        public async Task RankedJoinUsesRatingForRequestedMatchType()
+        {
+            var playerId = Guid.NewGuid();
+            var repository = new Mock<IRepositoryClient>();
+
+            repository
+                .Setup(value => value.GetRatingAsync(
+                    playerId,
+                    MatchVariant.Tavli,
+                    MatchType.FivePointGame,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new PlayerRatingResponseContract { Rating = 1375 });
+            
+            var service = new RankedMatchmakingService(new PlayerConnectionRepository(), repository.Object);
+            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.FivePointGame, BotLevel.Hard);
+
+            var entry = await service.JoinQueueAsync(playerId, queueKey);
+
+            Assert.Equal(1375, entry.CurrentRating);
+            repository.VerifyAll();
+        }
+
         [Theory]
         [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]
         [InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame)]
@@ -54,8 +80,8 @@ namespace GammonX.Server.Tests
 
             const int playerCount = 100;
 
-            // we only want a raating increase up to 50 (first search range)
-            var entries = Enumerable.Range(0, playerCount).Select(i => CreateQueueEntry(queueKey, 1500 + i / 2));
+            // we only want a rating increase up to 50 (first search range)
+            var entries = Enumerable.Range(0, playerCount).Select(i => CreateQueueEntry(queueKey, 1500 + (double)i / 2));
 
             foreach (var entry in entries)
             {
@@ -147,7 +173,7 @@ namespace GammonX.Server.Tests
                 matcher.Enqueue(entry);
             }
 
-            var matchTask = Task.Run(() => matcher.MatchQueuedPlayersAsync(), TestContext.Current.CancellationToken);
+            var matchTask = Task.Run(matcher.MatchQueuedPlayersAsync, TestContext.Current.CancellationToken);
 
             var enqueueTask = Task.Run(() =>
             {
@@ -199,7 +225,7 @@ namespace GammonX.Server.Tests
         }
 
         [Fact]
-        public async Task LastSeenTimeStampIsUpdated()
+        public void LastSeenTimeStampIsUpdated()
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
@@ -214,7 +240,7 @@ namespace GammonX.Server.Tests
         }
 
         [Fact]
-        public async Task QueueCleansUpExpiredEntries()
+        public void QueueCleansUpExpiredEntries()
         {
             var playerConnRepo = new PlayerConnectionRepository();
             var matcher = new RankedMatchmakingService(playerConnRepo, new SimpleRepositoryClient());
@@ -246,7 +272,7 @@ namespace GammonX.Server.Tests
             matcher.Enqueue(entry1);
 
             // we attempt to enqueue same player again
-            var entry2 = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 1500);
+            _ = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 1500);
             
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => matcher.JoinQueueAsync(playerId, queueKey)
@@ -456,7 +482,7 @@ namespace GammonX.Server.Tests
             var entries = normalMatcher.GetQueueEntries();
             var lobbies = normalMatcher.GetMatchLobbies();
 
-            // we should have matched 2 unqiue lobbies but 4 entries and have 0 unmatched players
+            // we should have matched 2 unique lobbies but 4 entries and have 0 unmatched players
             Assert.Equal(4, lobbies.Length);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Equal(2, matchIds.Count);
@@ -540,8 +566,8 @@ namespace GammonX.Server.Tests
             Assert.Empty(entries);
 
             // we verify variants are correct
-            var backgammonLobbies = lobbies.Where(l => l.QueueKey.MatchVariant == MatchVariant.Backgammon).Count();
-            var tavlaLobbies = lobbies.Where(l => l.QueueKey.MatchVariant == MatchVariant.Tavla).Count();
+            var backgammonLobbies = lobbies.Count(l => l.QueueKey.MatchVariant == MatchVariant.Backgammon);
+            var tavlaLobbies = lobbies.Count(l => l.QueueKey.MatchVariant == MatchVariant.Tavla);
             Assert.Equal(2, backgammonLobbies);
             Assert.Equal(2, tavlaLobbies);
         }

@@ -1,12 +1,39 @@
 using System.Net;
 using System.Text;
 
+using GammonX.Models.Enums;
+
 using GammonX.Server.Repository;
+
+using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Repository
 {
     public class ApiGatewayClientTemporalTests
     {
+        [Fact]
+        public async Task GetRatingIncludesMatchTypeInRequestPath()
+        {
+            var handler = new StubHandler("""{"Rating":1200}""");
+            using (var client = new HttpClient(handler))
+            {
+                client.BaseAddress = new Uri("https://repository.test/");
+                var repositoryClient = new ApiGatewayClient(client);
+                var playerId = Guid.NewGuid();
+
+                var result = await repositoryClient.GetRatingAsync(
+                    playerId,
+                    MatchVariant.Backgammon,
+                    MatchType.FivePointGame,
+                    CancellationToken.None);
+
+                Assert.NotNull(result);
+                Assert.Equal(
+                    $"https://repository.test/players/{playerId}/rating/Backgammon/FivePointGame",
+                    handler.RequestUri?.ToString());
+            }
+        }
+
         [Fact]
         public async Task GetPlayersGamesParsesCanonicalUtcAndDurationMilliseconds()
         {
@@ -47,8 +74,11 @@ namespace GammonX.Server.Tests.Repository
 
         private sealed class StubHandler(string responseBody) : HttpMessageHandler
         {
+            public Uri? RequestUri { get; private set; }
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
+                RequestUri = request.RequestUri;
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(responseBody, Encoding.UTF8, "application/json")

@@ -7,6 +7,7 @@
 - match/game history is now persisted as strict binary MAT data in DynamoDB
 - canonical persistence formats for UUIDs, timestamps, durations, and numbers
 - game completion, match completion, and rating SQS messages now contain both player records in one composite work contract
+- player rating lookup route changed to `GET /players/{id}/rating/{variant}/{type}`
 
 ### Fixes
 - hardened player statistics for consecutive matches, unfinished data, and invalid or missing values
@@ -18,6 +19,7 @@
 	- per-match Glicko-2 calculation without historical replay.
 	- atomically persists both player detail records with one shared game or match history.
 	- atomically persists both player ratings and rating periods; duplicate match delivery no longer increments ratings twice.
+	- ranked matchmaking now reads ratings for the requested match type instead of always using seven-point ratings.
 
 ## 10.09.2026
 - updated default nn model to gen11

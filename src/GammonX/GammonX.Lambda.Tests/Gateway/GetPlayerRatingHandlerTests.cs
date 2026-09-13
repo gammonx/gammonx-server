@@ -76,7 +76,7 @@ namespace GammonX.Lambda.Tests.Gateway
         }
 
         [Fact]
-        public async Task GetPlayerRatingUsesSevenPointGameRatingKey()
+        public async Task GetPlayerRatingUsesRequestedMatchTypeRatingKey()
         {
             var playerId = Guid.NewGuid();
             var rating = new PlayerRatingItem
@@ -84,20 +84,20 @@ namespace GammonX.Lambda.Tests.Gateway
                 PlayerId = playerId,
                 Variant = MatchVariant.Backgammon,
                 Modus = MatchModus.Ranked,
-                Type = Models.Enums.MatchType.SevenPointGame,
+                Type = Models.Enums.MatchType.FivePointGame,
                 Rating = 1200
             };
             var mockRepo = new Mock<IDynamoDbRepository>();
-            mockRepo.Setup(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#SevenPointGame"))
+            mockRepo.Setup(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#FivePointGame"))
                 .ReturnsAsync(new[] { rating });
 
             var handler = new GetPlayerRatingHandler(mockRepo.Object);
             var context = new TestLambdaContext { Logger = new TestLambdaLogger() };
 
-            var result = await handler.HandleAsync(MakeRequest(playerId, MatchVariant.Backgammon), context);
+            var result = await handler.HandleAsync(MakeRequest(playerId, MatchVariant.Backgammon, Models.Enums.MatchType.FivePointGame), context);
 
             Assert.IsType<PlayerRatingResponseContract>(result);
-            mockRepo.Verify(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#SevenPointGame"), Times.Once);
+            mockRepo.Verify(repo => repo.GetItemsAsync<PlayerRatingItem>(playerId, "RATING#Backgammon#FivePointGame"), Times.Once);
         }
 
         [Theory]
@@ -167,13 +167,14 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
-                Path = $"/players/NOT-A-GUID/rating/{variant}",
-                Resource = "/players/{id}/rating/{variant}",
+                Path = $"/players/NOT-A-GUID/rating/{variant}/{Models.Enums.MatchType.SevenPointGame}",
+                Resource = "/players/{id}/rating/{variant}/{type}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
                     ["id"] = "NOT-A-GUID",
-                    ["variant"] = variant.ToString()
+                    ["variant"] = variant.ToString(),
+                    ["type"] = nameof(Models.Enums.MatchType.SevenPointGame)
                 }
             };
 
@@ -194,12 +195,13 @@ namespace GammonX.Lambda.Tests.Gateway
 
             var request = new APIGatewayProxyRequest
             {
-                Resource = "/players/{id}/rating/{variant}123",
+                Resource = "/players/{id}/rating/{variant}/{type}123",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
                     ["id"] = "NOT-A-GUID",
-                    ["variant"] = variant.ToString()
+                    ["variant"] = variant.ToString(),
+                    ["type"] = nameof(Models.Enums.MatchType.SevenPointGame)
                 }
             };
 
@@ -223,7 +225,7 @@ namespace GammonX.Lambda.Tests.Gateway
             var context = new TestLambdaContext { Logger = logger };
 
             var newPlayerId = Guid.NewGuid();
-            var request = MakeRequest(newPlayerId, MatchVariant.Backgammon);
+            var request = MakeRequest(newPlayerId, MatchVariant.Backgammon, Models.Enums.MatchType.FivePointGame);
 
             var handler = LambdaFunctionFactory.CreateApiHandler(request, _services, context);
             Assert.NotNull(handler);
@@ -234,7 +236,7 @@ namespace GammonX.Lambda.Tests.Gateway
 
             Assert.NotNull(result);
             Assert.Contains("Create new player rating for Player: '", logger.Buffer.ToString());
-            var initialPlayerRating = PlayerRatingItemFactory.CreateInitial(newPlayerId, MatchVariant.Backgammon, Models.Enums.MatchType.SevenPointGame);
+            var initialPlayerRating = PlayerRatingItemFactory.CreateInitial(newPlayerId, MatchVariant.Backgammon, Models.Enums.MatchType.FivePointGame);
             Assert.NotNull(initialPlayerRating);
             Assert.Equal(initialPlayerRating.Rating, ratingResult.Rating);
             Assert.Equal(initialPlayerRating.HighestRating, ratingResult.Rating);
@@ -242,17 +244,21 @@ namespace GammonX.Lambda.Tests.Gateway
             Assert.Equal(MatchModus.Ranked, initialPlayerRating.Modus);
         }
 
-        private static APIGatewayProxyRequest MakeRequest(Guid playerId, MatchVariant variant)
+        private static APIGatewayProxyRequest MakeRequest(
+            Guid playerId,
+            MatchVariant variant,
+            Models.Enums.MatchType type = Models.Enums.MatchType.SevenPointGame)
         {
             return new APIGatewayProxyRequest
             {
-                Path = $"/players/{playerId}/rating/{variant}",
-                Resource = "/players/{id}/rating/{variant}",
+                Path = $"/players/{playerId}/rating/{variant}/{type}",
+                Resource = "/players/{id}/rating/{variant}/{type}",
                 HttpMethod = "GET",
                 PathParameters = new Dictionary<string, string>
                 {
                     ["id"] = playerId.ToString(),
-                    ["variant"] = variant.ToString()
+                    ["variant"] = variant.ToString(),
+                    ["type"] = type.ToString()
                 }
             };
         }
