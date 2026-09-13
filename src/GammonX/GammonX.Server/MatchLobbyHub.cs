@@ -1358,7 +1358,8 @@ namespace GammonX.Server
         private async Task SendMatchState(string serverEventName, IMatchSessionModel match)
         {
             // we put the results in the work queue if applicable
-            EnqueueResultsForProcessing(match, serverEventName);
+            // We await the call in order to ensure that the events are properly published
+            await EnqueueResultsForProcessingAsync(match, serverEventName);
 
             // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
             // TODO: client requests last - 1 rating period and current rating > difference = rating gain
@@ -1408,44 +1409,40 @@ namespace GammonX.Server
             CancelTimersFor(match.Id, CancellationTokenCategory.Disconnect);
         }
 
-        private void EnqueueResultsForProcessing(IMatchSessionModel match, string serverEventName)
+        private async Task EnqueueResultsForProcessingAsync(IMatchSessionModel match, string serverEventName)
         {
-            // we defer the match result processing and avoid blocking the match flow
-            _ = Task.Run(async () =>
+            try
             {
-                try
+                if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
                 {
-                    if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+                    var gameRound = GetLastConcludedGameRoundIndex(match);
+                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                }
+                else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+                {
+                    // we have to enqueue the last game of the match as well
+                    var gameRound = GetLastConcludedGameRoundIndex(match);
+                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                    // we process the match result
+                    await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                    // we update the player stats based on the match result
+                    await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                    // we update the player rating based on the match result if a ranked was played
+                    if (match.Modus == MatchModus.Ranked)
                     {
-                        var gameRound = GetLastConcludedGameRoundIndex(match);
-                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
-                    }
-                    else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
-                    {
-                        // we have to enqueue the last game of the match as well
-                        var gameRound = GetLastConcludedGameRoundIndex(match);
-                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
-                        // we process the match result
-                        await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
-                        // we update the player stats based on the match result
-                        await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
-                        // we update the player rating based on the match result if a ranked was played
-                        if (match.Modus == MatchModus.Ranked)
-                        {
-                            await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
-                        }
+                        await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
                     }
                 }
-                catch (OperationCanceledException)
-                {
-                    Log.Logger.Error("Code {errorCode} :: Message {errorMessage}", "PROCESS_MATCH_RESULT_ERROR", $"The processing of match {match.Id} was cancelled.");
-                }
-                catch (Exception e)
-                {
-                    var groupName = ConstructGroupName(match.Id);
-                    await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", $"An error occurred while processing the match result. Some match data may be lost.", groupName, e);
-                }
-            });
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Logger.Error("Code {errorCode} :: Message {errorMessage}", "PROCESS_MATCH_RESULT_ERROR", $"The processing of match {match.Id} was cancelled.");
+            }
+            catch (Exception e)
+            {
+                var groupName = ConstructGroupName(match.Id);
+                await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", "An error occurred while processing the match result. Some match data may be lost.", groupName, e);
+            }
         }
 
         private static int GetLastConcludedGameRoundIndex(IMatchSessionModel match)
@@ -1459,7 +1456,7 @@ namespace GammonX.Server
         private async Task SendErrorEventAsync(string errorCode, string message, string? connectionId = null, Exception? exception = null)
         {
             var unWrappedException = UnWrapAggregateException(exception);
-            var payload = new EventErrorPayload(errorCode, message, unWrappedException, new string[] { ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand });
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException, ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand);
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             if (!string.IsNullOrEmpty(connectionId))
             {
@@ -1476,7 +1473,7 @@ namespace GammonX.Server
         private async Task SendErrorEventToGroupAsync(string errorCode, string message, string groupName, Exception? exception = null)
         {
             var unWrappedException = UnWrapAggregateException(exception);
-            var payload = new EventErrorPayload(errorCode, message, unWrappedException, new string[] { ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand });
+            var payload = new EventErrorPayload(errorCode, message, unWrappedException, ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand);
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
             await SendToGroupAsync(groupName, ServerEventTypes.ErrorEvent, contract);
             Log.Logger.Error(unWrappedException, "Code {errorCode} :: Message {errorMessage}", errorCode, message);
