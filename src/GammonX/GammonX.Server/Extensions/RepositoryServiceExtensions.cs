@@ -21,7 +21,7 @@ namespace GammonX.Server.Extensions
                 return;
             }
 
-            Serilog.Log.Information($"RepositoryClient: '{nameof(ApiGatewayClient)}' BaseUrl '{baseUrl}'");
+            Serilog.Log.Information("RepositoryClient: '{ApiGatewayClientName}' BaseUrl '{BaseUrl}'", nameof(ApiGatewayClient), baseUrl);
 
             services.AddHttpClient<IRepositoryClient, ApiGatewayClient>((sp, client) =>
             {

@@ -15,33 +15,31 @@ namespace GammonX.Server.Extensions
         public static void AddWorkQueueServices(this IServiceCollection services, IConfiguration workQueueOptions)
         {
             services.AddSingleton<IWorkQueueService, WorkQueueService>();
+            services.AddHealthChecks().AddCheck<WorkQueueHealthCheck>("work-queues");
 
             services.Configure<WorkQueueOptions>(workQueueOptions);
             var configuredOptions = workQueueOptions.Get<WorkQueueOptions>() ?? new WorkQueueOptions();
             ValidateWorkQueueOptions(configuredOptions);
 
             // we check manually if a real work queue config is required
-            if (string.IsNullOrWhiteSpace(configuredOptions.URL))
+            if (string.IsNullOrWhiteSpace(configuredOptions.SERVICEURL))
             {
                 // we setup a dummy work queue
                 services.AddSingleton<IWorkQueue, LogWorkQueue>();
-                Serilog.Log.Information($"WorkQueue: '{nameof(LogWorkQueue)}' Queue URL: '{configuredOptions.URL}'");
+                Serilog.Log.Information("WorkQueue: '{LogWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(LogWorkQueue), configuredOptions.SERVICEURL);
                 return;
             }
 
-            Serilog.Log.Information($"WorkQueue: '{nameof(SqsWorkQueue)}' Queue URL: '{configuredOptions.URL}'");
+            Serilog.Log.Information("WorkQueue: '{SqsWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(SqsWorkQueue), configuredOptions.SERVICEURL);
             // we setup an aws simple queue service
             services.AddSingleton<IAmazonSQS>(sp =>
             {
-                var config = sp.GetRequiredService<IConfiguration>();
                 var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
                 var isLocal = string.IsNullOrEmpty(options.REGION);
                 var keyAuth = !string.IsNullOrEmpty(options.AWS_ACCESS_KEY_ID) && !string.IsNullOrEmpty(options.AWS_SECRET_ACCESS_KEY);
                 if (isLocal)
                 {
                     // local docker instance
-                    var accessKeyId = options.AWS_ACCESS_KEY_ID;
-                    var secretAccessKey = options.AWS_SECRET_ACCESS_KEY;
                     var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
                     var sqsConfig = new AmazonSQSConfig
                     {
@@ -134,12 +132,12 @@ namespace GammonX.Server.Extensions
                 (nameof(WorkQueueOptions.RATING_UPDATED_QUEUE_URL), options.RATING_UPDATED_QUEUE_URL)
             };
 
-            if (string.IsNullOrWhiteSpace(options.URL))
+            if (string.IsNullOrWhiteSpace(options.SERVICEURL))
             {
                 if (queueUrlSettings.Any(queue => !string.IsNullOrWhiteSpace(queue.Value)))
                 {
                     throw new InvalidOperationException(
-                        $"Typed work queue URLs require '{nameof(WorkQueueOptions.URL)}' to enable real queue mode.");
+                        $"Typed work queue URLs require '{nameof(WorkQueueOptions.SERVICEURL)}' to enable real queue mode.");
                 }
 
                 return;
@@ -153,7 +151,7 @@ namespace GammonX.Server.Extensions
             if (missingQueueUrls.Length > 0)
             {
                 throw new InvalidOperationException(
-                    $"Work queue mode is enabled by '{nameof(WorkQueueOptions.URL)}', but these queue URLs are missing: {string.Join(", ", missingQueueUrls)}.");
+                    $"Work queue mode is enabled by '{nameof(WorkQueueOptions.SERVICEURL)}', but these queue URLs are missing: {string.Join(", ", missingQueueUrls)}.");
             }
 
             if (options.MAX_RETRY_ATTEMPTS < 1)

@@ -56,6 +56,30 @@ namespace GammonX.Server.Queue
             };
 
         // <inheritdoc />
+        public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _sqs.GetQueueAttributesAsync(
+                    new GetQueueAttributesRequest
+                    {
+                        QueueUrl = _queueUrl,
+                        AttributeNames = ["QueueArn"]
+                    },
+                    cancellationToken);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        // <inheritdoc />
         public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken)
         {
             var request = new SendMessageRequest

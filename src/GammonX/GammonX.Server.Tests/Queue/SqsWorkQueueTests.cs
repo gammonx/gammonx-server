@@ -104,5 +104,40 @@ namespace GammonX.Server.Tests.Queue
             Assert.Equal("https://sqs.test/GAME_COMPLETED_QUEUE", exception.QueueUrl);
             Assert.Contains("0", exception.FailedEntryIds);
         }
+
+        [Fact]
+        public async Task HealthProbeChecksQueueAttributes()
+        {
+            GetQueueAttributesRequest? capturedRequest = null;
+            var sqs = new Mock<IAmazonSQS>();
+            sqs
+                .Setup(value => value.GetQueueAttributesAsync(
+                    It.IsAny<GetQueueAttributesRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<GetQueueAttributesRequest, CancellationToken>((request, _) => capturedRequest = request)
+                .ReturnsAsync(new GetQueueAttributesResponse());
+
+            var queue = new SqsWorkQueue(sqs.Object, "https://sqs.test/GAME_COMPLETED_QUEUE", "GAME_COMPLETED");
+
+            Assert.True(await queue.IsHealthyAsync(CancellationToken.None));
+            Assert.NotNull(capturedRequest);
+            Assert.Equal("https://sqs.test/GAME_COMPLETED_QUEUE", capturedRequest.QueueUrl);
+            Assert.Contains("QueueArn", capturedRequest.AttributeNames);
+        }
+
+        [Fact]
+        public async Task HealthProbeReturnsFalseWhenQueueAttributesFail()
+        {
+            var sqs = new Mock<IAmazonSQS>();
+            sqs
+                .Setup(value => value.GetQueueAttributesAsync(
+                    It.IsAny<GetQueueAttributesRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("queue unavailable"));
+
+            var queue = new SqsWorkQueue(sqs.Object, "https://sqs.test/GAME_COMPLETED_QUEUE", "GAME_COMPLETED");
+
+            Assert.False(await queue.IsHealthyAsync(CancellationToken.None));
+        }
     }
 }

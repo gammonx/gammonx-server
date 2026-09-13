@@ -6,6 +6,13 @@ namespace GammonX.Server.Queue
     public class LogWorkQueue : IWorkQueue
     {
         // <inheritdoc />
+        public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(true);
+        }
+
+        // <inheritdoc />
         public Task EnqueueAsync<T>(T message, CancellationToken cancellationToken)
         {
             var body = JsonConvert.SerializeObject(message);

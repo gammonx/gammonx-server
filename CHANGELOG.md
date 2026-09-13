@@ -26,6 +26,7 @@
 	- reports failed SQS records individually so successful records in the same Lambda batch are not retried.
 	- retries transient SQS publish failures and propagates permanent or partial batch failures to the caller.
 	- fails fast when real queue mode is enabled with incomplete typed queue configuration.
+	- exposes work queue reachability through the existing server health endpoint.
 
 ## 10.09.2026
 - updated default nn model to gen11

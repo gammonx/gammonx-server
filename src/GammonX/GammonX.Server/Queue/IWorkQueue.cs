@@ -6,6 +6,11 @@
     public interface IWorkQueue
     {
         /// <summary>
+        /// Checks whether the work queue is configured, reachable and responds (healthy).
+        /// </summary>
+        Task<bool> IsHealthyAsync(CancellationToken cancellationToken);
+
+        /// <summary>
         /// Enqueues the given <paramref name="message"/> to the queue.
         /// </summary>
         /// <typeparam name="T">Type of message.</typeparam>
