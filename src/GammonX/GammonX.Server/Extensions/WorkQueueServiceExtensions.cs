@@ -17,17 +17,19 @@ namespace GammonX.Server.Extensions
             services.AddSingleton<IWorkQueueService, WorkQueueService>();
 
             services.Configure<WorkQueueOptions>(workQueueOptions);
+            var configuredOptions = workQueueOptions.Get<WorkQueueOptions>() ?? new WorkQueueOptions();
+            ValidateWorkQueueOptions(configuredOptions);
+
             // we check manually if a real work queue config is required
-            var queueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__URL");
-            if (string.IsNullOrEmpty(queueUrl))
+            if (string.IsNullOrWhiteSpace(configuredOptions.URL))
             {
                 // we setup a dummy work queue
                 services.AddSingleton<IWorkQueue, LogWorkQueue>();
-                Serilog.Log.Information($"WorkQueue: '{nameof(LogWorkQueue)}' Queue URL: '{queueUrl}'");
+                Serilog.Log.Information($"WorkQueue: '{nameof(LogWorkQueue)}' Queue URL: '{configuredOptions.URL}'");
                 return;
             }
 
-            Serilog.Log.Information($"WorkQueue: '{nameof(SqsWorkQueue)}' Queue URL: '{queueUrl}'");
+            Serilog.Log.Information($"WorkQueue: '{nameof(SqsWorkQueue)}' Queue URL: '{configuredOptions.URL}'");
             // we setup an aws simple queue service
             services.AddSingleton<IAmazonSQS>(sp =>
             {
@@ -74,8 +76,7 @@ namespace GammonX.Server.Extensions
                 }
             });
 
-            var gameCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__GAME_COMPLETED_QUEUE_URL");
-            if (!string.IsNullOrEmpty(gameCompletedQueueUrl))
+            if (!string.IsNullOrWhiteSpace(configuredOptions.GAME_COMPLETED_QUEUE_URL))
             {
                 services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.GameCompleted, (sp, _) =>
                 {
@@ -83,8 +84,7 @@ namespace GammonX.Server.Extensions
                     return CreateSqsWorkQueue(sp, options.GAME_COMPLETED_QUEUE_URL, WorkQueueType.GameCompleted.GetName());
                 });
             }
-            var matchCompletedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__MATCH_COMPLETED_QUEUE_URL");
-            if (!string.IsNullOrEmpty(matchCompletedQueueUrl))
+            if (!string.IsNullOrWhiteSpace(configuredOptions.MATCH_COMPLETED_QUEUE_URL))
             {
                 services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.MatchCompleted, (sp, _) =>
                 {
@@ -93,8 +93,7 @@ namespace GammonX.Server.Extensions
                 });
             }
 
-            var playerCreatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__PLAYER_CREATED_QUEUE_URL");
-            if (!string.IsNullOrEmpty(playerCreatedQueueUrl))
+            if (!string.IsNullOrWhiteSpace(configuredOptions.PLAYER_CREATED_QUEUE_URL))
             {
                 services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.PlayerCreated, (sp, _) =>
                 {
@@ -103,8 +102,7 @@ namespace GammonX.Server.Extensions
                 });
             }
 
-            var statsUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__STATS_UPDATED_QUEUE_URL");
-            if (!string.IsNullOrEmpty(statsUpdatedQueueUrl))
+            if (!string.IsNullOrWhiteSpace(configuredOptions.STATS_UPDATED_QUEUE_URL))
             {
                 services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, _) =>
                 {
@@ -113,14 +111,59 @@ namespace GammonX.Server.Extensions
                 });
             }
 
-            var ratingUpdatedQueueUrl = Environment.GetEnvironmentVariable("WORK_QUEUE__RATING_UPDATED_QUEUE_URL");
-            if (!string.IsNullOrEmpty(ratingUpdatedQueueUrl))
+            if (!string.IsNullOrWhiteSpace(configuredOptions.RATING_UPDATED_QUEUE_URL))
             {
                 services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, _) =>
                 {
                     var options = sp.GetRequiredService<IOptions<WorkQueueOptions>>().Value;
                     return CreateSqsWorkQueue(sp, options.RATING_UPDATED_QUEUE_URL, WorkQueueType.RatingUpdated.GetName());
                 });
+            }
+        }
+
+        internal static void ValidateWorkQueueOptions(WorkQueueOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            var queueUrlSettings = new (string Name, string Value)[]
+            {
+                (nameof(WorkQueueOptions.GAME_COMPLETED_QUEUE_URL), options.GAME_COMPLETED_QUEUE_URL),
+                (nameof(WorkQueueOptions.MATCH_COMPLETED_QUEUE_URL), options.MATCH_COMPLETED_QUEUE_URL),
+                (nameof(WorkQueueOptions.PLAYER_CREATED_QUEUE_URL), options.PLAYER_CREATED_QUEUE_URL),
+                (nameof(WorkQueueOptions.STATS_UPDATED_QUEUE_URL), options.STATS_UPDATED_QUEUE_URL),
+                (nameof(WorkQueueOptions.RATING_UPDATED_QUEUE_URL), options.RATING_UPDATED_QUEUE_URL)
+            };
+
+            if (string.IsNullOrWhiteSpace(options.URL))
+            {
+                if (queueUrlSettings.Any(queue => !string.IsNullOrWhiteSpace(queue.Value)))
+                {
+                    throw new InvalidOperationException(
+                        $"Typed work queue URLs require '{nameof(WorkQueueOptions.URL)}' to enable real queue mode.");
+                }
+
+                return;
+            }
+
+            var missingQueueUrls = queueUrlSettings
+            .Where(queue => string.IsNullOrWhiteSpace(queue.Value))
+            .Select(queue => queue.Name)
+            .ToArray();
+
+            if (missingQueueUrls.Length > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Work queue mode is enabled by '{nameof(WorkQueueOptions.URL)}', but these queue URLs are missing: {string.Join(", ", missingQueueUrls)}.");
+            }
+
+            if (options.MAX_RETRY_ATTEMPTS < 1)
+            {
+                throw new InvalidOperationException("Work queue retry attempts must be at least 1.");
+            }
+
+            if (options.RETRY_BASE_DELAY_MILLISECONDS < 0)
+            {
+                throw new InvalidOperationException("Work queue retry delay cannot be negative.");
             }
         }
 

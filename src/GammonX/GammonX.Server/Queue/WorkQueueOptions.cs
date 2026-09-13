@@ -3,6 +3,11 @@
     public class WorkQueueOptions
     {
         /// <summary>
+        /// Gets or sets the marker URL that enables real SQS publishing.
+        /// </summary>
+        public string URL { get; set; } = string.Empty;
+
+        /// <summary>
 		/// Gets or sets the service url for the sqs client.
 		/// </summary>
 		public string SERVICEURL { get; set; } = string.Empty;
