@@ -1,6 +1,7 @@
 ﻿using Amazon.Lambda.Core;
 using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
+using Amazon.DynamoDBv2.Model;
 
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
@@ -23,6 +24,8 @@ namespace GammonX.Lambda.Handlers
 	/// </summary>
 	public class PlayerRatingUpdatedHandler : LambdaHandlerBaseImpl, ISqsLambdaHandler
 	{
+        private const int MaxRatingUpdateAttempts = 3;
+
         /// <summary>
         /// Default constructor for container based lambda execution. 
         /// This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
@@ -37,93 +40,175 @@ namespace GammonX.Lambda.Handlers
         /// <summary>
         /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
         /// </summary>
-        public PlayerRatingUpdatedHandler() : base()
+        public PlayerRatingUpdatedHandler()
         {
             // pass
         }
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			try
-			{
-                if (_repo == null)
-                {
-                    context.Logger.LogInformation($"Setting up DI services...");
-                    var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+            if (Repo == null)
+            {
+                context.Logger.LogInformation("Setting up DI services...");
+                var services = Startup.Configure();
+                Repo = services.GetRequiredService<IDynamoDbRepository>();
+            }
 
-                // we expect exactly to match records, one for the winner and one for the loser
-                if (@event.Records.Count == 2)
+            var failures = new List<SQSBatchResponse.BatchItemFailure>();
+            foreach (var message in @event.Records)
+            {
+                try
                 {
-                    context.Logger.LogInformation($"Processing message with id '{@event.Records[0].MessageId}'");
-                    context.Logger.LogInformation($"Processing message with id '{@event.Records[1].MessageId}'");
-                    var matchRecords = @event.Records.Select(r => JsonConvert.DeserializeObject<MatchRecordContract>(r.Body));
-                    var wonMatch = matchRecords.FirstOrDefault(mr => mr?.Result == Models.Enums.MatchResult.Won);
-                    var lostMatch = matchRecords.FirstOrDefault(mr => mr?.Result == Models.Enums.MatchResult.Lost);
-
-                    if (wonMatch == null || lostMatch == null)
+                    context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
+                    var work = JsonConvert.DeserializeObject<RatingUpdateWorkContract>(message.Body);
+                    if (work == null)
                     {
-                        context.Logger.LogWarning($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects two match records with a decisive result.");
-                        return;
+                        throw new InvalidOperationException($"Unable to deserialize rating update message '{message.MessageId}'.");
                     }
 
-					var results = new List<(PlayerRatingItem, RatingPeriodItem)>();
-                    foreach (var record in matchRecords)
-					{
-                        var result = await ProcessMessageAsync(record?.PlayerId, wonMatch, lostMatch);
-                        results.Add(result);
-                    }
-                    // we persist the player ratings and their rating periods after both players have been processed
-					foreach (var result in results)
-					{
-						// we persist the updated player rating
-						await _repo.SaveAsync(result.Item1);
-                        // we persist the rating period entry
-                        await _repo.SaveAsync(result.Item2);
-                    }
-
-                    context.Logger.LogInformation($"Processed rating update for player with id '{wonMatch?.PlayerId}' after match '{wonMatch?.Id}'");
-                    context.Logger.LogInformation($"Processed rating update for player with id '{lostMatch?.PlayerId}' after match '{lostMatch?.Id}'");
+                    var (winner, loser) = work.GetValidatedRecords();
+                    var updated = await ProcessMessageAsync(winner, loser);
+                    var action = updated ? "Processed" : "Skipped duplicate";
+                    context.Logger.LogInformation($"{action} rating update for players '{winner.PlayerId}' and '{loser.PlayerId}' after match '{winner.Id}'");
                 }
-                else
+                catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"The '{LambdaFunctions.PlayerRatingUpdatedFunc}' expects exactly two match records.");
+                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{message.MessageId}'");
+                    failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
                 }
             }
-			catch (Exception ex) 
-			{
-				foreach (var record in @event.Records)
-				{
-					context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
 
-                }
-			}
+            return new SQSBatchResponse(failures);
 		}
 
-		private async Task<(PlayerRatingItem, RatingPeriodItem)> ProcessMessageAsync(Guid? playerId, MatchRecordContract? wonMatch, MatchRecordContract? lostMatch)
+        private async Task<bool> ProcessMessageAsync(MatchRecordContract wonMatch, MatchRecordContract lostMatch)
 		{
-            if (_repo == null)
+            if (Repo == null)
+            {
                 throw new NullReferenceException("db repo must not be null");
+            }
 
-            ArgumentNullException.ThrowIfNull(wonMatch, nameof(wonMatch));
-			ArgumentNullException.ThrowIfNull(lostMatch, nameof(lostMatch));
-            ArgumentNullException.ThrowIfNull(playerId, nameof(playerId));
-
+            var periodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
+            var periodSk = string.Format(periodFactory.SKFormat, wonMatch.Variant, wonMatch.Type, wonMatch.Modus, wonMatch.Id);
             var wonMatchHistory = wonMatch.ToMatchHistory();
 			var wonParser = HistoryParserFactory.Create<IMatchHistoryParser>(wonMatchHistory.Format);
 			var wonParsedHistory = wonParser.ParseMatch(wonMatchHistory.Data);
 			var wonMatchItem = wonMatch.ToMatch(wonParsedHistory);
+            var lostMatchItem = lostMatch.ToMatch(wonParsedHistory);
 
-            var lostMatchHistory = lostMatch.ToMatchHistory();
-            var lostParser = HistoryParserFactory.Create<IMatchHistoryParser>(lostMatchHistory.Format);
-            var lostParsedHistory = lostParser.ParseMatch(lostMatchHistory.Data);
-            var lostMatchItem = lostMatch.ToMatch(lostParsedHistory);
+            if (Repo is not IDynamoDbTransactionWriter transactionWriter)
+            {
+                throw new InvalidOperationException("Rating persistence requires transaction support.");
+            }
 
-            var result = await _repo.CalculatePlayerRatingAsync(playerId.Value, wonMatchItem, lostMatchItem);
-			return result;
+            return await ExecuteRatingUpdateAsync(
+                wonMatch.Id,
+                () => GetRatingPeriodStateAsync(Repo, wonMatch.PlayerId, lostMatch.PlayerId, periodSk),
+                async () =>
+                {
+                    var winnerResult = await Repo.CalculatePlayerRatingAsync(wonMatch.PlayerId, wonMatchItem, lostMatchItem);
+                    var loserResult = await Repo.CalculatePlayerRatingAsync(lostMatch.PlayerId, wonMatchItem, lostMatchItem);
+                    return
+                    [
+                        CreateRatingPutOperation(winnerResult.Item1),
+                        DynamoDbPutOperation.Create(winnerResult.Item2, "attribute_not_exists(PK)"),
+                        CreateRatingPutOperation(loserResult.Item1),
+                        DynamoDbPutOperation.Create(loserResult.Item2, "attribute_not_exists(PK)")
+                    ];
+                },
+                operations => transactionWriter.TransactPutAsync(operations));
 		}
+
+        internal static async Task<bool> ExecuteRatingUpdateAsync(
+            Guid matchId,
+            Func<Task<(bool WinnerExists, bool LoserExists)>> getPeriodStateAsync,
+            Func<Task<DynamoDbPutOperation[]>> createOperationsAsync,
+            Func<IEnumerable<DynamoDbPutOperation>, Task> writeAsync)
+        {
+            for (var attempt = 1; attempt <= MaxRatingUpdateAttempts; attempt++)
+            {
+                // We get the latest rating period
+                var periodState = await getPeriodStateAsync();
+
+                ValidatePeriodState(matchId, periodState);
+
+                if (periodState.WinnerExists)
+                {
+                    return false;
+                }
+
+                // We calculate the rating updates for winner and loser and prepare the corresponding DynamoDB put operations.
+                var operations = await createOperationsAsync();
+
+                try
+                {
+                    // We put the results atomically and consistently into the db
+                    await writeAsync(operations);
+                    return true;
+                }
+                catch (TransactionCanceledException)
+                {
+                    // We retry until max is reached
+                    periodState = await getPeriodStateAsync();
+                    ValidatePeriodState(matchId, periodState);
+                    if (periodState.WinnerExists)
+                    {
+                        return false;
+                    }
+
+                    if (attempt == MaxRatingUpdateAttempts)
+                    {
+                        throw;
+                    }
+
+                    await Task.Delay((1 << (attempt - 1)) * 25);
+                }
+            }
+
+            throw new InvalidOperationException("Rating update retry loop completed unexpectedly.");
+        }
+
+        private static void ValidatePeriodState(Guid matchId, (bool WinnerExists, bool LoserExists) periodState)
+        {
+            if (periodState.WinnerExists != periodState.LoserExists)
+            {
+                throw new InvalidOperationException($"Rating period state for match '{matchId}' is inconsistent.");
+            }
+        }
+
+        internal static DynamoDbPutOperation CreateRatingPutOperation(PlayerRatingItem rating)
+        {
+            return DynamoDbPutOperation.CreateVersioned(rating, rating.Revision - 1);
+        }
+
+        internal static async Task<bool> IsDuplicateTransactionAsync(
+            IDynamoDbRepository repo,
+            Guid winnerId,
+            Guid loserId,
+            string periodSk)
+        {
+            var state = await GetRatingPeriodStateAsync(repo, winnerId, loserId, periodSk);
+            return state.WinnerExists && state.LoserExists;
+        }
+
+        private static async Task<(bool WinnerExists, bool LoserExists)> GetRatingPeriodStateAsync(
+            IDynamoDbRepository repo,
+            Guid winnerId,
+            Guid loserId,
+            string periodSk)
+        {
+            var winnerPeriods = await GetItemsAsync<RatingPeriodItem>(repo, winnerId, periodSk);
+            var loserPeriods = await GetItemsAsync<RatingPeriodItem>(repo, loserId, periodSk);
+            return (winnerPeriods.Any(), loserPeriods.Any());
+        }
+
+        private static Task<IEnumerable<T>> GetItemsAsync<T>(IDynamoDbRepository repo, Guid id, string sk)
+        {
+            return repo is IDynamoDbConsistentReader consistentReader
+                ? consistentReader.GetItemsConsistentlyAsync<T>(id, sk)
+                : repo.GetItemsAsync<T>(id, sk);
+        }
 	}
 }

@@ -2,6 +2,8 @@
 
 using GammonX.DynamoDb.Stats;
 
+using System.Globalization;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -14,7 +16,7 @@ namespace GammonX.DynamoDb.Items
 		/// <summary>
 		/// Gets a primary key like 'PLAYER#{playerId}'
 		/// </summary>
-		public string PKFormat => "PLAYER#{0}";
+		public string PKFormat => "PLAYER#{0:D}";
 
 		/// <summary>
 		/// Gets a sort key like 'STATS#{Variant}#{Type}#{Modus}'
@@ -42,24 +44,29 @@ namespace GammonX.DynamoDb.Items
 				Variant = Enum.Parse<MatchVariant>(item["Variant"].S),
 				Type = Enum.Parse<MatchType>(item["Type"].S),
 				Modus = Enum.Parse<MatchModus>(item["Modus"].S),
-				MatchesPlayed = int.Parse(item["MatchesPlayed"].N),
-				MatchesWon = int.Parse(item["MatchesWon"].N),
-				MatchesLost = int.Parse(item["MatchesLost"].N),
-				WinRate = double.Parse(item["WinRate"].N),
-				WinStreak = int.Parse(item["WinStreak"].N),
-				LongestWinStreak = int.Parse(item["LongestWinStreak"].N),
-				TotalPlayTime = TimeSpan.Parse(item["TotalPlayTime"].S),
-				LastMatch = DateTimeHelper.ParseFlexible(item["LastMatch"].S),
-				MatchesLast7 = int.Parse(item["MatchesLast7"].N),
-				MatchesLast30 = int.Parse(item["MatchesLast30"].N),
-				AvgGammons = double.Parse(item["AvgGammons"].N),
-				AvgBackgammons = double.Parse(item["AvgBackgammons"].N),
-				AvgDuration = TimeSpan.Parse(item["AvgDuration"].S),
-				WAvgPipesLeft = double.Parse(item["WAvgPipesLeft"].N),
-				WAvgDoubleDices = double.Parse(item["WAvgDoubleDices"].N),
-				WAvgTurns = double.Parse(item["WAvgTurns"].N),
-				WAvgDoubles = double.Parse(item["WAvgDoubles"].N),
-				WAvgDuration = TimeSpan.Parse(item["WAvgDuration"].S),
+				MatchesPlayed = int.Parse(item["MatchesPlayed"].N, CultureInfo.InvariantCulture),
+				MatchesWon = int.Parse(item["MatchesWon"].N, CultureInfo.InvariantCulture),
+				MatchesLost = int.Parse(item["MatchesLost"].N, CultureInfo.InvariantCulture),
+				WinRate = double.Parse(item["WinRate"].N, CultureInfo.InvariantCulture),
+				WinStreak = int.Parse(item["WinStreak"].N, CultureInfo.InvariantCulture),
+				LongestWinStreak = int.Parse(item["LongestWinStreak"].N, CultureInfo.InvariantCulture),
+				TotalPlayTime = DateTimeHelper.ParseDurationTicks(item["TotalPlayTime"].N),
+				LastMatch = item.TryGetValue("LastMatch", out var lastMatchAttribute) && lastMatchAttribute.NULL != true
+					? DateTimeHelper.ParseUtc(lastMatchAttribute.S)
+					: null,
+				SourceMatchEndedAt = item.TryGetValue("SourceMatchEndedAt", out var sourceMatchEndedAtAttribute)
+					? DateTimeHelper.ParseUtc(sourceMatchEndedAtAttribute.S)
+					: null,
+				MatchesLast7 = int.Parse(item["MatchesLast7"].N, CultureInfo.InvariantCulture),
+				MatchesLast30 = int.Parse(item["MatchesLast30"].N, CultureInfo.InvariantCulture),
+				AvgGammons = double.Parse(item["AvgGammons"].N, CultureInfo.InvariantCulture),
+				AvgBackgammons = double.Parse(item["AvgBackgammons"].N, CultureInfo.InvariantCulture),
+				AvgDuration = DateTimeHelper.ParseDurationTicks(item["AvgDuration"].N),
+				WAvgPipesLeft = double.Parse(item["WAvgPipesLeft"].N, CultureInfo.InvariantCulture),
+				WAvgDoubleDices = double.Parse(item["WAvgDoubleDices"].N, CultureInfo.InvariantCulture),
+				WAvgTurns = double.Parse(item["WAvgTurns"].N, CultureInfo.InvariantCulture),
+				WAvgDoubles = double.Parse(item["WAvgDoubles"].N, CultureInfo.InvariantCulture),
+				WAvgDuration = DateTimeHelper.ParseDurationTicks(item["WAvgDuration"].N),
 			};
 			return playerStatsItem;
 		}
@@ -75,29 +82,37 @@ namespace GammonX.DynamoDb.Items
 				{ "PK", new AttributeValue(item.PK) },
 				{ "SK", new AttributeValue(item.SK) },
 				{ "ItemType", new AttributeValue(item.ItemType) },
-				{ "PlayerId", new AttributeValue(item.PlayerId.ToString()) },
+				{ "PlayerId", new AttributeValue(item.PlayerId.ToString("D")) },
 				{ "Variant", new AttributeValue(variantStr) },
 				{ "Modus", new AttributeValue(modusStr) },
 				{ "Type", new AttributeValue(typeStr) },
-				{ "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString() } },
-				{ "MatchesWon", new AttributeValue() { N = item.MatchesWon.ToString() } },
-				{ "MatchesLost", new AttributeValue() { N = item.MatchesLost.ToString() } },
-				{ "WinRate", new AttributeValue() { N = item.WinRate.ToString() } },
-				{ "WinStreak", new AttributeValue() { N = item.WinStreak.ToString() } },
-				{ "LongestWinStreak", new AttributeValue() { N = item.LongestWinStreak.ToString() } },
-				{ "TotalPlayTime", new AttributeValue() { S = item.TotalPlayTime.ToString() } },
-				{ "LastMatch", new AttributeValue() { S = item.LastMatch.ToString() } },
-				{ "MatchesLast7", new AttributeValue() { N = item.MatchesLast7.ToString() } },
-				{ "MatchesLast30", new AttributeValue() { N = item.MatchesLast30.ToString() } },
-				{ "AvgGammons", new AttributeValue() { N = item.AvgGammons.ToString() } },
-				{ "AvgBackgammons", new AttributeValue() { N = item.AvgBackgammons.ToString() } },
-				{ "AvgDuration", new AttributeValue() { S = item.AvgDuration.ToString() } },
-				{ "WAvgPipesLeft", new AttributeValue() { N = item.WAvgPipesLeft.ToString() } },
-				{ "WAvgDoubleDices", new AttributeValue() { N = item.WAvgDoubleDices.ToString() } },
-				{ "WAvgTurns", new AttributeValue() { N = item.WAvgTurns.ToString() } },
-				{ "WAvgDoubles", new AttributeValue() { N = item.WAvgDoubles.ToString() } },
-				{ "WAvgDuration", new AttributeValue() { S = item.WAvgDuration.ToString() } },
+				{ "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString(CultureInfo.InvariantCulture) } },
+				{ "MatchesWon", new AttributeValue() { N = item.MatchesWon.ToString(CultureInfo.InvariantCulture) } },
+				{ "MatchesLost", new AttributeValue() { N = item.MatchesLost.ToString(CultureInfo.InvariantCulture) } },
+				{ "WinRate", new AttributeValue() { N = item.WinRate.ToString(CultureInfo.InvariantCulture) } },
+				{ "WinStreak", new AttributeValue() { N = item.WinStreak.ToString(CultureInfo.InvariantCulture) } },
+				{ "LongestWinStreak", new AttributeValue() { N = item.LongestWinStreak.ToString(CultureInfo.InvariantCulture) } },
+				{ "TotalPlayTime", new AttributeValue() { N = DateTimeHelper.FormatDurationTicks(item.TotalPlayTime) } },
+				{ "LastMatch", item.LastMatch.HasValue
+					? new AttributeValue() { S = DateTimeHelper.FormatUtc(item.LastMatch.Value) }
+					: new AttributeValue() { NULL = true } },
+				{ "MatchesLast7", new AttributeValue() { N = item.MatchesLast7.ToString(CultureInfo.InvariantCulture) } },
+				{ "MatchesLast30", new AttributeValue() { N = item.MatchesLast30.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgGammons", new AttributeValue() { N = item.AvgGammons.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgBackgammons", new AttributeValue() { N = item.AvgBackgammons.ToString(CultureInfo.InvariantCulture) } },
+				{ "AvgDuration", new AttributeValue() { N = DateTimeHelper.FormatDurationTicks(item.AvgDuration) } },
+				{ "WAvgPipesLeft", new AttributeValue() { N = item.WAvgPipesLeft.ToString(CultureInfo.InvariantCulture) } },
+				{ "WAvgDoubleDices", new AttributeValue() { N = item.WAvgDoubleDices.ToString(CultureInfo.InvariantCulture) } },
+				{ "WAvgTurns", new AttributeValue() { N = item.WAvgTurns.ToString(CultureInfo.InvariantCulture) } },
+				{ "WAvgDoubles", new AttributeValue() { N = item.WAvgDoubles.ToString(CultureInfo.InvariantCulture) } },
+				{ "WAvgDuration", new AttributeValue() { N = DateTimeHelper.FormatDurationTicks(item.WAvgDuration) } },
 			};
+
+			if (item.SourceMatchEndedAt.HasValue)
+			{
+				itemDict.Add("SourceMatchEndedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.SourceMatchEndedAt.Value) });
+			}
+
 			return itemDict;
 		}
 
@@ -108,32 +123,29 @@ namespace GammonX.DynamoDb.Items
 			MatchModus modus,
 			IEnumerable<MatchItem> matchItems)
 		{
-			var matches = matchItems.OrderBy(mi => mi.EndedAt).ToList();
+			ArgumentNullException.ThrowIfNull(matchItems);
+
+			var matches = matchItems
+				.Where(match => match is not null && (match.Result == MatchResult.Won || match.Result == MatchResult.Lost))
+				.OrderBy(match => match.EndedAt)
+				.ToList();
 
 			if (matches.Count == 0)
-				throw new ArgumentException("The match list must not be empty for stat calculation");
+				throw new ArgumentException("The match list must contain at least one completed match for stat calculation", nameof(matchItems));
 
 			var matchesPlayed = matches.Count;
 			var matchesWon = matches.Count(m => m.Result == MatchResult.Won);
 			var matchesLost = matches.Count(m => m.Result == MatchResult.Lost);
-			var winRate = (double)matchesWon / matchesPlayed * 100.0;
-			var (CurrentStreak, LongestStreak) = StatsAggregator.CalculateWinStreaks(matches);
-			var winStreak = CurrentStreak;
-			var longestWinStreak = LongestStreak;
-			var lastMatch = matches.Last().EndedAt;
-			var totalPlayTime = TimeSpan.FromTicks(matches.Sum(m => m.Duration.Ticks));
+			var winRate = (double)matchesWon / matchesPlayed;
+			var (currentStreak, longestStreak) = StatsAggregator.CalculateWinStreaks(matches);
+            var lastMatch = matches.Last().EndedAt;
+			var totalPlayTime = SumDurations(matches);
 			var now = DateTime.UtcNow;
 			var matchesLast7 = matches.Count(m => m.EndedAt > now.AddDays(-7));
 			var matchesLast30 = matches.Count(m => m.EndedAt > now.AddDays(-30));
-			var gammonCount = matches.Sum(m => m.Gammons);
-			var avgGammons = 0.0;
-			if (gammonCount > 0)
-				avgGammons = (double)gammonCount / matchesPlayed;
-			var backgammonCount = matches.Sum(m => m.Backgammons);
-			var avgBackgammons = 0.0;
-			if (backgammonCount > 0)
-				avgBackgammons = (double)backgammonCount / matchesPlayed;
-			var avgDuration = TimeSpan.FromTicks((long)matches.Average(m => m.Duration.Ticks));
+			var avgGammons = matches.Average(m => Math.Max(m.Gammons, 0));
+			var avgBackgammons = matches.Average(m => Math.Max(m.Backgammons, 0));
+			var avgDuration = AverageDuration(matches);
 			var wAvgPipesLeft = StatsAggregator.WeightedAverage(matches, m => m.AvgPipesLeft, m => m.Length);
 			var wAvgDoubleDices = StatsAggregator.WeightedAverage(matches, m => m.AvgDoubleDices, m => m.Length);
 			var wAvgTurns = StatsAggregator.WeightedAverage(matches, m => m.AvgTurns, m => m.Length);
@@ -150,8 +162,8 @@ namespace GammonX.DynamoDb.Items
 				MatchesWon = matchesWon,
 				MatchesLost = matchesLost,
 				WinRate = winRate,
-				WinStreak = winStreak,
-				LongestWinStreak = longestWinStreak,
+				WinStreak = currentStreak,
+				LongestWinStreak = longestStreak,
 				TotalPlayTime = totalPlayTime,
 				LastMatch = lastMatch,
 				MatchesLast7 = matchesLast7,
@@ -166,6 +178,38 @@ namespace GammonX.DynamoDb.Items
 				WAvgDuration = wAvgDuration
 			};
 			return playerStatsItem;
+		}
+
+		private static TimeSpan SumDurations(IEnumerable<MatchItem> matches)
+		{
+			var totalTicks = matches
+				.Where(match => match.Duration >= TimeSpan.Zero)
+				.Sum(match => (decimal)match.Duration.Ticks);
+
+			return TimeSpan.FromTicks(ToTicks(totalTicks));
+		}
+
+		private static TimeSpan AverageDuration(IEnumerable<MatchItem> matches)
+		{
+			var durations = matches
+				.Where(match => match.Duration >= TimeSpan.Zero)
+				.Select(match => (decimal)match.Duration.Ticks)
+				.ToList();
+
+			if (durations.Count == 0)
+				return TimeSpan.Zero;
+
+			return TimeSpan.FromTicks(ToTicks(durations.Sum() / durations.Count));
+		}
+
+		private static long ToTicks(decimal ticks)
+		{
+			if (ticks >= TimeSpan.MaxValue.Ticks)
+				return TimeSpan.MaxValue.Ticks;
+			if (ticks <= TimeSpan.MinValue.Ticks)
+				return TimeSpan.MinValue.Ticks;
+
+			return decimal.ToInt64(decimal.Truncate(ticks));
 		}
 	}
 }

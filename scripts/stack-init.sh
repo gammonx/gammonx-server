@@ -53,6 +53,7 @@ create_and_map_sqs_container_lambda() {
   awslocal lambda create-event-source-mapping \
     --function-name $function_name \
     --batch-size 10 \
+    --function-response-types ReportBatchItemFailures \
     --event-source-arn arn:aws:sqs:us-east-1:000000000000:$queue_name
 }
 
@@ -61,8 +62,13 @@ create_and_map_sqs_zip_lambda() {
   local function_name=$2
   local image_name=$3
   local handler_class=$4
+  local fifo_queue=${5:-false}
 
-  awslocal sqs create-queue --queue-name $queue_name
+  if [ "$fifo_queue" = "true" ]; then
+    awslocal sqs create-queue --queue-name "$queue_name" --attributes FifoQueue=true
+  else
+    awslocal sqs create-queue --queue-name "$queue_name"
+  fi
 
   awslocal lambda create-function \
     --function-name $function_name \
@@ -84,6 +90,7 @@ create_and_map_sqs_zip_lambda() {
   awslocal lambda create-event-source-mapping \
     --function-name $function_name \
     --batch-size 10 \
+    --function-response-types ReportBatchItemFailures \
     --event-source-arn arn:aws:sqs:us-east-1:000000000000:$queue_name
 }
 
@@ -203,6 +210,7 @@ root_id=$(get_root_resource_id "$api_id")
 
 players_id=$(create_api_resource "$api_id" "$root_id" "players")
 id_id=$(create_api_resource "$api_id" "$players_id" "{id}")
+games_id=$(create_api_resource "$api_id" "$id_id" "games")
 rating_id=$(create_api_resource "$api_id" "$id_id" "rating")
 variant_id=$(create_api_resource "$api_id" "$rating_id" "{variant}")
 
@@ -212,6 +220,7 @@ lambda_arn=$(awslocal lambda get-function \
   --output text)
 
 attach_lambda_to_method "$api_id" "$variant_id" "GET" "$lambda_arn"
+attach_lambda_to_method "$api_id" "$games_id" "GET" "$lambda_arn"
 
 awslocal apigateway create-deployment \
   --rest-api-id $api_id \
@@ -220,7 +229,7 @@ awslocal apigateway create-deployment \
 api_url="http://localhost:4566/restapis/${api_id}/dev/_user_request_/"
 
 echo "API Gateway BaseURL: $api_url"
-echo "Get PlayerRating: http://localhost:4566/restapis/${api_id}/dev/_user_request_/players/{playerId}/rating/{variant}"
+echo "Get PlayerRating: http://localhost:4566/restapis/${api_id}/dev/_user_request_/players/{playerId}/rating/{variant}/{type}"
 
 # only works if game service is started on localhost
 update_env_value "REPOSITORY__BASEURL" "$api_url" "/tmp/game-service/.env.local"
@@ -234,7 +243,7 @@ create_and_map_sqs_zip_lambda "$gc_queue_name" "$gc_function_name" "$gc_image_na
 
 ### MATCH_COMPLETED ###
 mc_queue_name="MATCH_COMPLETED_QUEUE"
-mc_function_name="MATCH_COMPELTED"
+mc_function_name="MATCH_COMPLETED"
 mc_image_name="lambda-match-completed"
 mc_handler_class_name="MatchCompletedHandler"
 create_and_map_sqs_zip_lambda "$mc_queue_name" "$mc_function_name" "$mc_image_name" "$mc_handler_class_name"
@@ -247,15 +256,15 @@ pc_handler_class_name="PlayerCreatedHandler"
 create_and_map_sqs_zip_lambda "$pc_queue_name" "$pc_function_name" "$pc_image_name" "$pc_handler_class_name"
 
 ### STATS_UPDATED ###
-ps_queue_name="STATS_UPDATED_QUEUE"
+ps_queue_name="STATS_UPDATED_QUEUE.fifo"
 ps_function_name="STATS_UPDATED"
 ps_image_name="lambda-stats-updated"
 ps_handler_class_name="PlayerStatsUpdatedHandler"
-create_and_map_sqs_zip_lambda "$ps_queue_name" "$ps_function_name" "$ps_image_name" "$ps_handler_class_name"
+create_and_map_sqs_zip_lambda "$ps_queue_name" "$ps_function_name" "$ps_image_name" "$ps_handler_class_name" true
 
 ### RATING_UPDATED ###
 pr_queue_name="RATING_UPDATED_QUEUE"
 pr_function_name="RATING_UPDATED"
 pr_image_name="lambda-rating-updated"
-pr_handler_class_name="PlayerStatsUpdatedHandler"
+pr_handler_class_name="PlayerRatingUpdatedHandler"
 create_and_map_sqs_zip_lambda "$pr_queue_name" "$pr_function_name" "$pr_image_name" "$pr_handler_class_name"

@@ -13,7 +13,7 @@ namespace GammonX.DynamoDb.Items
 		public string PK => ConstructPK();
 
 		/// <summary>
-		/// Gets a sort key like 'GAME#{gameId}#{WON|LOST|NOTFINISHED}'
+		/// Gets a sort key like 'GAME#{GameId}#{WON|LOST|NOTFINISHED#{PlayerId}'.
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
@@ -25,7 +25,7 @@ namespace GammonX.DynamoDb.Items
 		public string GSI1PK => ConstructGS1PK();
 
 		/// <summary>
-		/// Gets the global search index sort key. (e.g. "GAME#Portes#{WON|LOST|NOTFINISHED}")
+		/// Gets the global search index sort key. (e.g. "GAME#Portes#WON")
 		/// </summary>
 		[DynamoDBGlobalSecondaryIndexRangeKey("GSI1SK")]
 		public string GSI1SK => ConstructGS1SK();
@@ -46,7 +46,7 @@ namespace GammonX.DynamoDb.Items
 		public Guid MatchId { get; set; } = Guid.Empty;
 
 		/// <summary>
-		/// Gets or sets the points awarded to the given palyer.
+		/// Gets or sets the points awarded to the given player.
 		/// If the game was lost the amount of points must be <c>0</c>.
 		/// </summary>
 		public int Points { get; set; } = 0;
@@ -117,7 +117,7 @@ namespace GammonX.DynamoDb.Items
 				return value.Value ? "WON" : "LOST";
 			}
 			// we append the player id to the sk in order to make it unique
-			return $"NOTFINISHED#{PlayerId}";
+			return $"NOTFINISHED#{PlayerId:D}";
 		}
 	}
 }

@@ -2,8 +2,8 @@
 ;[Name 'Tavli Normal CashGame']
 ;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Player 2 Black Checkers 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
-;[Started At '29/11/2025 09:33:37']
-;[Ended At '29/11/2025 09:33:41']
+;[Started At '2025-11-29T09:33:37.0000000Z']
+;[Ended At '2025-11-29T09:33:41.0000000Z']
 ;[Length '3']
 ;[Game 'c57e0961-02e7-4aac-857f-565e9d78db09']
 ;[Player 1 White Checkers 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
@@ -11,8 +11,8 @@
 ;[Game Modus 'Portes']
 ;[Winner 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Points '1']
-;[Started At '29/11/2025 09:33:37']
-;[Ended At '29/11/2025 09:33:37']
+;[Started At '2025-11-29T09:33:37.0000000Z']
+;[Ended At '2025-11-29T09:33:37.0000000Z']
 White Roll 5 4
 White Move 11/16
 White Move 0/4
@@ -205,8 +205,8 @@ Black Move 0/off
 ;[Game Modus 'Plakoto']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '2']
-;[Started At '29/11/2025 09:33:37']
-;[Ended At '29/11/2025 09:33:39']
+;[Started At '2025-11-29T09:33:37.0000000Z']
+;[Ended At '2025-11-29T09:33:39.0000000Z']
 Black Roll 1 1 1 1
 Black Move 23/22
 Black Move 22/21
@@ -513,8 +513,8 @@ White Move 23/off
 ;[Game Modus 'Fevga']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '1']
-;[Started At '29/11/2025 09:33:39']
-;[Ended At '29/11/2025 09:33:41']
+;[Started At '2025-11-29T09:33:39.0000000Z']
+;[Ended At '2025-11-29T09:33:41.0000000Z']
 White Roll 6 4
 White Move bar/5
 White Move 5/9

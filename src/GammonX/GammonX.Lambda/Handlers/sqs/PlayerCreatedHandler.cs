@@ -30,42 +30,42 @@ namespace GammonX.Lambda.Handlers
         /// <summary>
         /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
         /// </summary>
-        public PlayerCreatedHandler() : base()
+        public PlayerCreatedHandler()
         {
             // pass
         }
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-            try
+            if (Repo == null)
             {
-                if (_repo == null)
-                {
-                    context.Logger.LogInformation($"Setting up DI services...");
-                    var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+                context.Logger.LogInformation("Setting up DI services...");
+                var services = Startup.Configure();
+                Repo = services.GetRequiredService<IDynamoDbRepository>();
+            }
 
-                foreach (var message in @event.Records)
+            var failures = new List<SQSBatchResponse.BatchItemFailure>();
+            foreach (var message in @event.Records)
+            {
+                try
                 {
                     await ProcessMessageAsync(message, context);
                 }
-            }
-			catch (Exception ex) 
-			{
-				foreach (var record in @event.Records)
-				{
-					context.Logger.LogError(ex, $"An error occurred while processing player created. Message id: '{record.MessageId}'");
-
+                catch (Exception ex)
+                {
+                    context.Logger.LogError(ex, $"An error occurred while processing player created. Message id: '{message.MessageId}'");
+                    failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
                 }
             }
+
+            return new SQSBatchResponse(failures);
 		}
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-            if (_repo == null)
+            if (Repo == null)
                 throw new NullReferenceException("db repo must not be null");
 
             context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
@@ -75,15 +75,14 @@ namespace GammonX.Lambda.Handlers
 
             if (playerRecord == null)
             {
-                context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
-                return;
+				throw new InvalidOperationException($"Unable to deserialize player created message '{message.MessageId}'.");
             }
 
             context.Logger.LogInformation($"Processing created player with id '{playerRecord.Id}'");
 
 			var playerItem = playerRecord.ToPlayer();
 
-            await _repo.SaveAsync(playerItem);
+            await Repo.SaveAsync(playerItem);
 
             context.Logger.LogInformation($"Processed created player with id '{playerRecord.Id}'");
         }

@@ -35,8 +35,8 @@ namespace GammonX.Models.Tests
             Assert.Equal(blackPlayer, match.Player2Id);
             Assert.Equal(HistoryFormat.MAT, match.Format);
             Assert.Equal(3, match.Length);
-            Assert.Equal(DateTimeHelper.ParseFlexible("29/11/2025 09:33:37"), match.StartedAt);
-            Assert.Equal(DateTimeHelper.ParseFlexible("29/11/2025 09:33:41"), match.EndedAt);
+            Assert.Equal(DateTimeHelper.ParseMatUtc("29/11/2025 09:33:37"), match.StartedAt);
+            Assert.Equal(DateTimeHelper.ParseMatUtc("29/11/2025 09:33:41"), match.EndedAt);
             Assert.Equal(3, match.PointCount(whitePlayer));
             Assert.Equal(1, match.PointCount(blackPlayer));
             Assert.Equal(11, match.AvgDoubleDiceCount(whitePlayer));
@@ -61,8 +61,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
-            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
+            var expStartAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:37");
+            var expEndedAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:37");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -92,8 +92,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:37");
-            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:39");
+            var expStartAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:37");
+            var expEndedAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:39");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -123,8 +123,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
             var blackPlayer = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
 
-            var expStartAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:39");
-            var expEndedAt = DateTimeHelper.ParseFlexible("29/11/2025 09:33:41");
+            var expStartAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:39");
+            var expEndedAt = DateTimeHelper.ParseMatUtc("29/11/2025 09:33:41");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -154,8 +154,8 @@ namespace GammonX.Models.Tests
             var whitePlayer = Guid.Parse("7b717dc4-11d3-4a9e-b102-d62f23f03af8");
             var blackPlayer = Guid.Parse("9d0bde9e-6d4b-43d9-8889-60ec55095d09");
 
-            var expStartAt = DateTimeHelper.ParseFlexible("14/06/2026 19:40:35");
-            var expEndedAt = DateTimeHelper.ParseFlexible("14/06/2026 19:40:37");
+            var expStartAt = DateTimeHelper.ParseMatUtc("14/06/2026 19:40:35");
+            var expEndedAt = DateTimeHelper.ParseMatUtc("14/06/2026 19:40:37");
 
             Assert.NotNull(game);
             Assert.Equal(HistoryFormat.MAT, game.Format);
@@ -196,8 +196,8 @@ namespace GammonX.Models.Tests
             Assert.Equal(blackPlayer, match.Player2Id);
             Assert.Equal(HistoryFormat.MAT, match.Format);
             Assert.Equal(1, match.Length);
-            Assert.Equal(DateTimeHelper.ParseFlexible("25/08/2026 07:07:49"), match.StartedAt);
-            Assert.Equal(DateTimeHelper.ParseFlexible("25/08/2026 07:08:25"), match.EndedAt);
+            Assert.Equal(DateTimeHelper.ParseMatUtc("25/08/2026 07:07:49"), match.StartedAt);
+            Assert.Equal(DateTimeHelper.ParseMatUtc("25/08/2026 07:08:25"), match.EndedAt);
             Assert.Equal(8, match.PointCount(whitePlayer));
             Assert.Equal(0, match.PointCount(blackPlayer));
             Assert.Equal(5, match.AvgDoubleDiceCount(whitePlayer));
@@ -207,6 +207,33 @@ namespace GammonX.Models.Tests
             Assert.Equal(28, match.AvgTurnCount(blackPlayer));
             Assert.Equal(2, match.AvgDoubleOfferCount(whitePlayer));
             Assert.Equal(1, match.AvgDoubleOfferCount(blackPlayer));
+        }
+
+        [Fact]
+        public void MATBinaryRoundTripPreservesHistoryText()
+        {
+            var parser = HistoryParserFactory.Create<MATParser>(HistoryFormat.MAT);
+            var gameHistory = File.ReadAllText(Path.Combine("Data", "BackgammonGameHistory.txt"));
+            var matchHistory = File.ReadAllText(Path.Combine("Data", "BackgammonMatchHistory.txt"));
+            var textWithUnicodeAndMixedLineEndings = "Ä player\r\nWhite Roll 1 2\n";
+
+            Assert.Equal(gameHistory, parser.DecodeBinary(parser.EncodeBinary(gameHistory)));
+            Assert.Equal(matchHistory, parser.DecodeBinary(parser.EncodeBinary(matchHistory)));
+            Assert.Equal(string.Empty, parser.DecodeBinary(parser.EncodeBinary(string.Empty)));
+            Assert.Equal(
+                textWithUnicodeAndMixedLineEndings,
+                parser.DecodeBinary(parser.EncodeBinary(textWithUnicodeAndMixedLineEndings)));
+        }
+
+        [Fact]
+        public void MATBinaryDecodeRejectsMalformedAndTruncatedPayloads()
+        {
+            var parser = HistoryParserFactory.Create<MATParser>(HistoryFormat.MAT);
+            var encoded = parser.EncodeBinary("history");
+            var truncated = encoded[..^1];
+
+            Assert.Throws<FormatException>(() => parser.DecodeBinary([1, 2, 3]));
+            Assert.Throws<FormatException>(() => parser.DecodeBinary(truncated));
         }
     }
 }

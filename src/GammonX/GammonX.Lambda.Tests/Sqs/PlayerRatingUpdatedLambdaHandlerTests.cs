@@ -1,8 +1,14 @@
 ﻿using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+
+using GammonX.DynamoDb.Items;
+using GammonX.DynamoDb.Repository;
+
 using GammonX.Lambda.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.History;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
@@ -24,8 +30,9 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 1 :: PORTES
             var portesGameId = Guid.Parse("c57e0961-02e7-4aac-857f-565e9d78db09");
             var portesPath = Path.Combine("Data", "PortesGameHistory.txt");
-            var portesGameHistory = File.ReadAllText(portesPath);
+            var portesGameHistory = await File.ReadAllTextAsync(portesPath, TestContext.Current.CancellationToken);
             var parsedPortesHistory = parser.ParseGame(portesGameHistory);
+            Assert.NotNull(parsedPortesHistory);
             var wonPortesGame = new GameRecordContract()
             {
                 Id = portesGameId,
@@ -49,8 +56,9 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 2 :: PLAKOTO
             var plakotoGameId = Guid.Parse("3cf7ebbe-e0dd-4a2d-baa8-361014efa989");
             var plakotoPath = Path.Combine("Data", "PlakotoGameHistory.txt");
-            var plakotoGameHistory = File.ReadAllText(plakotoPath);
+            var plakotoGameHistory = await File.ReadAllTextAsync(plakotoPath, TestContext.Current.CancellationToken);
             var parsedPlakotoHistory = parser.ParseGame(plakotoGameHistory);
+            Assert.NotNull(parsedPlakotoHistory);
             var wonPlakotoGame = new GameRecordContract()
             {
                 Id = plakotoGameId,
@@ -74,8 +82,9 @@ namespace GammonX.Lambda.Tests.Sqs
             // GAME 3 :: FEVGA
             var fevgaGameId = Guid.Parse("48fb1a93-9c2b-4245-803b-8361be6c6838");
             var fevgaPath = Path.Combine("Data", "FevgaGameHistory.txt");
-            var fevgaGameHistory = File.ReadAllText(fevgaPath);
+            var fevgaGameHistory = await File.ReadAllTextAsync(fevgaPath, TestContext.Current.CancellationToken);
             var parsedFevgaHistory = parser.ParseGame(fevgaGameHistory);
+            Assert.NotNull(parsedFevgaHistory);
             var wonFevgaGame = new GameRecordContract()
             {
                 Id = fevgaGameId,
@@ -101,19 +110,19 @@ namespace GammonX.Lambda.Tests.Sqs
             // MATCH 1 :: TAVLI
             var matchId = Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e");
             var path = Path.Combine("Data", "TavliMatchHistory.txt");
-            var matchHistory = File.ReadAllText(path);
+            var matchHistory = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             var wonTavliMatch = new MatchRecordContract()
             {
                 Id = matchId,
                 PlayerId = player1Id,
                 Result = Models.Enums.MatchResult.Won,
                 Variant = Models.Enums.MatchVariant.Tavli,
-                Modus = Models.Enums.MatchModus.Normal,
-                Type = Models.Enums.MatchType.CashGame,
+                Modus = Models.Enums.MatchModus.Ranked,
+                Type = Models.Enums.MatchType.SevenPointGame,
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
-                Games = new[] { wonPortesGame, wonPlakotoGame, wonFevgaGame }
+                Games = [wonPortesGame, wonPlakotoGame, wonFevgaGame]
             };
             var lostTavliMatch = new MatchRecordContract()
             {
@@ -121,16 +130,16 @@ namespace GammonX.Lambda.Tests.Sqs
                 PlayerId = player2Id,
                 Result = Models.Enums.MatchResult.Lost,
                 Variant = Models.Enums.MatchVariant.Tavli,
-                Modus = Models.Enums.MatchModus.Normal,
-                Type = Models.Enums.MatchType.CashGame,
+                Modus = Models.Enums.MatchModus.Ranked,
+                Type = Models.Enums.MatchType.SevenPointGame,
                 BotLevel = Models.Enums.BotLevel.Hard,
                 Format = Models.Enums.HistoryFormat.MAT,
                 MatchHistory = matchHistory,
-                Games = new[] { lostPortesGame, lostPlakotoGame, lostFevgaGame }
+                Games = [lostPortesGame, lostPlakotoGame, lostFevgaGame]
             };
 
-            var messageId1 = Guid.NewGuid().ToString();
-            var messageId2 = Guid.NewGuid().ToString();
+            var work = new RatingUpdateWorkContract { Records = [wonTavliMatch, lostTavliMatch] };
+            var messageId = Guid.NewGuid().ToString();
 
             var sqsEvent = new SQSEvent
             {
@@ -138,13 +147,8 @@ namespace GammonX.Lambda.Tests.Sqs
                 {
                     new SQSEvent.SQSMessage
                     {
-                        Body = JsonConvert.SerializeObject(wonTavliMatch),
-                        MessageId = messageId1,
-                    },
-                    new SQSEvent.SQSMessage
-                    {
-                        Body = JsonConvert.SerializeObject(lostTavliMatch),
-                        MessageId = messageId2,
+                        Body = JsonConvert.SerializeObject(work),
+                        MessageId = messageId,
                     }
                 }
             };
@@ -158,12 +162,44 @@ namespace GammonX.Lambda.Tests.Sqs
             var services = Startup.Configure();
             await Startup.ConfigureDynamoDbTableAsync(services);
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerRatingUpdatedFunc);
+            
+            var repository = services.GetRequiredService<IDynamoDbRepository>();
+            var ratingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            var ratingSk = string.Format(ratingFactory.SKFormat, wonTavliMatch.Variant, wonTavliMatch.Type);
+            var periodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
+            var periodSk = string.Format(
+                periodFactory.SKFormat,
+                wonTavliMatch.Variant,
+                wonTavliMatch.Type,
+                wonTavliMatch.Modus,
+                matchId);
+            
+            await repository.DeleteAsync<PlayerRatingItem>(player1Id, ratingSk);
+            await repository.DeleteAsync<PlayerRatingItem>(player2Id, ratingSk);
+            await repository.DeleteAsync<RatingPeriodItem>(player1Id, periodSk);
+            await repository.DeleteAsync<RatingPeriodItem>(player2Id, periodSk);
 
             await handler.HandleAsync(sqsEvent, context);
-            Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
-            Assert.Contains($"Processing message with id '{messageId2}'", logger.Buffer.ToString());
-            Assert.Contains($"Processed rating update for player with id '{player1Id}'", logger.Buffer.ToString());
-            Assert.Contains($"Processed rating update for player with id '{player2Id}'", logger.Buffer.ToString());
+
+            Assert.Contains($"Processing message with id '{messageId}'", logger.Buffer.ToString());
+            Assert.Contains($"Processed rating update for players '{player1Id}' and '{player2Id}'", logger.Buffer.ToString());
+
+            var winnerRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player1Id, ratingSk));
+            var loserRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player2Id, ratingSk));
+
+            Assert.Contains(await repository.GetItemsAsync<RatingPeriodItem>(player1Id), period => period.MatchId == matchId);
+            Assert.Contains(await repository.GetItemsAsync<RatingPeriodItem>(player2Id), period => period.MatchId == matchId);
+
+            await handler.HandleAsync(sqsEvent, context);
+
+            var duplicateWinnerRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player1Id, ratingSk));
+            var duplicateLoserRating = Assert.Single(await repository.GetItemsAsync<PlayerRatingItem>(player2Id, ratingSk));
+
+            Assert.Equal(winnerRating.MatchesPlayed, duplicateWinnerRating.MatchesPlayed);
+            Assert.Equal(loserRating.MatchesPlayed, duplicateLoserRating.MatchesPlayed);
+            Assert.Equal(winnerRating.Rating, duplicateWinnerRating.Rating);
+            Assert.Equal(loserRating.Rating, duplicateLoserRating.Rating);
+            Assert.Contains($"Skipped duplicate rating update for players '{player1Id}' and '{player2Id}'", logger.Buffer.ToString());
         }
     }
 }

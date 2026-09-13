@@ -35,70 +35,79 @@ namespace GammonX.Lambda.Handlers
         /// <summary>
         /// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
         /// </summary>
-        public MatchCompletedHandler() : base()
+        public MatchCompletedHandler()
         {
             // pass
         }
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+        public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			try
-			{
-                if (_repo == null)
-                {
-                    context.Logger.LogInformation($"Setting up DI services...");
-                    var services = Startup.Configure();
-                    _repo = services.GetRequiredService<IDynamoDbRepository>();
-                }
+            if (Repo == null)
+            {
+                context.Logger.LogInformation("Setting up DI services...");
+                var services = Startup.Configure();
+                Repo = services.GetRequiredService<IDynamoDbRepository>();
+            }
 
-                foreach (var message in @event.Records)
+            var failures = new List<SQSBatchResponse.BatchItemFailure>();
+            foreach (var message in @event.Records)
+            {
+                try
                 {
                     await ProcessMessageAsync(message, context);
                 }
-            }
-            catch (Exception ex)
-            {
-                foreach (var record in @event.Records)
+                catch (Exception ex)
                 {
-                    context.Logger.LogError(ex, $"An error occurred while processing match completed. Message id: '{record.MessageId}'");
-
+                    context.Logger.LogError(ex, $"An error occurred while processing match completed. Message id: '{message.MessageId}'");
+                    failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
                 }
             }
+
+            return new SQSBatchResponse(failures);
         }
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-            if (_repo == null)
+			if (Repo == null)
+			{
                 throw new NullReferenceException("db repo must not be null");
+			}
 
             context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
 
 			var json = message.Body;
-			var matchRecord = JsonConvert.DeserializeObject<MatchRecordContract>(json);
+            var work = JsonConvert.DeserializeObject<MatchCompletedWorkContract>(json);
 
-			if (matchRecord == null)
+            if (work == null)
 			{
-				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
-				return;
+                throw new InvalidOperationException($"Unable to deserialize match completed message '{message.MessageId}'.");
 			}
+            
+            var (winner, loser) = work.GetValidatedRecords();
 
-			context.Logger.LogInformation($"Processing completed match with id '{matchRecord.Id}' for player '{matchRecord.PlayerId}'");
+            context.Logger.LogInformation($"Processing completed match with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 
-			// create match history item
-			var matchHistory = matchRecord.ToMatchHistory();
-			// parse match history and calculate some stats
+            var matchHistory = winner.ToMatchHistory();
 			var parserFactory = HistoryParserFactory.Create<IMatchHistoryParser>(matchHistory.Format);
 			var parsedHistory = parserFactory.ParseMatch(matchHistory.Data);
-			// create match item
-			var matchItem = matchRecord.ToMatch(parsedHistory);
+            var winnerMatch = winner.ToMatch(parsedHistory);
+            var loserMatch = loser.ToMatch(parsedHistory);
+            
+            if (Repo is not IDynamoDbTransactionWriter transactionWriter)
+            {
+                throw new InvalidOperationException("Completed match persistence requires transaction support.");
+            }
 
-			await _repo.SaveAsync(matchItem);
-			// TODO: avoid writing history twice
-			await _repo.SaveAsync(matchHistory);
+            await transactionWriter.TransactPutAsync(
+            [
+                DynamoDbPutOperation.Create(winnerMatch),
+                DynamoDbPutOperation.Create(loserMatch),
+                DynamoDbPutOperation.Create(matchHistory)
+            ]);
 
-			context.Logger.LogInformation($"Processed completed match with id '{matchRecord.Id}' for player '{matchRecord.PlayerId}'");
+            context.Logger.LogInformation($"Processed completed match with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 		}
 	}
 }

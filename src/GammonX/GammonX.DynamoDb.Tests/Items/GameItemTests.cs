@@ -52,7 +52,7 @@ namespace GammonX.DynamoDb.Tests.Items
 
             // get all games from a match
             var allGamesFromMatch = await _repo.GetItemsAsync<GameItem>(matchId, "GAME#");
-            Assert.True(allGamesFromMatch.All(agfm => agfm.MatchId.Equals(matchId)));
+            Assert.True(allGamesFromMatch.All(agFm => agFm.MatchId.Equals(matchId)));
             Assert.Equal(6, allGamesFromMatch.Count());
             // get all portes games from a match
             var allPortesGames = await _repo.GetItemsAsync<GameItem>(matchId, $"GAME#{portesId}");
@@ -122,7 +122,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal($"MATCH#{match.Id}", gameFromRepo.PK);
             Assert.Equal($"GAME#{game.Id}#WON", gameFromRepo.SK);
             Assert.Equal($"PLAYER#{player.Id}", gameFromRepo.GSI1PK);
-            Assert.Equal($"GAME#Portes#WON", gameFromRepo.GSI1SK);
+            Assert.Equal("GAME#Portes#WON", gameFromRepo.GSI1SK);
             Assert.Equal(ItemTypes.GameItemType, gameFromRepo.ItemType);
             Assert.Equal(game.Id, gameFromRepo.Id);
             Assert.Equal(player.Id, gameFromRepo.PlayerId);
@@ -156,10 +156,10 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var gameItemFactory = ItemFactoryCreator.Create<GameItem>();
             Assert.NotNull(gameItemFactory);
-            Assert.Equal("MATCH#{0}", gameItemFactory.PKFormat);
-            Assert.Equal("GAME#{0}#{1}", gameItemFactory.SKFormat);
+            Assert.Equal("MATCH#{0:D}", gameItemFactory.PKFormat);
+            Assert.Equal("GAME#{0:D}#{1}", gameItemFactory.SKFormat);
             Assert.Equal("GAME#", gameItemFactory.SKPrefix);
-            Assert.Equal("PLAYER#{0}", gameItemFactory.GSI1PKFormat);
+            Assert.Equal("PLAYER#{0:D}", gameItemFactory.GSI1PKFormat);
             Assert.Equal("GAME#{0}#{1}", gameItemFactory.GSI1SKFormat);
             Assert.Equal("GAME#", gameItemFactory.GSI1SKPrefix);
         }
@@ -187,6 +187,26 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(string.Format(factory.PKFormat, matchId), item.PK);
             Assert.StartsWith(factory.SKPrefix, item.SK);
             Assert.Equal(string.Format(factory.SKFormat, gameId, "LOST"), item.SK);
+        }
+
+        [Fact]
+        public void GameItemFactoryRoundTripsDoublingCubeValue()
+        {
+            var player = ItemFactory.CreatePlayer();
+            var match = ItemFactory.CreateMatch(Guid.NewGuid(), player, MatchResult.Won, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            var game = ItemFactory.CreateGame(Guid.NewGuid(), match, player, GameResult.Single, GameModus.Portes);
+            var factory = ItemFactoryCreator.Create<GameItem>();
+
+            game.DoublingCubeValue = 2;
+            var attributes = factory.CreateItem(game);
+            Assert.Equal("2", attributes["DoublingCubeValue"].N);
+            Assert.Null(attributes["DoublingCubeValue"].S);
+            Assert.Equal(2, factory.CreateItem(attributes).DoublingCubeValue);
+
+            game.DoublingCubeValue = null;
+            attributes = factory.CreateItem(game);
+            Assert.True(attributes["DoublingCubeValue"].NULL);
+            Assert.Null(factory.CreateItem(attributes).DoublingCubeValue);
         }
 
         [Fact]

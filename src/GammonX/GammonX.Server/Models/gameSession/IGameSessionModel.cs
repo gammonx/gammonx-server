@@ -44,7 +44,7 @@ namespace GammonX.Server.Models
         GameResultModel Result { get; }
 
         /// <summary>
-        /// Gets the player id of the player whos turn it is.
+        /// Gets the player id of the player who's turn it is.
         /// </summary>
         public Guid ActivePlayer { get; }
 
@@ -82,12 +82,12 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Gets game utc start time.
 		/// </summary>
-		public DateTime StartedAt { get; }
+		public DateTime? StartedAt { get; }
 
 		/// <summary>
 		/// Gets game utc end/stop time.
 		/// </summary>
-		public DateTime EndedAt { get; }
+		public DateTime? EndedAt { get; }
 
 		/// <summary>
 		/// Game duration in milliseconds.
@@ -132,7 +132,7 @@ namespace GammonX.Server.Models
         /// Rolls the dices for the given <paramref name="playerId"/>.
         /// </summary>
 		/// <remarks>
-		/// Implcitly calculates all legal moves for the active player after the dice roll.
+		/// Implicitly calculates all legal moves for the active player after the dice roll.
 		/// </remarks>
         /// <param name="playerId">Player who rolls the dices.</param>
         /// <param name="isWhite">Boolean indicating if black or white rolls.</param>

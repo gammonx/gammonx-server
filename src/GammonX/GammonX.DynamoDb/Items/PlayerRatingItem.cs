@@ -15,13 +15,13 @@ namespace GammonX.DynamoDb.Items
 		public string PK => ConstructPK();
 
 		/// <summary>
-		/// Gets a sort key like 'RATING#{Variant}'. Ratings only exists for ranked (modus) and a single type.
+		/// Gets a sort key like 'RATING#{Variant}#{Type}'. Ratings exist only for Ranked matches.
 		/// </summary>
 		[DynamoDBRangeKey("SK")]
 		public string SK => ConstructSK();
 
 		/// <summary>
-		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to."/>
+		/// Gets or sets the id of the <see cref="PlayerItem"/> this rating belongs to. It is persisted as the <c>PlayerId</c> attribute.
 		/// </summary>
 		public Guid PlayerId { get; set; } = Guid.Empty;
 
@@ -67,10 +67,20 @@ namespace GammonX.DynamoDb.Items
 		public double LowestRating { get; set; } = Glicko2Constants.DefaultRating;
 
 		/// <summary>
+		/// Gets or sets the optimistic concurrency revision of this rating.
+		/// </summary>
+		/// <remarks>
+		/// Revision is incremented for every committed rating period and used for
+		/// optimistic concurrency checks. Existing rating items without this attribute are
+		/// treated as revision 0 and receive revision 1 on their next update.
+		/// </remarks>
+		public int Revision { get; set; }
+
+		/// <summary>
 		/// Gets or sets the amount of matches played by the given player for the given variant, type and modus.
 		/// </summary>
 		/// <remarks>
-		/// The Glicko2 rating system needs atleast 10 matches played in order to calculate a proper rating value.
+		/// The Glicko2 rating system needs at least 10 matches played in order to calculate a proper rating value.
 		/// </remarks>
 		public int MatchesPlayed { get; set; } = 0;
 
@@ -83,7 +93,7 @@ namespace GammonX.DynamoDb.Items
 		private string ConstructSK()
 		{
             var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
-            return string.Format(factory.SKFormat, Variant);
+            return string.Format(factory.SKFormat, Variant, Type);
 		}
 	}
 }

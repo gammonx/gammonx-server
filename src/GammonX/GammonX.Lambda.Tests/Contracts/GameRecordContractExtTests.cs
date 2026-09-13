@@ -1,4 +1,5 @@
-﻿using GammonX.Lambda.Extensions;
+﻿using GammonX.DynamoDb.Items;
+using GammonX.Lambda.Extensions;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -143,6 +144,22 @@ namespace GammonX.Lambda.Tests.Contracts
             Assert.Equal(end - start, item.Duration);
             Assert.Equal(start, item.StartedAt);
             Assert.Equal(end, item.EndedAt);
+        }
+
+        [Fact]
+        public void ToGamesResponseMapsDurationToMilliseconds()
+        {
+            var duration = TimeSpan.FromTicks(TimeSpan.TicksPerMillisecond * 2 + 833);
+            var item = new GameItem
+            {
+                Id = Guid.NewGuid(),
+                Duration = duration
+            };
+
+            var response = new[] { item }.ToGamesResponse();
+
+            var game = Assert.Single(response.Games);
+            Assert.Equal(2, game.DurationMilliseconds);
         }
 
         [Fact]

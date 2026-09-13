@@ -58,7 +58,6 @@ namespace GammonX.Server.Controllers
                 if (matchMakingService.TryFindMatchLobby(queueId, out var matchLobby) && matchLobby != null)
                 {
                     // match lobby was created, return match id
-                    var payload = matchLobby.ToPayload();
                     var payloadError = new RequestErrorPayload("QUEUE_ERROR", "Unable to cancel the queue entry. Matchlobby was already created");
                     var responseError = new ResponseContract<RequestErrorPayload>("ERROR", payloadError);
                     return BadRequest(responseError);

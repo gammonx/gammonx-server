@@ -85,6 +85,7 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var player = ItemFactory.CreatePlayer();
             var match = ItemFactory.CreateMatch(Guid.NewGuid(), player, MatchResult.Won, MatchVariant.Backgammon, MatchModus.Ranked, MatchType.CashGame);
+            match.BotLevel = BotLevel.Hard;
             // create
             await _repo.SaveAsync(match);
             // read
@@ -93,13 +94,14 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Single(matches);
             var matchFromRepo = matches.First();
             Assert.Equal($"MATCH#{match.Id}", matchFromRepo.PK);
-            Assert.Equal($"DETAILS#WON", matchFromRepo.SK);
+            Assert.Equal("DETAILS#WON", matchFromRepo.SK);
             Assert.Equal($"PLAYER#{player.Id}", matchFromRepo.GSI1PK);
-            Assert.Equal($"MATCH#Backgammon#CashGame#Ranked#WON", matchFromRepo.GSI1SK);
+            Assert.Equal("MATCH#Backgammon#CashGame#Ranked#WON", matchFromRepo.GSI1SK);
             Assert.Equal(player.Id, matchFromRepo.PlayerId);
             Assert.Equal(MatchVariant.Backgammon, matchFromRepo.Variant);
             Assert.Equal(MatchModus.Ranked, matchFromRepo.Modus);
             Assert.Equal(MatchType.CashGame, matchFromRepo.Type);
+            Assert.Equal(BotLevel.Hard, matchFromRepo.BotLevel);
             Assert.Equal(MatchResult.Won, matchFromRepo.Result);
             Assert.Equal(7, matchFromRepo.Points);
             Assert.Equal(4, matchFromRepo.Length);
@@ -111,6 +113,11 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(15, matchFromRepo.AvgTurns);
             Assert.Equal(TimeSpan.FromMinutes(10), matchFromRepo.AvgDuration);
             Assert.Equal(TimeSpan.FromMinutes(40), matchFromRepo.Duration);
+
+            var factory = ItemFactoryCreator.Create<MatchItem>();
+            var legacyAttributes = factory.CreateItem(match);
+            legacyAttributes.Remove("BotLevel");
+            Assert.Equal(BotLevel.Unknown, factory.CreateItem(legacyAttributes).BotLevel);
             // update
             matchFromRepo.Points++;
             await _repo.SaveAsync(matchFromRepo);
@@ -132,10 +139,10 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var matchItemFactory = ItemFactoryCreator.Create<MatchItem>();
             Assert.NotNull(matchItemFactory);
-            Assert.Equal("MATCH#{0}", matchItemFactory.PKFormat);
+            Assert.Equal("MATCH#{0:D}", matchItemFactory.PKFormat);
             Assert.Equal("DETAILS#{0}", matchItemFactory.SKFormat);
             Assert.Equal("DETAILS#", matchItemFactory.SKPrefix);
-            Assert.Equal("PLAYER#{0}", matchItemFactory.GSI1PKFormat);
+            Assert.Equal("PLAYER#{0:D}", matchItemFactory.GSI1PKFormat);
             Assert.Equal("MATCH#{0}#{1}#{2}#{3}", matchItemFactory.GSI1SKFormat);
             Assert.Equal("MATCH#", matchItemFactory.GSI1SKPrefix);
             Assert.Equal("MATCH#{0}#{1}#{2}", ((MatchItemFactory)matchItemFactory).GSI1SKAllFormat);

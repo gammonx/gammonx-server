@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
 using GammonX.DynamoDb.Stats;
+
 using GammonX.Models.Enums;
 
 namespace GammonX.DynamoDb.Items
@@ -8,13 +9,13 @@ namespace GammonX.DynamoDb.Items
     public class RatingPeriodItem
     {
         /// <summary>
-		/// Gets a primary key like 'PLAYER#{matchId}'
+        /// Gets a primary key like 'PLAYER#{PlayerId}'.
 		/// </summary>
 		[DynamoDBHashKey("PK")]
         public string PK => ConstructPK();
 
         /// <summary>
-        /// Gets a sort key like 'MATCH#{variant}#{type}#{modus}#{matchId}'.
+        /// Gets a sort key like 'MATCH#{Variant}#{Type}#{Modus}#{MatchId}'.
         /// </summary>
         [DynamoDBRangeKey("SK")]
         public string SK => ConstructSK();
@@ -43,7 +44,8 @@ namespace GammonX.DynamoDb.Items
 		public Guid OpponentId { get; set; } = Guid.Empty;
 
         /// <summary>
-        /// Gets or sets the clamped match score of the related match.
+        /// Gets or sets the normalized score for this player in the related match, from 0 to 1.
+        /// A value of <c>0.6</c> is a normalized score, not a percentage value.
         /// </summary>
         public double MatchScore { get; set; } = 0;
 

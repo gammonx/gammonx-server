@@ -1,4 +1,5 @@
 ﻿using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using System.Text;
 
@@ -49,7 +50,7 @@ namespace GammonX.Server.Models
 				Name = ConstructMatchName(model),
 				Player1 = model.Player1.Id,
 				Player2 = model.Player2.Id,
-				StartedAt = model.StartedAt,
+				StartedAt = model.StartedAt ?? throw new InvalidOperationException("Cannot create history for a match that has not started."),
 				EndedAt = model.EndedAt ?? DateTime.UtcNow,
 				Length = playedGames.Count(),
 				Games = playedGames.Select(gs => gs.GetHistory(model.Player1.Id, model.Player2.Id)).ToArray()
@@ -68,8 +69,8 @@ namespace GammonX.Server.Models
 			stringBuilder.AppendLine($";[Name '{Name}']");
 			stringBuilder.AppendLine($";[Player 1 White Checkers '{Player1}']");
 			stringBuilder.AppendLine($";[Player 2 Black Checkers '{Player2}']");
-			stringBuilder.AppendLine($";[Started At '{StartedAt}']");
-			stringBuilder.AppendLine($";[Ended At '{EndedAt}']");
+			stringBuilder.AppendLine($";[Started At '{DateTimeHelper.FormatUtc(StartedAt)}']");
+			stringBuilder.AppendLine($";[Ended At '{DateTimeHelper.FormatUtc(EndedAt)}']");
 			stringBuilder.AppendLine($";[Length '{Length}']");
 			foreach (var game in Games)
 			{

@@ -125,7 +125,7 @@ namespace GammonX.Lambda.Extensions
                     Length = item.Length,
                     StartedAt = item.StartedAt,
                     EndedAt = item.EndedAt,
-                    Duration = item.Duration,
+                    DurationMilliseconds = item.Duration.Ticks / TimeSpan.TicksPerMillisecond,
                     PipesLeft = item.PipesLeft,
                     DiceDoubles = item.DiceDoubles,
                     DoublingCubeValue = item.DoublingCubeValue,
@@ -135,22 +135,23 @@ namespace GammonX.Lambda.Extensions
 
         private static double AvgPipesLeft(this MatchRecordContract contract)
 		{
-			var lostGamesCount = contract.Games.Count(g => g.PipesLeft > 0);
-			if (lostGamesCount > 0)
-			{
-				return contract.Games.Sum(g => g.PipesLeft) / lostGamesCount;
-			}
-			return 0.0;
+			var lostGames = GetGames(contract).Where(game => game.PipesLeft > 0).ToList();
+			return lostGames.Count > 0 ? lostGames.Average(game => game.PipesLeft) : 0.0;
 		}
 
 		private static int GammonCount(this MatchRecordContract contract)
 		{
-			return contract.Games.Count(g => g.Result == Models.Enums.GameResult.Gammon);
+			return GetGames(contract).Count(g => g.Result == Models.Enums.GameResult.Gammon);
 		}
 
 		private static int BackgammonCount(this MatchRecordContract contract)
 		{
-			return contract.Games.Count(g => g.Result == Models.Enums.GameResult.Backgammon);
+			return GetGames(contract).Count(g => g.Result == Models.Enums.GameResult.Backgammon);
+		}
+
+		private static IEnumerable<GameRecordContract> GetGames(MatchRecordContract contract)
+		{
+			return contract.Games?.Where(game => game is not null) ?? Enumerable.Empty<GameRecordContract>();
 		}
 	}
 }

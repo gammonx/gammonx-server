@@ -1,6 +1,8 @@
 ﻿using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using MatchType = GammonX.Models.Enums.MatchType;
+
 namespace GammonX.Server.Repository
 {
     // <inheritdoc />
@@ -10,10 +12,10 @@ namespace GammonX.Server.Repository
         public string BaseUrl => "dummy-service";
 
         // <inheritdoc />
-        public Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, CancellationToken cancellationToken)
+        public Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, MatchType type, CancellationToken cancellationToken)
         {
-            var dummyRating = new PlayerRatingResponseContract() { Rating = 1200 };
-            return Task.FromResult(dummyRating ?? null);
+            var dummyRating = new PlayerRatingResponseContract { Rating = 1200 };
+            return Task.FromResult<PlayerRatingResponseContract?>(dummyRating);
         }
 
         // <inheritdoc />

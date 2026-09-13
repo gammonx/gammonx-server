@@ -39,6 +39,9 @@ namespace GammonX.DynamoDb.Items
 
 		public int MatchesLost { get; set; } = 0;
 
+		/// <summary>
+		/// Gets or sets the win rate as a ratio from 0 to 1. For example, <c>0.6</c> represents 60 percent.
+		/// </summary>
 		public double WinRate { get; set; } = 0;
 
 		public int WinStreak { get; set; } = 0;
@@ -47,7 +50,15 @@ namespace GammonX.DynamoDb.Items
 
 		public TimeSpan TotalPlayTime { get; set; } = TimeSpan.Zero;
 
-		public DateTime LastMatch { get; set; } = DateTime.MinValue;
+		public DateTime? LastMatch { get; set; }
+
+		/// <summary>
+		/// Gets or sets the completion time of the match that triggered this stats update.
+		/// </summary>
+		/// <remarks>
+		/// Requires persisted source matches and prevents stale stats messages from overwriting newer aggregates.
+		/// </remarks>
+		public DateTime? SourceMatchEndedAt { get; set; }
 
 		public int MatchesLast7 { get; set; } = 0;
 
@@ -75,27 +86,27 @@ namespace GammonX.DynamoDb.Items
 		#region Weighted Averages
 
 		/// <summary>
-		/// Gets or sets the weighted average pipes left for the games which were lost.
+		/// Gets or sets the weighted average pipes left for the games which were lost, weighted by game length.
 		/// </summary>
 		public double WAvgPipesLeft { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets the weighted average amount of double dices rolled per game
+		/// Gets or sets the weighted average amount of double dices rolled per game, weighted by game length.
 		/// </summary>
 		public double WAvgDoubleDices { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets the weighted average turns per game.
+		/// Gets or sets the weighted average turns per game, weighted by game length.
 		/// </summary>
 		public double WAvgTurns { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets the weighted average amount of doubling cube offers.
+		/// Gets or sets the weighted average amount of doubling cube offers, weighted by game length.
 		/// </summary>
 		public double WAvgDoubles { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets the wieghted average duration per game.
+		/// Gets or sets the weighted average duration per game, weighted by game length.
 		/// </summary>
 		public TimeSpan WAvgDuration { get; set; } = TimeSpan.Zero;
 

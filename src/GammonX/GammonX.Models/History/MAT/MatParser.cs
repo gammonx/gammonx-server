@@ -1,6 +1,9 @@
 ﻿using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
+using System.Buffers.Binary;
+using System.IO.Compression;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace GammonX.Models.History.MAT
@@ -8,16 +11,15 @@ namespace GammonX.Models.History.MAT
 	// <inheritdoc />
 	public partial class MATParser : IGameHistoryParser, IMatchHistoryParser
 	{
-		[GeneratedRegex(@";\[(.+?) '(.+?)'\]", RegexOptions.Compiled)]
-		protected partial Regex GameHeaderRegex();
+		private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-		[GeneratedRegex(@"^(White|Black) Roll ([0-9 ]+)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Roll ([0-9 ]+)$", RegexOptions.Compiled)]
 		protected partial Regex RollRegex();
 
-		[GeneratedRegex(@"^(White|Black) Move ([a-zA-Z0-9]+)/([a-zA-Z0-9]+)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Move ([a-zA-Z0-9]+)/([a-zA-Z0-9]+)$", RegexOptions.Compiled)]
 		protected partial Regex MoveRegex();
 
-		[GeneratedRegex(@"^(White|Black) Cube (Offer|Take|Pass)$", RegexOptions.Compiled)]
+		[GeneratedRegex("^(White|Black) Cube (Offer|Take|Pass)$", RegexOptions.Compiled)]
 		protected partial Regex CubeActionRegex();
 
 		// <inheritdoc />
@@ -86,11 +88,70 @@ namespace GammonX.Models.History.MAT
 				if (TryParseCubeAction(game, line, out var cubeEvent))
                 {
                     game.Events.Add(cubeEvent);
-                    continue;
                 }
             }
 
 			return game;
+		}
+
+		public byte[] EncodeBinary(string content)
+		{
+			ArgumentNullException.ThrowIfNull(content);
+
+			using var output = new MemoryStream();
+			using (var gzip = new GZipStream(output, CompressionLevel.Optimal, leaveOpen: true))
+			{
+				var contentBytes = Utf8.GetBytes(content);
+				gzip.Write(contentBytes, 0, contentBytes.Length);
+			}
+
+			return output.ToArray();
+		}
+
+		public string DecodeBinary(byte[] content)
+		{
+			ArgumentNullException.ThrowIfNull(content);
+			if (content.Length == 0)
+				return string.Empty;
+			if (content.Length < 18)
+				throw new FormatException("The MAT binary history is too short to be a valid GZip payload.");
+
+			try
+			{
+				using var input = new MemoryStream(content, writable: false);
+				using var gzip = new GZipStream(input, CompressionMode.Decompress);
+				using var output = new MemoryStream();
+				gzip.CopyTo(output);
+				var decodedContent = output.ToArray();
+				var expectedChecksum = BinaryPrimitives.ReadUInt32LittleEndian(content.AsSpan(content.Length - 8, sizeof(uint)));
+				var expectedLength = BinaryPrimitives.ReadUInt32LittleEndian(content.AsSpan(content.Length - 4, sizeof(uint)));
+
+				if (expectedLength != (uint)decodedContent.Length || expectedChecksum != ComputeCrc32(decodedContent))
+					throw new FormatException("The MAT binary history has an invalid GZip trailer.");
+
+				return Utf8.GetString(decodedContent);
+			}
+			catch (InvalidDataException exception)
+			{
+				throw new FormatException("The MAT binary history is not a valid GZip payload.", exception);
+			}
+			catch (DecoderFallbackException exception)
+			{
+				throw new FormatException("The MAT binary history is not valid UTF-8 text.", exception);
+			}
+		}
+
+		private static uint ComputeCrc32(byte[] content)
+		{
+			var checksum = uint.MaxValue;
+			foreach (var byteValue in content)
+			{
+				checksum ^= byteValue;
+				for (var bitIndex = 0; bitIndex < 8; bitIndex++)
+					checksum = (checksum >> 1) ^ (0xEDB88320u & (uint)-(int)(checksum & 1));
+			}
+
+			return ~checksum;
 		}
 
 		private static void ParseMatchMetadataLine(string line, MATMatchHistory match)
@@ -106,8 +167,8 @@ namespace GammonX.Models.History.MAT
 				case "Name": match.Name = value; break;
 				case "Player 1 White Checkers": match.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": match.Player2Id = Guid.Parse(value); break;
-				case "Started At": match.StartedAt = DateTimeHelper.ParseFlexible(value); break;
-				case "Ended At": match.EndedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Started At": match.StartedAt = DateTimeHelper.ParseMatUtc(value); break;
+				case "Ended At": match.EndedAt = DateTimeHelper.ParseMatUtc(value); break;
 				case "Length": match.Length = int.Parse(value); break;
 			}
 		}
@@ -122,8 +183,8 @@ namespace GammonX.Models.History.MAT
 				case "Game Modus": game.Modus = Enum.Parse<GameModus>(value); break;
 				case "Winner": game.Winner = Guid.Parse(value); break;
 				case "Points": game.Points = int.Parse(value); break;
-				case "Started At": game.StartedAt = DateTimeHelper.ParseFlexible(value); break;
-				case "Ended At": game.EndedAt = DateTimeHelper.ParseFlexible(value); break;
+				case "Started At": game.StartedAt = DateTimeHelper.ParseMatUtc(value); break;
+				case "Ended At": game.EndedAt = DateTimeHelper.ParseMatUtc(value); break;
 				case "Player 1 White Checkers": game.Player1Id = Guid.Parse(value); break;
 				case "Player 2 Black Checkers": game.Player2Id = Guid.Parse(value); break;
 			}

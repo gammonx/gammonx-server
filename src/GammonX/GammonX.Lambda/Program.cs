@@ -5,6 +5,7 @@ using Amazon.Lambda.Serialization.SystemTextJson;
 using Amazon.Lambda.SQSEvents;
 
 using GammonX.Models.Contracts;
+using GammonX.Models.Helpers;
 
 using GammonX.Lambda.Services;
 
@@ -33,23 +34,23 @@ namespace GammonX.Lambda
 
                     if (deserializedInput is SQSEvent sqsEvent)
                     {
-                        context.Logger.LogInformation($"Received SQS event. Creating dedicated function handler...");
+                        context.Logger.LogInformation("Received SQS event. Creating dedicated function handler...");
                         return await HandleSqsEventAsync(context, services, sqsEvent);
                     }
                     else if (deserializedInput is APIGatewayProxyRequest apiRequest)
                     {
-                        context.Logger.LogInformation($"Received API Gateway request. Creating dedicated function handler...");
+                        context.Logger.LogInformation("Received API Gateway request. Creating dedicated function handler...");
                         return await HandleGatewayRequestAsync(context, services, apiRequest);
                     }
                     else
                     {
-                        context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
+                        context.Logger.LogInformation("Received unknown function input. Unable to create function handler. Returning empty response.");
                         return new object();
                     }
                 }                
                 else
                 {
-                    context.Logger.LogInformation($"Received unknown function input. Unable to create function handler. Returning empy response.");
+                    context.Logger.LogInformation("Received unknown function input. Unable to create function handler. Returning empty response.");
                     return new object();
                 }
 			}
@@ -64,9 +65,7 @@ namespace GammonX.Lambda
 
             var eventType = sqsEvent.Records.First().MessageAttributes["EVENT_TYPE"].StringValue;
             var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, eventType);
-            await handler.HandleAsync(sqsEvent, context);
-
-            return new object();
+            return await handler.HandleAsync(sqsEvent, context);
         }
 
         private static async Task<object> HandleGatewayRequestAsync(ILambdaContext context, IServiceProvider services, APIGatewayProxyRequest apiRequest)
@@ -101,7 +100,13 @@ namespace GammonX.Lambda
             return new APIGatewayProxyResponse
             {
                 StatusCode = httpCode,
-                Body = JsonConvert.SerializeObject(response),
+                Body = JsonConvert.SerializeObject(response, new JsonSerializerSettings
+                {
+                    Culture = System.Globalization.CultureInfo.InvariantCulture,
+                    DateTimeZoneHandling = DateTimeZoneHandling.Utc,
+                    DateFormatHandling = DateFormatHandling.IsoDateFormat,
+                    Converters = { new CanonicalUtcDateTimeConverter() }
+                }),
                 Headers = new Dictionary<string, string>
                 {
                     {"Content-Type", "application/json"}
@@ -126,6 +131,36 @@ namespace GammonX.Lambda
             stream.Position = 0;
             using var reader = new StreamReader(stream);
             return await reader.ReadToEndAsync();
+        }
+
+        private sealed class CanonicalUtcDateTimeConverter : JsonConverter
+        {
+            public override bool CanConvert(Type objectType)
+            {
+                return objectType == typeof(DateTime) || objectType == typeof(DateTime?);
+            }
+
+            public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+            {
+                if (value is null)
+                {
+                    writer.WriteNull();
+                    return;
+                }
+
+                writer.WriteValue(DateTimeHelper.FormatUtc((DateTime)value));
+            }
+
+            public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+            {
+                if (reader.TokenType == JsonToken.Null && objectType == typeof(DateTime?))
+                    return null;
+
+                if (reader.TokenType != JsonToken.String)
+                    throw new JsonSerializationException("A UTC timestamp must be a JSON string.");
+
+                return DateTimeHelper.ParseUtc((string)reader.Value!);
+            }
         }
     }
 }

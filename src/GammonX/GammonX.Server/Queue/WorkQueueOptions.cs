@@ -5,7 +5,7 @@
         /// <summary>
 		/// Gets or sets the service url for the sqs client.
 		/// </summary>
-		public string SERVICEURL { get; set; } = string.Empty;
+		public string URL { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the region of the sqs client.
@@ -15,6 +15,10 @@
         public string AWS_ACCESS_KEY_ID { get; set; } = string.Empty;
 
         public string AWS_SECRET_ACCESS_KEY { get; set; } = string.Empty;
+
+        public int MAX_RETRY_ATTEMPTS { get; set; } = 3;
+
+        public int RETRY_BASE_DELAY_MILLISECONDS { get; set; } = 100;
 
         /// <summary>
         /// Gets or sets the name of the game completed queue.

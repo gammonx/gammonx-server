@@ -1,4 +1,6 @@
-﻿namespace GammonX.Server.Models
+﻿using GammonX.Models.Helpers;
+
+namespace GammonX.Server.Models
 {
     /// <summary>
     /// Represents a players connection in a signalR match lobby hub.
@@ -31,7 +33,11 @@
         /// <summary>
         /// Gets or sets the date time when this player connection was last seen (utc).
         /// </summary>
-        public DateTime LastSeenUtc { get; set; }
+        public DateTime LastSeenUtc
+        {
+            get;
+            set => field = DateTimeHelper.RequireUtc(value, nameof(LastSeenUtc));
+        }
 
         /// <summary>
         /// Gets or sets the time span left on how long the player can be disconnected before he resigns the match.

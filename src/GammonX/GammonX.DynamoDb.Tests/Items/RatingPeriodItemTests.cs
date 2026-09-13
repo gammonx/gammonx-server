@@ -1,6 +1,7 @@
 ﻿using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Stats;
+
 using GammonX.DynamoDb.Tests.Helper;
 
 using GammonX.Models.Enums;
@@ -82,7 +83,7 @@ namespace GammonX.DynamoDb.Tests.Items
             Assert.Equal(Glicko2Constants.DefaultRD, periodFromRepo.OpponentRatingDeviation);
             Assert.Equal(Glicko2Constants.DefaultSigma, periodFromRepo.OpponentSigma);
             Assert.Equal(ItemTypes.RatingPeriodItemType, periodFromRepo.ItemType);
-            Assert.Equal(1, periodFromRepo.MatchScore);
+            Assert.Equal(0.6, periodFromRepo.MatchScore);
             Assert.Equal(MatchVariant.Backgammon, periodFromRepo.Variant);
             Assert.Equal(MatchModus.Normal, periodFromRepo.Modus);
             Assert.Equal(MatchType.CashGame, periodFromRepo.Type);
@@ -109,8 +110,8 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var ratingPeriodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
             Assert.NotNull(ratingPeriodFactory);
-            Assert.Equal("PLAYER#{0}", ratingPeriodFactory.PKFormat);
-            Assert.Equal("MATCH#{0}#{1}#{2}#{3}", ratingPeriodFactory.SKFormat);
+            Assert.Equal("PLAYER#{0:D}", ratingPeriodFactory.PKFormat);
+            Assert.Equal("MATCH#{0}#{1}#{2}#{3:D}", ratingPeriodFactory.SKFormat);
             Assert.Equal("MATCH#", ratingPeriodFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => ratingPeriodFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => ratingPeriodFactory.GSI1SKFormat);

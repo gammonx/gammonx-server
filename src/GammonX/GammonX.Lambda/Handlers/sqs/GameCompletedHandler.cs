@@ -35,69 +35,79 @@ namespace GammonX.Lambda.Handlers
 		/// <summary>
 		/// Default constructor for .zip based lambda execution. We need to kick off the DI manually.
 		/// </summary>
-		public GameCompletedHandler() : base()
+		public GameCompletedHandler()
 		{
 			// pass
 		}
 
         // <inheritdoc />
         [LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-        public async Task HandleAsync(SQSEvent @event, ILambdaContext context)
+		public async Task<SQSBatchResponse> HandleAsync(SQSEvent @event, ILambdaContext context)
 		{
-			try
+			if (Repo == null)
 			{
-				if (_repo == null)
-				{
-                    context.Logger.LogInformation($"Setting up DI services...");
-                    var services = Startup.Configure();
-					_repo = services.GetRequiredService<IDynamoDbRepository>();
-				}
+				context.Logger.LogInformation("Setting up DI services...");
+				var services = Startup.Configure();
+				Repo = services.GetRequiredService<IDynamoDbRepository>();
+			}
 
-                foreach (var message in @event.Records)
-                {
-                    await ProcessMessageAsync(message, context);
-                }
-            }
-            catch (Exception ex)
-            {
-                foreach (var record in @event.Records)
-                {
-                    context.Logger.LogError(ex, $"An error occurred while processing rating update. Message id: '{record.MessageId}'");
-                }
-            }
-        }
+			var failures = new List<SQSBatchResponse.BatchItemFailure>();
+			foreach (var message in @event.Records)
+			{
+				try
+				{
+					await ProcessMessageAsync(message, context);
+				}
+				catch (Exception ex)
+				{
+					context.Logger.LogError(ex, $"An error occurred while processing game completed. Message id: '{message.MessageId}'");
+					failures.Add(new SQSBatchResponse.BatchItemFailure { ItemIdentifier = message.MessageId });
+				}
+			}
+
+			return new SQSBatchResponse(failures);
+		}
 
 		private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
 		{
-			if (_repo == null)
-				throw new NullReferenceException("db repo must not be null");
+			if (Repo == null)
+			{
+                throw new NullReferenceException("db repo must not be null");
+			}
 
 			context.Logger.LogInformation($"Processing message with id '{message.MessageId}'");
 
 			var json = message.Body;
-			var gameRecord = JsonConvert.DeserializeObject<GameRecordContract>(json);
+			var work = JsonConvert.DeserializeObject<GameCompletedWorkContract>(json);
 
-			if (gameRecord == null)
+			if (work == null)
 			{
-				context.Logger.LogError($"An error occurred while deserializing body of '{message.MessageId}'");
-				return;
+				throw new InvalidOperationException($"Unable to deserialize game completed message '{message.MessageId}'.");
 			}
+            
+			var (winner, loser) = work.GetValidatedRecords();
 
-			context.Logger.LogInformation($"Processing completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+			context.Logger.LogInformation($"Processing completed game with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 
-			// create game history item
-			var gameHistory = gameRecord.ToGameHistory();
-			// parse game history and calculate some stats
+			var gameHistory = winner.ToGameHistory();
 			var parserFactory = HistoryParserFactory.Create<IGameHistoryParser>(gameHistory.Format);
 			var parsedHistory = parserFactory.ParseGame(gameHistory.Data);
-			// create game item
-			var gameItem = gameRecord.ToGame(parsedHistory);
+			var winnerGame = winner.ToGame(parsedHistory);
+			var loserGame = loser.ToGame(parsedHistory);
 
-			await _repo.SaveAsync(gameItem);
-			// TODO: avoid writing history twice
-			await _repo.SaveAsync(gameHistory);
+			if (Repo is not IDynamoDbTransactionWriter transactionWriter)
+			{
+				throw new InvalidOperationException("Completed game persistence requires transaction support.");
+			}
 
-			context.Logger.LogInformation($"Processed completed game with id '{gameRecord.Id}' for player '{gameRecord.PlayerId}'");
+			await transactionWriter.TransactPutAsync(
+			[
+				DynamoDbPutOperation.Create(winnerGame),
+				DynamoDbPutOperation.Create(loserGame),
+				DynamoDbPutOperation.Create(gameHistory)
+			]);
+
+			context.Logger.LogInformation($"Processed completed game with id '{winner.Id}' for players '{winner.PlayerId}' and '{loser.PlayerId}'");
 		}
 	}
 }

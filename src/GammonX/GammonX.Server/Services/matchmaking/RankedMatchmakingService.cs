@@ -29,7 +29,7 @@ namespace GammonX.Server.Services
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
 
-            var ratingResponse = await _repoClient.GetRatingAsync(playerId, queueKey.MatchVariant, CancellationToken.None);
+            var ratingResponse = await _repoClient.GetRatingAsync(playerId, queueKey.MatchVariant, queueKey.MatchType, CancellationToken.None);
             // use default glicko2 rating if player has no rating yet
             var relevantRating = ratingResponse?.Rating ?? 1200;
 

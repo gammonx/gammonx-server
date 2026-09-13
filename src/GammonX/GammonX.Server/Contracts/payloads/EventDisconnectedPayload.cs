@@ -7,9 +7,15 @@ namespace GammonX.Server.Contracts
     [DataContract]
     public class EventDisconnectedPayload : EventPayloadBase
     {
+        /// <summary>
+        /// Gets the grace period for the disconnection in milliseconds.
+        /// </summary>
         [DataMember(Name = "gracePeriod")]
-        public TimeSpan GracePeriod { get; set; }
+        public long GracePeriod { get; set; }
 
+        /// <summary>
+        /// Gets the expiration time of the disconnection grace period.
+        /// </summary>
         [DataMember(Name = "expiration")]
         public DateTime Expiration { get; set; }
 
@@ -21,7 +27,7 @@ namespace GammonX.Server.Contracts
             return new EventDisconnectedPayload
             {
                 PlayerId = playerConnection.Id,
-                GracePeriod = playerConnection.DisconnectGracePeriod,
+                GracePeriod = playerConnection.DisconnectGracePeriod.Ticks / TimeSpan.TicksPerMillisecond,
                 Expiration = DateTime.UtcNow.Add(playerConnection.DisconnectGracePeriod)
             };
         }

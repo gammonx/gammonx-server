@@ -4,6 +4,7 @@ using GammonX.Engine.Services;
 
 using GammonX.Models;
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
@@ -39,8 +40,9 @@ namespace GammonX.Server.Tests
             Assert.NotEmpty(gameSession.BoardModel.Fields);
             Assert.Empty(gameSession.DiceRolls);
             Assert.Empty(gameSession.MoveSequences);
-            Assert.Equal(DateTime.MinValue, gameSession.StartedAt);
-            Assert.Equal(DateTime.MaxValue, gameSession.EndedAt);
+            Assert.Null(gameSession.StartedAt);
+            Assert.Null(gameSession.EndedAt);
+            Assert.Equal(0, gameSession.Duration);
         }
 
         [Theory]
@@ -486,8 +488,8 @@ namespace GammonX.Server.Tests
             var player2Id = Guid.NewGuid();
 
             gameSession.StartGame(player1Id, player2Id);
-            Assert.NotEqual(DateTime.MinValue, gameSession.StartedAt);
-            Assert.Equal(DateTime.MaxValue, gameSession.EndedAt);
+            Assert.NotNull(gameSession.StartedAt);
+            Assert.Null(gameSession.EndedAt);
             Assert.Equal(player1Id, gameSession.ActivePlayer);
             Assert.Equal(player2Id, gameSession.OtherPlayer);
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
@@ -521,11 +523,10 @@ namespace GammonX.Server.Tests
             Assert.Equal(GameResult.LostBackgammon, gameResult.LoserResult);
             Assert.Equal(3, gameResult.Points);
             gameSession.StopGame(gameResult);
-            Assert.NotEqual(DateTime.MaxValue, gameSession.EndedAt);
+            Assert.NotNull(gameSession.EndedAt);
             Assert.Equal(gameResult, gameSession.Result);
             Assert.Equal(GamePhase.GameOver, gameSession.Phase);
-            // unequals the default value
-            Assert.NotEqual((DateTime.MaxValue - DateTime.MinValue).Milliseconds, gameSession.Duration);
+            Assert.True(gameSession.Duration >= 0);
 
             var contract = gameSession.ToContract(1);
             Assert.NotNull(contract);
@@ -545,6 +546,9 @@ namespace GammonX.Server.Tests
             Assert.Equal(gameSession.Id, history.Id);
             Assert.Equal(3, history.Points);
             Assert.Equal(modus, history.Modus);
+            var historyText = history.ToString();
+            Assert.Contains($";[Started At '{DateTimeHelper.FormatUtc(history.StartedAt)}']", historyText);
+            Assert.Contains($";[Ended At '{DateTimeHelper.FormatUtc(history.EndedAt)}']", historyText);
             Assert.NotNull(history.BoardHistory);
             // we expect a single roll event
             Assert.Single(history.BoardHistory.Events);

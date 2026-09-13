@@ -25,6 +25,7 @@ namespace GammonX.Lambda.Tests.Sqs
             };
 
             var messageId1 = Guid.NewGuid().ToString();
+            var invalidMessageId = Guid.NewGuid().ToString();
 
             var sqsEvent = new SQSEvent
             {
@@ -34,6 +35,11 @@ namespace GammonX.Lambda.Tests.Sqs
                     {
                         Body = JsonConvert.SerializeObject(playerRecord),
                         MessageId = messageId1,
+                    },
+                    new SQSEvent.SQSMessage
+                    {
+                        Body = "{",
+                        MessageId = invalidMessageId,
                     },
                 }
             };
@@ -48,9 +54,11 @@ namespace GammonX.Lambda.Tests.Sqs
             await Startup.ConfigureDynamoDbTableAsync(services);
             var handler = LambdaFunctionFactory.CreateSqsHandler(services, LambdaFunctions.PlayerCreatedFunc);
 
-            await handler.HandleAsync(sqsEvent, context);
+            var response = await handler.HandleAsync(sqsEvent, context);
             Assert.Contains($"Processing message with id '{messageId1}'", logger.Buffer.ToString());
             Assert.Contains($"Processed created player with id '{playerId}'", logger.Buffer.ToString());
+            Assert.Contains(invalidMessageId, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
+            Assert.DoesNotContain(messageId1, response.BatchItemFailures.Select(failure => failure.ItemIdentifier));
         }
     }
 }

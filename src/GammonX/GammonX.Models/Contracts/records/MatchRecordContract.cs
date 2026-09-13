@@ -40,6 +40,6 @@ namespace GammonX.Models.Contracts
 		public HistoryFormat Format { get; set; } = HistoryFormat.Unknown;
 
 		[DataMember(Name = "Games")]
-		public IEnumerable<GameRecordContract> Games { get; set; } = Array.Empty<GameRecordContract>(); 
+		public IEnumerable<GameRecordContract>? Games { get; set; } = Array.Empty<GameRecordContract>();
 	}
 }

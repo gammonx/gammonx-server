@@ -52,13 +52,24 @@ namespace GammonX.Server.Models
 		public IBoardModel BoardModel { get; }
 
 		// <inheritdoc />
-		public DateTime StartedAt { get; private set; } = DateTime.MinValue;
+		public DateTime? StartedAt { get; private set; }
 
         // <inheritdoc />
-        public DateTime EndedAt { get; private set; } = DateTime.MaxValue;
+		public DateTime? EndedAt { get; private set; }
 
         // <inheritdoc />
-        public long Duration => (StartedAt - DateTime.UtcNow).Duration().Milliseconds;
+		public long Duration
+		{
+			get
+			{
+				if (!StartedAt.HasValue)
+					return 0;
+
+				var end = EndedAt ?? DateTime.UtcNow;
+				var elapsedTicks = (end - StartedAt.Value).Ticks;
+				return Math.Max(0L, elapsedTicks / TimeSpan.TicksPerMillisecond);
+			}
+		}
 
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{

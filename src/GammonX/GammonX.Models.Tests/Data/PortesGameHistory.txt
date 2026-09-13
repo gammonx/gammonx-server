@@ -4,8 +4,8 @@
 ;[Game Modus 'Portes']
 ;[Winner 'e51f307e-3bf6-4408-b4b7-5fabd41b57b8']
 ;[Points '1']
-;[Started At '29/11/2025 09:33:37']
-;[Ended At '29/11/2025 09:33:37']
+;[Started At '2025-11-29T09:33:37.0000000Z']
+;[Ended At '2025-11-29T09:33:37.0000000Z']
 White Roll 5 4
 White Move 11/16
 White Move 0/4

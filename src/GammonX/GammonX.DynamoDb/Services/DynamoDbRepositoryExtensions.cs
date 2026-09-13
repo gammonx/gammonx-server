@@ -2,6 +2,8 @@
 using GammonX.DynamoDb.Repository;
 using GammonX.DynamoDb.Stats;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.DynamoDb.Services
 {
     public static class DynamoDbRepositoryExtensions
@@ -11,7 +13,7 @@ namespace GammonX.DynamoDb.Services
         /// <paramref name="lostMatch"/>. The Glicko2 rating mechanism is used for its calculation.
         /// </summary>
         /// <remarks>
-        /// The rating is not peristed yet to the database. Instead it just returns the updated rating instance.
+        /// The rating is not persisted yet to the database. Instead it just returns the updated rating instance.
         /// Both players must first be evaluated before their rating period item can be committed.
         /// </remarks>
         /// <param name="repo">Repo to operate on.</param>
@@ -21,51 +23,36 @@ namespace GammonX.DynamoDb.Services
         /// <returns>Returns updated player rating item and the related rating period item.</returns>
         public static async Task<(PlayerRatingItem, RatingPeriodItem)> CalculatePlayerRatingAsync(this IDynamoDbRepository repo, Guid playerId, MatchItem wonMatch, MatchItem lostMatch)
         {
-            // won and lost match have the same variant, mouds and type
+            if (wonMatch.Modus != MatchModus.Ranked || lostMatch.Modus != MatchModus.Ranked)
+                throw new InvalidOperationException("Player rating updates are only supported for Ranked matches.");
+
+            // won and lost match have the same variant, modus and type
             var variant = wonMatch.Variant;
             var modus = wonMatch.Modus;
             var type = wonMatch.Type;
 
             var ratingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
-            var sk = string.Format(ratingFactory.SKFormat, variant);
+            var sk = string.Format(ratingFactory.SKFormat, variant, type);
 
             // we check if the calling player already has a rating for the given variant
-            var currentPlayerRating = (await repo.GetItemsAsync<PlayerRatingItem>(playerId, sk)).FirstOrDefault();
+            var currentPlayerRating = (await GetRatingItemsAsync<PlayerRatingItem>(repo, playerId, sk)).FirstOrDefault();
             if (currentPlayerRating == null)
             {
-                currentPlayerRating = new PlayerRatingItem()
-                {
-                    PlayerId = playerId,
-                    Variant = variant,
-                    Modus = modus,
-                    Type = type
-                };
+                currentPlayerRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, type);
             }
             var playerGlicko = Glicko2Rating.From(currentPlayerRating);
 
             // we check if the opponent player already has a rating for the given variant
             var opponentId = wonMatch.PlayerId == playerId ? lostMatch.PlayerId : wonMatch.PlayerId;
-            var currentOpponentRating = (await repo.GetItemsAsync<PlayerRatingItem>(opponentId, sk)).FirstOrDefault();
+            var currentOpponentRating = (await GetRatingItemsAsync<PlayerRatingItem>(repo, opponentId, sk)).FirstOrDefault();
             if (currentOpponentRating == null)
             {
-                currentOpponentRating = new PlayerRatingItem()
-                {
-                    PlayerId = opponentId,
-                    Variant = variant,
-                    Modus = modus,
-                    Type = type
-                };
+                currentOpponentRating = PlayerRatingItemFactory.CreateInitial(opponentId, variant, type);
             }
 
-            // we get the last 9 rating periods of the given player
-            var ratingPeriodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
-            var sk2 = string.Format(ratingPeriodFactory.SKFormat, variant, type, modus, wonMatch.Id);
-            var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId, sk2);
-            var lastRatingPeriods = ratingPeriods.OrderBy(rp => rp.CreatedAt).Take(Glicko2Constants.RatingPeriod - 1).ToList();
-
             // we calculate the match score
-            var wonMatchInput = MatchScoreCalculator.From(wonMatch);
-            var lostMatchInput = MatchScoreCalculator.From(lostMatch);
+            var wonMatchInput = wonMatch.From();
+            var lostMatchInput = lostMatch.From();
             var matchScore = MatchScoreCalculator.Calculate(playerId, wonMatchInput, lostMatchInput);
 
             // we create a rating period for the current match
@@ -86,10 +73,8 @@ namespace GammonX.DynamoDb.Services
                 OpponentSigma = currentOpponentRating.Sigma,
                 CreatedAt = DateTime.UtcNow,
             };
-            // we add the current rating period to the list of last rating periods
-            lastRatingPeriods.Add(currentRatingPeriod);
-
-            var updatedPlayerRating = Glicko2RatingCalculator.Calculate(playerGlicko, lastRatingPeriods.ToArray());
+            
+            var updatedPlayerRating = Glicko2RatingCalculator.Calculate(playerGlicko, currentRatingPeriod);
 
             // we convert back to some ordinary values
             var newRating = Glicko2RatingCalculator.FromMu(updatedPlayerRating.Mu);
@@ -111,6 +96,7 @@ namespace GammonX.DynamoDb.Services
 
             // we increase the amount of matches played by 1
             currentPlayerRating.MatchesPlayed += 1;
+            currentPlayerRating.Revision += 1;
 
             return (currentPlayerRating, currentRatingPeriod);
         }
@@ -118,37 +104,35 @@ namespace GammonX.DynamoDb.Services
         // <inheritdoc />
         public static async Task DeletePlayerAsync(this IDynamoDbRepository repo, Guid playerId, bool recursive = false)
         {
-            var deletionTasks = new List<Task<bool>>();
-
             if (recursive)
             {
-                // player ratings
+                if (repo is not IDynamoDbBatchWriter batchWriter)
+                    throw new InvalidOperationException("Recursive player deletion requires batch-write support.");
+
                 var playerRatings = await repo.GetItemsAsync<PlayerRatingItem>(playerId);
-                foreach (var rating in playerRatings)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerRatingItem>(rating.PlayerId, rating.SK));
-                }
-                // player stats
                 var playerStats = await repo.GetItemsAsync<PlayerStatsItem>(playerId);
-                foreach (var stats in playerStats)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerStatsItem>(stats.PlayerId, stats.SK));
-                }
-                // rating periods
                 var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId);
-                foreach (var ratingPeriod in ratingPeriods)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<RatingPeriodItem>(ratingPeriod.PlayerId, ratingPeriod.SK));
-                }
-                // we keep the matches, games and their history for some data mining purposes
+                var playerRatingKeys = playerRatings.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+                var playerStatsKeys = playerStats.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+                var ratingPeriodKeys = ratingPeriods.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+
+                await Task.WhenAll(
+                    batchWriter.BatchDeleteAsync<PlayerRatingItem>(playerRatingKeys),
+                    batchWriter.BatchDeleteAsync<PlayerStatsItem>(playerStatsKeys),
+                    batchWriter.BatchDeleteAsync<RatingPeriodItem>(ratingPeriodKeys));
             }
 
-            // delete player item
             var playerItemFactory = ItemFactoryCreator.Create<PlayerItem>();
-            var deletePlayerTask = repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
-            deletionTasks.Add(deletePlayerTask);
+            var deleted = await repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
+            if (!deleted)
+                throw new InvalidOperationException($"Failed to delete player '{playerId}'.");
+        }
 
-            await Task.WhenAll(deletionTasks);
+        private static Task<IEnumerable<T>> GetRatingItemsAsync<T>(IDynamoDbRepository repo, Guid playerId, string sk)
+        {
+            return repo is IDynamoDbConsistentReader consistentReader
+                ? consistentReader.GetItemsConsistentlyAsync<T>(playerId, sk)
+                : repo.GetItemsAsync<T>(playerId, sk);
         }
     }
 }

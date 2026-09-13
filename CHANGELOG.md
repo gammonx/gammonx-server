@@ -1,5 +1,33 @@
 # Changelog
 
+## 12.09.2026
+### Breaking changes
+- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) to (`long`) Milliseconds
+- `EventDisconnectedPayload` (`TimeSpan`) to (`long`) Milliseconds
+- match/game history is now persisted as strict binary MAT data in DynamoDB
+- canonical persistence formats for UUIDs, timestamps, durations, and numbers
+- game completion, match completion, and rating SQS messages now contain both player records in one composite work contract
+- player rating lookup route changed to `GET /players/{id}/rating/{variant}/{type}`
+
+### Fixes
+- hardened player statistics for consecutive matches, unfinished data, and invalid or missing values
+- fixed player-scoped match lookup during statistics updates
+- remediation of db layer
+	- implemented dynamo db query pagination.
+	- batched recursive deletion with retry handling.
+	- transactional put API with conditions.
+	- per-match Glicko-2 calculation without historical replay.
+	- atomically persists both player detail records with one shared game or match history.
+	- atomically persists both player ratings and rating periods; duplicate match delivery no longer increments ratings twice.
+	- ranked matchmaking now reads ratings for the requested match type instead of always using seven-point ratings.
+	- protects concurrent rating updates with strongly consistent reads, optimistic revisions, and bounded recalculation retries.
+	- orders stats work per player through an SQS FIFO queue and deduplicates messages by match and player.
+	- requires persisted source matches and prevents stale stats messages from overwriting newer aggregates.
+	- reports failed SQS records individually so successful records in the same Lambda batch are not retried.
+	- retries transient SQS publish failures and propagates permanent or partial batch failures to the caller.
+	- fails fast when real queue mode is enabled with incomplete typed queue configuration.
+	- exposes work queue reachability through the existing server health endpoint.
+
 ## 10.09.2026
 - updated default nn model to gen11
 - proper equality and hashcode implementation for base board models
@@ -47,7 +75,7 @@
 
 ### NEW
 - upgraded all projects to net10
-- unified package reference managment into build props
+- unified package reference management into build props
 - upgraded game service and lambda container image to net10
 
 ### FIXES
@@ -72,7 +100,7 @@
 ### NEW
 - Mars Bot Project
 	- minor refactorings towards extensibility for future game modus support
-	- added additional library for centralizing torchsharp access
+	- added additional library for centralizing TorchSharp access
 	- made mars server ready for neural net usage
 	- added console app for training data generation and model training
 	- neural net for plakoto (gen6)
@@ -96,7 +124,7 @@
 
 ### NEW
 - Mars Bot Project ALPHA
-	- Fevga bot implementation based on features and 1ply lookaheaad
+	- Fevga bot implementation based on features and 1ply lookahead
 	- Plakoto bot implementation based on features and 1ply lookahead
 	- new container service
 ### FIXES
@@ -108,7 +136,7 @@
 
 ### NEW
 - `double-accepted` event with game state if a double offer is accepted
-- matchmkaing queue entry ttl if no touch from poll (30s)
+- matchmaking queue entry ttl if no touch from poll (30s)
 - REST Controller and SignalR accepts jwt bearer token
 	- processes claims `playerId` + `matchId`
     - required for disconnect handling
@@ -127,7 +155,7 @@
 - turn timers for players
     - new event `turn-timer` with `EventTurnTimerPayload`
     - `EventTurnTimerPayload` contains expiration date until the next expected command must be called
-	- affects both players simultenously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
+	- affects both players simultaneously on certain situations (e.g. when JoinMatch, StartMatch, StartGame is expected from both)
     - event is sent halfway through the full timeout. Full timeout 60s, event sent at 30s
     - if expiration date is exceeded the game/match is resigned
 - the matches controller offers new endpoint `queues/{queueId}/cancel`
@@ -138,5 +166,5 @@
 - improved game flow. On socket connected event, client receives allowed command to join the match
 - fixed an issue where `StartMatch` event is not sent if bot wins opening roll
 	- https://github.com/gammonx/gammonx-server/issues/22
-- fixed an issue where `game-waiting` event was missused when waiting for a pending double offer
+- fixed an issue where `game-waiting` event was misused when waiting for a pending double offer
 	- https://github.com/gammonx/gammonx-server/issues/21

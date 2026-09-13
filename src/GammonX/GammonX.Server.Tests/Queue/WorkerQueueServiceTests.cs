@@ -5,6 +5,8 @@ using DotNetEnv;
 
 using GammonX.Engine.Services;
 
+using GammonX.Models;
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
@@ -12,6 +14,8 @@ using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
@@ -77,7 +81,7 @@ namespace GammonX.Server.Tests.Queue
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.StatsUpdated, (sp, _) =>
             {
                 var sqs = sp.GetRequiredService<IAmazonSQS>();
-                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE", WorkQueueType.StatsUpdated.GetName());
+                return new SqsWorkQueue(sqs, "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/STATS_UPDATED_QUEUE.fifo", WorkQueueType.StatsUpdated.GetName());
             });
             services.AddKeyedSingleton<IWorkQueue>(WorkQueueType.RatingUpdated, (sp, _) =>
             {
@@ -93,7 +97,7 @@ namespace GammonX.Server.Tests.Queue
         public async Task CanEnqueueRatingUpdateRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
-            var match = CreateAndStartSimpleMatch();
+            var match = CreateAndCompleteSimpleMatch();
             await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
         }
 
@@ -109,7 +113,7 @@ namespace GammonX.Server.Tests.Queue
         public async Task CanEnqueueMatchRecord()
         {
             var service = new WorkQueueService(_serviceProvider);
-            var match = CreateAndStartSimpleMatch();
+            var match = CreateAndCompleteSimpleMatch();
             await service.EnqueueMatchResultAsync(match, CancellationToken.None);
         }
 
@@ -119,6 +123,113 @@ namespace GammonX.Server.Tests.Queue
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndStartSimpleMatch();
             await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task EnqueueGameResultPublishesOneCompositeMessage()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .Setup(value => value.EnqueueAsync(It.IsAny<GameCompletedWorkContract>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.GameCompleted, queue.Object);
+           
+            var service = new WorkQueueService(services.BuildServiceProvider());
+            var match = CreateAndStartSimpleMatch();
+
+            await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+
+            queue.Verify(
+                value => value.EnqueueAsync(
+                    It.Is<GameCompletedWorkContract>(work => work.Records.Length == 2),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            queue.Verify(
+                value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<GameRecordContract>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task EnqueueMatchResultPublishesOneCompositeMessage()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .Setup(value => value.EnqueueAsync(It.IsAny<MatchCompletedWorkContract>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.MatchCompleted, queue.Object);
+            
+            var service = new WorkQueueService(services.BuildServiceProvider());
+            var match = CreateAndCompleteSimpleMatch();
+
+            await service.EnqueueMatchResultAsync(match, CancellationToken.None);
+
+            queue.Verify(
+                value => value.EnqueueAsync(
+                    It.Is<MatchCompletedWorkContract>(work => work.Records.Length == 2),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            queue.Verify(
+                value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task EnqueueRatingProcessingPublishesOneCompositeMessage()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .Setup(value => value.EnqueueAsync(It.IsAny<RatingUpdateWorkContract>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.RatingUpdated, queue.Object);
+            
+            var service = new WorkQueueService(services.BuildServiceProvider());
+            var match = CreateAndCompleteSimpleMatch();
+
+            await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+
+            queue.Verify(
+                value => value.EnqueueAsync(
+                    It.Is<RatingUpdateWorkContract>(work => work.Records.Length == 2),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            queue.Verify(
+                value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task EnqueueStatsUsesPlayerOrderingAndMatchDeduplication()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .Setup(value => value.EnqueueFifoBatchAsync(
+                    It.IsAny<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.StatsUpdated, queue.Object);
+            var service = new WorkQueueService(services.BuildServiceProvider());
+
+            var match = CreateAndCompleteSimpleMatch();
+
+            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+
+            queue.Verify(value => value.EnqueueFifoBatchAsync(
+                It.Is<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(messages =>
+                    messages.Count() == 2 && messages.All(message =>
+                        message.GroupId == message.Message.PlayerId.ToString("D") &&
+                        message.DeduplicationId == $"{message.Message.Id:D}:{message.Message.PlayerId:D}")),
+                It.IsAny<CancellationToken>()), Times.Once);
+            queue.Verify(
+                value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         private static IMatchSessionModel CreateAndStartSimpleMatch()
@@ -141,6 +252,33 @@ namespace GammonX.Server.Tests.Queue
             match.JoinSession(player2);
 
             match.StartMatch(match.Player1.Id);
+            var gameSession = match.GetGameSession(match.GameRound);
+            Assert.NotNull(gameSession);
+            gameSession.StopGame(new GameResultModel(
+                player1Id,
+                GameResult.Gammon,
+                GameResult.LostGammon,
+                2));
+            return match;
+        }
+
+        private static IMatchSessionModel CreateAndCompleteSimpleMatch()
+        {
+            var diceFactory = new DiceServiceFactory();
+            var gameFactory = new GameSessionFactory(diceFactory);
+            var factory = new MatchSessionFactory(gameFactory);
+            var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame, BotLevel.Hard);
+            var match = factory.Create(Guid.NewGuid(), queueKey);
+            var player1 = new PlayerConnection(Guid.NewGuid());
+            player1.SetConnectionId(Guid.NewGuid().ToString());
+            var player2 = new PlayerConnection(Guid.NewGuid());
+            player2.SetConnectionId(Guid.NewGuid().ToString());
+            match.JoinSession(player1);
+            match.JoinSession(player2);
+            match.StartMatch(player1.Id);
+
+            match.ResignMatch(player2.Id);
+            Assert.True(match.IsMatchOver());
             return match;
         }
     }

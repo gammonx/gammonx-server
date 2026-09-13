@@ -35,7 +35,7 @@ namespace GammonX.DynamoDb.Tests.Items
             var historyFromRepo = matches.First();
             Assert.Equal(ItemTypes.MatchHistoryItemType, historyFromRepo.ItemType);
             Assert.Equal($"MATCH#{matchId}", historyFromRepo.PK);
-            Assert.Equal($"HISTORY", historyFromRepo.SK);
+            Assert.Equal("HISTORY", historyFromRepo.SK);
             Assert.Equal(HistoryFormat.MAT, historyFromRepo.Format);
             Assert.Equal("empty", historyFromRepo.Data);
             Assert.Equal(matchId, historyFromRepo.MatchId);
@@ -60,12 +60,28 @@ namespace GammonX.DynamoDb.Tests.Items
         {
             var matchHistoryItemFactory = ItemFactoryCreator.Create<MatchHistoryItem>();
             Assert.NotNull(matchHistoryItemFactory);
-            Assert.Equal("MATCH#{0}", matchHistoryItemFactory.PKFormat);
+            Assert.Equal("MATCH#{0:D}", matchHistoryItemFactory.PKFormat);
             Assert.Equal("HISTORY", matchHistoryItemFactory.SKFormat);
             Assert.Equal("HISTORY", matchHistoryItemFactory.SKPrefix);
             Assert.Throws<InvalidOperationException>(() => matchHistoryItemFactory.GSI1PKFormat);
             Assert.Throws<InvalidOperationException>(() => matchHistoryItemFactory.GSI1SKFormat);
             Assert.Throws<InvalidOperationException>(() => matchHistoryItemFactory.GSI1SKPrefix);
+        }
+
+        [Fact]
+        public void MatchHistoryFactoryStoresDataAsBinary()
+        {
+            var historyItem = ItemFactory.CreateMatchHistory(Guid.NewGuid());
+            historyItem.Data = ";[Match 'history']\r\n;[Length '1']\n";
+            var factory = ItemFactoryCreator.Create<MatchHistoryItem>();
+
+            var attributes = factory.CreateItem(historyItem);
+
+            Assert.NotNull(attributes["Data"].B);
+            Assert.NotEqual(0, attributes["Data"].B.Length);
+            Assert.Null(attributes["Data"].S);
+            Assert.Equal(nameof(HistoryFormat.MAT), attributes["Format"].S);
+            Assert.Equal(historyItem.Data, factory.CreateItem(attributes).Data);
         }
     }
 }

@@ -8,7 +8,7 @@ namespace GammonX.DynamoDb.Items
     public class PlayerItemFactory : IItemFactory<PlayerItem>
     {
         // <inheritdoc />
-        public string PKFormat => "PLAYER#{0}";
+        public string PKFormat => "PLAYER#{0:D}";
 
         // <inheritdoc />
         public string SKFormat => "PROFILE";
@@ -32,7 +32,7 @@ namespace GammonX.DynamoDb.Items
             {
                 Id = Guid.Parse(item["Id"].S),
                 UserName = item["Username"].S,
-                CreatedAt = DateTimeHelper.ParseFlexible(item["CreatedAt"].S)
+                CreatedAt = DateTimeHelper.ParseUtc(item["CreatedAt"].S)
             };
         }
 
@@ -43,10 +43,10 @@ namespace GammonX.DynamoDb.Items
             {
                 { "PK", new AttributeValue(item.PK) },
                 { "SK", new AttributeValue(item.SK) },
-                { "Id", new AttributeValue(item.Id.ToString()) },
+                { "Id", new AttributeValue(item.Id.ToString("D")) },
                 { "ItemType", new AttributeValue(item.ItemType) },
                 { "Username", new AttributeValue(item.UserName) },
-                { "CreatedAt", new AttributeValue { S = item.CreatedAt.ToString("o") } }
+                { "CreatedAt", new AttributeValue { S = DateTimeHelper.FormatUtc(item.CreatedAt) } }
             };
             return itemDict;
         }

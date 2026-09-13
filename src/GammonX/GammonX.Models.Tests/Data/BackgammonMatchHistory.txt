@@ -2,8 +2,8 @@
 ;[Name 'Backgammon Bot SevenPointGame']
 ;[Player 1 White Checkers '2f41dca1-8f6c-462a-83ae-4bf545733144']
 ;[Player 2 Black Checkers 'f91201d3-ca26-4835-9516-bd35a218f03a']
-;[Started At '25/08/2026 07:07:49']
-;[Ended At '25/08/2026 07:08:25']
+;[Started At '2026-08-25T07:07:49.0000000Z']
+;[Ended At '2026-08-25T07:08:25.0000000Z']
 ;[Length '1']
 ;[Game '193f2a15-2cc5-48ed-baae-f398fccc9a5c']
 ;[Player 1 White Checkers '2f41dca1-8f6c-462a-83ae-4bf545733144']
@@ -11,8 +11,8 @@
 ;[Game Modus 'Backgammon']
 ;[Winner '2f41dca1-8f6c-462a-83ae-4bf545733144']
 ;[Points '8']
-;[Started At '25/08/2026 07:07:49']
-;[Ended At '25/08/2026 07:08:25']
+;[Started At '2026-08-25T07:07:49.0000000Z']
+;[Ended At '2026-08-25T07:08:25.0000000Z']
 White Roll 3 2
 White Move 11/14
 White Move 11/13

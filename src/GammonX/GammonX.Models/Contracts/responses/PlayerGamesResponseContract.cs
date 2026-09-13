@@ -39,7 +39,7 @@ namespace GammonX.Models.Contracts
         public DateTime EndedAt { get; set; }
 
         [DataMember(Name = "Duration")]
-        public TimeSpan Duration { get; set; }
+        public long DurationMilliseconds { get; set; }
 
         [DataMember(Name = "PipesLeft")]
         public int PipesLeft { get; set; }

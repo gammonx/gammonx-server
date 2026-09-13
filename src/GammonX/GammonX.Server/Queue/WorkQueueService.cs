@@ -61,8 +61,10 @@ namespace GammonX.Server.Queue
             var workQueue = GetWorkQueue(WorkQueueType.GameCompleted);
             var player1GameRecord = match.ToRecord(gameRound, match.Player1.Id);
             var player2GameRecord = match.ToRecord(gameRound, match.Player2.Id);
-            var gameRecords = new GameRecordContract[] { player1GameRecord, player2GameRecord };
-            await workQueue.EnqueueBatchAsync(gameRecords, cancellationToken);
+            // We enqueue the game results for both players at the same time and process them transactional
+            var work = new GameCompletedWorkContract { Records = [player1GameRecord, player2GameRecord] };
+            work.GetValidatedRecords();
+            await workQueue.EnqueueAsync(work, cancellationToken);
         }
 
         // <inheritdoc />
@@ -71,8 +73,10 @@ namespace GammonX.Server.Queue
             var workQueue = GetWorkQueue(WorkQueueType.MatchCompleted);
             var player1MatchRecord = match.ToRecord(match.Player1.Id);
             var player2MatchRecord = match.ToRecord(match.Player2.Id);
-            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
-            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+            // We enqueue the match results for both players at the same time and process them transactional
+            var work = new MatchCompletedWorkContract { Records = [player1MatchRecord, player2MatchRecord] };
+            work.GetValidatedRecords();
+            await workQueue.EnqueueAsync(work, cancellationToken);
         }
 
         // <inheritdoc />
@@ -81,8 +85,10 @@ namespace GammonX.Server.Queue
             var workQueue = GetWorkQueue(WorkQueueType.RatingUpdated);
             var player1MatchRecord = match.ToRecord(match.Player1.Id);
             var player2MatchRecord = match.ToRecord(match.Player2.Id);
-            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
-            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+            // We enqueue the rating updates for both players at the same time and process them transactional
+            var work = new RatingUpdateWorkContract { Records = [player1MatchRecord, player2MatchRecord] };
+            work.GetValidatedRecords();
+            await workQueue.EnqueueAsync(work, cancellationToken);
         }
 
         // <inheritdoc />
@@ -91,8 +97,20 @@ namespace GammonX.Server.Queue
             var workQueue = GetWorkQueue(WorkQueueType.StatsUpdated);
             var player1MatchRecord = match.ToRecord(match.Player1.Id);
             var player2MatchRecord = match.ToRecord(match.Player2.Id);
-            var matchRecords = new MatchRecordContract[] { player1MatchRecord, player2MatchRecord };
-            await workQueue.EnqueueBatchAsync(matchRecords, cancellationToken);
+            FifoWorkMessage<MatchRecordContract>[] messages =
+            [
+                CreateStatsMessage(player1MatchRecord),
+                CreateStatsMessage(player2MatchRecord)
+            ];
+            await workQueue.EnqueueFifoBatchAsync(messages, cancellationToken);
+        }
+
+        private static FifoWorkMessage<MatchRecordContract> CreateStatsMessage(MatchRecordContract record)
+        {
+            return new FifoWorkMessage<MatchRecordContract>(
+                record,
+                record.PlayerId.ToString("D"),
+                $"{record.Id:D}:{record.PlayerId:D}");
         }
 
         private IWorkQueue GetWorkQueue(WorkQueueType queueType)

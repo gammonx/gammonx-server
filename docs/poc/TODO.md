@@ -2,17 +2,12 @@
 - see changelog 
 
 ## Active
-- ?
+- .
 
 ## Beta Preparation
-- validate dynamodb layer
-- validte re-connect handling
+- validate re-connect handling
 
 ## TODO
-- verify lambda functions and dynamodb items
-    - datetime/timespan formats
-    - missing/invalid values
-    - lambda handler (player stats update)
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow
@@ -21,10 +16,12 @@
 - validate start index for fevga/plakoto
 - resilience patterns
     - retry/timeouts
-    - proper healthcheck
+    - proper health check
+    - circuit breaking for api gateway client
+    - proper http code for matches controller (exception middleware) + request validation
 - make game service stateless
     - or sticky sessions for clients?
-    - web socket/SignalR backplan > synchronizes hubcontextes between ecs instances via pub/sub
+    - web socket/SignalR back plan > synchronizes hub contexts between ecs instances via pub/sub
     - redis (AWS ElasticCache) as match/game state storage
     - AWS API Gateway WebSockets?
     - Match/Session affinity, players stick to an ecs instance
@@ -46,6 +43,6 @@
 - game paused event
 - turn timer event (auto-pass, auto-ff, ff-on-timeout, bot-move)
 - analytics hook
-- blunder database > quizes (subscription)
-- hide pipcount (option and in ranked mode)
+- blunder database > quiz (subscription)
+- hide pip count (option and in ranked mode)
 - extract data access layer from game server

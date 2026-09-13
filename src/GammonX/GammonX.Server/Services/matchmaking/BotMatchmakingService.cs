@@ -21,7 +21,7 @@ namespace GammonX.Server.Services
 				throw new InvalidOperationException("match modus must be of type normal in order to join this queue");
 			}
 
-			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.Now, 0);
+			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 0);
 			var matchId = Guid.NewGuid();
 			var playerConnection = _playerConnectionRepository.GetOrCreate(playerId);
 

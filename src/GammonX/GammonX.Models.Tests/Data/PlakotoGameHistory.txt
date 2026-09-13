@@ -4,8 +4,8 @@
 ;[Game Modus 'Plakoto']
 ;[Winner 'cf0ab132-2279-43d3-911f-ed139ce5e7ba']
 ;[Points '2']
-;[Started At '29/11/2025 09:33:37']
-;[Ended At '29/11/2025 09:33:39']
+;[Started At '2025-11-29T09:33:37.0000000Z']
+;[Ended At '2025-11-29T09:33:39.0000000Z']
 Black Roll 1 1 1 1
 Black Move 23/22
 Black Move 22/21

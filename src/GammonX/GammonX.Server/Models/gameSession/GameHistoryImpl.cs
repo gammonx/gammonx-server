@@ -1,6 +1,7 @@
 ﻿using GammonX.Engine.History;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using System.Text;
 
@@ -59,8 +60,8 @@ namespace GammonX.Server.Models
 				Modus = model.Modus,
 				Points = points,
 				WinnerPlayerId = winnerPlayerId,
-				StartedAt = model.StartedAt,
-				EndedAt = model.EndedAt,
+				StartedAt = model.StartedAt ?? throw new InvalidOperationException("Cannot create history for a game that has not started."),
+				EndedAt = model.EndedAt ?? throw new InvalidOperationException("Cannot create history for a game that has not ended."),
 				BoardHistory = model.BoardModel.History
 			};
 		}
@@ -78,8 +79,8 @@ namespace GammonX.Server.Models
 			stringBuilder.AppendLine($";[Game Modus '{Modus}']");
 			stringBuilder.AppendLine($";[Winner '{WinnerPlayerId}']");
 			stringBuilder.AppendLine($";[Points '{Points}']");
-			stringBuilder.AppendLine($";[Started At '{StartedAt}']");
-			stringBuilder.AppendLine($";[Ended At '{EndedAt}']");
+			stringBuilder.AppendLine($";[Started At '{DateTimeHelper.FormatUtc(StartedAt)}']");
+			stringBuilder.AppendLine($";[Ended At '{DateTimeHelper.FormatUtc(EndedAt)}']");
 			foreach (var historyEvent in  BoardHistory.Events.Reverse())
 			{
 				stringBuilder.AppendLine(historyEvent.ToString());
