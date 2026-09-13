@@ -13,9 +13,6 @@ namespace GammonX.Models.History.MAT
 	{
 		private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-		[GeneratedRegex(@";\[(.+?) '(.+?)'\]", RegexOptions.Compiled)]
-		protected partial Regex GameHeaderRegex();
-
 		[GeneratedRegex("^(White|Black) Roll ([0-9 ]+)$", RegexOptions.Compiled)]
 		protected partial Regex RollRegex();
 

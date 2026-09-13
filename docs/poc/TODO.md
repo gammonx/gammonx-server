@@ -17,6 +17,8 @@
 - resilience patterns
     - retry/timeouts
     - proper health check
+    - circuit breaking for api gateway client
+    - proper http code for matches controller (exception middleware) + request validation
 - make game service stateless
     - or sticky sessions for clients?
     - web socket/SignalR back plan > synchronizes hub contexts between ecs instances via pub/sub
