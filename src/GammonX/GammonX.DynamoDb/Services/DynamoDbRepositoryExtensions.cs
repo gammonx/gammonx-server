@@ -50,12 +50,6 @@ namespace GammonX.DynamoDb.Services
                 currentOpponentRating = PlayerRatingItemFactory.CreateInitial(opponentId, variant, type);
             }
 
-            // we get the last 9 rating periods of the given player
-            var ratingPeriodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
-            var sk2 = string.Format(ratingPeriodFactory.SKFormat, variant, type, modus, wonMatch.Id);
-            var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId, sk2);
-            var lastRatingPeriods = ratingPeriods.OrderBy(rp => rp.CreatedAt).Take(Glicko2Constants.RatingPeriod - 1).ToList();
-
             // we calculate the match score
             var wonMatchInput = wonMatch.From();
             var lostMatchInput = lostMatch.From();
@@ -79,10 +73,8 @@ namespace GammonX.DynamoDb.Services
                 OpponentSigma = currentOpponentRating.Sigma,
                 CreatedAt = DateTime.UtcNow,
             };
-            // we add the current rating period to the list of last rating periods
-            lastRatingPeriods.Add(currentRatingPeriod);
-
-            var updatedPlayerRating = Glicko2RatingCalculator.Calculate(playerGlicko, lastRatingPeriods.ToArray());
+            
+            var updatedPlayerRating = Glicko2RatingCalculator.Calculate(playerGlicko, currentRatingPeriod);
 
             // we convert back to some ordinary values
             var newRating = Glicko2RatingCalculator.FromMu(updatedPlayerRating.Mu);
@@ -111,37 +103,28 @@ namespace GammonX.DynamoDb.Services
         // <inheritdoc />
         public static async Task DeletePlayerAsync(this IDynamoDbRepository repo, Guid playerId, bool recursive = false)
         {
-            var deletionTasks = new List<Task<bool>>();
-
             if (recursive)
             {
-                // player ratings
+                if (repo is not IDynamoDbBatchWriter batchWriter)
+                    throw new InvalidOperationException("Recursive player deletion requires batch-write support.");
+
                 var playerRatings = await repo.GetItemsAsync<PlayerRatingItem>(playerId);
-                foreach (var rating in playerRatings)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerRatingItem>(rating.PlayerId, rating.SK));
-                }
-                // player stats
                 var playerStats = await repo.GetItemsAsync<PlayerStatsItem>(playerId);
-                foreach (var stats in playerStats)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<PlayerStatsItem>(stats.PlayerId, stats.SK));
-                }
-                // rating periods
                 var ratingPeriods = await repo.GetItemsAsync<RatingPeriodItem>(playerId);
-                foreach (var ratingPeriod in ratingPeriods)
-                {
-                    deletionTasks.Add(repo.DeleteAsync<RatingPeriodItem>(ratingPeriod.PlayerId, ratingPeriod.SK));
-                }
-                // we keep the matches, games and their history for some data mining purposes
+                var playerRatingKeys = playerRatings.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+                var playerStatsKeys = playerStats.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+                var ratingPeriodKeys = ratingPeriods.Select(item => (PkId: item.PlayerId, Sk: item.SK)).ToList();
+
+                await Task.WhenAll(
+                    batchWriter.BatchDeleteAsync<PlayerRatingItem>(playerRatingKeys),
+                    batchWriter.BatchDeleteAsync<PlayerStatsItem>(playerStatsKeys),
+                    batchWriter.BatchDeleteAsync<RatingPeriodItem>(ratingPeriodKeys));
             }
 
-            // delete player item
             var playerItemFactory = ItemFactoryCreator.Create<PlayerItem>();
-            var deletePlayerTask = repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
-            deletionTasks.Add(deletePlayerTask);
-
-            await Task.WhenAll(deletionTasks);
+            var deleted = await repo.DeleteAsync<PlayerItem>(playerId, playerItemFactory.SKPrefix);
+            if (!deleted)
+                throw new InvalidOperationException($"Failed to delete player '{playerId}'.");
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## 12.09.2026
 ### Breaking changes
-- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) renamed to `DurationMilliseconds` (`long`) Milliseconds
+- `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) to `DurationMilliseconds` (`long`) Milliseconds
 - `EventDisconnectedPayload` (`TimeSpan`) to (`long`) Milliseconds
 - match/game history is now persisted as strict binary MAT data in DynamoDB
 - canonical persistence formats for UUIDs, timestamps, durations, and numbers
@@ -10,6 +10,11 @@
 ### Fixes
 - hardened player statistics for consecutive matches, unfinished data, and invalid or missing values
 - fixed player-scoped match lookup during statistics updates
+- remediation of db layer
+	- implemented dynamo db query pagination.
+	- batched recursive deletion with retry handling.
+	- transactional put API with conditions.
+	- per-match Glicko-2 calculation without historical replay.
 
 ## 10.09.2026
 - updated default nn model to gen11
