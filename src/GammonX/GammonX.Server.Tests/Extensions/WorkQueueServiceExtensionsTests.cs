@@ -34,7 +34,7 @@ namespace GammonX.Server.Tests.Extensions
             var exception = Assert.Throws<InvalidOperationException>(
                 () => WorkQueueServiceExtensions.ValidateWorkQueueOptions(options));
 
-            Assert.Contains(nameof(WorkQueueOptions.SERVICEURL), exception.Message);
+            Assert.Contains(nameof(WorkQueueOptions.URL), exception.Message);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace GammonX.Server.Tests.Extensions
         {
             return new WorkQueueOptions
             {
-                SERVICEURL = "http://localhost:4566",
+                URL = "http://localhost:4566",
                 GAME_COMPLETED_QUEUE_URL = "game",
                 MATCH_COMPLETED_QUEUE_URL = "match",
                 PLAYER_CREATED_QUEUE_URL = "player",

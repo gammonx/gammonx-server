@@ -5,7 +5,7 @@
         /// <summary>
 		/// Gets or sets the service url for the sqs client.
 		/// </summary>
-		public string SERVICEURL { get; set; } = string.Empty;
+		public string URL { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the region of the sqs client.

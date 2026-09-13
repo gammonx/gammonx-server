@@ -22,15 +22,15 @@ namespace GammonX.Server.Extensions
             ValidateWorkQueueOptions(configuredOptions);
 
             // we check manually if a real work queue config is required
-            if (string.IsNullOrWhiteSpace(configuredOptions.SERVICEURL))
+            if (string.IsNullOrWhiteSpace(configuredOptions.URL))
             {
                 // we setup a dummy work queue
                 services.AddSingleton<IWorkQueue, LogWorkQueue>();
-                Serilog.Log.Information("WorkQueue: '{LogWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(LogWorkQueue), configuredOptions.SERVICEURL);
+                Serilog.Log.Information("WorkQueue: '{LogWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(LogWorkQueue), configuredOptions.URL);
                 return;
             }
 
-            Serilog.Log.Information("WorkQueue: '{SqsWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(SqsWorkQueue), configuredOptions.SERVICEURL);
+            Serilog.Log.Information("WorkQueue: '{SqsWorkQueueName}' Queue URL: '{ConfiguredOptionsUrl}'", nameof(SqsWorkQueue), configuredOptions.URL);
             // we setup an aws simple queue service
             services.AddSingleton<IAmazonSQS>(sp =>
             {
@@ -43,7 +43,7 @@ namespace GammonX.Server.Extensions
                     var credentials = new BasicAWSCredentials(options.AWS_ACCESS_KEY_ID, options.AWS_SECRET_ACCESS_KEY);
                     var sqsConfig = new AmazonSQSConfig
                     {
-                        ServiceURL = options.SERVICEURL,
+                        ServiceURL = options.URL,
                     };
                     return new AmazonSQSClient(credentials, sqsConfig);
                 }
@@ -132,12 +132,11 @@ namespace GammonX.Server.Extensions
                 (nameof(WorkQueueOptions.RATING_UPDATED_QUEUE_URL), options.RATING_UPDATED_QUEUE_URL)
             };
 
-            if (string.IsNullOrWhiteSpace(options.SERVICEURL))
+            if (string.IsNullOrWhiteSpace(options.URL))
             {
                 if (queueUrlSettings.Any(queue => !string.IsNullOrWhiteSpace(queue.Value)))
                 {
-                    throw new InvalidOperationException(
-                        $"Typed work queue URLs require '{nameof(WorkQueueOptions.SERVICEURL)}' to enable real queue mode.");
+                    throw new InvalidOperationException($"Typed work queue URLs require '{nameof(WorkQueueOptions.URL)}' to enable real queue mode.");
                 }
 
                 return;
@@ -151,7 +150,7 @@ namespace GammonX.Server.Extensions
             if (missingQueueUrls.Length > 0)
             {
                 throw new InvalidOperationException(
-                    $"Work queue mode is enabled by '{nameof(WorkQueueOptions.SERVICEURL)}', but these queue URLs are missing: {string.Join(", ", missingQueueUrls)}.");
+                    $"Work queue mode is enabled by '{nameof(WorkQueueOptions.URL)}', but these queue URLs are missing: {string.Join(", ", missingQueueUrls)}.");
             }
 
             if (options.MAX_RETRY_ATTEMPTS < 1)
