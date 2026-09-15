@@ -208,11 +208,13 @@ namespace GammonX.Server.Tests.Queue
         {
             var queue = new Mock<IWorkQueue>();
             queue
+                .SetupGet(value => value.IsFifo)
+                .Returns(true);
+            queue
                 .Setup(value => value.EnqueueFifoBatchAsync(
                     It.IsAny<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-
             var services = new ServiceCollection();
             services.AddKeyedSingleton(WorkQueueType.StatsUpdated, queue.Object);
             var service = new WorkQueueService(services.BuildServiceProvider());
@@ -230,6 +232,35 @@ namespace GammonX.Server.Tests.Queue
             queue.Verify(
                 value => value.EnqueueBatchAsync(It.IsAny<IEnumerable<MatchRecordContract>>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task EnqueueStatsUsesStandardBatchForNonFifoQueue()
+        {
+            var queue = new Mock<IWorkQueue>();
+            queue
+                .SetupGet(value => value.IsFifo)
+                .Returns(false);
+            queue
+                .Setup(value => value.EnqueueBatchAsync(
+                    It.IsAny<IEnumerable<MatchRecordContract>>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var services = new ServiceCollection();
+            services.AddKeyedSingleton(WorkQueueType.StatsUpdated, queue.Object);
+            var service = new WorkQueueService(services.BuildServiceProvider());
+
+            var match = CreateAndCompleteSimpleMatch();
+
+            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+
+            queue.Verify(value => value.EnqueueBatchAsync(
+                It.Is<IEnumerable<MatchRecordContract>>(messages => messages.Count() == 2),
+                It.IsAny<CancellationToken>()), Times.Once);
+            queue.Verify(value => value.EnqueueFifoBatchAsync(
+                It.IsAny<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
 
         private static IMatchSessionModel CreateAndStartSimpleMatch()

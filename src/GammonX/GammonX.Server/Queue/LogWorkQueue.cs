@@ -6,6 +6,9 @@ namespace GammonX.Server.Queue
     public class LogWorkQueue : IWorkQueue
     {
         // <inheritdoc />
+        public bool IsFifo => false;
+
+        // <inheritdoc />
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

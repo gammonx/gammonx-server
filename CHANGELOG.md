@@ -1,5 +1,9 @@
 # Changelog
 
+## 15.09.2026
+### Fixes
+- made stats fifo queue config aware and optional
+
 ## 12.09.2026
 ### Breaking changes
 - `PlayerGamesResponseContract.Games[].Duration` (`TimeSpan`) to (`long`) Milliseconds
