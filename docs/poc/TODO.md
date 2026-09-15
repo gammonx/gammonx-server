@@ -2,10 +2,7 @@
 - see changelog 
 
 ## Active
-- .
-
-## Beta Preparation
-- validate re-connect handling
+- ?
 
 ## TODO
 - fifo queue for stats update
@@ -17,7 +14,12 @@
 - validate start index for fevga/plakoto
 - resilience patterns
     - retry/timeouts
+        SQS queues > OK
+        Mars Service > ?
+        Api Gateway > ?
     - proper health check
+        SQS queues > OK
+        Mars Service > ?
     - circuit breaking for api gateway client
     - proper http code for matches controller (exception middleware) + request validation
 - make game service stateless

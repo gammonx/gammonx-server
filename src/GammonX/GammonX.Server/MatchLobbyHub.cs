@@ -185,7 +185,11 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        throw new InvalidOperationException("A player has disconnection without any known connection");
+                        Log.Debug(
+                            "Ignoring disconnect for player {playerId} in match {matchId}; the player connection was already removed.",
+                            playerId.Value,
+                            matchId.Value);
+                        return;
                     }
                 }
                 else
