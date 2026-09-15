@@ -6,6 +6,11 @@
     public interface IWorkQueue
     {
         /// <summary>
+        /// Gets or sets a boolean indicating whether the work queue operates in FIFO (first in, first out) mode.
+        /// </summary>
+        public bool IsFifo { get; }
+
+        /// <summary>
         /// Checks whether the work queue is configured, reachable and responds (healthy).
         /// </summary>
         Task<bool> IsHealthyAsync(CancellationToken cancellationToken);

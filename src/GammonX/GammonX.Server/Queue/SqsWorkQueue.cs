@@ -24,6 +24,9 @@ namespace GammonX.Server.Queue
 
         private readonly TimeSpan _retryBaseDelay;
 
+        /// <inheritdoc />
+        public bool IsFifo { get; }
+
         public SqsWorkQueue(
             IAmazonSQS sqs,
             string queueUrl,
@@ -34,6 +37,7 @@ namespace GammonX.Server.Queue
             _sqs = sqs ?? throw new ArgumentNullException(nameof(sqs));
             _queueUrl = queueUrl ?? throw new ArgumentNullException(nameof(queueUrl));
             _eventType = eventType ?? throw new ArgumentNullException(nameof(eventType));
+            IsFifo = queueUrl.EndsWith(".fifo", StringComparison.OrdinalIgnoreCase);
 
             if (maxAttempts < 1)
             {
@@ -71,10 +75,12 @@ namespace GammonX.Server.Queue
             }
             catch (OperationCanceledException)
             {
+                Serilog.Log.Warning("SQS health check was canceled for queue {QueueUrl}.", _queueUrl);
                 throw;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Serilog.Log.Error("SQS health check failed for queue {QueueUrl} with error {ErrorMessage}", _queueUrl, ex.Message);
                 return false;
             }
         }
