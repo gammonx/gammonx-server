@@ -2,6 +2,10 @@
 
 ## 15.09.2026
 ### Fixes
+- made lambda sqs handler aware of `EVENT_TYPE` message attribute
+
+## 15.09.2026
+### Fixes
 - fixed match history on disconnects
 - made work enqueuing more robust
 - fixed undo move after checker hit
