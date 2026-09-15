@@ -59,13 +59,79 @@ namespace GammonX.Lambda
 			await bootstrapper.RunAsync();
         }
 
-        private static async Task<object> HandleSqsEventAsync(ILambdaContext context, IServiceProvider services, SQSEvent sqsEvent)
+        /// <summary>
+        /// Handles an incoming SQS event by routing messages to the appropriate handlers based on their 'EVENT_TYPE'.
+        /// </summary>
+        /// <param name="context">The Lambda context.</param>
+        /// <param name="services">The service provider.</param>
+        /// <param name="sqsEvent">The incoming SQS event.</param>
+        /// <returns>A task that represents the asynchronous operation, containing the batch response with any failed message identifiers.</returns>
+        internal static async Task<SQSBatchResponse> HandleSqsEventAsync(
+            ILambdaContext context,
+            IServiceProvider services,
+            SQSEvent sqsEvent)
         {
             using var scope = services.CreateScope();
+            var failedMessageIds = new HashSet<string>(StringComparer.Ordinal);
+            var messagesByEventType = new Dictionary<string, List<SQSEvent.SQSMessage>>(StringComparer.Ordinal);
 
-            var eventType = sqsEvent.Records.First().MessageAttributes["EVENT_TYPE"].StringValue;
-            var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, eventType);
-            return await handler.HandleAsync(sqsEvent, context);
+            // We first scan all event records and group them by their 'EVENT_TYPE'
+            foreach (var message in sqsEvent.Records)
+            {
+                if (message.MessageAttributes == null ||
+                    !message.MessageAttributes.TryGetValue("EVENT_TYPE", out var eventTypeAttribute) ||
+                    string.IsNullOrWhiteSpace(eventTypeAttribute.StringValue))
+                {
+                    context.Logger.LogError(
+                        $"SQS message '{message.MessageId}' does not contain a valid EVENT_TYPE message attribute.");
+                    failedMessageIds.Add(message.MessageId);
+                    continue;
+                }
+
+                if (!messagesByEventType.TryGetValue(eventTypeAttribute.StringValue, out var messages))
+                {
+                    messages = [];
+                    messagesByEventType.Add(eventTypeAttribute.StringValue, messages);
+                }
+
+                messages.Add(message);
+            }
+
+            // We then dispatch each group of messages to the appropriate handler based on their 'EVENT_TYPE'
+            foreach (var messageGroup in messagesByEventType)
+            {
+                try
+                {
+                    // We create the handler for the specific EVENT_TYPE
+                    var handler = LambdaFunctionFactory.CreateSqsHandler(scope.ServiceProvider, messageGroup.Key);
+                    var response = await handler.HandleAsync(new SQSEvent { Records = messageGroup.Value }, context);
+                    // We iterate over all EVENT_TYPE specific messages
+                    foreach (var failure in response.BatchItemFailures)
+                    {
+                        failedMessageIds.Add(failure.ItemIdentifier);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    context.Logger.LogError(
+                        ex,
+                        $"An error occurred while dispatching SQS messages of type '{messageGroup.Key}'.");
+                    foreach (var message in messageGroup.Value)
+                    {
+                        failedMessageIds.Add(message.MessageId);
+                    }
+                }
+            }
+
+            var failures = sqsEvent.Records
+                .Where(message => failedMessageIds.Contains(message.MessageId))
+                .Select(message => new SQSBatchResponse.BatchItemFailure
+                {
+                    ItemIdentifier = message.MessageId
+                })
+                .ToList();
+
+            return new SQSBatchResponse(failures);
         }
 
         private static async Task<object> HandleGatewayRequestAsync(ILambdaContext context, IServiceProvider services, APIGatewayProxyRequest apiRequest)

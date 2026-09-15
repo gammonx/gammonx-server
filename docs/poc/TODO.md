@@ -5,6 +5,7 @@
 - ?
 
 ## TODO
+- enable dead letter queue
 - fifo queue for stats update
 - async game/match/rating stat processing by client
     - prepare api gateway
