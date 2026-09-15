@@ -261,6 +261,53 @@ namespace GammonX.Server.Tests
             Assert.Equal(lastToCheckAmount, gameSession.BoardModel.Fields[lastMove.To]);
         }
 
+        [Fact]
+        public void GameSessionCanUndoElementaryMovesAfterHit()
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), GameModus.Backgammon);
+            gameSession.BoardModel.SetFields([
+                -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            ]);
+            var homeBarModel = Assert.IsAssignableFrom<IHomeBarModel>(gameSession.BoardModel);
+            var mock = new Mock<IDiceService>();
+            mock.Setup(x => x.Roll(2, 6)).Returns([2, 1]);
+            gameSession.InjectDiceServiceMock(mock.Object);
+            var player1Id = Guid.NewGuid();
+            var player2Id = Guid.NewGuid();
+
+            gameSession.StartGame(player1Id, player2Id);
+            gameSession.RollDices(player1Id, true);
+            gameSession.MoveCheckers(player1Id, 0, 2, true);
+            gameSession.MoveCheckers(player1Id, 2, 3, true);
+
+            Assert.Equal(0, gameSession.BoardModel.Fields[0]);
+            Assert.Equal(0, gameSession.BoardModel.Fields[2]);
+            Assert.Equal(-1, gameSession.BoardModel.Fields[3]);
+            Assert.Equal(1, homeBarModel.HomeBarCountBlack);
+
+            gameSession.UndoLastMove(player1Id, true);
+
+            Assert.Equal(0, gameSession.BoardModel.Fields[0]);
+            Assert.Equal(-1, gameSession.BoardModel.Fields[2]);
+            Assert.Equal(0, gameSession.BoardModel.Fields[3]);
+            Assert.Equal(1, homeBarModel.HomeBarCountBlack);
+            Assert.True(gameSession.DiceRolls[0].Used);
+            Assert.False(gameSession.DiceRolls[1].Used);
+            Assert.True(gameSession.CanUndoLastMove(player1Id));
+
+            gameSession.UndoLastMove(player1Id, true);
+
+            Assert.Equal(-1, gameSession.BoardModel.Fields[0]);
+            Assert.Equal(1, gameSession.BoardModel.Fields[2]);
+            Assert.Equal(0, gameSession.BoardModel.Fields[3]);
+            Assert.Equal(0, homeBarModel.HomeBarCountBlack);
+            Assert.All(gameSession.DiceRolls, dice => Assert.False(dice.Used));
+            Assert.False(gameSession.CanUndoLastMove(player1Id));
+            Assert.Single(gameSession.BoardModel.History.Events);
+            Assert.Equal(HistoryEventType.Roll, gameSession.BoardModel.History.Events.Peek().Type);
+        }
+
         [Theory]
         [InlineData(GameModus.Fevga, true)]
         [InlineData(GameModus.Fevga, false)]
