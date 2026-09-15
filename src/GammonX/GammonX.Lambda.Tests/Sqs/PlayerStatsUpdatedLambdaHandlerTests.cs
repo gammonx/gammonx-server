@@ -360,6 +360,101 @@ namespace GammonX.Lambda.Tests.Sqs
 		}
 
 		[Fact]
+		public async Task OnPlayerStatsUpdatedUsesStronglyConsistentSourceWhenGsiIsStale()
+		{
+			var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+			var matchId = Guid.NewGuid();
+			var matchHistory = await File.ReadAllTextAsync(
+				Path.Combine("Data", "TavliMatchHistory.txt"),
+				TestContext.Current.CancellationToken);
+			var record = new MatchRecordContract
+			{
+				Id = matchId,
+				PlayerId = playerId,
+				Result = Models.Enums.MatchResult.Won,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Format = Models.Enums.HistoryFormat.MAT,
+				MatchHistory = matchHistory,
+				Games = Array.Empty<GameRecordContract>()
+			};
+			var sourceMatch = CreatePersistedMatch(record, DateTime.UtcNow.AddMinutes(-1));
+
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(Array.Empty<MatchItem>());
+			var consistentReader = repository.As<IDynamoDbConsistentReader>();
+			consistentReader
+				.Setup(reader => reader.GetItemsConsistentlyAsync<MatchItem>(matchId, "DETAILS#"))
+				.ReturnsAsync(new[] { sourceMatch });
+
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+			transactionWriter
+				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
+				.Returns(Task.CompletedTask);
+
+			var response = await new PlayerStatsUpdatedHandler(repository.Object).HandleAsync(
+				CreateEvent(record),
+				new TestLambdaContext { Logger = new TestLambdaLogger() });
+
+			Assert.Empty(response.BatchItemFailures);
+			consistentReader.Verify(
+				reader => reader.GetItemsConsistentlyAsync<MatchItem>(matchId, "DETAILS#"),
+				Times.Once);
+			transactionWriter.Verify(
+				writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()),
+				Times.Once);
+		}
+
+		[Fact]
+		public async Task OnPlayerStatsUpdatedUsesQueuedMatchWhenGsiAndBaseTableMiss()
+		{
+			var playerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
+			var record = new MatchRecordContract
+			{
+				Id = Guid.NewGuid(),
+				PlayerId = playerId,
+				Result = Models.Enums.MatchResult.Won,
+				Variant = Models.Enums.MatchVariant.Tavli,
+				Modus = Models.Enums.MatchModus.Normal,
+				Type = Models.Enums.MatchType.SevenPointGame,
+				Format = Models.Enums.HistoryFormat.MAT,
+				MatchHistory = await File.ReadAllTextAsync(
+					Path.Combine("Data", "TavliMatchHistory.txt"),
+					TestContext.Current.CancellationToken),
+				Games = Array.Empty<GameRecordContract>()
+			};
+
+			var repository = new Mock<IDynamoDbRepository>();
+			repository
+				.Setup(repo => repo.GetItemsByGSIPKAsync<MatchItem>(playerId, "MATCH#Tavli#SevenPointGame#Normal"))
+				.ReturnsAsync(Array.Empty<MatchItem>());
+			var consistentReader = repository.As<IDynamoDbConsistentReader>();
+			consistentReader
+				.Setup(reader => reader.GetItemsConsistentlyAsync<MatchItem>(record.Id, "DETAILS#"))
+				.ReturnsAsync(Array.Empty<MatchItem>());
+
+			var transactionWriter = repository.As<IDynamoDbTransactionWriter>();
+			transactionWriter
+				.Setup(writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()))
+				.Returns(Task.CompletedTask);
+
+			var response = await new PlayerStatsUpdatedHandler(repository.Object).HandleAsync(
+				CreateEvent(record),
+				new TestLambdaContext { Logger = new TestLambdaLogger() });
+
+			Assert.Empty(response.BatchItemFailures);
+			consistentReader.Verify(
+				reader => reader.GetItemsConsistentlyAsync<MatchItem>(record.Id, "DETAILS#"),
+				Times.Once);
+			transactionWriter.Verify(
+				writer => writer.TransactPutAsync(It.IsAny<IEnumerable<DynamoDbPutOperation>>()),
+				Times.Once);
+		}
+
+		[Fact]
 		public async Task OnPlayerStatsUpdatedRetriesWhenPersistedSourceIsMissing()
 		{
 			var playerId = Guid.NewGuid();

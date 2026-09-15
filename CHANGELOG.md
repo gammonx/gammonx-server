@@ -2,6 +2,10 @@
 
 ## 15.09.2026
 ### Fixes
+- increase race tolerance for lambda handlers
+
+## 15.09.2026
+### Fixes
 - made lambda sqs handler aware of `EVENT_TYPE` message attribute
 
 ## 15.09.2026

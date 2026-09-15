@@ -6,8 +6,11 @@ using Amazon.DynamoDBv2.Model;
 using GammonX.DynamoDb.Items;
 using GammonX.DynamoDb.Repository;
 
+using GammonX.Lambda.Extensions;
+
 using GammonX.Models.Contracts;
 using GammonX.Models.Helpers;
+using GammonX.Models.History;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -109,11 +112,40 @@ namespace GammonX.Lambda.Handlers
 				.Where(match => match is not null)
 				.ToList();
 
+			// We check if the source match was returned using the initial query of the players matches
+			// GSI query might not return the source match if it hasnt been indexed yet.
 			var sourceMatch = playerMatches.SingleOrDefault(match => match.Id == newMatchId && match.PlayerId == playerId);
 
 			if (sourceMatch == null)
 			{
-				throw new InvalidOperationException( $"Persisted source match '{newMatchId}' for player '{playerId}' is not available for stats calculation.");
+				// We first fall back to a consistent read to try and retrieve the source match.
+				var consistentlyReadMatches = Repo is IDynamoDbConsistentReader consistentReader
+					? await consistentReader.GetItemsConsistentlyAsync<MatchItem>(newMatchId, matchItemFactory.SKPrefix)
+					: Enumerable.Empty<MatchItem>();
+
+				sourceMatch = (consistentlyReadMatches ?? Enumerable.Empty<MatchItem>())
+					.Where(match => match is not null)
+					.SingleOrDefault(match => match.Id == newMatchId && match.PlayerId == playerId);
+
+				if (sourceMatch != null)
+				{
+					// We add the match to the aggregate list of player matches so its included in the stat calculation
+					playerMatches.Add(sourceMatch);
+				}
+			}
+
+			if (sourceMatch == null)
+			{
+				// We then fallback to reconstructing the source match from the match record itself.
+				// TODO: Replace this temporary source with either
+				// - atomic match/stats persistence
+				// - retry/dead-letter workflow.
+				// - merge MATCH_COMPLETED dependent handlers
+				var matchHistory = matchRecord.ToMatchHistory();
+				var parser = HistoryParserFactory.Create<IMatchHistoryParser>(matchHistory.Format);
+				var parsedHistory = parser.ParseMatch(matchHistory.Data);
+				sourceMatch = matchRecord.ToMatch(parsedHistory);
+				playerMatches.Add(sourceMatch);
 			}
 
 			var playerStatsItem = PlayerStatsItemFactory.CreateItem(

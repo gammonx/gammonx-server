@@ -97,8 +97,9 @@ namespace GammonX.Lambda
                 messages.Add(message);
             }
 
-            // We then dispatch each group of messages to the appropriate handler based on their 'EVENT_TYPE'
-            foreach (var messageGroup in messagesByEventType)
+            // We await groups in priority order within this invocation. (Match/Game > Stats > Rating)
+            // SQS may still invoke this Lambda concurrently for separate batches.
+            foreach (var messageGroup in messagesByEventType.OrderBy(group => GetEventTypePriority(group.Key)))
             {
                 try
                 {
@@ -132,6 +133,17 @@ namespace GammonX.Lambda
                 .ToList();
 
             return new SQSBatchResponse(failures);
+        }
+
+        private static int GetEventTypePriority(string eventType)
+        {
+            return eventType switch
+            {
+                var value when value == LambdaFunctions.MatchCompletedFunc => 0,
+                var value when value == LambdaFunctions.PlayerStatsUpdatedFunc => 2,
+                var value when value == LambdaFunctions.PlayerRatingUpdatedFunc => 3,
+                _ => 1
+            };
         }
 
         private static async Task<object> HandleGatewayRequestAsync(ILambdaContext context, IServiceProvider services, APIGatewayProxyRequest apiRequest)
