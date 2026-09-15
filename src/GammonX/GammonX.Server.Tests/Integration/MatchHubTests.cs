@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
+using System.Reflection;
 using System.Security.Claims;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -370,6 +371,52 @@ namespace GammonX.Server.Tests.Integration
             {
                 _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             }
+        }
+
+        [Fact]
+        public async Task MatchHubConcludesMatchWhenTurnExpiresBeforeNextGameStarts()
+        {
+            var result = await SetupPlayerVsPlayerMatchSession(
+                MatchVariant.Tavli,
+                MatchModus.Normal,
+                MatchType.CashGame,
+                _player1Id,
+                _player2Id);
+            var matchSession = result.Item1;
+            var hub1 = result.Item2;
+            var mockClients = result.Item4;
+            var groupName = result.groupName;
+            var matchIdStr = matchSession.Id.ToString();
+            var player1ConnectionId = matchSession.Player1.ConnectionId;
+            var player2ConnectionId = matchSession.Player2.ConnectionId;
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+
+            _workQueueService
+                .Setup(service => service.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("match result queue unavailable"));
+
+            await hub1.ResignGameAsync(matchIdStr);
+
+            Assert.Equal(GamePhase.GameOver, gameSession.Phase);
+            Assert.False(matchSession.IsMatchOver());
+
+            await InvokeTurnTimeoutAsync(hub1, matchSession.Id, matchSession.Player1.Id);
+
+            Assert.Equal(3, matchSession.GameRound);
+            Assert.NotNull(matchSession.EndedAt);
+            Assert.All(matchSession.GetGameSessions(), game =>
+            {
+                Assert.NotNull(game);
+                Assert.Equal(GamePhase.GameOver, game!.Phase);
+            });
+            Assert.Null(_matchRepo.Get(matchSession.Id));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -872,6 +919,18 @@ namespace GammonX.Server.Tests.Integration
                 await otherHub.StartGameAsync(matchIdStr);
                 await activeHub.StartGameAsync(matchIdStr);
             }
+        }
+
+        private static async Task InvokeTurnTimeoutAsync(MatchLobbyHub hub, Guid matchId, Guid playerId)
+        {
+            var timeoutMethod = typeof(MatchLobbyHub).GetMethod(
+                "HandleTurnTimeoutAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(timeoutMethod);
+
+            var timeoutTask = timeoutMethod!.Invoke(hub, [matchId, playerId]) as Task;
+            Assert.NotNull(timeoutTask);
+            await timeoutTask!;
         }
 
         private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(

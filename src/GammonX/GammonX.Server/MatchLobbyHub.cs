@@ -185,7 +185,11 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        throw new InvalidOperationException("A player has disconnection without any known connection");
+                        Log.Debug(
+                            "Ignoring disconnect for player {playerId} in match {matchId}; the player connection was already removed.",
+                            playerId.Value,
+                            matchId.Value);
+                        return;
                     }
                 }
                 else
@@ -1413,25 +1417,71 @@ namespace GammonX.Server
         {
             try
             {
+                var enqueueExceptions = new List<Exception>();
                 if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
                 {
-                    var gameRound = GetLastConcludedGameRoundIndex(match);
-                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                    try
+                    {
+                        var gameRound = GetLastConcludedGameRoundIndex(match);
+                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_GAME_RESULT_ERROR", $"An error occurred while enqueuing the game result for match {match.Id}.");
+                        enqueueExceptions.Add(e);
+                    }
                 }
                 else if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
                 {
-                    // we have to enqueue the last game of the match as well
-                    var gameRound = GetLastConcludedGameRoundIndex(match);
-                    await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
-                    // we process the match result
-                    await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
-                    // we update the player stats based on the match result
-                    await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                    try
+                    {
+                        // we have to enqueue the last game of the match as well
+                        var gameRound = GetLastConcludedGameRoundIndex(match);
+                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_GAME_RESULT_ERROR", $"An error occurred while enqueuing the game result for match {match.Id}.");
+                        enqueueExceptions.Add(e);
+                    }
+                    try
+                    {
+                        // we process the match result
+                        await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_MATCH_RESULT_ERROR", $"An error occurred while enqueuing the match result for match {match.Id}.");
+                        enqueueExceptions.Add(e);
+                    }
+                    try
+                    {
+                        // we update the player stats based on the match result
+                        await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_STAT_PROCESSING_ERROR", $"An error occurred while enqueuing the stat processing for match {match.Id}.");
+                        enqueueExceptions.Add(e);
+                    }
                     // we update the player rating based on the match result if a ranked was played
                     if (match.Modus == MatchModus.Ranked)
                     {
-                        await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                        try
+                        {
+                            await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_RATING_PROCESSING_ERROR", $"An error occurred while enqueuing the rating processing for match {match.Id}.");
+                            enqueueExceptions.Add(e);
+                        }
                     }
+                }
+
+                if (enqueueExceptions.Any())
+                {
+                    throw new AggregateException("One or more errors occurred while enqueuing work tasks.", enqueueExceptions);
                 }
             }
             catch (OperationCanceledException)

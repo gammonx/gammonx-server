@@ -226,41 +226,38 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("It's not your turn to undo your last move.");
 			}
 
-			if (_activeUndoStack.TryPop(out var lastMove))
+			if (!_activeUndoStack.TryPeek(out var lastMove))
 			{
-				if (BoardModel.History.TryPeekLast(out var lastEvent))
-				{
-					if (lastEvent != null && lastEvent.Type == HistoryEventType.Move)
-					{
-                        // we reverse the move direction in order to undo the last move
-                        BoardService.UndoMove(BoardModel, lastMove, isWhite);
-                        var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
-						DiceRolls.UndoDiceRoll(roll, bearOffMove);
-						var remainingRolls = DiceRolls.GetRemainingRolls();
-						CalculateLegalMoveSequences(isWhite, remainingRolls);
+				throw new InvalidOperationException("The active player has no move in his stack to undo.");
+			}
 
-						// if dices left
-						if (MoveSequences.CanMove)
-						{
-							// still dices left, so we stay in the moving phase
-							Phase = GamePhase.Moving;
-						}
-						else
-						{
-							// no dices left, so we should switch to the next turn
-							MoveSequences = new MoveSequences();
-							Phase = GamePhase.WaitingForEndTurn;
-						}
-
-						return;
-					}
-				}
-
+			// We first peek if the last event in the history stack is viable
+			if (!BoardModel.History.TryPeekLast(out var lastEvent)
+				|| lastEvent == null
+				|| (lastEvent.Type != HistoryEventType.Move && lastEvent.Type != HistoryEventType.Hit))
+			{
 				throw new InvalidOperationException("There is no last move to undo for the active player");
+			}
+
+			// we reverse the move direction in order to undo the last move
+			BoardService.UndoMove(BoardModel, lastMove, isWhite);
+			var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
+			DiceRolls.UndoDiceRoll(roll, bearOffMove);
+			_activeUndoStack.Pop();
+			var remainingRolls = DiceRolls.GetRemainingRolls();
+			CalculateLegalMoveSequences(isWhite, remainingRolls);
+
+			// if dices left
+			if (MoveSequences.CanMove)
+			{
+				// still dices left, so we stay in the moving phase
+				Phase = GamePhase.Moving;
 			}
 			else
 			{
-				throw new InvalidOperationException("The active player has no move in his stack to undo.");
+				// no dices left, so we should switch to the next turn
+				MoveSequences = new MoveSequences();
+				Phase = GamePhase.WaitingForEndTurn;
 			}
 		}
 

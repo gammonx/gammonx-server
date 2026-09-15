@@ -2,6 +2,13 @@
 
 ## 15.09.2026
 ### Fixes
+- fixed match history on disconnects
+- made work enqueuing more robust
+- fixed undo move after checker hit
+- reviewed disconnect + cleanup handling
+
+## 15.09.2026
+### Fixes
 - made stats fifo queue config aware and optional
 
 ## 12.09.2026
