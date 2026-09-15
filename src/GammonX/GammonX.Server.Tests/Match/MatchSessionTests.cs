@@ -1,6 +1,8 @@
 ﻿using GammonX.Engine.Services;
 
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
+using GammonX.Server.Extensions;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
@@ -699,6 +701,38 @@ namespace GammonX.Server.Tests.Match
 			Assert.Equal(session.Player1.Id, payload.Winner);
             Assert.Equal(session.Player2.Id, payload.Loser);
         }
+
+		[Fact]
+		public void ResignMatchAfterConcludedGamePreservesGameHistory()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(
+				MatchVariant.Tavli,
+				MatchType.SevenPointGame,
+				_matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartMatch(session.Player1.Id);
+
+			session.ResignGame(session.Player2.Id);
+			var gameResult = gameSession.Result;
+			var gameEndedAt = gameSession.EndedAt;
+
+			session.ResignMatch(session.Player1.Id);
+
+			Assert.NotNull(session.EndedAt);
+			Assert.Equal(gameResult, gameSession.Result);
+			Assert.Equal(gameEndedAt, gameSession.EndedAt);
+
+			var player1Record = session.ToRecord(session.Player1.Id);
+			var player2Record = session.ToRecord(session.Player2.Id);
+			var work = new MatchCompletedWorkContract { Records = [player1Record, player2Record] };
+
+			var (winner, loser) = work.GetValidatedRecords();
+
+			Assert.Equal(session.Player2.Id, winner.PlayerId);
+			Assert.Equal(session.Player1.Id, loser.PlayerId);
+			Assert.Equal(player1Record.MatchHistory, player2Record.MatchHistory);
+		}
 
 		[Theory]
 		[InlineData(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame)]

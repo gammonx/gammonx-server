@@ -391,14 +391,17 @@ namespace GammonX.Server.Models
                 var pointsAway = PointsAway(otherPlayerId);
                 var activeGameSession = GetGameSession(GameRound);
                 var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, pointsAway);
-                activeGameSession?.StopGame(result);
+                if (activeGameSession != null && activeGameSession.Phase != GamePhase.GameOver)
+				{
+					activeGameSession.StopGame(result);
+				}
                 // we award the other player with the missing points to win the match
                 otherPlayer.Points += pointsAway;
             }
 
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
-
+			EndedAt = DateTime.UtcNow;
 			LastExecutedCommand = ServerCommands.ResignMatchCommand;
 		}
 
@@ -408,7 +411,7 @@ namespace GammonX.Server.Models
 			var matchOver = _isMatchOver(this);
 			if (matchOver)
 			{
-				EndedAt = DateTime.UtcNow;
+				EndedAt ??= DateTime.UtcNow;
 			}
 			return matchOver;
 		}

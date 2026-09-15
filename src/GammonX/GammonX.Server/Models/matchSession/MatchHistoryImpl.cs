@@ -51,7 +51,7 @@ namespace GammonX.Server.Models
 				Player1 = model.Player1.Id,
 				Player2 = model.Player2.Id,
 				StartedAt = model.StartedAt ?? throw new InvalidOperationException("Cannot create history for a match that has not started."),
-				EndedAt = model.EndedAt ?? DateTime.UtcNow,
+				EndedAt = model.EndedAt ?? throw new InvalidOperationException("Cannot create history for a match that has not ended."),
 				Length = playedGames.Count(),
 				Games = playedGames.Select(gs => gs.GetHistory(model.Player1.Id, model.Player2.Id)).ToArray()
 			};

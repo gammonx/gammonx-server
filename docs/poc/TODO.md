@@ -8,6 +8,7 @@
 - validate re-connect handling
 
 ## TODO
+- fifo queue for stats update
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow
