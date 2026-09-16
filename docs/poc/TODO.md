@@ -5,24 +5,8 @@
 - ?
 
 ## TODO
-- enable dead letter queue
-- fifo queue for stats update
-- async game/match/rating stat processing by client
-    - prepare api gateway
-    - client side workflow
-    - match equity/stats after match :: win percentage to user
-- bot services as lambda containers/functions
-- validate start index for fevga/plakoto
-- resilience patterns
-    - retry/timeouts
-        SQS queues > OK
-        Mars Service > ?
-        Api Gateway > ?
-    - proper health check
-        SQS queues > OK
-        Mars Service > ?
-    - circuit breaking for api gateway client
-    - proper http code for matches controller (exception middleware) + request validation
+- stateless game service matchmaking?
+    - atm in-memory per node
 - make game service stateless
     - or sticky sessions for clients?
     - web socket/SignalR back plan > synchronizes hub contexts between ecs instances via pub/sub
@@ -34,11 +18,29 @@
         - load balancer routes based on hint
         - direct task routing ECS Service Discovery (AWS Cloud Map)
 - update nn arch of plakoto/fevga to > 5
+    - create proper training pipeline/architecture similalr to default model
+    - train models for both variants
+- async game/match/rating stat processing by client
+    - prepare api gateway
+    - client side workflow
+    - match equity/stats after match :: win percentage to user
+- resilience patterns
+    - retry/timeouts
+        SQS queues > OK
+        Mars Service > ?
+        Api Gateway > ?
+    - proper health check
+        SQS queues > OK
+        Mars Service > ?
+    - circuit breaking for api gateway client
+    - proper http code for matches controller (exception middleware) + request validation
+- enable dead letter queue
+- fifo queue for stats update
 
 ## Open Points
+- play-a-friend, invite by link
 - export matches to sgf/.mat format
 - tournament mode
-- sns > sqs
 - Chat
 - Spectator mode
 - replay system
@@ -49,4 +51,3 @@
 - analytics hook
 - blunder database > quiz (subscription)
 - hide pip count (option and in ranked mode)
-- extract data access layer from game server

@@ -1,5 +1,8 @@
 # Changelog
 
+## 16.09.2026
+- accept `BotLevel` from `JoinRequest`
+
 ## 15.09.2026
 ### Fixes
 - increase race tolerance for lambda handlers
