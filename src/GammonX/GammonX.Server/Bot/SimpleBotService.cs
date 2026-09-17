@@ -8,8 +8,13 @@ namespace GammonX.Server.Bot
 	public class SimpleBotService : IBotService
 	{
 		// <inheritdoc />
-		public Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+		public Task<MoveSequenceModel> GetNextMovesAsync(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
+
 			var activeSession = matchSession.GetGameSession(matchSession.GameRound);
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
@@ -24,14 +29,22 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
+		public Task<bool> ShouldTakeDouble(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			return Task.FromResult(false);
 		}
 
 		// <inheritdoc />
-		public Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+		public Task<bool> ShouldOfferDouble(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			return Task.FromResult(false);
 		}
 	}

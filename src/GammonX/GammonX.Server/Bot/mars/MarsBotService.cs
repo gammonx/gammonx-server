@@ -12,9 +12,6 @@ namespace GammonX.Server.Bot
     // <inheritdoc />
     public class MarsBotService : IBotService
     {
-        // TODO: add mars service health check
-        // TODO: fallback when bot request timesout/fails
-
         private readonly MarsClient _httpClient;
 
         public MarsBotService(MarsClient httpClient)
@@ -56,8 +53,9 @@ namespace GammonX.Server.Bot
                     var moveSeq = result.Payload.MoveSequence;
                     return moveSeq;
                 }
-                catch (Exception) when (parameters.BotLevel == BotLevel.Expert)
+                catch (Exception ex) when (parameters.BotLevel == BotLevel.Expert && IsTimeout(ex, cancellationToken))
                 {
+                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out, falling back to hard level.");
                     // TODO: we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
                     // TODO: we fall back to a 1ply evaluation instead
                     parameters.BotLevel = BotLevel.Hard;
@@ -176,6 +174,18 @@ namespace GammonX.Server.Bot
                 // debugging purposes only
                 throw;
             }
+        }
+
+        private static bool IsTimeout(Exception exception, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            return exception is TimeoutException
+                or TaskCanceledException
+                or HttpRequestException { InnerException: TimeoutException };
         }
 
         private static bool IsWhite(IMatchSessionModel matchSession, Guid playerId)

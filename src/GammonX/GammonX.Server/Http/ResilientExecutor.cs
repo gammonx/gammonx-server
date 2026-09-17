@@ -28,7 +28,18 @@ namespace GammonX.Server.Http
         public ResilientExecutor(int? maxAttempts, int? retryBaseDelayMs, Func<Exception, bool>? isTransient)
         {
             _maxAttempts = maxAttempts ?? DefaultMaxAttempts;
-            _retryBaseDelay = TimeSpan.FromMilliseconds(retryBaseDelayMs ?? DefaultRetryBaseDelayMilliseconds);
+            if (_maxAttempts < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxAttempts), "At least one attempt is required.");
+            }
+
+            var retryBaseDelayMilliseconds = retryBaseDelayMs ?? DefaultRetryBaseDelayMilliseconds;
+            if (retryBaseDelayMilliseconds < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(retryBaseDelayMs), "The retry delay cannot be negative.");
+            }
+
+            _retryBaseDelay = TimeSpan.FromMilliseconds(retryBaseDelayMilliseconds);
             _isTransient = isTransient ?? IsTransient;
         }
 
@@ -41,13 +52,20 @@ namespace GammonX.Server.Http
         /// <returns>A task representing the asynchronous operation, containing the result of type <typeparamref name="T"/>.</returns>
         public async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(operation);
+            cancellationToken.ThrowIfCancellationRequested();
+
             for (var attempt = 1; ; attempt++)
             {
                 try
                 {
                     return await operation();
                 }
-                catch (Exception ex) when (_isTransient(ex) && attempt < _maxAttempts)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested && _isTransient(ex) && attempt < _maxAttempts)
                 {
                     await DelayBeforeRetryAsync(attempt, cancellationToken);
                 }
@@ -67,9 +85,22 @@ namespace GammonX.Server.Http
 
         private static bool IsTransient(Exception exception)
         {
+            if (exception is TaskCanceledException)
+            {
+                return true;
+            }
+
             if (exception is TimeoutException or IOException)
             {
                 return true;
+            }
+
+            if (exception is HttpRequestException httpRequestException)
+            {
+                return httpRequestException.StatusCode is null
+                    || httpRequestException.StatusCode == HttpStatusCode.RequestTimeout
+                    || httpRequestException.StatusCode == HttpStatusCode.TooManyRequests
+                    || (int)httpRequestException.StatusCode >= 500;
             }
 
             if (exception is not AmazonServiceException serviceException)

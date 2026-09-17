@@ -25,7 +25,10 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public async Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+		public async Task<MoveSequenceModel> GetNextMovesAsync(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -63,7 +66,7 @@ namespace GammonX.Server.Bot
 				GetMoveResponse? result = null;
 				try
 				{
-                    result = await client.GetMoveAsync(requestParameters);
+					result = await client.GetMoveAsync(requestParameters, cancellationToken);
                 }
                 catch (Exception)
                 {
@@ -91,7 +94,10 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public async Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
+		public async Task<bool> ShouldTakeDouble(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -103,7 +109,7 @@ namespace GammonX.Server.Bot
 				var requestParameters = GetEvalParameters(matchSession, isWhite);
 
 				var client = new WildbgClient(_httpClient);
-				var result = await client.GetEvalAsync(requestParameters);
+				var result = await client.GetEvalAsync(requestParameters, cancellationToken);
 
 				return result.CubeDecision.Accept;
 			}
@@ -115,7 +121,10 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
-		public async Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+		public async Task<bool> ShouldOfferDouble(
+			IMatchSessionModel matchSession,
+			Guid playerId,
+			CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -127,7 +136,7 @@ namespace GammonX.Server.Bot
 				var requestParameters = GetEvalParameters(matchSession, isWhite);
 
 				var client = new WildbgClient(_httpClient);
-				var result = await client.GetEvalAsync(requestParameters);
+				var result = await client.GetEvalAsync(requestParameters, cancellationToken);
 
 				return result.CubeDecision.Double;
 			}
