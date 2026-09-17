@@ -12,15 +12,21 @@ namespace GammonX.Server.Bot
     // <inheritdoc />
     public class MarsBotService : IBotService
     {
-        private readonly HttpClient _httpClient;
+        // TODO: add mars service health check
+        // TODO: fallback when bot request timesout/fails
 
-        public MarsBotService(HttpClient httpClient)
+        private readonly MarsClient _httpClient;
+
+        public MarsBotService(MarsClient httpClient)
         {
             _httpClient = httpClient;
         }
 
         // <inheritdoc />
-        public async Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<MoveSequenceModel> GetNextMovesAsync(
+            IMatchSessionModel matchSession, 
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -44,10 +50,9 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetMoveEvalAsync(parameters);
+                    var result = await _httpClient.GetMoveEvalAsync(parameters, cancellationToken);
                     var moveSeq = result.Payload.MoveSequence;
                     return moveSeq;
                 }
@@ -65,13 +70,18 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public async Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldTakeDouble(
+            IMatchSessionModel matchSession,
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
+                {
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+                }
 
                 var modus = gameSession.Modus;
 
@@ -91,10 +101,9 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetCubeEvalAsync(parameters);
+                    var result = await _httpClient.GetCubeEvalAsync(parameters, cancellationToken);
                     var cubeAction = result.Payload;
                     return cubeAction.ShouldTake == CubeAction.Take;
                 }
@@ -112,7 +121,10 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public async Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldOfferDouble(
+            IMatchSessionModel matchSession,
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -138,10 +150,9 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetCubeEvalAsync(parameters);
+                    var result = await _httpClient.GetCubeEvalAsync(parameters, cancellationToken);
                     var cubeAction = result.Payload;
                     return cubeAction.ShouldOffer == CubeAction.Double;
                 }

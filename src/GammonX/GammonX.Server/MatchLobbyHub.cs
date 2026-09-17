@@ -458,6 +458,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("START_MATCH_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (BotServiceException bse)
+            {
+                await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to start the match in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("START_MATCH_ERROR", $"An error occurred while trying to start the match: '{e.Message}'", Context.ConnectionId, e);
@@ -534,6 +538,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("START_GAME_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (BotServiceException bse)
+            {
+                await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to start the game in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
             catch (Exception e)
             {
@@ -732,6 +740,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("END_TURN_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (BotServiceException bse)
+            {
+                await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to end the turn in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("END_TURN_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'", Context.ConnectionId, e);
@@ -920,6 +932,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("OFFER_DOUBLE_ERROR", "No double cube match session was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (BotServiceException bse)
+            {
+                await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while a double was offered in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"An error occurred while a double was offered: '{e.Message}'", Context.ConnectionId, e);
@@ -962,6 +978,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (BotServiceException bse)
+            {
+                await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to accepting a double offer in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
             catch (Exception e)
             {
@@ -1100,7 +1120,7 @@ namespace GammonX.Server
             if (matchSession is IDoubleCubeMatchSession)
             {
                 var botService = GetBotService();
-                var shouldAccept = await botService.ShouldTakeDouble(matchSession, botPlayerId);
+                var shouldAccept = await botService.ShouldTakeDouble(matchSession, botPlayerId, Context.ConnectionAborted);
                 return shouldAccept;
             }
             else
@@ -1158,7 +1178,8 @@ namespace GammonX.Server
                 if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
                 {
                     var botService = GetBotService();
-                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, botPlayerId);
+                    var httpContext = this.Context.GetHttpContext();    
+                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, botPlayerId, Context.ConnectionAborted);
                     if (shouldOffer)
                     {
                         await PerformOfferDoubleAsync(matchSession, botPlayerId);
@@ -1177,7 +1198,7 @@ namespace GammonX.Server
                 do
                 {
                     var botService = GetBotService();
-                    var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId);
+                    var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId, Context.ConnectionAborted);
 
                     if (nextMoves == null)
                     {
@@ -1203,7 +1224,7 @@ namespace GammonX.Server
             catch (Exception ex)
             {
                 Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_TURN_ERROR", "An Error occurred while executing the bot turn");
-                throw;
+                throw new BotServiceException(WellKnownBotServices.Mars, "An error occurred while executing the bot turn", ex);
             }
         }
 

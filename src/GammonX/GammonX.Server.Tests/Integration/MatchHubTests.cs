@@ -28,7 +28,7 @@ namespace GammonX.Server.Tests.Integration
     public class MatchHubTests
     {
         private readonly HttpClient _wildBgClient = new() { BaseAddress = new Uri("http://localhost:8082/bot/wildbg/") };
-        private readonly HttpClient _marsClient = new() { BaseAddress = new Uri("http://localhost:8083/bot/mars/") };
+        private readonly MarsClient _marsClient = new(null, null) { BaseAddress = new Uri("http://localhost:8083/bot/mars/") };
         private readonly MatchSessionRepository _matchRepo;
         private readonly PlayerConnectionRepository _playerConnRepo;
         private readonly IDiceServiceFactory _diceFactory;

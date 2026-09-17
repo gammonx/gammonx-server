@@ -233,6 +233,7 @@ namespace GammonX.Mars.NN.Services
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the score based on a two-ply evaluation of the resulting board state
+                        // TODO: implement selective two-ply search if necessary analogue to mars training impl
                         score = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);
                     }
                     else

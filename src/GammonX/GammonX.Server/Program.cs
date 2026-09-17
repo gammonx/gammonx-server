@@ -80,27 +80,30 @@ builder.Services.Configure<BotServiceOptions>(
     builder.Configuration.GetSection("BOT_SERVICE"));
 
 var botServiceOptions = builder.Configuration.GetSection("BOT_SERVICE").Get<BotServiceOptions>();
-if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.WildBg))
+if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.WILDBG))
 {
     builder.Services.AddHttpClient(WellKnownBotServices.WildBg, (sp, client) =>
     {
         var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-        client.BaseAddress = new Uri(options.WildBg);
-        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        client.BaseAddress = new Uri(options.WILDBG);
+        client.Timeout = TimeSpan.FromSeconds(options.TIMEOUT_SECONDS);
     });
     builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.WildBg, (sp, _) =>
     new WildbgBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.WildBg)));
 }
-if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.Mars))
+if (botServiceOptions != null && !string.IsNullOrEmpty(botServiceOptions.MARS))
 {
-    builder.Services.AddHttpClient(WellKnownBotServices.Mars, (sp, client) =>
+    builder.Services.AddSingleton(sp =>
     {
         var options = sp.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-        client.BaseAddress = new Uri(options.Mars);
-        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        return new MarsClient(options.MAX_RETRY_ATTEMPTS, options.RETRY_BASE_DELAY_MILLISECONDS)
+        {
+            BaseAddress = new Uri(options.MARS),
+            Timeout = TimeSpan.FromSeconds(options.TIMEOUT_SECONDS),
+        };
     });
     builder.Services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, (sp, _) =>
-        new MarsBotService(sp.GetRequiredService<IHttpClientFactory>().CreateClient(WellKnownBotServices.Mars)));
+        new MarsBotService(sp.GetRequiredService<MarsClient>()));
 }
 // -------------------------------------------------------------------------------
 // AUTHENTICATION + AUTHORIZATION SETUP
@@ -142,9 +145,9 @@ var app = builder.Build();
 
 // we validate bot service URLs eagerly so a missing env var surfaces at startup rather than mid-game when the first bot move is requested.
 var botOptions = app.Services.GetRequiredService<IOptions<BotServiceOptions>>().Value;
-if (string.IsNullOrEmpty(botOptions.WildBg))
+if (string.IsNullOrEmpty(botOptions.WILDBG))
     Log.Warning("BOT_SERVICE__WILDBG is not configured");
-if (string.IsNullOrEmpty(botOptions.Mars))
+if (string.IsNullOrEmpty(botOptions.MARS))
     throw new InvalidOperationException("BOT_SERVICE__MARS is not configured. Set the environment variable before starting the server.");
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
@@ -174,7 +177,7 @@ Log.Information("SERILOG LOGLEVEL: {SerilogLogLevel}", Environment.GetEnvironmen
 Log.Information("ASPNETCORE LOGLEVEL: {AspNetCoreLogLevel}", Environment.GetEnvironmentVariable("LOG_LEVEL__MICROSOFTASPNETCORE"));
 Log.Information("WILDBG BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__WILDBG"));
 Log.Information("MARS BOT SERVICE URL: {BotServiceUrl}", Environment.GetEnvironmentVariable("BOT_SERVICE__MARS"));
-Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUTSECONDS"));
+Log.Information("BOT SERVICE TIMEOUT: {BotServiceTimeout}s", Environment.GetEnvironmentVariable("BOT_SERVICE__TIMEOUT_SECONDS"));
 Log.Information("GAME SERVICE BASEPATH: {GameServiceBasePath}", Environment.GetEnvironmentVariable("GAME_SERVICE__BASEPATH"));
 
 app.Run();

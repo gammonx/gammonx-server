@@ -16,7 +16,9 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - GAME_SERVICE__BASEPATH=/game
       - BOT_SERVICE__MARS=http://mars-service:8083/bot/mars/
-      - BOT_SERVICE__TIMEOUTSECONDS=5
+      - BOT_SERVICE__TIMEOUT_SECONDS=5
+      - BOT_SERVICE__MAX_RETRY_ATTEMPTS=3
+      - BOT_SERVICE__RETRY_BASE_DELAY_MILLISECONDS=1000
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
       - JWT_SECRET=super-secret-key-that-is-at-least-32-characters-long-for-hs256

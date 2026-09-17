@@ -1,6 +1,8 @@
 ﻿using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using GammonX.Server.Http;
+
 using Newtonsoft.Json;
 
 namespace GammonX.Server.Bot
@@ -8,16 +10,16 @@ namespace GammonX.Server.Bot
     /// <summary>
     /// Integration client for the GammonX Mars bot.
     /// </summary>
-    public class MarsClient
+    public class MarsClient : ResilientHttpClient
     {
-        private readonly HttpClient _httpClient;
-
-        public MarsClient(HttpClient httpClient)
+        public MarsClient(int? maxAttempts, int? retryBaseDelayMs) : base(maxAttempts, retryBaseDelayMs)
         {
-            _httpClient = httpClient;
+            // pass
         }
 
-        public async Task<ResponseContract<MoveEvalPayload>> GetMoveEvalAsync(EvalMoveRequestContract parameters)
+        public async Task<ResponseContract<MoveEvalPayload>> GetMoveEvalAsync(
+            EvalMoveRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
@@ -30,7 +32,7 @@ namespace GammonX.Server.Bot
 
             var uri = new Uri("api/eval/move", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
+            using var resp = await base.PostAsJsonAsyncWithRetry<EvalMoveRequestContract>(uri, parameters, cancellationToken);
             try
             {
                 resp.EnsureSuccessStatusCode();
@@ -50,7 +52,9 @@ namespace GammonX.Server.Bot
             return moveEvalResponse;
         }
 
-        public async Task<ResponseContract<CubeEvalPayload>> GetCubeEvalAsync(EvalCubeRequestContract parameters)
+        public async Task<ResponseContract<CubeEvalPayload>> GetCubeEvalAsync(
+            EvalCubeRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
@@ -62,7 +66,7 @@ namespace GammonX.Server.Bot
 
             var uri = new Uri("api/eval/cube", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
+            using var resp = await base.PostAsJsonAsyncWithRetry<EvalCubeRequestContract>(uri, parameters, cancellationToken );
             try
             {
                 resp.EnsureSuccessStatusCode();
@@ -82,14 +86,16 @@ namespace GammonX.Server.Bot
             return cubeEvalResponse;
         }
 
-        public async Task<ResponseContract<BoardEvalPayload>> GetBoardEvalAsync(EvalBoardRequestContract parameters)
+        public async Task<ResponseContract<BoardEvalPayload>> GetBoardEvalAsync(
+            EvalBoardRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
 
             var uri = new Uri("api/eval/board", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
+            using var resp = await base.PostAsJsonAsyncWithRetry<EvalBoardRequestContract>(uri, parameters, cancellationToken);
             try
             {
                 resp.EnsureSuccessStatusCode();

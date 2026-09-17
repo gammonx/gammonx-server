@@ -17,6 +17,6 @@ namespace GammonX.Models.Contracts
         public BoardModelContract Board { get; set; } = new BoardModelContract();
 
         [DataMember(Name = "botLevel", IsRequired = true)]
-        public BotLevel BotLevel { get; set; } = BotLevel.Hard;
+        public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
     }
 }
