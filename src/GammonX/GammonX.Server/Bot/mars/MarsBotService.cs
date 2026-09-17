@@ -56,6 +56,15 @@ namespace GammonX.Server.Bot
                     var moveSeq = result.Payload.MoveSequence;
                     return moveSeq;
                 }
+                catch (Exception) when (parameters.BotLevel == BotLevel.Expert)
+                {
+                    // TODO: we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
+                    // TODO: we fall back to a 1ply evaluation instead
+                    parameters.BotLevel = BotLevel.Hard;
+                    var result = await _httpClient.GetMoveEvalAsync(parameters, cancellationToken);
+                    var moveSeq = result.Payload.MoveSequence;
+                    return moveSeq;
+                }
                 catch (Exception)
                 {
                     // debugging purposes only
