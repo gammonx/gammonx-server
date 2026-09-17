@@ -8,6 +8,13 @@ namespace GammonX.Server.Bot
 	public class SimpleBotService : IBotService
 	{
 		// <inheritdoc />
+		public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			return Task.FromResult(true);
+		}
+
+		// <inheritdoc />
 		public Task<MoveSequenceModel> GetNextMovesAsync(
 			IMatchSessionModel matchSession,
 			Guid playerId,

@@ -8,6 +8,7 @@ using GammonX.Models.Helpers;
 using GammonX.Server;
 using GammonX.Server.Bot;
 using GammonX.Server.Extensions;
+using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.HttpOverrides;
@@ -140,7 +141,13 @@ builder.Services.AddSignalR()
     {
         options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
     });
-builder.Services.AddHealthChecks();
+// we add a health check for the game server itself
+builder.Services.AddHealthChecks()
+// we add a health check for the mars bot service
+    .AddCheck<MarsHealthCheck>("mars-bot")
+// we also add a third health check for the SQS work queues
+    .AddCheck<WorkQueueHealthCheck>("sqs-work-queues");
+
 var app = builder.Build();
 
 // we validate bot service URLs eagerly so a missing env var surfaces at startup rather than mid-game when the first bot move is requested.

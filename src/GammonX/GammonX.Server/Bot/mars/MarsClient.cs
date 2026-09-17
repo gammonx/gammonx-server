@@ -18,6 +18,26 @@ namespace GammonX.Server.Bot
             // pass
         }
 
+        public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using var response = await GetAsync(new Uri("health", UriKind.Relative), cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Mars health check failed.");
+                return false;
+            }
+        }
+
         public async Task<ResponseContract<MoveEvalPayload>> GetMoveEvalAsync(
             EvalMoveRequestContract parameters, 
             CancellationToken cancellationToken)

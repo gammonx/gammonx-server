@@ -8,6 +8,63 @@ namespace GammonX.Server.Tests.Bot.Mars
 {
     public class MarsClientTests
     {
+        [Fact]
+        public async Task HealthProbeUsesConfiguredMarsHealthEndpoint()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, "healthy")));
+            using var client = MarsStubs.CreateClient(handler, 1);
+            client.BaseAddress = new Uri("http://localhost:8083/bot/mars/");
+
+            var result = await client.IsHealthyAsync(CancellationToken.None);
+
+            Assert.True(result);
+            Assert.Equal("http://localhost:8083/bot/mars/health", handler.RequestUris.Single()?.ToString());
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.BadRequest)]
+        [InlineData(HttpStatusCode.ServiceUnavailable)]
+        public async Task HealthProbeReturnsFalseForUnsuccessfulResponses(HttpStatusCode statusCode)
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse(statusCode, "unavailable")));
+            using var client = MarsStubs.CreateClient(handler, 1);
+
+            var result = await client.IsHealthyAsync(CancellationToken.None);
+
+            Assert.False(result);
+            Assert.Equal(1, handler.RequestCount);
+        }
+
+        [Fact]
+        public async Task HealthProbeReturnsFalseForTransportFailures()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromException<HttpResponseMessage>(new HttpRequestException("connection refused")));
+            using var client = MarsStubs.CreateClient(handler, 1);
+
+            var result = await client.IsHealthyAsync(CancellationToken.None);
+
+            Assert.False(result);
+            Assert.Equal(1, handler.RequestCount);
+        }
+
+        [Fact]
+        public async Task HealthProbePropagatesCallerCancellation()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, "healthy")));
+            using var client = MarsStubs.CreateClient(handler, 1);
+            using var cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                client.IsHealthyAsync(cancellationTokenSource.Token));
+
+            Assert.Equal(0, handler.RequestCount);
+        }
+
         [Theory]
         [InlineData(408)]
         [InlineData(429)]

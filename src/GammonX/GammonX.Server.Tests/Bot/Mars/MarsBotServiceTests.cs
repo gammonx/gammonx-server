@@ -21,6 +21,20 @@ namespace GammonX.Server.Tests.Bot.Mars
     public class MarsBotServiceTests
     {
         [Fact]
+        public async Task HealthProbeDelegatesToMarsClient()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, "healthy")));
+            using var client = MarsStubs.CreateClient(handler, 1);
+            var botService = new MarsBotService(client);
+
+            var result = await botService.IsHealthyAsync(CancellationToken.None);
+
+            Assert.True(result);
+            Assert.Equal("https://mars.test/health", handler.RequestUris.Single()?.ToString());
+        }
+
+        [Fact]
         public async Task ExpertMoveFallsBackToHardOnlyAfterTimeout()
         {
             var handler = new ScriptedHttpMessageHandler(

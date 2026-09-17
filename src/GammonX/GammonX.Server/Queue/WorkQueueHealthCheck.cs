@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace GammonX.Server.Queue
 {
+    // <inheritdoc />
     public sealed class WorkQueueHealthCheck : IHealthCheck
     {
         private static readonly WorkQueueType[] QueueTypes = Enum.GetValues<WorkQueueType>();
@@ -15,6 +16,7 @@ namespace GammonX.Server.Queue
             _services = services;
         }
 
+        // <inheritdoc />
         public async Task<HealthCheckResult> CheckHealthAsync(
             HealthCheckContext context,
             CancellationToken cancellationToken = default)

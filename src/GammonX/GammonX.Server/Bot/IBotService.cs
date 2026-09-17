@@ -10,6 +10,13 @@ namespace GammonX.Server.Bot
 	public interface IBotService
 	{
 		/// <summary>
+		/// Checks whether the bot service is available.
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <returns>True if the bot service is healthy. Otherwise, false.</returns>
+		Task<bool> IsHealthyAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Runs a game turn within the given match session for the bot player.
 		/// </summary>
 		/// <remarks>

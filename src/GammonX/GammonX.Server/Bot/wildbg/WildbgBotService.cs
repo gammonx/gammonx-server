@@ -25,6 +25,13 @@ namespace GammonX.Server.Bot
 		}
 
 		// <inheritdoc />
+		public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			return Task.FromResult(true);
+		}
+
+		// <inheritdoc />
 		public async Task<MoveSequenceModel> GetNextMovesAsync(
 			IMatchSessionModel matchSession,
 			Guid playerId,
