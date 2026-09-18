@@ -255,7 +255,7 @@ namespace GammonX.Mars.Training.Generator
                 if (activePlayerId == wildbgPlayerId)
                 {
                     // wildbg turn
-                    nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId);
+                    nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId, CancellationToken.None);
                     var boardContract = board.ToContract(false);
                     evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, botLevel, contactWeights);
                 }

@@ -15,7 +15,6 @@ namespace GammonX.Server.Extensions
         public static void AddWorkQueueServices(this IServiceCollection services, IConfiguration workQueueOptions)
         {
             services.AddSingleton<IWorkQueueService, WorkQueueService>();
-            services.AddHealthChecks().AddCheck<WorkQueueHealthCheck>("work-queues");
 
             services.Configure<WorkQueueOptions>(workQueueOptions);
             var configuredOptions = workQueueOptions.Get<WorkQueueOptions>() ?? new WorkQueueOptions();

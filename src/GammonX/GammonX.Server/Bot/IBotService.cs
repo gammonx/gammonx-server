@@ -10,6 +10,13 @@ namespace GammonX.Server.Bot
 	public interface IBotService
 	{
 		/// <summary>
+		/// Checks whether the bot service is available.
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <returns>True if the bot service is healthy. Otherwise, false.</returns>
+		Task<bool> IsHealthyAsync(CancellationToken cancellationToken);
+
+		/// <summary>
 		/// Runs a game turn within the given match session for the bot player.
 		/// </summary>
 		/// <remarks>
@@ -17,23 +24,26 @@ namespace GammonX.Server.Bot
 		/// </remarks>
 		/// <param name="matchSession">Match session to play the bot turn.</param>
 		/// <param name="playerId">Id of the player determining whether black or white is playing.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <return>Returns a list of legal move based on the current match and game state.</return>
-		Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId);
+		Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Evaluates if the bot should accept a double offered by the opponent.
 		/// </summary>
 		/// <param name="matchSession">Match session providing the board state.</param>
 		/// <param name="playerId">Calling player id.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>True if double should be accepted. Otherwise, false.</returns>
-		Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId);
+		Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId, CancellationToken cancellationToken);
 
 		/// <summary>
 		/// Evalaute if the bot should offer a double to the opponent.
 		/// </summary>
 		/// <param name="matchSession">Match session providing the board state.</param>
 		/// <param name="playerId">Calling player id.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>True if double should be offered. Otherwise, false.</returns>
-		Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId);
+		Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId, CancellationToken cancellationToken);
 	}
 }

@@ -1084,13 +1084,13 @@ static async Task RunGenerateTrainingDataAsync()
         if (useNeuralEval)
         {
             modelAService = (BatchedNeuralEvalService)BatchedNeuralEvalService.Load(modus, modelAPath, device, evalBatchSize);
-            modelAService.StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+            await modelAService.StartAsync(CancellationToken.None);
             Console.WriteLine($"Loaded Model A: {modelAPath}");
 
             if (hasModelBPath)
             {
                 modelBService = (BatchedNeuralEvalService)BatchedNeuralEvalService.Load(modus, modelBPath, device, evalBatchSize);
-                modelBService.StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                await modelBService.StartAsync(CancellationToken.None);
                 Console.WriteLine($"Loaded Model B: {modelBPath}");
             }
         }
@@ -1103,11 +1103,11 @@ static async Task RunGenerateTrainingDataAsync()
     {
         try
         {
-            StopNeuralEvalService(modelBService);
+            await StopNeuralEvalServiceAsync(modelBService);
         }
         finally
         {
-            StopNeuralEvalService(modelAService);
+            await StopNeuralEvalServiceAsync(modelAService);
         }
 
         throw;
@@ -1257,11 +1257,11 @@ static async Task RunGenerateTrainingDataAsync()
     {
         try
         {
-            StopNeuralEvalService(modelBService);
+            await StopNeuralEvalServiceAsync(modelBService);
         }
         finally
         {
-            StopNeuralEvalService(modelAService);
+            await StopNeuralEvalServiceAsync(modelAService);
         }
     }
 
@@ -1433,14 +1433,14 @@ static bool PromptBool(string label, bool defaultValue)
 
 #region Helpers
 
-static void StopNeuralEvalService(BatchedNeuralEvalService? service)
+static async Task StopNeuralEvalServiceAsync(BatchedNeuralEvalService? service)
 {
     if (service == null)
         return;
 
     try
     {
-        service.StopAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+        await service.StopAsync(CancellationToken.None);
     }
     finally
     {

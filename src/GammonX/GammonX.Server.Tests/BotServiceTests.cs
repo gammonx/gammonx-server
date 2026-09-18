@@ -48,7 +48,7 @@ namespace GammonX.Server.Tests
             Assert.NotNull(gameSession);
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
             matchSession.RollDices(botPlayer2Id);
-            var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
+            var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer2Id, TestContext.Current.CancellationToken);
             var canMove = true;
             foreach (var nextMove in nextMoves.Moves)
             {
@@ -59,7 +59,7 @@ namespace GammonX.Server.Tests
 
             // white checker bot moves second
             matchSession.RollDices(botPlayer1Id);
-            nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
+            nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayer1Id, TestContext.Current.CancellationToken);
             canMove = true;
             foreach (var nextMove in nextMoves.Moves)
             {
@@ -113,7 +113,7 @@ namespace GammonX.Server.Tests
                     matchSession.RollDices(activePlayerId);
                 }
                 var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
-                var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+                var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId, TestContext.Current.CancellationToken);
                 var hasWon = false;
                 foreach (var nextMove in nextMoves.Moves)
                 {
@@ -184,7 +184,7 @@ namespace GammonX.Server.Tests
             Assert.Equal(gameSession.MoveSequences[1].Moves[0], legalMoveSeq[1].Moves[0]);
             Assert.Equal(gameSession.MoveSequences[1].Moves[1], legalMoveSeq[1].Moves[1]);
 
-            var botMoveSequence = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+            var botMoveSequence = await botService.GetNextMovesAsync(matchSession, activePlayerId, TestContext.Current.CancellationToken);
             foreach (var botMove in botMoveSequence.Moves)
             {
                 matchSession.MoveCheckers(activePlayerId, botMove.From, botMove.To);
@@ -231,7 +231,7 @@ namespace GammonX.Server.Tests
             {
                 if (cubeSession.CanOfferDouble(activePlayerId))
                 {
-                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, activePlayerId);
+                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, activePlayerId, TestContext.Current.CancellationToken);
                     if (shouldOffer)
                     {
                         gameSession = matchSession.GetGameSession(matchSession.GameRound);
@@ -239,7 +239,7 @@ namespace GammonX.Server.Tests
                         Assert.Equal(activePlayerId, gameSession.ActivePlayer);
                         cubeSession.OfferDouble(activePlayerId);
                         Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
-                        var shouldAccept = await botService.ShouldTakeDouble(matchSession, otherPlayerId);
+                        var shouldAccept = await botService.ShouldTakeDouble(matchSession, otherPlayerId, TestContext.Current.CancellationToken);
                         if (shouldAccept)
                         {
                             cubeSession.AcceptDouble(otherPlayerId);
@@ -267,7 +267,7 @@ namespace GammonX.Server.Tests
                 {
                     matchSession.RollDices(activePlayerId);
                 }
-                var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId);
+                var nextMoves = await botService.GetNextMovesAsync(matchSession, activePlayerId, TestContext.Current.CancellationToken);
                 var hasWon = false;
                 foreach (var nextMove in nextMoves.Moves)
                 {
@@ -427,7 +427,7 @@ namespace GammonX.Server.Tests
             Assert.NotNull(gameSession);
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
             matchSession.RollDices(botPlayer2Id);
-            var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id);
+            var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id, TestContext.Current.CancellationToken);
             var canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
@@ -439,7 +439,7 @@ namespace GammonX.Server.Tests
 
             // white checker bot moves second
             matchSession.RollDices(botPlayer1Id);
-            nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id);
+            nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id, TestContext.Current.CancellationToken);
             canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
@@ -491,7 +491,7 @@ namespace GammonX.Server.Tests
             {
                 if (cubeSession.CanOfferDouble(activePlayerId))
                 {
-                    var shouldOffer = await activeBotService.ShouldOfferDouble(matchSession, activePlayerId);
+                    var shouldOffer = await activeBotService.ShouldOfferDouble(matchSession, activePlayerId, TestContext.Current.CancellationToken);
                     if (shouldOffer)
                     {
                         gameSession = matchSession.GetGameSession(matchSession.GameRound);
@@ -499,7 +499,7 @@ namespace GammonX.Server.Tests
                         Assert.Equal(activePlayerId, gameSession.ActivePlayer);
                         cubeSession.OfferDouble(activePlayerId);
                         Assert.Equal(otherPlayerId, gameSession.ActivePlayer);
-                        var shouldAccept = await activeBotService.ShouldTakeDouble(matchSession, otherPlayerId);
+                        var shouldAccept = await activeBotService.ShouldTakeDouble(matchSession, otherPlayerId, TestContext.Current.CancellationToken);
                         if (shouldAccept)
                         {
                             cubeSession.AcceptDouble(otherPlayerId);
@@ -527,7 +527,7 @@ namespace GammonX.Server.Tests
                 {
                     matchSession.RollDices(activePlayerId);
                 }
-                var nextMoves = await activeBotService.GetNextMovesAsync(matchSession, activePlayerId);
+                var nextMoves = await activeBotService.GetNextMovesAsync(matchSession, activePlayerId, TestContext.Current.CancellationToken);
                 var hasWon = false;
                 foreach (var nextMove in nextMoves.Moves)
                 {

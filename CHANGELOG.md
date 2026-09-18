@@ -1,5 +1,14 @@
 # Changelog
 
+## 17.09.2026
+- added general implementation for a `ResilientHttpClient`
+- added general implementation for a `ResilientExecutor`
+- mars bot enhancements
+	- implemented resiliency patterns (retry/timeouts/cancellation)
+	- added mars specific health check
+	- added temporarily fallback if `BotLevel.Expert` calculation exceeds request timeout
+	- added env variables `BOT_SERVICE__MAX_RETRY_ATTEMPTS` and `BOT_SERVICE__RETRY_BASE_DELAY_MILLISECONDS`
+
 ## 16.09.2026
 - accept `BotLevel` from `JoinRequest`
 

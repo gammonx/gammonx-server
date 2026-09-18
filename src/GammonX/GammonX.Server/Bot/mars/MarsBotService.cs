@@ -12,15 +12,24 @@ namespace GammonX.Server.Bot
     // <inheritdoc />
     public class MarsBotService : IBotService
     {
-        private readonly HttpClient _httpClient;
+        private readonly MarsClient _httpClient;
 
-        public MarsBotService(HttpClient httpClient)
+        public MarsBotService(MarsClient httpClient)
         {
             _httpClient = httpClient;
         }
 
         // <inheritdoc />
-        public async Task<MoveSequenceModel> GetNextMovesAsync(IMatchSessionModel matchSession, Guid playerId)
+        public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+        {
+            return _httpClient.IsHealthyAsync(cancellationToken);
+        }
+
+        // <inheritdoc />
+        public async Task<MoveSequenceModel> GetNextMovesAsync(
+            IMatchSessionModel matchSession, 
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -44,10 +53,19 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetMoveEvalAsync(parameters);
+                    var result = await _httpClient.GetMoveEvalAsync(parameters, cancellationToken);
+                    var moveSeq = result.Payload.MoveSequence;
+                    return moveSeq;
+                }
+                catch (Exception ex) when (parameters.BotLevel == BotLevel.Expert && IsTimeout(ex, cancellationToken))
+                {
+                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out, falling back to hard level.");
+                    // TODO: we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
+                    // TODO: we fall back to a 1ply evaluation instead
+                    parameters.BotLevel = BotLevel.Hard;
+                    var result = await _httpClient.GetMoveEvalAsync(parameters, cancellationToken);
                     var moveSeq = result.Payload.MoveSequence;
                     return moveSeq;
                 }
@@ -65,13 +83,18 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public async Task<bool> ShouldTakeDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldTakeDouble(
+            IMatchSessionModel matchSession,
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession == null)
+                {
                     throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
+                }
 
                 var modus = gameSession.Modus;
 
@@ -91,10 +114,9 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetCubeEvalAsync(parameters);
+                    var result = await _httpClient.GetCubeEvalAsync(parameters, cancellationToken);
                     var cubeAction = result.Payload;
                     return cubeAction.ShouldTake == CubeAction.Take;
                 }
@@ -112,7 +134,10 @@ namespace GammonX.Server.Bot
         }
 
         // <inheritdoc />
-        public async Task<bool> ShouldOfferDouble(IMatchSessionModel matchSession, Guid playerId)
+        public async Task<bool> ShouldOfferDouble(
+            IMatchSessionModel matchSession,
+            Guid playerId,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -138,10 +163,9 @@ namespace GammonX.Server.Bot
                     BotLevel = matchSession.BotLevel,
                 };
 
-                var client = new MarsClient(_httpClient);
                 try
                 {
-                    var result = await client.GetCubeEvalAsync(parameters);
+                    var result = await _httpClient.GetCubeEvalAsync(parameters, cancellationToken);
                     var cubeAction = result.Payload;
                     return cubeAction.ShouldOffer == CubeAction.Double;
                 }
@@ -156,6 +180,18 @@ namespace GammonX.Server.Bot
                 // debugging purposes only
                 throw;
             }
+        }
+
+        private static bool IsTimeout(Exception exception, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            return exception is TimeoutException
+                or TaskCanceledException
+                or HttpRequestException { InnerException: TimeoutException };
         }
 
         private static bool IsWhite(IMatchSessionModel matchSession, Guid playerId)

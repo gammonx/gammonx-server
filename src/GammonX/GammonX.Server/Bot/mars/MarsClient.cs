@@ -1,6 +1,8 @@
 ﻿using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using GammonX.Server.Http;
+
 using Newtonsoft.Json;
 
 namespace GammonX.Server.Bot
@@ -8,16 +10,37 @@ namespace GammonX.Server.Bot
     /// <summary>
     /// Integration client for the GammonX Mars bot.
     /// </summary>
-    public class MarsClient
+    public class MarsClient : ResilientHttpClient
     {
-        private readonly HttpClient _httpClient;
-
-        public MarsClient(HttpClient httpClient)
+        public MarsClient(int? maxAttempts, int? retryBaseDelayMs, HttpMessageHandler? handler = null)
+            : base(maxAttempts, retryBaseDelayMs, handler)
         {
-            _httpClient = httpClient;
+            // pass
         }
 
-        public async Task<ResponseContract<MoveEvalPayload>> GetMoveEvalAsync(EvalMoveRequestContract parameters)
+        public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using var response = await GetAsync(new Uri("health", UriKind.Relative), cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Mars health check failed.");
+                return false;
+            }
+        }
+
+        public async Task<ResponseContract<MoveEvalPayload>> GetMoveEvalAsync(
+            EvalMoveRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
@@ -30,18 +53,9 @@ namespace GammonX.Server.Bot
 
             var uri = new Uri("api/eval/move", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
-            try
-            {
-                resp.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException ex)
-            {
-                var errorResponse = await resp.Content.ReadAsStringAsync();
-                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
-            }
+            using var resp = await PostAsJsonAndEnsureSuccessAsync(uri, parameters, cancellationToken);
 
-            var response = await resp.Content.ReadAsStringAsync();
+            var response = await resp.Content.ReadAsStringAsync(cancellationToken);
             var moveEvalResponse = JsonConvert.DeserializeObject<ResponseContract<MoveEvalPayload>>(response);
 
             if (moveEvalResponse == null)
@@ -50,7 +64,9 @@ namespace GammonX.Server.Bot
             return moveEvalResponse;
         }
 
-        public async Task<ResponseContract<CubeEvalPayload>> GetCubeEvalAsync(EvalCubeRequestContract parameters)
+        public async Task<ResponseContract<CubeEvalPayload>> GetCubeEvalAsync(
+            EvalCubeRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
@@ -62,18 +78,9 @@ namespace GammonX.Server.Bot
 
             var uri = new Uri("api/eval/cube", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
-            try
-            {
-                resp.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException ex)
-            {
-                var errorResponse = await resp.Content.ReadAsStringAsync();
-                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
-            }
+            using var resp = await PostAsJsonAndEnsureSuccessAsync(uri, parameters, cancellationToken);
 
-            var response = await resp.Content.ReadAsStringAsync();
+            var response = await resp.Content.ReadAsStringAsync(cancellationToken);
             var cubeEvalResponse = JsonConvert.DeserializeObject<ResponseContract<CubeEvalPayload>>(response);
 
             if (cubeEvalResponse == null)
@@ -82,31 +89,56 @@ namespace GammonX.Server.Bot
             return cubeEvalResponse;
         }
 
-        public async Task<ResponseContract<BoardEvalPayload>> GetBoardEvalAsync(EvalBoardRequestContract parameters)
+        public async Task<ResponseContract<BoardEvalPayload>> GetBoardEvalAsync(
+            EvalBoardRequestContract parameters, 
+            CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
 
             var uri = new Uri("api/eval/board", UriKind.Relative);
 
-            using var resp = await _httpClient.PostAsJsonAsync(uri, parameters);
-            try
-            {
-                resp.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException ex)
-            {
-                var errorResponse = await resp.Content.ReadAsStringAsync();
-                throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
-            }
+            using var resp = await PostAsJsonAndEnsureSuccessAsync(uri, parameters, cancellationToken);
 
-            var response = await resp.Content.ReadAsStringAsync();
+            var response = await resp.Content.ReadAsStringAsync(cancellationToken);
             var boardEvalResponse = JsonConvert.DeserializeObject<ResponseContract<BoardEvalPayload>>(response);
 
             if (boardEvalResponse == null)
                 throw new BadHttpRequestException(response);
 
             return boardEvalResponse;
+        }
+
+        private async Task<HttpResponseMessage> PostAsJsonAndEnsureSuccessAsync<TParam>(
+            Uri requestUri,
+            TParam parameters,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var response = await base.PostAsJsonAsyncWithRetry(requestUri, parameters, cancellationToken);
+                try
+                {
+                    response.EnsureSuccessStatusCode();
+                    return response;
+                }
+                catch (HttpRequestException ex)
+                {
+                    try
+                    {
+                        var errorResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+                        throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
+                    }
+                    finally
+                    {
+                        response.Dispose();
+                    }
+                }
+            }
+            catch (RetryableHttpResponseException ex)
+            {
+                throw new BadHttpRequestException($"Error occurred while sending request: {ex.ResponseBody}", ex);
+            }
         }
     }
 }

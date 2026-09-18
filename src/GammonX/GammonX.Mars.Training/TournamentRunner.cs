@@ -80,14 +80,14 @@ namespace GammonX.Mars.Training
             var serviceA = BatchedNeuralEvalService.Load(modus, modelA.Path!, device, evalBatchSize);
             modelA = modelA with { Service = serviceA };
             // we expect the background process to be terminated if the parent process closes
-            ((BatchedNeuralEvalService)serviceA).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+            await ((BatchedNeuralEvalService)serviceA).StartAsync(CancellationToken.None);
             if (!string.IsNullOrEmpty(modelB?.Path))
             {
                 Console.WriteLine($"Loading model B: {modelB.Path}");
                 var serviceB = BatchedNeuralEvalService.Load(modus, modelB.Path, device, evalBatchSize);
                 modelB = modelB with { Service = serviceB };
                 // we expect the background process to be terminated if the parent process closes
-                ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+                await ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None);
             }
 
             var modelAWins = 0;
@@ -313,7 +313,7 @@ namespace GammonX.Mars.Training
                 if (activePlayerId == wildbgPlayerId)
                 {
                     // wildbg turn
-                    nextMoves = wildBgService.GetNextMovesAsync(matchSession, activePlayerId).ConfigureAwait(false).GetAwaiter().GetResult();
+                    nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId, CancellationToken.None);
                 }
                 else
                 {

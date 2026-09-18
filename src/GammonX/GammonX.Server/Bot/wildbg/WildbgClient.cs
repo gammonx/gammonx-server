@@ -22,7 +22,7 @@ namespace GammonX.Server.Bot
 		/// </summary>
 		/// <param name="parameters">Request parameters.</param>
 		/// <returns></returns>
-		public async Task<GetEvalResponse> GetEvalAsync(GetEvalParameter parameters)
+		public async Task<GetEvalResponse> GetEvalAsync(GetEvalParameter parameters, CancellationToken cancellationToken)
 		{
 			if (parameters.Points.Count == 0)
 				throw new ArgumentException("Points must contain at least one occupied point.", nameof(parameters));
@@ -41,18 +41,18 @@ namespace GammonX.Server.Bot
 
 			var uri = new Uri($"eval?{sb}", UriKind.Relative);
 
-			using var resp = await _httpClient.GetAsync(uri);
+			using var resp = await _httpClient.GetAsync(uri, cancellationToken);
             try
             {
                 resp.EnsureSuccessStatusCode();
             }
             catch (HttpRequestException ex)
             {
-                var errorResponse = await resp.Content.ReadAsStringAsync();
+				var errorResponse = await resp.Content.ReadAsStringAsync(cancellationToken);
                 throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
             }
 
-            var response = await resp.Content.ReadAsStringAsync();
+			var response = await resp.Content.ReadAsStringAsync(cancellationToken);
 			var evalResponse = JsonConvert.DeserializeObject<GetEvalResponse>(response);
 
 			if (evalResponse == null)
@@ -66,7 +66,7 @@ namespace GammonX.Server.Bot
 		/// </summary>
 		/// <param name="parameters">Request parameters.</param>
 		/// <returns>An intance of <see cref="GetMoveResponse"/>.</returns>
-		public async Task<GetMoveResponse> GetMoveAsync(GetMoveParameter parameters)
+		public async Task<GetMoveResponse> GetMoveAsync(GetMoveParameter parameters, CancellationToken cancellationToken)
 		{
 			if (parameters.Points.Count == 0)
 				throw new ArgumentException("Points must contain at least one occupied point.", nameof(parameters));
@@ -89,7 +89,7 @@ namespace GammonX.Server.Bot
 			}
 
 			var uri = new Uri($"move?{sb}", UriKind.Relative);
-			using var resp = await _httpClient.GetAsync(uri);
+			using var resp = await _httpClient.GetAsync(uri, cancellationToken);
 
             try
             {
@@ -97,11 +97,11 @@ namespace GammonX.Server.Bot
             }
             catch (HttpRequestException ex)
             {
-                var errorResponse = await resp.Content.ReadAsStringAsync();
+				var errorResponse = await resp.Content.ReadAsStringAsync(cancellationToken);
                 throw new BadHttpRequestException($"Error occurred while sending request: {errorResponse}", ex);
             }
 
-            var response = await resp.Content.ReadAsStringAsync();
+			var response = await resp.Content.ReadAsStringAsync(cancellationToken);
 			var moveResponse = JsonConvert.DeserializeObject<GetMoveResponse>(response);
 
 			if (moveResponse == null)

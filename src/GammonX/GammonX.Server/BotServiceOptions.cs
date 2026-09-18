@@ -5,16 +5,20 @@
 		/// <summary>
 		/// Gets or sets the base url of the wildbg bot service.
 		/// </summary>
-		public string WildBg { get; set; } = string.Empty;
+		public string WILDBG { get; set; } = string.Empty;
 
 		/// <summary>
 		/// Gets or sets the base url of the mars bot service.
 		/// </summary>
-		public string Mars { get; set; } = string.Empty;
+		public string MARS { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the timeout in seconds
         /// </summary>
-        public int TimeoutSeconds { get; set; } = 10;
+        public int TIMEOUT_SECONDS { get; set; } = 10;
+
+		public int MAX_RETRY_ATTEMPTS { get; set; } = 3;
+
+        public int RETRY_BASE_DELAY_MILLISECONDS { get; set; } = 1000;
 	}
 }
