@@ -32,7 +32,6 @@ namespace GammonX.Server
         /// - disconnect timeouts
         /// </summary>
         private readonly ICancellationTokenService _cancellationTokenService;
-        private readonly TimeSpan _turnTimeLimit = TimeSpan.FromSeconds(60); // TODO config
 
         private readonly IMatchmakingService _matchmakingService;
         private readonly MatchSessionRepository _matchRepository;
@@ -89,7 +88,7 @@ namespace GammonX.Server
                                 var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                                 await SendToGroupAsync(ConstructGroupName(match.Id), ServerEventTypes.PlayerConnectedEvent, contract);
                                 // we start a turn timer for the active player and expect him to execute his turn
-                                StartTurnTimer(match.Id, activeGameSession.ActivePlayer);
+                                StartTurnTimer(match.Modus, match.Id, activeGameSession.ActivePlayer);
                             }
                             else
                             {
@@ -99,10 +98,10 @@ namespace GammonX.Server
                                 if (match.CanStartNextGame())
                                 {
                                     // we start a turn timer for each player and expect both players to start the next game
-                                    StartTurnTimer(match.Id, match.Player1.Id);
+                                    StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
                                     if (!IsBotPlayer(match, match.Player2.Id))
                                     {
-                                        StartTurnTimer(match.Id, match.Player2.Id);
+                                        StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
                                     }
                                 }
                                 else if (match.IsMatchOver())
@@ -125,7 +124,7 @@ namespace GammonX.Server
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                             await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
                             await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
-                            StartTurnTimer(matchId.Value, playerId.Value);
+                            StartTurnTimer(null, matchId.Value, playerId.Value);
                         }
                         else
                         {
@@ -330,10 +329,10 @@ namespace GammonX.Server
                             await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
                             await SendMatchState(ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                             // we set a timeout for the players to start the match
-                            StartTurnTimer(matchSession.Id, matchSession.Player1.Id);
+                            StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
                             if (!IsBotPlayer(matchSession, matchSession.Player2.Id))
                             {
-                                StartTurnTimer(matchSession.Id, matchSession.Player2.Id);
+                                StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
                             }
                         }
                         else
@@ -436,7 +435,7 @@ namespace GammonX.Server
                                     else
                                     {
                                         // we set a timeout for the starting player to end his turn
-                                        StartTurnTimer(matchSession.Id, startingPlayerId);
+                                        StartTurnTimer(matchSession.Modus, matchSession.Id, startingPlayerId);
                                     }
 
                                     // we clean up the match lobby as soon as the first player rolled his starting dice
@@ -522,7 +521,7 @@ namespace GammonX.Server
                             {
                                 await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
                                 // we set a timeout for the starting player to end his turn
-                                StartTurnTimer(matchSession.Id, startingPlayerId);
+                                StartTurnTimer(matchSession.Modus, matchSession.Id, startingPlayerId);
                             }
                         }
                         else
@@ -731,7 +730,7 @@ namespace GammonX.Server
                         else
                         {
                             await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
-                            StartTurnTimer(matchSession.Id, otherPlayerId);
+                            StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
                         }
                     }
                 }
@@ -923,7 +922,7 @@ namespace GammonX.Server
                         var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
                         if (!IsBotPlayer(matchSession, otherPlayerId))
                         {
-                            StartTurnTimer(matchSession.Id, otherPlayerId);
+                            StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
                         }
                     }
                 }
@@ -970,7 +969,7 @@ namespace GammonX.Server
                         var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
                         if (!IsBotPlayer(matchSession, otherPlayerId))
                         {
-                            StartTurnTimer(matchSession.Id, otherPlayerId);
+                            StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
                         }
                     }
                 }
@@ -1218,7 +1217,7 @@ namespace GammonX.Server
                     matchSession.EndTurn(botPlayerId);
                     await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                     var humanPlayerId = GetOtherPlayerId(matchSession, botPlayerId);
-                    StartTurnTimer(matchSession.Id, humanPlayerId);
+                    StartTurnTimer(matchSession.Modus, matchSession.Id, humanPlayerId);
                 }
             }
             catch (Exception ex)
@@ -1232,7 +1231,7 @@ namespace GammonX.Server
 
         #region Turn Timers
 
-        private void StartTurnTimer(Guid matchId, Guid playerId)
+        private void StartTurnTimer(MatchModus? modus, Guid matchId, Guid playerId)
         {
             var tokenKey = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Turn);
             _cancellationTokenService.Cancel(tokenKey);
@@ -1244,7 +1243,7 @@ namespace GammonX.Server
             {
                 try
                 {
-                    var halfTimeLimit = _turnTimeLimit.Divide(2);
+                    var halfTimeLimit = GetTurnTimeLimit(modus).Divide(2);
                     await Task.Delay(halfTimeLimit, turnCts.Token);
                     if (!turnCts.Token.IsCancellationRequested)
                     {
@@ -1278,6 +1277,24 @@ namespace GammonX.Server
                     _cancellationTokenService.Cancel(tokenKey);
                 }
             }, turnCts.Token);
+        }
+
+        private static TimeSpan GetTurnTimeLimit(MatchModus? modus)
+        {
+            if (modus == null)
+            {
+                // we return default time limit if modus is not specified
+                return TimeSpan.FromSeconds(60);
+            }
+
+            return modus switch
+            {
+                // we allow a generous turn timer for bot matches
+                MatchModus.Bot => TimeSpan.FromSeconds(300),
+                MatchModus.Ranked => TimeSpan.FromSeconds(90),
+                MatchModus.Normal => TimeSpan.FromSeconds(60),
+                _ => throw new ArgumentOutOfRangeException(nameof(modus), modus, null)
+            };
         }
 
         private async Task HandleTurnTimeoutAsync(Guid matchId, Guid playerId)
@@ -1408,10 +1425,10 @@ namespace GammonX.Server
                 // we do not know for sure which turn it was, so we cancel all active turn timers
                 CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
                 // we set a timeout for the players to start the next game
-                StartTurnTimer(match.Id, match.Player1.Id);
+                StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
                 if (!IsBotPlayer(match, match.Player2.Id))
                 {
-                    StartTurnTimer(match.Id, match.Player2.Id);
+                    StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
                 }
             }
         }
