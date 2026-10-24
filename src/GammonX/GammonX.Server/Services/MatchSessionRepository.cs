@@ -6,6 +6,8 @@ namespace GammonX.Server.Services
 {
 	/// <summary>
 	/// Single match session repository that manages match sessions by their IDs.
+	/// TODO: extract repository into dynamo db in order to make game server stateless
+	/// TODO: provide an interface for the repository
 	/// </summary>
 	public sealed class MatchSessionRepository
 	{

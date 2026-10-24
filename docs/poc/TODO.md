@@ -2,12 +2,12 @@
 - see changelog 
 
 ## Active
-- mars client
-    - retry/timeouts
-    - env variables
-    - health check
+- beta bug fixes
 
 ## TODO
+- update nn arch of plakoto/fevga to > 5
+    - create proper training pipeline/architecture similalr to default model
+    - train models for both variants
 - clientside resilience patterns when error occurred
     - get game/match state so allowed commands reset
     - maybe also serverside?
@@ -28,9 +28,6 @@
         - client connects with routing hint
         - load balancer routes based on hint
         - direct task routing ECS Service Discovery (AWS Cloud Map)
-- update nn arch of plakoto/fevga to > 5
-    - create proper training pipeline/architecture similalr to default model
-    - train models for both variants
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow

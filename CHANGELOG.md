@@ -1,5 +1,9 @@
 # Changelog
 
+## 23.10.2026
+### Fixes
+- made JoinRequest validation for bot queue more robust
+
 ## 17.09.2026
 - added general implementation for a `ResilientHttpClient`
 - added general implementation for a `ResilientExecutor`

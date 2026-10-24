@@ -2,6 +2,7 @@
 {
     /// <summary>
     /// Provides the capability to mmanage cancellation tokens application wide.
+    /// TODO: extract repository into dynamo db in order to make game server stateless
     /// </summary>
     public interface ICancellationTokenService
     {
