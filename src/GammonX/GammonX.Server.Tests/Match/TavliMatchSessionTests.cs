@@ -17,6 +17,52 @@ namespace GammonX.Server.Tests.Match
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
+		[Theory]
+		[InlineData(2, GameModus.Plakoto)]
+		[InlineData(3, GameModus.Fevga)]
+		public void TavliMatchSessionClonePreservesLaterRounds(int targetRound, GameModus expectedModus)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavli, MatchType.CashGame, _matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartMatch(session.Player1.Id);
+			while (session.GameRound < targetRound)
+			{
+				session.ResignGame(session.GameRound == 1 ? session.Player2.Id : session.Player1.Id);
+				session.Player1.AcceptNextGame();
+				session.Player2.AcceptNextGame();
+				gameSession = session.StartNextGame(session.Player1.Id);
+			}
+			Assert.Equal(expectedModus, gameSession.Modus);
+			var originalPoints = session.Player1.Points;
+
+			var clone = Assert.IsType<TavliMatchSession>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.Equal(targetRound, clone.GameRound);
+			Assert.Equal(expectedModus, clone.GetGameModus());
+			for (var round = 1; round <= targetRound; round++)
+			{
+				var originalGame = session.GetGameSession(round);
+				var clonedGame = clone.GetGameSession(round);
+				Assert.NotNull(originalGame);
+				Assert.NotNull(clonedGame);
+				Assert.NotSame(originalGame, clonedGame);
+				Assert.Equal(originalGame.GetType(), clonedGame.GetType());
+				Assert.Equal(originalGame.Id, clonedGame.Id);
+				Assert.Equal(originalGame.Modus, clonedGame.Modus);
+				Assert.Equal(originalGame.Result, clonedGame.Result);
+			}
+			Assert.Equal(
+				session.GetGameState(session.Player1.Id).AllowedCommands,
+				clone.GetGameState(clone.Player1.Id).AllowedCommands);
+			clone.ResignGame(clone.Player2.Id);
+			Assert.Equal(originalPoints + 2, clone.Player1.Points);
+			Assert.Equal(originalPoints, session.Player1.Points);
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.False(gameSession.Result.IsConcluded);
+			Assert.False(session.IsMatchOver());
+		}
+
 		[Fact]
 		public void TavliSingleGameScoreIsCalculatedWhite()
 		{

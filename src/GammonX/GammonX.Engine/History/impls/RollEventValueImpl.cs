@@ -9,9 +9,15 @@
 		{
 			_rolls = rolls;
 		}
-
+	
 		// <inheritdoc />
-		public object GetValue()
+        public object Clone()
+        {
+            return new RollEventValueImpl(_rolls.ToArray());
+        }
+
+        // <inheritdoc />
+        public object GetValue()
 		{
 			return _rolls;
 		}

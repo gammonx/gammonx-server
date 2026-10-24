@@ -1,7 +1,7 @@
 ﻿namespace GammonX.Engine.History
 {
 	// <inheritdoc />
-	internal sealed class HistoryEventImpl : IHistoryEvent
+	internal sealed class HistoryEventImpl : IHistoryEvent, ICloneable
 	{
 		// <inheritdoc />
 		public bool IsWhite { get; private set; }
@@ -28,5 +28,11 @@
 			var player = IsWhite ? "White" : "Black";
 			return $"{player} {Type} {Value}";
 		}
-	}
+
+		// <inheritdoc />
+		public object Clone()
+		{
+			return new HistoryEventImpl(Type, (IHistoryEventValue)Value.Clone(), IsWhite);
+		}
+    }
 }

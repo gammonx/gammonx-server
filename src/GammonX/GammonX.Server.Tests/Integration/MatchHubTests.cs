@@ -345,16 +345,16 @@ namespace GammonX.Server.Tests.Integration
             {
                 if (variant == MatchVariant.Tavli)
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 3);
                 }
                 else
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 1);
                 }
             }
             else
             {
-                Assert.Contains(playedSessions, gs => gs.Phase == GamePhase.GameOver);
+                Assert.Contains(playedSessions, gs => gs?.Phase == GamePhase.GameOver);
             }
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
@@ -481,24 +481,24 @@ namespace GammonX.Server.Tests.Integration
 
             Assert.True(matchSession.IsMatchOver());
             Assert.False(matchSession.CanStartNextGame());
-            Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs.Result.WinnerResult == GameResult.Resign));
-            Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs.Result.LoserResult == GameResult.LostResign));
+            Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs?.Result.WinnerResult == GameResult.Resign));
+            Assert.True(matchSession.GetGameSessions().Where(gs => gs != null).All(gs => gs?.Result.LoserResult == GameResult.LostResign));
             var playedSessions = matchSession.GetGameSessions().Where(gs => gs != null).ToList();
             var multiplier = 1;
             if (type == MatchType.CashGame)
             {
                 if (variant == MatchVariant.Tavli)
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 3);
                 }
                 else
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 1);
                 }
             }
             else
             {
-                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) >= 2);
                 multiplier = 2;
             }
 
@@ -575,16 +575,16 @@ namespace GammonX.Server.Tests.Integration
             {
                 if (variant == MatchVariant.Tavli)
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 3);
                 }
                 else
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 1);
                 }
             }
             else
             {
-                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) >= 2);
                 multiplier = 2;
             }
 
@@ -748,16 +748,16 @@ namespace GammonX.Server.Tests.Integration
             {
                 if (variant == MatchVariant.Tavli)
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 3);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 3);
                 }
                 else
                 {
-                    Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) == 1);
+                    Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) == 1);
                 }
             }
             else
             {
-                Assert.True(playedSessions.Count(gs => gs.Phase == GamePhase.GameOver) >= 2);
+                Assert.True(playedSessions.Count(gs => gs?.Phase == GamePhase.GameOver) >= 2);
             }
             // bot will win every time :: wow the dumb human can win also
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);

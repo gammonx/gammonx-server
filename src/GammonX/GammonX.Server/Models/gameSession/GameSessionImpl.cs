@@ -10,22 +10,22 @@ using GammonX.Server.Contracts;
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public class GameSessionImpl : IGameSessionModel
+	public class GameSessionImpl : IGameSessionModel, ICloneable
 	{
-		private IDiceService _diceService;
+		protected IDiceService DiceService { get; private set; }
 
-		private readonly Stack<MoveModel> _activeUndoStack = new();
+		protected Stack<MoveModel> ActiveUndoStack { get; init; } = new();
 
-        protected readonly IBoardService BoardService;
+        protected IBoardService BoardService { get; init; }
 
         // <inheritdoc />
         public GameModus Modus { get; private set; }
 
 		// <inheritdoc />
-		public Guid MatchId { get; }
+		public Guid MatchId { get; init; }
 
 		// <inheritdoc />
-		public Guid Id { get; }
+		public Guid Id { get; init; }
 
 		// <inheritdoc />
 		public GamePhase Phase { get; set; }
@@ -40,22 +40,22 @@ namespace GammonX.Server.Models
 		public Guid OtherPlayer { get; protected set; }
 
 		// <inheritdoc />
-		public int TurnNumber { get; private set; } = 1;
+		public int TurnNumber { get; protected set; } = 1;
 
 		// <inheritdoc />
-		public DiceRollsModel DiceRolls { get; private set; }
+		public DiceRollsModel DiceRolls { get; protected set; }
 
 		// <inheritdoc />
-		public MoveSequences MoveSequences { get; private set; }
+		public MoveSequences MoveSequences { get; protected set; }
 
 		// <inheritdoc />
-		public IBoardModel BoardModel { get; }
+		public IBoardModel BoardModel { get; init; }
 
 		// <inheritdoc />
-		public DateTime? StartedAt { get; private set; }
+		public DateTime? StartedAt { get; protected set; }
 
         // <inheritdoc />
-		public DateTime? EndedAt { get; private set; }
+		public DateTime? EndedAt { get; protected set; }
 
         // <inheritdoc />
 		public long Duration
@@ -74,7 +74,7 @@ namespace GammonX.Server.Models
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{
 			BoardService = boardService;
-			_diceService = diceService;
+			DiceService = diceService;
 			BoardModel = BoardService.CreateBoard();
 			MatchId = matchId;
 			Modus = modus;
@@ -111,7 +111,7 @@ namespace GammonX.Server.Models
 			ActivePlayer = playerId;
 			DiceRolls = new DiceRollsModel();
 			MoveSequences = new MoveSequences();
-			_activeUndoStack.Clear();
+			ActiveUndoStack.Clear();
 			Phase = GamePhase.WaitingForRoll;
 		}
 
@@ -152,7 +152,7 @@ namespace GammonX.Server.Models
         // <inheritdoc />
         public int[] RollDices(int amount)
 		{
-			return _diceService.Roll(amount, 6);
+			return DiceService.Roll(amount, 6);
         }
 
 		// <inheritdoc />
@@ -192,7 +192,7 @@ namespace GammonX.Server.Models
                 foreach (var move in playedMoves)
                 {
                     BoardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
-                    _activeUndoStack.Push(move);
+                    ActiveUndoStack.Push(move);
                 }
 
                 // we recalculate the remaining move for the given unused dices
@@ -226,7 +226,7 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException("It's not your turn to undo your last move.");
 			}
 
-			if (!_activeUndoStack.TryPeek(out var lastMove))
+			if (!ActiveUndoStack.TryPeek(out var lastMove))
 			{
 				throw new InvalidOperationException("The active player has no move in his stack to undo.");
 			}
@@ -243,7 +243,7 @@ namespace GammonX.Server.Models
 			BoardService.UndoMove(BoardModel, lastMove, isWhite);
 			var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
 			DiceRolls.UndoDiceRoll(roll, bearOffMove);
-			_activeUndoStack.Pop();
+			ActiveUndoStack.Pop();
 			var remainingRolls = DiceRolls.GetRemainingRolls();
 			CalculateLegalMoveSequences(isWhite, remainingRolls);
 
@@ -268,7 +268,7 @@ namespace GammonX.Server.Models
 			{
 				return false;
 			}
-			return _activeUndoStack.TryPeek(out var _);
+			return ActiveUndoStack.TryPeek(out var _);
 		}
 
 		// <inheritdoc />
@@ -339,7 +339,7 @@ namespace GammonX.Server.Models
 		internal void SetDiceService(IDiceService diceService)
 		{
 			// unit test purposes only
-			_diceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
+			DiceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
 		}
 
 		private void CalculateLegalMoveSequences(bool isWhite, int[] rolls)
@@ -348,5 +348,33 @@ namespace GammonX.Server.Models
 			MoveSequences = new MoveSequences();
 			MoveSequences.AddRange(legalMoves);
 		}
-	}
+
+		// <inheritdoc />
+        public virtual object Clone()
+        {
+			var moveSeqClone = this.MoveSequences.Select(ms => ms.DeepClone()).ToList();
+			// we need to ensure the proper order of moves in the undo stack
+            var undoStackClone = new Stack<MoveModel>(ActiveUndoStack.Select(m => (MoveModel)m.Clone()).Reverse());
+			var rollsClone = new DiceRollsModel(this.DiceRolls.Select(dr => (DiceRollContract)dr.Clone()));
+
+			var gameSession = new GameSessionImpl(this.MatchId, this.Modus, this.BoardService, this.DiceService)
+			{
+				Id = this.Id,
+				MatchId = this.MatchId,
+				ActivePlayer = this.ActivePlayer,
+				BoardModel = this.BoardModel.DeepClone(),
+				DiceRolls = rollsClone,
+				MoveSequences = new MoveSequences(moveSeqClone),
+				Result = this.Result,
+				Phase = this.Phase,
+				EndedAt = this.EndedAt,
+				StartedAt = this.StartedAt,
+				OtherPlayer = this.OtherPlayer,
+				TurnNumber = this.TurnNumber,
+				ActiveUndoStack = undoStackClone,
+			};
+
+			return gameSession;
+        }
+    }
 }

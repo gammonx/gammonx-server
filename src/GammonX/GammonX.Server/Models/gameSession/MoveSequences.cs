@@ -8,6 +8,11 @@ namespace GammonX.Server.Models
 	{
 		public bool CanMove => this.Any(ms => ms.Moves.Count > 0);
 
+        public MoveSequences(IEnumerable<MoveSequenceModel> sequences)
+        {
+            this.AddRange(sequences);
+        }
+
 		public MoveSequences()
 		{
 			// pass

@@ -26,6 +26,197 @@ namespace GammonX.Server.Tests
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
+        public void GameSessionClonePreservesUnstartedState(GameModus modus)
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+
+            var clone = Assert.IsAssignableFrom<IGameSessionModel>(Assert.IsAssignableFrom<ICloneable>(gameSession).Clone());
+
+            Assert.NotSame(gameSession, clone);
+            Assert.Equal(gameSession.GetType(), clone.GetType());
+            Assert.Equal(gameSession.Id, clone.Id);
+            Assert.Equal(gameSession.MatchId, clone.MatchId);
+            Assert.Equal(modus, clone.Modus);
+            Assert.Equal(gameSession.Phase, clone.Phase);
+            Assert.Equal(gameSession.ActivePlayer, clone.ActivePlayer);
+            Assert.Equal(gameSession.OtherPlayer, clone.OtherPlayer);
+            Assert.Equal(gameSession.TurnNumber, clone.TurnNumber);
+            Assert.Equal(gameSession.Result, clone.Result);
+            Assert.Null(clone.StartedAt);
+            Assert.Null(clone.EndedAt);
+            Assert.Equal(0, clone.Duration);
+            Assert.Empty(clone.DiceRolls);
+            Assert.Empty(clone.MoveSequences);
+            Assert.NotSame(gameSession.BoardModel, clone.BoardModel);
+            Assert.Equal(gameSession.BoardModel.Fields, clone.BoardModel.Fields);
+            Assert.NotSame(gameSession.BoardModel.Fields, clone.BoardModel.Fields);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon, true)]
+        [InlineData(GameModus.Tavla, true)]
+        [InlineData(GameModus.Portes, true)]
+        [InlineData(GameModus.Plakoto, true)]
+        [InlineData(GameModus.Fevga, true)]
+        [InlineData(GameModus.Backgammon, false)]
+        [InlineData(GameModus.Tavla, false)]
+        [InlineData(GameModus.Portes, false)]
+        [InlineData(GameModus.Plakoto, false)]
+        [InlineData(GameModus.Fevga, false)]
+        public void GameSessionCloneCopiesDiceAndLegalMovesIndependently(GameModus modus, bool isWhite)
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var playerId = Guid.NewGuid();
+            gameSession.StartGame(playerId, Guid.NewGuid());
+            gameSession.SetDiceRolls([2, 3], isWhite);
+
+            var clone = Assert.IsAssignableFrom<IGameSessionModel>(Assert.IsAssignableFrom<ICloneable>(gameSession).Clone());
+
+            Assert.Equal(gameSession.Phase, clone.Phase);
+            Assert.Equal(gameSession.StartedAt, clone.StartedAt);
+            Assert.Equal(gameSession.ActivePlayer, clone.ActivePlayer);
+            Assert.Equal(gameSession.OtherPlayer, clone.OtherPlayer);
+            Assert.NotSame(gameSession.DiceRolls, clone.DiceRolls);
+            Assert.Equal(gameSession.DiceRolls.Count, clone.DiceRolls.Count);
+            for (var diceIndex = 0; diceIndex < gameSession.DiceRolls.Count; diceIndex++)
+            {
+                Assert.NotSame(gameSession.DiceRolls[diceIndex], clone.DiceRolls[diceIndex]);
+                Assert.Equal(gameSession.DiceRolls[diceIndex].Roll, clone.DiceRolls[diceIndex].Roll);
+                Assert.Equal(gameSession.DiceRolls[diceIndex].Used, clone.DiceRolls[diceIndex].Used);
+            }
+
+            Assert.NotEmpty(clone.MoveSequences);
+            Assert.NotSame(gameSession.MoveSequences, clone.MoveSequences);
+            Assert.Equal(gameSession.MoveSequences.Count, clone.MoveSequences.Count);
+            for (var sequenceIndex = 0; sequenceIndex < gameSession.MoveSequences.Count; sequenceIndex++)
+            {
+                var originalSequence = gameSession.MoveSequences[sequenceIndex];
+                var clonedSequence = clone.MoveSequences[sequenceIndex];
+                Assert.NotSame(originalSequence, clonedSequence);
+                Assert.NotSame(originalSequence.Moves, clonedSequence.Moves);
+                Assert.NotSame(originalSequence.UsedDices, clonedSequence.UsedDices);
+                Assert.Equal(originalSequence.Moves, clonedSequence.Moves);
+                Assert.Equal(originalSequence.UsedDices, clonedSequence.UsedDices);
+                for (var moveIndex = 0; moveIndex < originalSequence.Moves.Count; moveIndex++)
+                {
+                    Assert.NotSame(originalSequence.Moves[moveIndex], clonedSequence.Moves[moveIndex]);
+                }
+            }
+
+            clone.DiceRolls[0].Use();
+            clone.MoveSequences[0].Moves[0].From = 99;
+            clone.MoveSequences[0].UsedDices.Clear();
+            Assert.All(gameSession.DiceRolls, dice => Assert.False(dice.Used));
+            Assert.NotEqual(99, gameSession.MoveSequences[0].Moves[0].From);
+            Assert.NotEmpty(gameSession.MoveSequences[0].UsedDices);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
+        public void GameSessionCloneCanUndoMovesWithoutChangingOriginal(GameModus modus)
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var playerId = Guid.NewGuid();
+            gameSession.StartGame(playerId, Guid.NewGuid());
+            gameSession.SetDiceRolls([2, 3], true);
+            var initialFields = gameSession.BoardModel.Fields.ToArray();
+            var moves = gameSession.MoveSequences.First().Moves.ToArray();
+            Assert.Equal(2, moves.Length);
+            foreach (var move in moves)
+            {
+                gameSession.MoveCheckers(playerId, move.From, move.To, true);
+            }
+            var movedFields = gameSession.BoardModel.Fields.ToArray();
+            var originalHistory = gameSession.BoardModel.History.ToString();
+
+            var clone = Assert.IsAssignableFrom<IGameSessionModel>(Assert.IsAssignableFrom<ICloneable>(gameSession).Clone());
+
+            Assert.True(clone.CanUndoLastMove(playerId));
+            clone.UndoLastMove(playerId, true);
+            Assert.True(clone.CanUndoLastMove(playerId));
+            clone.UndoLastMove(playerId, true);
+            Assert.False(clone.CanUndoLastMove(playerId));
+            Assert.Equal(initialFields, clone.BoardModel.Fields);
+            Assert.All(clone.DiceRolls, dice => Assert.False(dice.Used));
+            Assert.Single(clone.BoardModel.History.Events);
+            Assert.Equal(movedFields, gameSession.BoardModel.Fields);
+            Assert.All(gameSession.DiceRolls, dice => Assert.True(dice.Used));
+            Assert.Equal(originalHistory, gameSession.BoardModel.History.ToString());
+            Assert.True(gameSession.CanUndoLastMove(playerId));
+            gameSession.UndoLastMove(playerId, true);
+            Assert.True(gameSession.CanUndoLastMove(playerId));
+            gameSession.UndoLastMove(playerId, true);
+            Assert.Equal(initialFields, gameSession.BoardModel.Fields);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
+        public void GameSessionClonePreservesCompletedStateAndHistory(GameModus modus)
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var player1Id = Guid.NewGuid();
+            var player2Id = Guid.NewGuid();
+            gameSession.StartGame(player1Id, player2Id);
+            gameSession.SetDiceRolls([2, 3], true);
+            gameSession.NextTurn(player2Id);
+            var result = new GameResultModel(player2Id, GameResult.Resign, GameResult.LostResign, 2);
+            gameSession.StopGame(result);
+
+            var clone = Assert.IsAssignableFrom<IGameSessionModel>(Assert.IsAssignableFrom<ICloneable>(gameSession).Clone());
+
+            Assert.Equal(gameSession.Id, clone.Id);
+            Assert.Equal(GamePhase.GameOver, clone.Phase);
+            Assert.Equal(gameSession.TurnNumber, clone.TurnNumber);
+            Assert.Equal(player2Id, clone.ActivePlayer);
+            Assert.Equal(player1Id, clone.OtherPlayer);
+            Assert.Equal(result, clone.Result);
+            Assert.Equal(gameSession.StartedAt, clone.StartedAt);
+            Assert.Equal(gameSession.EndedAt, clone.EndedAt);
+            Assert.Equal(gameSession.Duration, clone.Duration);
+            Assert.NotSame(gameSession.BoardModel.History, clone.BoardModel.History);
+            Assert.Equal(gameSession.BoardModel.History.Events.Count, clone.BoardModel.History.Events.Count);
+            Assert.Equal(gameSession.BoardModel.History.ToString(), clone.BoardModel.History.ToString());
+            clone.BoardModel.Fields[0] = 99;
+            Assert.NotEqual(99, gameSession.BoardModel.Fields[0]);
+            clone.StopGame(GameResultModel.Draw());
+            Assert.Equal(result, gameSession.Result);
+        }
+
+        [Fact]
+        public void PlakotoGameSessionClonePreservesPinnedMotherGameOver()
+        {
+            var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), GameModus.Plakoto);
+            var pinModel = Assert.IsAssignableFrom<IPinModel>(gameSession.BoardModel);
+            pinModel.PinnedFields[0] = -1;
+            pinModel.PinnedFields[23] = 1;
+            Assert.True(gameSession.GameOver(true));
+            Assert.True(gameSession.GameOver(false));
+
+            var clone = Assert.IsAssignableFrom<IGameSessionModel>(Assert.IsAssignableFrom<ICloneable>(gameSession).Clone());
+
+            Assert.True(clone.GameOver(true));
+            Assert.True(clone.GameOver(false));
+            var clonedPinModel = Assert.IsAssignableFrom<IPinModel>(clone.BoardModel);
+            Assert.NotSame(pinModel.PinnedFields, clonedPinModel.PinnedFields);
+            clonedPinModel.PinnedFields[0] = 0;
+            Assert.Equal(-1, pinModel.PinnedFields[0]);
+            Assert.False(clone.GameOver(true));
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
         public void GameSessionCreateTest(GameModus modus)
         {
             var matchId = Guid.NewGuid();

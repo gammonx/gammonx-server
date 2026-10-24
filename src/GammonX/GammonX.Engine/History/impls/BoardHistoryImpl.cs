@@ -2,7 +2,7 @@
 namespace GammonX.Engine.History
 {
 	// <inheritdoc />
-	internal sealed class BoardHistoryImpl : IBoardHistory, IEditableBoardHistory
+	internal sealed class BoardHistoryImpl : IBoardHistory, IEditableBoardHistory, ICloneable
     {
 		private Stack<IHistoryEvent> _history;
 
@@ -38,6 +38,16 @@ namespace GammonX.Engine.History
 		public bool TryPeekLast(out IHistoryEvent? lastEvent)
 		{
 			return _history.TryPeek(out lastEvent);
+		}
+		
+		// <inheritdoc />
+		public object Clone()
+		{
+			var historyClone = _history.Select(e => (IHistoryEvent)((ICloneable)e).Clone()).Reverse();
+			return new BoardHistoryImpl()
+			{
+				_history = new Stack<IHistoryEvent>(historyClone)
+			};
 		}
 	}
 }

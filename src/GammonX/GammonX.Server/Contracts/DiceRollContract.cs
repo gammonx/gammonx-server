@@ -3,7 +3,7 @@
 namespace GammonX.Server.Contracts
 {
 	[DataContract]
-	public class DiceRollContract
+	public class DiceRollContract : ICloneable
 	{
 		[DataMember(Name = "roll")]
 		public int Roll { get; set; }
@@ -31,6 +31,15 @@ namespace GammonX.Server.Contracts
 		public void Revert()
 		{
 			Used = false;
+		}
+
+		// <inheritdoc />
+		public object Clone()
+		{
+			return new DiceRollContract(this.Roll)
+			{
+				Used = this.Used
+			};
 		}
 	}
 }

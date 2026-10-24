@@ -24,6 +24,12 @@ namespace GammonX.Engine.History
             _cubeAction = cubeAction;
         }
 
+         // <inheritdoc />
+        public object Clone()
+        {
+            return new CubeEventValueImpl(_cubeAction);
+        }
+
         // <inheritdoc />
         public object GetValue()
         {

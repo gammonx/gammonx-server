@@ -3,6 +3,8 @@
 ## 23.10.2026
 ### Fixes
 - made JoinRequest validation for bot queue more robust
+- made turn timer match mode specific
+- made match and game session cloneable through out the stack
 
 ## 17.09.2026
 - added general implementation for a `ResilientHttpClient`

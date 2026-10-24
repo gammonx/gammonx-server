@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -7,6 +8,89 @@ namespace GammonX.Engine.Tests
 {
 	public class BoardBaseTests
 	{
+		[Theory]
+		[InlineData(GameModus.Backgammon)]
+		[InlineData(GameModus.Portes)]
+		[InlineData(GameModus.Tavla)]
+		[InlineData(GameModus.Plakoto)]
+		[InlineData(GameModus.Fevga)]
+		public void BoardClonePreservesStateAndCopiesHistoryIndependently(GameModus modus)
+		{
+			var contract = CreateContract();
+			contract.Fields[0] = -4;
+			contract.Fields[23] = 3;
+			contract.PinnedFields![6] = -1;
+			contract.BearOffCountWhite = 2;
+			contract.BearOffCountBlack = 3;
+			contract.HomeBarCountWhite = 4;
+			contract.HomeBarCountBlack = 5;
+			contract.DoublingCubeValue = 4;
+			var service = BoardServiceFactory.Create(modus);
+			var board = service.CreateBoard(contract);
+			service.AddRollEventToHistory(board, true, [2, 3]);
+			service.AddRollEventToHistory(board, false, [4, 5]);
+
+			var clone = board.DeepClone();
+
+			Assert.NotSame(board, clone);
+			Assert.Equal(board.GetType(), clone.GetType());
+			Assert.Equal(board.Modus, clone.Modus);
+			Assert.Equal(board.Fields, clone.Fields);
+			Assert.NotSame(board.Fields, clone.Fields);
+			Assert.Equal(board.BearOffCountWhite, clone.BearOffCountWhite);
+			Assert.Equal(board.BearOffCountBlack, clone.BearOffCountBlack);
+			Assert.Equal(board.PipCountWhite, clone.PipCountWhite);
+			Assert.Equal(board.PipCountBlack, clone.PipCountBlack);
+			Assert.NotSame(board.History, clone.History);
+			Assert.NotSame(board.History.Events, clone.History.Events);
+			var originalEvents = board.History.Events.ToArray();
+			var clonedEvents = clone.History.Events.ToArray();
+			Assert.Equal(2, clonedEvents.Length);
+			for (var eventIndex = 0; eventIndex < originalEvents.Length; eventIndex++)
+			{
+				Assert.NotSame(originalEvents[eventIndex], clonedEvents[eventIndex]);
+				Assert.NotSame(originalEvents[eventIndex].Value, clonedEvents[eventIndex].Value);
+				Assert.Equal(originalEvents[eventIndex].ToString(), clonedEvents[eventIndex].ToString());
+			}
+			var clonedRolls = Assert.IsType<int[]>(clonedEvents[0].Value.GetValue());
+			clonedRolls[0] = 99;
+			Assert.Equal(new[] { 4, 5 }, Assert.IsType<int[]>(originalEvents[0].Value.GetValue()));
+			Assert.IsAssignableFrom<IEditableBoardHistory>(clone.History).TryRemoveLast();
+			Assert.Equal(2, board.History.Events.Count);
+			Assert.Single(clone.History.Events);
+
+			if (board is IHomeBarModel homeBar)
+			{
+				var clonedHomeBar = Assert.IsAssignableFrom<IHomeBarModel>(clone);
+				Assert.Equal(homeBar.HomeBarCountWhite, clonedHomeBar.HomeBarCountWhite);
+				Assert.Equal(homeBar.HomeBarCountBlack, clonedHomeBar.HomeBarCountBlack);
+				clonedHomeBar.AddToHomeBar(true, 1);
+				Assert.Equal(4, homeBar.HomeBarCountWhite);
+			}
+			if (board is IPinModel pinModel)
+			{
+				var clonedPinModel = Assert.IsAssignableFrom<IPinModel>(clone);
+				Assert.Equal(pinModel.PinnedFields, clonedPinModel.PinnedFields);
+				Assert.NotSame(pinModel.PinnedFields, clonedPinModel.PinnedFields);
+				clonedPinModel.PinnedFields[6] = 0;
+				Assert.Equal(-1, pinModel.PinnedFields[6]);
+			}
+			if (board is IDoublingCubeModel cubeModel)
+			{
+				var clonedCubeModel = Assert.IsAssignableFrom<IDoublingCubeModel>(clone);
+				Assert.Equal(cubeModel.DoublingCubeValue, clonedCubeModel.DoublingCubeValue);
+				Assert.Equal(cubeModel.DoublingCubeOwner, clonedCubeModel.DoublingCubeOwner);
+				clonedCubeModel.DoublingCubeOwner = false;
+				Assert.True(cubeModel.DoublingCubeOwner);
+			}
+			clone.Fields[0] = 99;
+			Assert.Equal(-4, board.Fields[0]);
+			board.Fields[23] = 98;
+			Assert.Equal(3, clone.Fields[23]);
+			clone.BearOffChecker(true, 1);
+			Assert.Equal(2, board.BearOffCountWhite);
+		}
+
 		[Theory]
 		[InlineData(GameModus.Backgammon)]
 		[InlineData(GameModus.Portes)]

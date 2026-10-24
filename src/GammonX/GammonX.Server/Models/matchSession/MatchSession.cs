@@ -10,14 +10,17 @@ using MatchType = GammonX.Models.Enums.MatchType;
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public abstract class MatchSession : IMatchSessionModel
+	public abstract class MatchSession : IMatchSessionModel, ICloneable
     {
         private readonly SemaphoreSlim _stateMutex = new(1, 1);
 
         private readonly Func<IMatchSessionModel, bool> _isMatchOver;
-		private readonly GameModus[] _rounds;
-		private readonly IGameSessionModel[] _gameSessions;
-		private readonly IGameSessionFactory _gameSessionFactory;
+
+		protected GameModus[] Rounds { get; init; }
+
+		protected IGameSessionModel?[] GameSessions { get; init;}
+
+		protected readonly IGameSessionFactory _gameSessionFactory;
 
 		protected string LastExecutedCommand = string.Empty;
 
@@ -25,7 +28,7 @@ namespace GammonX.Server.Models
         public Guid Id { get; }
 
 		// <inheritdoc />
-		public int GameRound { get; private set; }
+		public int GameRound { get; protected set; }
 
 		// <inheritdoc />
 		public MatchVariant Variant { get; }
@@ -40,10 +43,10 @@ namespace GammonX.Server.Models
         public BotLevel BotLevel { get; }
 
 		// <inheritdoc />
-		public DateTime? StartedAt { get; private set; }
+		public DateTime? StartedAt { get; protected set; }
 
 		// <inheritdoc />
-		public DateTime? EndedAt { get; private set; }
+		public DateTime? EndedAt { get; protected set; }
 
 		// <inheritdoc />
 		public long Duration
@@ -60,10 +63,10 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public MatchPlayerModel Player1 { get; private set; }
+		public MatchPlayerModel Player1 { get; protected set; }
 
 		// <inheritdoc />
-		public MatchPlayerModel Player2 { get; private set; }
+		public MatchPlayerModel Player2 { get; protected set; }
 
 		protected MatchSession(
 			Guid id, 
@@ -76,8 +79,8 @@ namespace GammonX.Server.Models
 			Modus = queueKey.MatchModus;
 			Type = queueKey.MatchType;
 			BotLevel = queueKey.BotLevel;
-			_rounds = GetGameModusList(queueKey.MatchType);
-			_gameSessions = new IGameSessionModel[_rounds.Length];
+			Rounds = GetGameModusList(queueKey.MatchType);
+			GameSessions = new IGameSessionModel[Rounds.Length];
 			_gameSessionFactory = gameSessionFactory;
 			var emptyPlayerConnection = new PlayerConnection(Guid.Empty);
 			emptyPlayerConnection.SetConnectionId(string.Empty);
@@ -145,7 +148,7 @@ namespace GammonX.Server.Models
 				Player2 != null &&
 				Player2.NextGameAccepted &&
 				// game 1 starts next or max the last game round is available
-				(GameRound == 1 || GameRound + 1 <= _rounds.Length) &&
+				(GameRound == 1 || GameRound + 1 <= Rounds.Length) &&
 				(activeGameSession == null || activeGameSession.Phase == GamePhase.GameOver);
 		}
 
@@ -368,9 +371,9 @@ namespace GammonX.Server.Models
             // we must ensure that in a cash game all remaining games are considered as over
             if (Type == MatchType.CashGame)
 			{
-                for (int i = 0; i < _gameSessions.Length; i++)
+                for (int i = 0; i < GameSessions.Length; i++)
                 {
-                    var gameSession = _gameSessions[i];
+                    var gameSession = GameSessions[i];
                     if (gameSession == null || gameSession.Phase != GamePhase.GameOver)
                     {
                         gameSession ??= GetOrCreateGameSession(i + 1);
@@ -383,7 +386,7 @@ namespace GammonX.Server.Models
 						otherPlayer.Points += pointsToAward;
                     }
                 }
-				GameRound = _gameSessions.Length;
+				GameRound = GameSessions.Length;
             }
 			else
 			{
@@ -432,7 +435,7 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public GameModus GetGameModus()
 		{
-			return _rounds[GameRound - 1];
+			return Rounds[GameRound - 1];
 		}
 
 		// <inheritdoc />
@@ -498,18 +501,18 @@ namespace GammonX.Server.Models
 		public IGameSessionModel? GetGameSession(int gameRound)
 		{
 			var targetIndex = gameRound - 1;
-            if (targetIndex < _gameSessions.Length)
+            if (targetIndex < GameSessions.Length)
             {
-                var existingSession = _gameSessions[targetIndex];
+                var existingSession = GameSessions[targetIndex];
                 return existingSession;
             }
 			return null;
 		}
 
 		// <inheritdoc />
-		public IGameSessionModel[] GetGameSessions()
+		public IGameSessionModel?[] GetGameSessions()
 		{
-			return _gameSessions;
+			return GameSessions;
 		}
 
 		#region Abstract Methods
@@ -636,7 +639,7 @@ namespace GammonX.Server.Models
                 gameSession.StartGame(callingPlayerId, otherPlayerId);
                 return gameSession;
             }
-            else if (GameRound <= _rounds.Length)
+            else if (GameRound <= Rounds.Length)
             {
                 GameRound++;
                 var newSession = GetOrCreateGameSession(GameRound);
@@ -656,7 +659,7 @@ namespace GammonX.Server.Models
 			{
 				var activeModus = GetGameModus();
 				var newSession = _gameSessionFactory.Create(Id, activeModus);
-				_gameSessions[round - 1] = newSession;
+				GameSessions[round - 1] = newSession;
 				return newSession;
 			}
 			return existingSession;
@@ -665,9 +668,9 @@ namespace GammonX.Server.Models
 		private GameRoundContract[] GetGameRoundContracts()
 		{
 			var gameRoundContracts = new List<GameRoundContract>();
-			for (int gameRoundIndex = 0; gameRoundIndex < _gameSessions.Length; gameRoundIndex++)
+			for (int gameRoundIndex = 0; gameRoundIndex < GameSessions.Length; gameRoundIndex++)
 			{
-				var session = _gameSessions[gameRoundIndex];
+				var session = GameSessions[gameRoundIndex];
 				// if game round is already started or played
 				if (session != null)
 				{
@@ -708,5 +711,12 @@ namespace GammonX.Server.Models
         }
 
         #endregion State Mutex Impl
+
+		#region ICloneable Impl
+
+		// <inheritdoc />
+		public abstract object Clone();
+
+		#endregion ICloneable Impl
     }
 }

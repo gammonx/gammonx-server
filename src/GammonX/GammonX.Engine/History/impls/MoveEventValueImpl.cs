@@ -39,5 +39,11 @@ namespace GammonX.Engine.History
 			}
 			return $"{position}";
 		}
-	}
+
+		// <inheritdoc />
+        public object Clone()
+        {
+            return new MoveEventValueImpl(_moves.ToArray());
+        }
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.History;
+
 using GammonX.Models.Enums;
 
 // ReSharper disable NonReadonlyMemberInGetHashCode
@@ -26,7 +27,7 @@ namespace GammonX.Engine.Models
 		public abstract int[] Fields { get; protected set; }
 
 		// <inheritdoc />
-		public IBoardHistory History { get; } = new BoardHistoryImpl();
+		public IBoardHistory History { get; init; } = new BoardHistoryImpl();
 
 		// <inheritdoc />
 		public abstract Range HomeRangeWhite { get; }

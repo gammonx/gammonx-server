@@ -18,6 +18,51 @@ namespace GammonX.Server.Tests.Match
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
+		public void BackgammonMatchSessionCloneCanRespondToPendingDoubleIndependently(bool accept)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, MatchType.CashGame, _matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartMatch(session.Player1.Id);
+			var cubeSession = Assert.IsAssignableFrom<IDoubleCubeMatchSession>(session);
+			cubeSession.OfferDouble(session.Player1.Id);
+			var originalHistory = gameSession.BoardModel.History.ToString();
+
+			var clone = Assert.IsType<BackgammonMatchSession>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.True(clone.IsDoubleOfferPending);
+			var clonedGame = clone.GetGameSession(clone.GameRound);
+			Assert.NotNull(clonedGame);
+			Assert.Equal(gameSession.ActivePlayer, clonedGame.ActivePlayer);
+			Assert.Equal(gameSession.OtherPlayer, clonedGame.OtherPlayer);
+			Assert.Equal(
+				session.GetGameState(session.Player2.Id).AllowedCommands,
+				clone.GetGameState(clone.Player2.Id).AllowedCommands);
+			if (accept)
+			{
+				clone.AcceptDouble(clone.Player2.Id);
+				Assert.Equal(2, clone.GetDoublingCubeValue());
+				Assert.Equal(clone.Player1.Id, clonedGame.ActivePlayer);
+			}
+			else
+			{
+				clone.DeclineDouble(clone.Player2.Id);
+				Assert.Equal(GamePhase.GameOver, clonedGame.Phase);
+				Assert.Equal(clone.Player1.Id, clonedGame.Result.WinnerId);
+				Assert.Equal(1, clone.Player1.Points);
+			}
+			Assert.False(clone.IsDoubleOfferPending);
+			Assert.True(cubeSession.IsDoubleOfferPending);
+			Assert.Equal(1, cubeSession.GetDoublingCubeValue());
+			Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
+			Assert.Equal(session.Player2.Id, gameSession.ActivePlayer);
+			Assert.Equal(0, session.Player1.Points);
+			Assert.Equal(originalHistory, gameSession.BoardModel.History.ToString());
+		}
+
 		[Fact]
 		public void BackgammonSingleGameScoreIsCalculatedWhite()
 		{

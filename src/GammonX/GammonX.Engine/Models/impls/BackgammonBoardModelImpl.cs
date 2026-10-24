@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -182,14 +183,15 @@ namespace GammonX.Engine.Models
 		{
 			return new BackgammonBoardModelImpl()
 			{
-				BearOffCountWhite = BearOffCountWhite,
-				BearOffCountBlack = BearOffCountBlack,
-				HomeBarCountWhite = HomeBarCountWhite,
-				HomeBarCountBlack = HomeBarCountBlack,
-				DoublingCubeOwner = DoublingCubeOwner,
-				DoublingCubeValue = DoublingCubeValue,
+				BearOffCountWhite = this.BearOffCountWhite,
+				BearOffCountBlack = this.BearOffCountBlack,
+				HomeBarCountWhite = this.HomeBarCountWhite,
+				HomeBarCountBlack = this.HomeBarCountBlack,
+				DoublingCubeOwner = this.DoublingCubeOwner,
+				DoublingCubeValue = this.DoublingCubeValue,
 				// clone is okay for primitive types
-				Fields = (int[])Fields.Clone(),
+				Fields = (int[])this.Fields.Clone(),
+				History = (IBoardHistory)((ICloneable)this.History).Clone()
 			};
 		}
 

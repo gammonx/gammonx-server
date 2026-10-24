@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -138,6 +139,7 @@ namespace GammonX.Engine.Models
 				HomeBarCountBlack = HomeBarCountBlack,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
+				History = (IBoardHistory)((ICloneable)this.History).Clone()
 			};
 		}
 
