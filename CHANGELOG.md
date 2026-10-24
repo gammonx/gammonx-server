@@ -5,6 +5,7 @@
 - made JoinRequest validation for bot queue more robust
 - made turn timer match mode specific
 - made match and game session cloneable through out the stack
+- made pre-error match and game states retrievable
 
 ## 17.09.2026
 - added general implementation for a `ResilientHttpClient`

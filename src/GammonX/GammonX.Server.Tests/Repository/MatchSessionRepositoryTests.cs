@@ -53,7 +53,9 @@ namespace GammonX.Server.Tests.Repository
             var created = repo.Create(id, _defaultKey);
             var fetched = repo.Get(id);
 
-            Assert.Same(created, fetched);
+            Assert.NotNull(fetched);
+            Assert.Equal(created.Id, fetched.Id);
+            Assert.NotSame(created, fetched);
         }
 
         [Fact]
@@ -64,6 +66,76 @@ namespace GammonX.Server.Tests.Repository
             var result = repo.Get(Guid.NewGuid());
 
             Assert.Null(result);
+        }
+
+        [Fact]
+        public void UncommittedChangesDoNotChangeStoredSession()
+        {
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var session = repo.Create(id, _defaultKey);
+
+            Action command = () =>
+            {
+                session.Player1.SetStartDiceRoll(2);
+                session.Player1.AcceptNextGame();
+                throw new InvalidOperationException("Command failed after changing the snapshot.");
+            };
+
+            Assert.Throws<InvalidOperationException>(command);
+
+            var stored = Assert.IsAssignableFrom<IMatchSessionModel>(repo.Get(id));
+            Assert.Null(stored.Player1.StartDiceRoll);
+            Assert.False(stored.Player1.NextGameAccepted);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void CommitCapturesStateBeforeSubsequentCallerMutations(bool readBeforeMutation)
+        {
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var session = repo.Create(id, _defaultKey);
+            session.Player1.SetStartDiceRoll(2);
+            session.Player1.AcceptNextGame();
+
+            Assert.True(repo.Commit(session));
+            if (readBeforeMutation)
+            {
+                Assert.NotNull(repo.Get(id));
+            }
+
+            session.Player1.SetStartDiceRoll(6);
+            session.Player1.ActiveGameOver();
+
+            var stored = Assert.IsAssignableFrom<IMatchSessionModel>(repo.Get(id));
+            Assert.Equal(2, stored.Player1.StartDiceRoll);
+            Assert.True(stored.Player1.NextGameAccepted);
+            Assert.NotSame(session, stored);
+
+            stored.Player1.SetStartDiceRoll(1);
+            Assert.Equal(2, repo.Get(id)!.Player1.StartDiceRoll);
+        }
+
+        [Fact]
+        public void CommitMissingSessionReturnsFalseWithoutCreatingIt()
+        {
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var session = repo.Create(id, _defaultKey);
+            repo.Remove(id);
+
+            Assert.False(repo.Commit(session));
+            Assert.Null(repo.Get(id));
+        }
+
+        [Fact]
+        public void CommitNullSessionThrowsArgumentNullException()
+        {
+            var repo = CreateRepo();
+
+            Assert.Throws<ArgumentNullException>(() => repo.Commit(null!));
         }
 
         [Fact]
@@ -87,7 +159,8 @@ namespace GammonX.Server.Tests.Repository
             var first = repo.GetOrCreate(id, _defaultKey);
             var second = repo.GetOrCreate(id, _defaultKey);
 
-            Assert.Same(first, second);
+            Assert.Equal(first.Id, second.Id);
+            Assert.NotSame(first, second);
         }
 
         [Fact]
@@ -177,7 +250,7 @@ namespace GammonX.Server.Tests.Repository
             );
 
             // all tasks should return the exact same instance
-            var distinctInstances = tasks.Select(t => t.Result).Distinct().ToList();
+            var distinctInstances = tasks.Select(t => t.Result?.Id).Distinct().ToList();
             Assert.Single(distinctInstances);
         }
 

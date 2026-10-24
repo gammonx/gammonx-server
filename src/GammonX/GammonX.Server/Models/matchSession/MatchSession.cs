@@ -10,7 +10,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 namespace GammonX.Server.Models
 {
 	// <inheritdoc />
-	public abstract class MatchSession : IMatchSessionModel, ICloneable
+	public abstract class MatchSession : IMatchSessionModel
     {
         private readonly SemaphoreSlim _stateMutex = new(1, 1);
 
