@@ -5,7 +5,7 @@ namespace GammonX.Models
     /// <summary>
     /// Provides the information on how a game concluded for the winning and losing player.
     /// </summary>
-    public struct GameResultModel
+    public record struct GameResultModel
     {
         /// <summary>
         /// Gets the player id of the winner.
@@ -13,17 +13,17 @@ namespace GammonX.Models
         /// <remarks>
         /// Returns <c>null</c> if game results in a <see cref="GameResult.Draw"/>.
         /// </remarks>
-        public Guid? WinnerId { get; private set; }
+        public Guid? WinnerId { get; }
 
         /// <summary>
         /// Gets the game result of the winning player.
         /// </summary>
-        public GameResult WinnerResult { get; private set; }
+        public GameResult WinnerResult { get; }
 
         /// <summary>
         /// Gets the game result of the losing player.
         /// </summary>
-        public GameResult LoserResult { get; private set; }
+        public GameResult LoserResult { get; }
 
         /// <summary>
         /// Gets the points awarded to the winning player.

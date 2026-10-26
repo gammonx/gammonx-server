@@ -285,11 +285,8 @@ namespace GammonX.Server.Tests.Queue
             match.StartMatch(match.Player1.Id);
             var gameSession = match.GetGameSession(match.GameRound);
             Assert.NotNull(gameSession);
-            gameSession.StopGame(new GameResultModel(
-                player1Id,
-                GameResult.Gammon,
-                GameResult.LostGammon,
-                2));
+            // We resign the match and stop the game implicitly
+            match.ResignMatch(player1Id);
             return match;
         }
 

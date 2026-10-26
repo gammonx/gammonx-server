@@ -182,7 +182,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns all game sessions of this match session.
 		/// </summary>
-		/// <returns>An array of <see cref="IGameSessionModel?"/> instances.</returns>
+		/// <returns>An array of <see cref="IGameSessionModel"/> instances.</returns>
 		IGameSessionModel?[] GetGameSessions();
 
 		/// <summary>

@@ -19,7 +19,7 @@ namespace GammonX.Server.Models
         protected IBoardService BoardService { get; init; }
 
         // <inheritdoc />
-        public GameModus Modus { get; private set; }
+        public GameModus Modus { get; }
 
 		// <inheritdoc />
 		public Guid MatchId { get; init; }
@@ -100,6 +100,10 @@ namespace GammonX.Server.Models
 		{
 			Result = result;
 			Phase = GamePhase.GameOver;
+			if (!StartedAt.HasValue)
+			{
+                StartedAt = DateTime.UtcNow;
+			}
 			EndedAt = DateTime.UtcNow;
 		}
 

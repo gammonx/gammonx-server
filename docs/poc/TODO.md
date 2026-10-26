@@ -3,6 +3,11 @@
 
 ## Active
 - beta bug fixes
+- expert (2ply) mode optimizations
+    - performance > enable selective 2-ply search?
+    - max candidates based on 1-ply search?
+    - consider 10s timeout for mars move eval requests
+    - add resilience patterns for mars requests (retry/timeouts)
 
 ## TODO
 - update nn arch of plakoto/fevga to > 5
@@ -11,11 +16,6 @@
 - clientside resilience patterns when error occurred
     - get game/match state so allowed commands reset
     - maybe also serverside?
-- expert (2ply) mode optimizations
-    - performance > enable selective 2-ply search?
-    - max candidates based on 1-ply search?
-    - consider 10s timeout for mars move eval requests
-    - add resilience patterns for mars requests (retry/timeouts)
 - stateless game service matchmaking?
     - atm in-memory per node
 - make game service stateless

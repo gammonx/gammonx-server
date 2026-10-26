@@ -43,6 +43,7 @@ namespace GammonX.Server.Tests.Integration
         private readonly Guid _player2Id = Guid.NewGuid();
         private readonly Mock<IWorkQueueService> _workQueueService;
         private readonly ICancellationTokenService _cancellationTokenService;
+        private readonly Dictionary<Guid, IMatchSessionModel> _completedMatches = new();
 
 
         public MatchHubTests()
@@ -54,10 +55,13 @@ namespace GammonX.Server.Tests.Integration
             _normalService = new NormalMatchmakingService(_playerConnRepo);
 
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
+            Assert.NotNull(mockScopeFactory);
 
             _workQueueService = new();
             _workQueueService.Setup(x => x.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            _workQueueService.Setup(x => x.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()))
+                .Callback<IMatchSessionModel, CancellationToken>((match, _) => _completedMatches[match.Id] = (IMatchSessionModel)match.Clone())
+                .Returns(Task.CompletedTask);
             _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
@@ -216,7 +220,7 @@ namespace GammonX.Server.Tests.Integration
             var move = game.MoveSequences.First().Moves.First();
             IMatchSessionModel? published = null;
             _workQueueService.Setup(service => service.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .Callback<IMatchSessionModel, int, CancellationToken>((match, round, cancellationToken) => published = _matchRepo.Get(match.Id))
+                .Callback<IMatchSessionModel, int, CancellationToken>((match, _, _) => published = _matchRepo.Get(match.Id))
                 .Returns(Task.CompletedTask);
 
             await fixture.Hub.MoveAsync(fixture.Session.Id.ToString(), move.From, move.To);
@@ -265,7 +269,7 @@ namespace GammonX.Server.Tests.Integration
             var requests = 0;
             IMatchSessionModel? expected = null;
             bot.Setup(service => service.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-                .Returns((IMatchSessionModel match, Guid playerId, CancellationToken cancellationToken) =>
+                .Returns((IMatchSessionModel match, Guid playerId, CancellationToken _) =>
                 {
                     if (++requests > 1)
                     {
@@ -361,7 +365,12 @@ namespace GammonX.Server.Tests.Integration
                 gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
                 // we need to clear the dice rolls from the match hub start and its initial roll
                 gameSession.DiceRolls.Clear();
+                _matchRepo.Commit(matchSession);
                 await hub1.RollAsync(matchIdStr);
+                matchSession = _matchRepo.Get(matchSession.Id);
+                Assert.NotNull(matchSession);
+                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                Assert.NotNull(gameSession);
                 Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
                 var gameState = matchSession.GetGameState(_player1Id);
                 Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
@@ -372,11 +381,43 @@ namespace GammonX.Server.Tests.Integration
                 gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
                 // we need to clear the dice rolls from the match hub start and its initial roll
                 gameSession.DiceRolls.Clear();
+                _matchRepo.Commit(matchSession);
                 await hub2.RollAsync(matchIdStr);
+                matchSession = _matchRepo.Get(matchSession.Id);
+                Assert.NotNull(matchSession);
+                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                Assert.NotNull(gameSession);
                 Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
                 var gameState = matchSession.GetGameState(_player2Id);
                 Assert.Contains(ServerCommands.EndTurnCommand, gameState.AllowedCommands);
             }
+        }
+
+        private IGameSessionModel GetGameSession(Guid matchId)
+        {
+            var matchSession = _matchRepo.Get(matchId);
+            Assert.NotNull(matchSession);
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            Assert.NotNull(gameSession);
+            return gameSession;
+        }
+
+        private IMatchSessionModel GetMatchSession(Guid matchId)
+        {
+            var matchSession = _matchRepo.Get(matchId);
+            if (matchSession == null)
+            {
+                Assert.True(_completedMatches.TryGetValue(matchId, out matchSession), "Match disappeared before its result was queued.");
+            }
+            Assert.NotNull(matchSession);
+            return matchSession;
+        }
+
+        private IDoubleCubeMatchSession GetDoubleCubeMatchSession(Guid matchId)
+        {
+            var matchSession = _matchRepo.Get(matchId);
+            var cubeSession = matchSession as IDoubleCubeMatchSession;
+            return cubeSession!;
         }
 
         [Theory]
@@ -397,10 +438,10 @@ namespace GammonX.Server.Tests.Integration
             var player1ConnectionId = matchSession.Player1.ConnectionId;
             var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-            var cubeSession = matchSession as IDoubleCubeMatchSession;
+            var cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
             Assert.NotNull(cubeSession);
 
-            var gameSession = matchSession.GetGameSession(matchSession.GameRound);
+            var gameSession = GetGameSession(matchSession.Id);
             Assert.NotNull(gameSession);
             // the game setup with the hub already includes an initial roll, so we need to move it first
             var firstMs = gameSession.MoveSequences.First();
@@ -414,15 +455,26 @@ namespace GammonX.Server.Tests.Integration
                 }
                 await hub1.EndTurnAsync(matchIdStr);
 
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 // player1 gets double offered event without allowed commands
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 // player2 gets double offered event with accept/decline as allowed commands
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2)); ;
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.AcceptDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
             }
             else if (gameSession.ActivePlayer == _player2Id)
@@ -435,15 +487,26 @@ namespace GammonX.Server.Tests.Integration
                 }
                 await hub2.EndTurnAsync(matchIdStr);
 
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 // player1 gets double offered event without allowed commands
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 // player2 gets double offered event with accept/decline as allowed commands
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.AcceptDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
             }
 
@@ -468,7 +531,7 @@ namespace GammonX.Server.Tests.Integration
             var player1ConnectionId = matchSession.Player1.ConnectionId;
             var player2ConnectionId = matchSession.Player2.ConnectionId;
 
-            var cubeSession = matchSession as IDoubleCubeMatchSession;
+            var cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
             Assert.NotNull(cubeSession);
 
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
@@ -486,16 +549,22 @@ namespace GammonX.Server.Tests.Integration
                 }
                 await hub1.EndTurnAsync(matchIdStr);
 
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player2Id));
                 await hub2.OfferDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 // player1 gets double offered event without allowed commands
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 // player2 gets double offered event with accept/decline as allowed commands
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub1.DeclineDoubleAsync(matchIdStr);
-                Assert.False(cubeSession.IsDoubleOfferPending);
             }
             else if (gameSession.ActivePlayer == _player2Id)
             {
@@ -507,28 +576,36 @@ namespace GammonX.Server.Tests.Integration
                 }
                 await hub2.EndTurnAsync(matchIdStr);
 
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 Assert.False(cubeSession.IsDoubleOfferPending);
                 Assert.True(cubeSession.CanOfferDouble(_player1Id));
                 await hub1.OfferDoubleAsync(matchIdStr);
+
+                cubeSession = GetDoubleCubeMatchSession(matchSession.Id);
+                Assert.NotNull(cubeSession);
+
                 // player1 gets double offered event without allowed commands
-                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 // player2 gets double offered event with accept/decline as allowed commands
-                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+                mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.DoubleOfferedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
                 Assert.True(cubeSession.IsDoubleOfferPending);
                 await hub2.DeclineDoubleAsync(matchIdStr);
-                Assert.False(cubeSession.IsDoubleOfferPending);
             }
 
-            Assert.Equal(1, cubeSession.GetDoublingCubeValue());
+            matchSession = GetMatchSession(matchSession.Id);
+            cubeSession = Assert.IsAssignableFrom<IDoubleCubeMatchSession>(matchSession);
             var declinedGameSession = matchSession.GetGameSession(1);
             Assert.NotNull(declinedGameSession);
+            Assert.Equal(GamePhase.GameOver, declinedGameSession.Phase);
             Assert.Equal(GameResult.DoubleDeclined, declinedGameSession.Result.WinnerResult);
             Assert.Equal(GameResult.LostDoubleDeclined, declinedGameSession.Result.LoserResult);
             Assert.Equal(1, declinedGameSession.Result.Points);
-            var winnerResult = declinedGameSession.Result.GetResult(gameSession.ActivePlayer);
-            Assert.Equal(GameResult.DoubleDeclined, winnerResult);
-            var loserResult = declinedGameSession.Result.GetResult(gameSession.OtherPlayer);
-            Assert.Equal(GameResult.LostDoubleDeclined, loserResult);
+            Assert.Equal(1, cubeSession.GetDoublingCubeValue());
+            Assert.False(cubeSession.IsDoubleOfferPending);
+            Assert.Equal(type == MatchType.CashGame, matchSession.IsMatchOver());
+            Assert.Equal(type == MatchType.CashGame, _matchRepo.Get(matchSession.Id) == null);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -566,27 +643,12 @@ namespace GammonX.Server.Tests.Integration
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
-            do
-            {
-                if (gameSession.Phase == GamePhase.GameOver)
-                {
-                    Assert.NotNull(matchSession);
-                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
-                    Assert.NotNull(gameSession);
-                }
-
-                if (gameSession.ActivePlayer == _player1Id)
-                {
-                    await hub1.ResignMatchAsync(matchIdStr);
-                }
-                else if (gameSession.ActivePlayer == _player2Id)
-                {
-                    await hub2.ResignMatchAsync(matchIdStr);
-                }
-            }
-            while (!matchSession.IsMatchOver());
+            var activeHub = gameSession.ActivePlayer == _player1Id ? hub1 : hub2;
+            await activeHub.ResignMatchAsync(matchIdStr);
+            matchSession = GetMatchSession(matchSession.Id);
 
             Assert.True(matchSession.IsMatchOver());
+            Assert.Null(_matchRepo.Get(matchSession.Id));
             Assert.False(matchSession.CanStartNextGame());
             Assert.True(matchSession.GetGameSessions().All(gs => gs == null || gs.Result.WinnerResult == GameResult.Resign));
             Assert.True(matchSession.GetGameSessions().All(gs => gs == null || gs.Result.LoserResult == GameResult.LostResign));
@@ -609,11 +671,11 @@ namespace GammonX.Server.Tests.Integration
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.Never);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -645,7 +707,7 @@ namespace GammonX.Server.Tests.Integration
             IMatchSessionModel? concludedMatch = null;
             _workQueueService
                 .Setup(service => service.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()))
-                .Callback<IMatchSessionModel, CancellationToken>((match, cancellationToken) => concludedMatch = (IMatchSessionModel)match.Clone())
+                .Callback<IMatchSessionModel, CancellationToken>((match, _) => concludedMatch = (IMatchSessionModel)match.Clone())
                 .ThrowsAsync(new InvalidOperationException("match result queue unavailable"));
 
             await hub1.ResignGameAsync(matchIdStr);
@@ -664,14 +726,14 @@ namespace GammonX.Server.Tests.Integration
             Assert.All(matchSession.GetGameSessions(), game =>
             {
                 Assert.NotNull(game);
-                Assert.Equal(GamePhase.GameOver, game!.Phase);
+                Assert.Equal(GamePhase.GameOver, game.Phase);
             });
             Assert.Null(_matchRepo.Get(matchSession.Id));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -709,14 +771,12 @@ namespace GammonX.Server.Tests.Integration
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
+            var rounds = 0;
             do
             {
-                if (gameSession.Phase == GamePhase.GameOver)
-                {
-                    Assert.NotNull(matchSession);
-                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
-                    Assert.NotNull(gameSession);
-                }
+                Assert.True(++rounds <= 100, "Match did not finish within 100 resigned games.");
+                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                Assert.NotNull(gameSession);
 
                 if (gameSession.ActivePlayer == _player1Id)
                 {
@@ -727,10 +787,12 @@ namespace GammonX.Server.Tests.Integration
                     await hub2.ResignGameAsync(matchIdStr);
                 }
 
-                if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
+                matchSession = GetMatchSession(matchSession.Id);
+                if (!matchSession.IsMatchOver())
                 {
                     await hub1.StartGameAsync(matchIdStr);
                     await hub2.StartGameAsync(matchIdStr);
+                    matchSession = GetMatchSession(matchSession.Id);
                 }
             }
             while (!matchSession.IsMatchOver());
@@ -761,11 +823,11 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
             var gameEndedCount = (playedSessions.Count - 1) * multiplier;
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
@@ -797,28 +859,27 @@ namespace GammonX.Server.Tests.Integration
             var mockClients = result.Item4;
             var groupName = result.groupName;
             var matchIdStr = matchSession.Id.ToString();
+            Assert.NotNull(matchIdStr);
             var player1ConnectionId = matchSession.Player1.ConnectionId;
             var player2ConnectionId = matchSession.Player2.ConnectionId;
 
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
+            var turns = 0;
             do
             {
-                if (gameSession.Phase == GamePhase.GameOver)
-                {
-                    Assert.NotNull(matchSession);
-                    gameSession = matchSession.GetGameSession(matchSession.GameRound);
-                    Assert.NotNull(gameSession);
-                }
+                Assert.True(++turns <= 10000, "Match did not finish within 10000 turns.");
+                gameSession = matchSession.GetGameSession(matchSession.GameRound);
+                Assert.NotNull(gameSession);
 
                 if (gameSession.ActivePlayer == _player1Id)
                 {
-                    await ExecutePlayerTurnAsync(matchSession, gameSession, hub1, hub2);
+                    matchSession = await ExecutePlayerTurnAsync(matchSession, hub1, hub2);
                 }
                 else if (gameSession.ActivePlayer == _player2Id)
                 {
-                    await ExecutePlayerTurnAsync(matchSession, gameSession, hub2, hub1);
+                    matchSession = await ExecutePlayerTurnAsync(matchSession, hub2, hub1);
                 }
             }
             while (!matchSession.IsMatchOver());
@@ -846,12 +907,12 @@ namespace GammonX.Server.Tests.Integration
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-            var gameEndedCount = playedSessions.Count - 1 * multiplier;
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.AtLeast(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.AtLeastOnce());
+            var gameEndedCount = (playedSessions.Count - 1) * multiplier;
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeast(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeast(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -901,98 +962,106 @@ namespace GammonX.Server.Tests.Integration
             var botConnectionId = matchSession.Player2.ConnectionId;
 
             // bot lobby was found
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             // player receives event with roll command
-            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             // bot player does not receive start game event
-            mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Never);
+            mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
             // bot lobby is always instantly ready
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Never);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
 
+            var startingRolls = 0;
             do
             {
+                Assert.True(++startingRolls <= 100, "Starting rolls remained tied after 100 attempts.");
                 await _hub.StartMatchAsync(matchIdStr);
+                matchSession = GetMatchSession(matchId);
             }
             while (matchSession.Player1.StartDiceRoll == matchSession.Player2.StartDiceRoll);
 
             // if player won starting roll
             if (matchSession.Player1.StartDiceRoll > matchSession.Player2.StartDiceRoll)
             {
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Once);
-                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Once);
-                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
             }
             // if bot won starting roll
             else
             {
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStateEvent, It.IsAny<object[]>(), default), Times.Exactly(3));
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Once);
-                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Never);
-                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Once);
-                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStateEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(3));
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
+                mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+                mockClients.Verify(c => c.Client(botConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
             }
 
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
-            var cubeSession = matchSession as IDoubleCubeMatchSession;
 
-            // bot offered a double
-            if (cubeSession != null && cubeSession.IsDoubleOfferPending)
-            {
-                await _hub.AcceptDoubleAsync(matchIdStr);
-            }
-
+            var turns = 0;
             do
             {
+                Assert.True(++turns <= 10000, "Bot match did not finish within 10000 turns.");
                 if (gameSession.Phase == GamePhase.GameOver)
                 {
+                    await _hub.StartGameAsync(matchIdStr);
+                    matchSession = GetMatchSession(matchId);
                     gameSession = matchSession.GetGameSession(matchSession.GameRound);
                     Assert.NotNull(gameSession);
                 }
 
                 // bot offered a double
-                if (cubeSession != null && cubeSession.IsDoubleOfferPending)
+                if (matchSession is IDoubleCubeMatchSession { IsDoubleOfferPending: true })
                 {
                     await _hub.AcceptDoubleAsync(matchIdStr);
+                    matchSession = GetMatchSession(matchId);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
+                    if (gameSession.Phase == GamePhase.GameOver)
+                    {
+                        continue;
+                    }
                 }
 
-                if (gameSession.ActivePlayer == playerId)
+                Assert.Equal(playerId, gameSession.ActivePlayer);
+                if (gameSession.Phase == GamePhase.WaitingForRoll)
                 {
                     await _hub.RollAsync(matchIdStr);
+                    matchSession = GetMatchSession(matchId);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
+                }
 
-                    var ms = gameSession.MoveSequences.FirstOrDefault();
-                    if (ms != null)
+                var ms = gameSession.MoveSequences.FirstOrDefault();
+                if (ms != null)
+                {
+                    var moves = ms.Moves.ToArray();
+                    foreach (var move in moves)
                     {
-                        var moves = ms.Moves.ToList();
-                        foreach (var move in moves)
+                        var isWhite = matchSession.Player1.Id == playerId;
+                        if (isWhite)
                         {
-                            var isWhite = matchSession.Player1.Id == playerId;
-                            if (isWhite)
-                            {
-                                await _hub.MoveAsync(matchIdStr, move.From, move.To);
-                            }
-                            else
-                            {
-                                var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-                                await _hub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-                            }
+                            await _hub.MoveAsync(matchIdStr, move.From, move.To);
+                        }
+                        else
+                        {
+                            var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                            await _hub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
+                        }
+                        matchSession = GetMatchSession(matchId);
+                        gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
+                        if (gameSession.Phase == GamePhase.GameOver)
+                        {
+                            break;
                         }
                     }
+                }
 
-                    if (gameSession.Phase != GamePhase.GameOver)
-                    {
-                        // end turn and bot executes its turn
-                        await _hub.EndTurnAsync(matchIdStr);
-                        if (gameSession.Phase == GamePhase.GameOver && !matchSession.IsMatchOver())
-                        {
-                            await _hub.StartGameAsync(matchIdStr);
-                        }
-                    }
-                    else
-                    {
-                        await _hub.StartGameAsync(matchIdStr);
-                    }
+                if (gameSession.Phase != GamePhase.GameOver)
+                {
+                    await _hub.EndTurnAsync(matchIdStr);
+                    matchSession = GetMatchSession(matchId);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
                 }
             }
             while (!matchSession.IsMatchOver());
@@ -1019,9 +1088,9 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
             var gameEndedCount = playedSessions.Count - 1;
-            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), default), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), default), Times.Once);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -1058,72 +1127,49 @@ namespace GammonX.Server.Tests.Integration
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
-            if (gameSession.ActivePlayer == _player1Id)
+            var activeHub = gameSession.ActivePlayer == _player1Id ? hub1 : hub2;
+            var isWhite = gameSession.ActivePlayer == matchSession.Player1.Id;
+            var moves = gameSession.MoveSequences.First().Moves.ToArray();
+            Assert.NotEmpty(moves);
+
+            foreach (var move in moves)
             {
-                await hub1.RollAsync(matchIdStr);
-                var ms = gameSession.MoveSequences.FirstOrDefault();
-                if (ms != null)
-                {
-                    var moves = ms.Moves.ToList();
-                    foreach (var move in moves)
-                    {
-                        var isWhite = matchSession.Player1.Id == _player1Id;
-                        if (isWhite)
-                        {
-                            await hub1.MoveAsync(matchIdStr, move.From, move.To);
-                        }
-                        else
-                        {
-                            var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-                            await hub1.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-                        }
-                    }
-                    foreach (var _ in moves)
-                    {
-                        await hub1.UndoMoveAsync(matchIdStr);
-                    }
-                }
+                var positions = isWhite
+                    ? (move.From, move.To)
+                    : BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
+                await activeHub.MoveAsync(matchIdStr, positions.Item1, positions.Item2);
             }
-            else if (gameSession.ActivePlayer == _player2Id)
+
+            Assert.NotEqual(gameSession.BoardModel, GetGameSession(matchSession.Id).BoardModel);
+            foreach (var _ in moves)
             {
-                await hub2.RollAsync(matchIdStr);
-                var ms = gameSession.MoveSequences.FirstOrDefault();
-                if (ms != null)
-                {
-                    var moves = ms.Moves.ToList();
-                    foreach (var move in moves)
-                    {
-                        var isWhite = matchSession.Player1.Id == _player2Id;
-                        if (isWhite)
-                        {
-                            await hub2.MoveAsync(matchIdStr, move.From, move.To);
-                        }
-                        else
-                        {
-                            var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
-                            await hub2.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
-                        }
-                    }
-                    foreach (var _ in moves)
-                    {
-                        await hub2.UndoMoveAsync(matchIdStr);
-                    }
-                }
+                await activeHub.UndoMoveAsync(matchIdStr);
             }
+
+            var restoredGame = GetGameSession(matchSession.Id);
+            Assert.Equal(gameSession.BoardModel, restoredGame.BoardModel);
+            Assert.Equal(GamePhase.Moving, restoredGame.Phase);
+            Assert.Equal(gameSession.DiceRolls.Select(roll => (roll.Roll, roll.Used)),
+                restoredGame.DiceRolls.Select(roll => (roll.Roll, roll.Used)));
+            Assert.Equal(gameSession.BoardModel.History.ToString(), restoredGame.BoardModel.History.ToString());
         }
 
-        private static async Task ExecutePlayerTurnAsync(IMatchSessionModel matchSession, IGameSessionModel gameSession, MatchLobbyHub activeHub, MatchLobbyHub otherHub)
+        private async Task<IMatchSessionModel> ExecutePlayerTurnAsync(IMatchSessionModel matchSession, MatchLobbyHub activeHub, MatchLobbyHub otherHub)
         {
             var matchIdStr = matchSession.Id.ToString();
 
             if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.IsDoubleOfferPending)
             {
                 await activeHub.AcceptDoubleAsync(matchIdStr);
+                matchSession = GetMatchSession(matchSession.Id);
             }
 
+            var gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
             if (gameSession.Phase == GamePhase.WaitingForRoll)
             {
                 await activeHub.RollAsync(matchIdStr);
+                matchSession = GetMatchSession(matchSession.Id);
+                gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
             }
 
             var ms = gameSession.MoveSequences.FirstOrDefault();
@@ -1148,19 +1194,18 @@ namespace GammonX.Server.Tests.Integration
                         var invertedMove = BoardBroker.InvertFromToMove(gameSession.Modus, move.From, move.To);
                         await activeHub.MoveAsync(matchIdStr, invertedMove.Item1, invertedMove.Item2);
                     }
+                    matchSession = GetMatchSession(matchSession.Id);
+                    gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
                 }
             }
 
             if (gameSession.Phase != GamePhase.GameOver)
             {
                 await activeHub.EndTurnAsync(matchIdStr);
-                if (gameSession.Phase == GamePhase.GameOver && matchSession.GameRound != matchSession.GetGameSessions().Length)
-                {
-                    await activeHub.StartGameAsync(matchIdStr);
-                    await otherHub.StartGameAsync(matchIdStr);
-                }
+                matchSession = GetMatchSession(matchSession.Id);
+                gameSession = matchSession.GetGameSession(matchSession.GameRound)!;
             }
-            else if (!matchSession.IsMatchOver())
+            if (gameSession.Phase == GamePhase.GameOver && !matchSession.IsMatchOver())
             {
                 if (gameSession.Result.Equals(GameResultModel.Draw()))
                 {
@@ -1174,7 +1219,9 @@ namespace GammonX.Server.Tests.Integration
 
                 await otherHub.StartGameAsync(matchIdStr);
                 await activeHub.StartGameAsync(matchIdStr);
+                matchSession = GetMatchSession(matchSession.Id);
             }
+            return matchSession;
         }
 
         private static async Task InvokeTurnTimeoutAsync(MatchLobbyHub hub, Guid matchId, Guid playerId)
@@ -1184,9 +1231,9 @@ namespace GammonX.Server.Tests.Integration
                 BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.NotNull(timeoutMethod);
 
-            var timeoutTask = timeoutMethod!.Invoke(hub, [matchId, playerId]) as Task;
+            var timeoutTask = timeoutMethod.Invoke(hub, [matchId, playerId]) as Task;
             Assert.NotNull(timeoutTask);
-            await timeoutTask!;
+            await timeoutTask;
         }
 
         private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(
@@ -1246,23 +1293,25 @@ namespace GammonX.Server.Tests.Integration
             Assert.Equal(player1ConnectionId, matchSession.Player1.ConnectionId);
             Assert.Equal(player2ConnectionId, matchSession.Player2.ConnectionId);
 
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), default), Times.Once);
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyWaitingEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.MatchLobbyFoundEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchWaitingForStartEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
 
             await hub1.StartMatchAsync(matchIdStr);
             await hub2.StartMatchAsync(matchIdStr);
+
             matchSession = _matchRepo.Get(matchId)!;
+            Assert.NotNull(matchSession);
 
             // only called once for the first start match command call for the second player
-            mockClients.Verify(c => c.Caller.SendCoreAsync(ServerEventTypes.MatchWaitingEvent, It.IsAny<object[]>(), default), Times.Once);
+            mockClients.Verify(c => c.Caller.SendCoreAsync(ServerEventTypes.MatchWaitingEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
             // the start match command exposes a match start event for the current match state
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            // and simulatenously a game started event for the initial board state including the starting rolls
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), default), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchStartedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            // and simultaneously a game started event for the initial board state including the starting rolls
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameStartedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
 
             // we ensure that one player has a higher starting roll than the other
             Assert.NotEqual(matchSession.Player1.StartDiceRoll, matchSession.Player2.StartDiceRoll);
@@ -1373,7 +1422,7 @@ namespace GammonX.Server.Tests.Integration
             services.AddKeyedSingleton(WellKnownBotServices.Mars, botService ?? _marsBot);
             services.AddSingleton(_playerConnRepo);
             services.AddSingleton(_cancellationTokenService);
-            _ = services.AddSingleton<IHubContext<MatchLobbyHub>>(new Mock<IHubContext<MatchLobbyHub>>().Object);
+            _ = services.AddSingleton(new Mock<IHubContext<MatchLobbyHub>>().Object);
             return services.BuildServiceProvider();
         }
 
@@ -1405,9 +1454,9 @@ namespace GammonX.Server.Tests.Integration
 
             public override string ConnectionId => _connectionId;
 
-            public override string? UserIdentifier => default;
+            public override string? UserIdentifier => null;
 
-            public override ClaimsPrincipal? User => default;
+            public override ClaimsPrincipal? User => null;
 
             public override IDictionary<object, object?> Items => new Dictionary<object, object?>();
 
