@@ -132,6 +132,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
         var startup = Stopwatch.StartNew();
         using var neuralService = Assert.IsType<BatchedNeuralEvalService>(
             BatchedNeuralEvalService.Load(GameModus.Backgammon, modelPath, CPU, tuning?.MaxBatchSize ?? 32));
+        ConfigureInputStaging(neuralService);
 
         try
         {
@@ -212,6 +213,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 Validate(warmup);
             }
 
+            WriteProcessMemory("AfterWarmup");
             var samples = await MeasureAsync(
                 boardName,
                 botLevel == BotLevel.Expert ? "TwoPly" : "OnePly",
@@ -227,11 +229,13 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 countingService,
                 collectDiagnostics,
                 tuning);
+            WriteProcessMemory("AfterMeasurements");
             return new EvaluationMeasurement(warmup, legalMoves.Length, candidateScores, samples);
         }
         finally
         {
             await neuralService.StopAsync(CancellationToken.None);
+            WriteProcessMemory("AfterWorkerStop");
         }
     }
 
@@ -361,6 +365,25 @@ public partial class PerformanceTests(ITestOutputHelper output)
         output.WriteLine("PROFILE_INFERENCE columns: board,workload,iteration,queue_requests,predictions,forward_passes,average_batch_size");
         output.WriteLine(FormattableString.Invariant(
             $"PROFILE_INFERENCE,{boardName},{workload},{iteration},{profile.InferenceRequests},{predictions},{forwards},{(double)predictions / forwards:F6}"));
+    }
+
+    private void ConfigureInputStaging(BatchedNeuralEvalService service)
+    {
+        service.ReuseCPUTensor = Environment.GetEnvironmentVariable("GAMMONX_PERF_REUSE_INPUT") switch
+        {
+            null or "1" => true,
+            "0" => false,
+            _ => throw new ArgumentException("GAMMONX_PERF_REUSE_INPUT must be 0 or 1.")
+        };
+        output.WriteLine($"ReuseCpuInput={service.ReuseCPUTensor}");
+    }
+
+    private void WriteProcessMemory(string phase)
+    {
+        using var process = Process.GetCurrentProcess();
+        output.WriteLine("MEMORY columns: phase,private_bytes,working_set_bytes,peak_working_set_bytes,managed_live_bytes,live_tensor_handles");
+        output.WriteLine(FormattableString.Invariant(
+            $"MEMORY,{phase},{process.PrivateMemorySize64},{process.WorkingSet64},{process.PeakWorkingSet64},{GC.GetTotalMemory(forceFullCollection: false)},{Tensor.TotalCount}"));
     }
 
     private void WriteEnvironment(int[] rolls)

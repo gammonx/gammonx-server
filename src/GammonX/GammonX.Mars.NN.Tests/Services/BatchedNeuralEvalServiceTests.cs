@@ -10,6 +10,8 @@ using GammonX.Models.Enums;
 
 using Moq;
 
+using System.Runtime.InteropServices;
+
 using static TorchSharp.torch;
 
 namespace GammonX.Mars.NN.Tests.Services;
@@ -17,6 +19,98 @@ namespace GammonX.Mars.NN.Tests.Services;
 [Collection(nameof(PerformanceTestCollection))]
 public class BatchedNeuralEvalServiceTests
 {
+    [Fact]
+    public void CpuStorageWritesAndNarrowViewsHaveTheRequiredOwnership()
+    {
+        using var storage = empty([4, 3], dtype: ScalarType.Float32, device: CPU);
+        MemoryMarshal.Cast<byte, float>(storage.bytes).Fill(99f);
+        using (var view = storage.narrow(0, 0, 1))
+        {
+            new[] { 1f, 2f, 3f }.AsSpan().CopyTo(MemoryMarshal.Cast<byte, float>(storage.bytes));
+            Assert.Equal(new long[] { 1, 3 }, view.shape);
+            Assert.Equal(new[] { 1f, 2f, 3f }, view.data<float>().ToArray());
+            Assert.True(view.is_contiguous());
+        }
+        Assert.False(storage.IsInvalid);
+        Assert.Equal(12, storage.numel());
+    }
+
+    [Theory]
+    [InlineData(216, false)]
+    [InlineData(216, true)]
+    [InlineData(266, false)]
+    [InlineData(266, true)]
+    public async Task AlternatingFullAndPartialBatchesUseOnlyCurrentRows(int featureCount, bool reuseInput)
+    {
+        var seenInputs = new List<Tensor>();
+        var net = new Mock<INetModel>();
+        net.Setup(model => model.Forward(It.IsAny<Tensor>())).Returns((Tensor input) =>
+        {
+            Assert.Equal(featureCount, input.shape[1]);
+            seenInputs.Add(input);
+            using var firstFive = input.narrow(1, 0, 5);
+            return firstFive.contiguous();
+        });
+        var extractor = new Mock<IFeatureVectorExtractor>();
+        extractor.SetupGet(value => value.FeatureCount).Returns(featureCount);
+        using var service = new BatchedNeuralEvalService(net.Object, extractor.Object, 4, CPU)
+        {
+            ReuseCPUTensor = reuseInput
+        };
+        await service.StartAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            var marker = 0;
+            foreach (var count in new[] { 4, 1, 3, 2, 4, 1 })
+            {
+                var rows = Enumerable.Range(0, count).Select(_ =>
+                {
+                    var value = ++marker * 100;
+                    return Enumerable.Range(0, featureCount).Select(column => (float)(value + column)).ToArray();
+                }).ToArray();
+
+                var results = await service.PredictBatchAsync(rows);
+
+                Assert.Equal(count, results.Length);
+                for (var index = 0; index < count; index++)
+                    Assert.Equal(rows[index].Take(5), results[index]);
+            }
+        }
+        finally
+        {
+            await service.StopAsync(CancellationToken.None);
+        }
+        Assert.All(seenInputs, input => Assert.True(input.IsInvalid));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WorkerOwnedTensorIsReleasedOnStop(bool failForward)
+    {
+        using var initialization = empty([1], dtype: ScalarType.Float32, device: CPU);
+        // Exclude pending finalizers from earlier tests when checking the native-handle balance.
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        var tensorsBefore = Tensor.TotalCount;
+        using var service = CreateService(input => failForward
+            ? throw new InvalidDataException("Expected failure.")
+            : input.clone());
+        await service.StartAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            if (failForward)
+                await Assert.ThrowsAsync<InvalidDataException>(() => service.PredictBatchAsync([[1], [2]]));
+            else
+                Assert.Equal(2, (await service.PredictBatchAsync([[1], [2]])).Length);
+        }
+        finally
+        {
+            await service.StopAsync(CancellationToken.None);
+        }
+        Assert.Equal(tensorsBefore, Tensor.TotalCount);
+    }
+
     [Theory]
     [InlineData(1, false)]
     [InlineData(1, true)]

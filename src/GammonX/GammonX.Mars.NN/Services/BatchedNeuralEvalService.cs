@@ -11,7 +11,10 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
+
+using TorchSharp;
 
 using static TorchSharp.torch;
 
@@ -50,6 +53,9 @@ namespace GammonX.Mars.NN.Services
         private Task? _workerTask;
         private CancellationTokenSource _cts = new();
         private int _state;
+
+        // Test-only A/B switch; worker configuration is captured at startup.
+        internal bool ReuseCPUTensor { get; set; } = true;
 
         internal BatchedNeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, int maxBatchSize, Device device)
         {
@@ -195,7 +201,8 @@ namespace GammonX.Mars.NN.Services
 
             _cts.Dispose();
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            // Always enter the worker so its finally block drains requests on cancellation.
+            // we always want to enter the worker so its finally block drains requests on cancellation.
+            // ReSharper disable once MethodSupportsCancellation
             _workerTask = Task.Run(() => RunWorkerAsync(_cts.Token));
 
             return Task.CompletedTask;
@@ -238,6 +245,12 @@ namespace GammonX.Mars.NN.Services
         private async Task RunWorkerAsync(CancellationToken ct)
         {
             var batch = new List<InferenceRequest>(MaxBatchSize);
+
+            // TODO: we need to apply the reuse logic for GPU based tensors
+            var reuseInput = ReuseCPUTensor && _device.type == DeviceType.CPU;
+            
+            Tensor? input = null;
+            
             try
             {
                 while (await _channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
@@ -258,7 +271,16 @@ namespace GammonX.Mars.NN.Services
 
                     try
                     {
-                        RunBatch(batch, rowCount);
+                        if (reuseInput && input is null)
+                        {
+                            // we allocate a reusable input tensor for CPU to avoid repeated allocations
+                            input = empty(
+                                    size: [MaxBatchSize, _extractor.FeatureCount], 
+                                    dtype: ScalarType.Float32, 
+                                    device: CPU)
+                                .DetachFromDisposeScope();
+                        }
+                        RunBatch(batch, rowCount, input);
                     }
                     catch (Exception ex)
                     {
@@ -269,14 +291,19 @@ namespace GammonX.Mars.NN.Services
             }
             finally
             {
+                input?.Dispose();
+                
                 Interlocked.Exchange(ref _state, 2);
                 _channel.Writer.TryComplete();
+
                 while (_channel.Reader.TryRead(out var request))
+                {
                     request.Cancel(ct);
+                }
             }
         }
 
-        private void RunBatch(List<InferenceRequest> batch, int rowCount)
+        private void RunBatch(List<InferenceRequest> batch, int rowCount, Tensor? inputStorage)
         {
             var batchStarted = EvaluationMetrics.GetQueueTimestamp();
 
@@ -293,20 +320,7 @@ namespace GammonX.Mars.NN.Services
             var preparation = EvaluationMetrics.Measure(EvaluationMetrics.BatchPreparation);
 
             var featureCount = _extractor.FeatureCount;
-            var flat = new float[rowCount * featureCount];
-            var offset = 0;
-
-            foreach (var request in batch)
-            {
-                foreach (var row in request.Vectors)
-                {
-                    row.CopyTo(flat, offset);
-                    offset += featureCount;
-                }
-            }
-
-            // one forward pass for all positions in the batch: [N, featureCount] > [N, outputCount]
-            using var input = tensor(flat, [rowCount, featureCount], device: _device);
+            using var input = PrepareInput(batch, rowCount, featureCount, inputStorage);
 
             preparation.Dispose();
             var forward = EvaluationMetrics.Measure(EvaluationMetrics.Forward);
@@ -320,17 +334,21 @@ namespace GammonX.Mars.NN.Services
 
             var shape = output.shape;
             if (shape.Length != 1 && shape.Length != 2)
+            {
                 throw new InvalidDataException("Inference output must have one or five values for every input row.");
+            }
+
             var outputWidth = shape.Length == 1 ? 1 : checked((int)shape[^1]);
-            if (shape[0] != rowCount ||
-                (outputWidth != 1 && outputWidth != 5) || values.Length != rowCount * outputWidth)
+            if (shape[0] != rowCount || (outputWidth != 1 && outputWidth != 5) || values.Length != rowCount * outputWidth)
+            {
                 throw new InvalidDataException("Inference output must have one or five values for every input row.");
+            }
 
             // Publish worker timings before completing requests so awaiting callers see all stage measurements.
             forward.Dispose();
 
             // we fan results back out, row i is independent of all other rows
-            offset = 0;
+            var offset = 0;
             foreach (var request in batch)
             {
                 var results = new float[request.Count][];
@@ -348,6 +366,38 @@ namespace GammonX.Mars.NN.Services
                 var result = new float[outputWidth];
                 Array.Copy(values, index * outputWidth, result, 0, outputWidth);
                 return result;
+            }
+        }
+
+        private Tensor PrepareInput(List<InferenceRequest> batch, int rowCount, int featureCount, Tensor? inputStorage)
+        {
+            // we reuse the input tensor
+            if (inputStorage is not null)
+            {
+                // CPU forward/output materialization completes before the next write to this storage.
+                CopyFeatures(batch, MemoryMarshal.Cast<byte, float>(inputStorage.bytes));
+                return inputStorage.narrow(0, 0, rowCount);
+            }
+            
+            // we allocate a new input tensor
+            var flat = new float[rowCount * featureCount];
+            CopyFeatures(batch, flat);
+
+            return tensor(flat, [rowCount, featureCount], device: _device);
+        }
+
+        private static void CopyFeatures(List<InferenceRequest> batch, Span<float> destination)
+        {
+            var offset = 0;
+            
+            // we copy features from the batch into the destination span (tensor)
+            foreach (var request in batch)
+            {
+                foreach (var row in request.Vectors)
+                {
+                    row.AsSpan().CopyTo(destination.Slice(offset, row.Length));
+                    offset += row.Length;
+                }
             }
         }
 

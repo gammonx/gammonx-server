@@ -25,6 +25,10 @@ thresholds. See the current implementation notes before reproducing an older bat
 - The library default **and the current server configuration** are 32 rows.
   The 64-row server limit mentioned in Batch 7 was historical. Worker limits above
   32 are still supported; the per-caller reply cap remains 32.
+- Batch 8 adds worker-owned reusable **CPU input staging**, not another inference
+  dispatch path. Non-CPU inference retains per-forward tensor creation. The
+  test-only `GAMMONX_PERF_REUSE_INPUT` switch compares the old/new input storage;
+  it does not restore the removed legacy two-ply mode.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -931,6 +935,198 @@ and `ProfileTwoPlyPerformance` for separate instrumented batch statistics.
 Set `GAMMONX_PERF_BATCH_SIZE=64` to test an alternative worker limit;
 reply groups remain capped at 32. The mixed-load benchmark reads this
 setting too, while the general stage-profile cases use their fixed 32-row worker.
+
+## Batch 8: reusable worker-owned CPU input storage
+
+On **2026-10-29**, the hosted batch worker gained a reusable Float32 CPU tensor
+for input staging. This targets allocation and GC overhead, without changing
+features, reply chunks, queue ordering, model concurrency or prediction count.
+The change is retained for **CPU inference only**.
+
+### Ownership and exact active shape
+
+The version-matched TorchSharp 0.106.0 source confirms that the
+`tensor(float[], dimensions)` factory clones its managed input array before
+pinning/wrapping it. Previously, every forward therefore allocated both the
+flattened packing array and its cloned tensor backing array. Reusing only the
+packing array would leave the latter allocation in place.
+
+The new path in
+[BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs):
+
+1. Lazily allocates one contiguous native Float32 CPU tensor with capacity
+   `[MaxBatchSize, FeatureCount]` on the first batch.
+2. Detaches it from TorchSharp's ambient dispose scopes. The worker explicitly
+   owns and disposes it on exit, including cancellation or forward failures.
+3. Copies feature rows through a synchronous, bounds-checked float span over the
+   tensor's CPU storage. No caller-owned feature array is pinned, retained as
+   backing memory or modified.
+4. Passes a `narrow(0, 0, rowCount)` view to the model, with the **actual active
+   row count**, not a padded maximum-size input. Stale rows beyond that view are
+   inaccessible to the forward pass.
+5. Materializes output rows and disposes per-forward views before reusing storage.
+   The one worker does not overwrite input during a forward pass.
+
+Non-CPU devices keep the previous array/tensor construction path. No accelerator
+allocation, transfer, synchronization or zero-copy optimization is claimed.
+The public batch contract and 32-row reply fairness cap are unchanged.
+
+The independent storage/view behavior was checked against the installed package
+as well as the upstream source:
+
+- [Tensor factories, v0.106.0](https://github.com/dotnet/TorchSharp/blob/v0.106.0/src/TorchSharp/Tensor/Factories/Tensor.Factories.cs)
+  documents the clone-and-pin implementation.
+- [Tensor storage and narrow views, v0.106.0](https://github.com/dotnet/TorchSharp/blob/v0.106.0/src/TorchSharp/Tensor/Tensor.cs)
+  exposes contiguous CPU bytes, exact-sized views and explicit scope detachment.
+
+### Fresh baseline and repeated comparison
+
+The fresh batch-only baseline still attributed **181.3 / 48.7 / 107.3 MB** of
+managed allocations to preparation on Boards 1 / 2 / 3. Thus the original
+allocation target remained present after the interface refactoring.
+
+Three alternating rounds then compared the same compiled implementation with
+reuse disabled/enabled, in fresh processes for every board/path. Each run used
+one full warm-up and three timed iterations without stage collection:
+**18 runs and 54 timed evaluations**, or nine samples per strategy per board.
+CPU/native intra-op threads stayed at 16, inter-op at 16, worker limit at 32 and
+reply cap at 32. Runtime/model fingerprints remained fixed during the experiment.
+
+| Board | Managed allocations before | Reuse | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 947,294,192 bytes | 766,239,152 bytes | 19.1% |
+| 2 | 248,562,304 bytes | 199,890,216 bytes | 19.6% |
+| 3 | 559,049,088 bytes | 451,886,784 bytes | 19.2% |
+
+These are pooled medians of cumulative managed allocations per evaluation, not
+peak memory. Board 1 saves approximately **181 MB per two-ply evaluation**.
+Gen-0 collection totals across the nine samples fell from **680 to 550**,
+**178 to 143**, and **402 to 324**, respectively.
+
+Separate instrumented profiles measured:
+
+| Board | Preparation bytes before | Reuse | Forward passes, unchanged |
+| --- | ---: | ---: | ---: |
+| 1 | 181,265,088 | 210,048 | 4,376 |
+| 2 | 48,739,344 | 68,304 | 1,423 |
+| 3 | 107,291,136 | 128,832 | 2,684 |
+
+Preparation allocations fell by **more than 99.8%**. The residual is the
+per-forward tensor-view wrapper, not another full input copy. One-time capacity
+allocation occurs during first inference, outside steady-state warm measurements.
+Preparation stage medians fell from **38.17 to 20.04 ms**, **12.25 to 5.33 ms**
+and **25.84 to 12.14 ms**; these are cumulative stage times, not an exclusive
+request-latency partition.
+
+### Latency and mixed-load decision
+
+Pooled latency medians from the nine measured samples per strategy:
+
+| Board | Before | Reuse |
+| --- | ---: | ---: |
+| 1 | 1,879.111 ms | 1,790.734 ms |
+| 2 | 590.480 ms | 595.558 ms |
+| 3 | 1,135.401 ms | 1,094.563 ms |
+
+Latency improvements were **small and inconsistent**. For example, one Board 3
+round was substantially slower with reuse, while two others were faster. The
+before/reuse sample ranges overlap. The result is not evidence of a consistent
+end-to-end speedup.
+
+The mixed-load experiment used two simultaneous full Board 1 evaluations and
+100 serial single-prediction probes with 5 ms spacing while evaluation was active.
+The initial three pairs had pooled p95 of **1.1410 vs 1.2452 ms**, a roughly
+0.1 ms worsening with reuse. Rather than ignore that observation, three more
+alternating pairs were run without changing the implementation.
+
+Across all **six processes per strategy and 600 probes per strategy**:
+
+| Metric | Before | Reuse |
+| --- | ---: | ---: |
+| Median time for both evaluations | 3,018.216 ms | 3,002.980 ms |
+| Pooled single-probe median | 0.6572 ms | 0.6174 ms |
+| Pooled single-probe p95, nearest rank | 1.2213 ms | 1.2123 ms |
+| Worst probe | 107.2180 ms | 75.8980 ms |
+
+These mixed-load results are effectively neutral, not a guarantee against
+individual regressions. **Decision: retain CPU reuse for its approximately 19%
+managed allocation and GC reduction**, with no material pooled p95 regression
+in the repeated workload. Do not extrapolate a large latency improvement.
+
+### Managed versus native/process memory
+
+Reuse moves this input backing storage from repeatedly allocated managed arrays
+to **one bounded native buffer per CPU worker**:
+
+- At 32 rows: **27,648 bytes** for the 216-feature models, **34,048 bytes** for
+  the 266-feature Plakoto model.
+- At 64 rows: **55,296 / 68,096 bytes**, respectively.
+
+Those are calculated input payload capacities, not total LibTorch/allocator
+overhead. The buffer remains while the worker is idle and is released on worker
+exit. Model parameters, activations, feature arrays and returned predictions
+retain their previous ownership.
+
+`MEMORY` output records process private bytes, working set, peak working set,
+estimated live managed bytes (`GC.GetTotalMemory(false)`) and live Torch tensor
+handles after warm-up, measurements and worker stop. These observations are
+outside timed regions and do not force GC.
+
+Process memory includes the runtime, managed heaps, native allocators, model and
+thread state; **subtracting live managed bytes does not produce a reliable native
+allocation measurement**. Fewer collections can leave more unreachable managed
+objects awaiting collection even when cumulative allocations are lower. No
+attributable peak/native-memory saving is claimed. Native-storage lifetime is
+instead covered by dedicated handle-balance tests.
+
+### Correctness and reproduction
+
+- **388 NN/performance tests passed**, excluding long-running self-play tests.
+  Coverage includes all real game-variant models, scalar/five-head outputs,
+  failure recovery, shutdown and mixed callers.
+- New tests prove direct CPU writes and narrow-view ownership, alternate full and
+  partial batches at feature widths **216 and 266**, and verify tensor handles
+  are released after normal stop and after a forward failure. These lifecycle
+  tests drain earlier finalizers before checking handle balance; the benchmarks
+  do not force GC.
+- All **280 candidate scores matched exactly** throughout the repeated comparison.
+  Selected moves and the **104,291 / 28,008 / 61,717** predictions per evaluation
+  stayed unchanged. Forward counts and stage accounting also reconciled.
+- Accelerator execution and high-client-count native/peak memory were not
+  validated; non-CPU code retains its previous implementation.
+
+The test-only `GAMMONX_PERF_REUSE_INPUT` selects input preparation:
+
+- Unset or `1`: reusable CPU storage (the default).
+- `0`: fresh arrays/tensor per forward, for comparison.
+- Other values: test-configuration error.
+
+This variable is read only by performance tests, **not by production**.
+Production CPU workers use reuse by default. It is unrelated to the removed
+`GAMMONX_PERF_EXPLICIT_BATCH` flag; both preparation strategies use batch-only
+scoring and the same FIFO worker.
+
+To compare preparation profiles from the repository root in a fresh PowerShell
+process, use unique result directories and keep other settings fixed:
+
+```powershell
+$env:OMP_NUM_THREADS = '16'
+$env:MKL_NUM_THREADS = '16'
+foreach ($reuse in '0', '1') {
+    $env:GAMMONX_PERF_REUSE_INPUT = $reuse
+    dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+        -c Release --no-restore `
+        --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
+        --logger "trx;LogFileName=profile.trx" `
+        --results-directory ".\TestResults\input-$reuse-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    if ($LASTEXITCODE -ne 0) { throw "Input profile failed for reuse=$reuse" }
+}
+```
+
+For timing rather than instrumented stage attribution, use
+`MeasureCpuThreadAndBatchTuning` or `MeasureSharedWorkerInference` and the same
+reuse flag. Alternate order over multiple fresh processes; a single pair is only
+a smoke check. Restore any prior environment settings afterward.
 
 ## Further optimization constraints
 

@@ -18,6 +18,7 @@ public partial class PerformanceTests
         var modelPath = Path.Combine("Data", "NeuralNets", nameof(GameModus.Backgammon), "training_net.dat");
 
         using var neural = Assert.IsType<BatchedNeuralEvalService>(BatchedNeuralEvalService.Load(GameModus.Backgammon, modelPath, CPU, maxBatchSize));
+        ConfigureInputStaging(neural);
         await neural.StartAsync(TestContext.Current.CancellationToken);
 
         try
@@ -31,6 +32,7 @@ public partial class PerformanceTests
             var expected = await neural.PredictAsync(features, board, false);
             await service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
 
+            WriteProcessMemory("AfterWarmup");
             var singleLatencies = new List<double>();
             using var process = Process.GetCurrentProcess();
             var cpuStart = process.TotalProcessorTime;
@@ -59,6 +61,7 @@ public partial class PerformanceTests
             var moves = await Task.WhenAll(first, second);
             var wall = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             var cpu = (process.TotalProcessorTime - cpuStart).TotalMilliseconds;
+            WriteProcessMemory("AfterMeasurements");
             Assert.True(moves[0].Equals(moves[1]));
             Assert.NotEmpty(moves[0].Moves);
             Assert.NotEmpty(singleLatencies);
@@ -91,6 +94,7 @@ public partial class PerformanceTests
         finally
         {
             await neural.StopAsync(CancellationToken.None);
+            WriteProcessMemory("AfterWorkerStop");
         }
     }
 }
