@@ -119,7 +119,7 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public override object Clone()
+		protected override BoardBaseImpl CloneWithHistory(IBoardHistory history)
 		{
 			return new PlakotoBoardModelImpl()
 			{
@@ -128,7 +128,7 @@ namespace GammonX.Engine.Models
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
 				PinnedFields = (int[])PinnedFields.Clone(),
-				History = (IBoardHistory)((ICloneable)this.History).Clone()
+				History = history
 			};
 		}
 

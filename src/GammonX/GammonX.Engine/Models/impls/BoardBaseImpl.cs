@@ -215,7 +215,23 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public abstract object Clone();
+		public object Clone() => CloneWithHistory((IBoardHistory)((ICloneable)History).Clone());
+
+		/// <summary>
+		/// Creates a positional snapshot of the board containing only all information required for equality checks.
+		/// </summary>
+		/// <remarks>
+		/// This snapshot should only be used for equality checks and not for game evaluation or other purposes.
+		/// </remarks>
+		/// <returns>A snapshot of the board for equality checks.</returns>
+		internal BoardBaseImpl CreatePositionSnapshot() => CloneWithHistory(new BoardHistoryImpl());
+
+		/// <summary>
+		/// Clones the board with the specified history.
+		/// </summary>
+		/// <param name="history">The history to associate with the cloned board.</param>
+		/// <returns>A cloned board with the specified history.</returns>
+		protected abstract BoardBaseImpl CloneWithHistory(IBoardHistory history);
 
 		// <inheritdoc />
 		public bool Equals(IBoardModel? other)

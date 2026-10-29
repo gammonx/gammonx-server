@@ -48,6 +48,13 @@ builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorEx
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Backgammon);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Tavla);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Portes);
+// -------------------------------------------------------------------------------
+// NEURAL EVAL SERVICE SETUP
+// TorchSharp configuration
+// - maxBatchSize: the maximum number of positions to process in a single batch
+// - OMP_NUM_THREADS: the number of threads to use for parallel processing
+// - MKL_NUM_THREADS: the number of threads to use for MKL parallel processing
+// -------------------------------------------------------------------------------
 var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Plakoto, 64);
 if (plakotoInference != null)
 {

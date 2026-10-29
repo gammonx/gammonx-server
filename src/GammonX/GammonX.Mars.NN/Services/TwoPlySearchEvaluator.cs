@@ -1,3 +1,4 @@
+using GammonX.Engine.Diagnostics;
 using GammonX.Engine.Models;
 
 using GammonX.Engine.Services;
@@ -55,7 +56,12 @@ namespace GammonX.Mars.NN.Services
             var scoreTasks = new List<Task<double>>(opponentMoveSequences.Length);
             foreach (var opponentMoveSequence in opponentMoveSequences)
             {
-                var boardCopy = _cloneBoard(board);
+                IBoardModel boardCopy;
+                using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
+                {
+                    boardCopy = _cloneBoard(board);
+                }
+
                 var appliedMoves = 0;
                 try
                 {

@@ -7,7 +7,7 @@ using GammonX.Models.Enums;
 namespace GammonX.Engine.Models
 {
 	/// <summary>
-	/// Classic BackGammon implementation.
+	/// Classic Backgammon implementation.
 	/// <seealso href="https://www.bkgm.com/rules.html"/>
 	/// </summary>
 	internal sealed class BackgammonBoardModelImpl : BoardBaseImpl, IHomeBarModel, IDoublingCubeModel, IHitModel
@@ -179,7 +179,7 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public override object Clone()
+		protected override BoardBaseImpl CloneWithHistory(IBoardHistory history)
 		{
 			return new BackgammonBoardModelImpl()
 			{
@@ -191,7 +191,7 @@ namespace GammonX.Engine.Models
 				DoublingCubeValue = this.DoublingCubeValue,
 				// clone is okay for primitive types
 				Fields = (int[])this.Fields.Clone(),
-				History = (IBoardHistory)((ICloneable)this.History).Clone()
+				History = history
 			};
 		}
 

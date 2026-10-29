@@ -1,3 +1,4 @@
+using GammonX.Engine.Diagnostics;
 using GammonX.Engine.Models;
 
 using GammonX.Mars.NN.Models;
@@ -24,7 +25,7 @@ namespace GammonX.Mars.NN.Services
     /// </summary>
     public sealed class BatchedNeuralEvalService : INeuralEvalService, IHostedService, IDisposable
     {
-        private readonly record struct InferenceRequest(float[] Vec, TaskCompletionSource<float[]> Result);
+        private readonly record struct InferenceRequest(float[] Vec, TaskCompletionSource<float[]> Result, long Queued);
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
@@ -101,9 +102,15 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            var vec = _extractor.Extract(model, board, isWhite);
+            float[] vec;
+            using (EvaluationMetrics.Measure(EvaluationMetrics.FeatureVector))
+            {
+                vec = _extractor.Extract(model, board, isWhite);
+            }
+
             var tcs = new TaskCompletionSource<float[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-            await _channel.Writer.WriteAsync(new InferenceRequest(vec, tcs)).ConfigureAwait(false);
+            await _channel.Writer.WriteAsync(new InferenceRequest(vec, tcs, EvaluationMetrics.GetQueueTimestamp())).ConfigureAwait(false);
+
             return await tcs.Task.ConfigureAwait(false);
         }
 
@@ -180,6 +187,19 @@ namespace GammonX.Mars.NN.Services
 
         private void RunBatch(List<InferenceRequest> batch)
         {
+            var batchStarted = EvaluationMetrics.GetQueueTimestamp();
+
+            if (batchStarted != 0)
+            {
+                foreach (var request in batch)
+                {
+                    EvaluationMetrics.RecordQueueWait(request.Queued, batchStarted);
+                }
+            }
+
+            EvaluationMetrics.RecordBatchSize(batch.Count);
+            var preparation = EvaluationMetrics.Measure(EvaluationMetrics.BatchPreparation);
+
             var featureCount = batch[0].Vec.Length;
             var flat = new float[batch.Count * featureCount];
             for (var i = 0; i < batch.Count; i++)
@@ -189,6 +209,10 @@ namespace GammonX.Mars.NN.Services
 
             // one forward pass for all positions in the batch: [N, featureCount] > [N, outputCount]
             using var input = tensor(flat, [batch.Count, featureCount], device: _device);
+
+            preparation.Dispose();
+            var forward = EvaluationMetrics.Measure(EvaluationMetrics.Forward);
+
             using var _ = no_grad();
             using var output = _netModel.Forward(input);
 
@@ -197,6 +221,9 @@ namespace GammonX.Mars.NN.Services
             var values = cpuOutput.data<float>().ToArray();
 
             var outputWidth = output.shape.Length == 1 ? 1 : checked((int)output.shape[^1]);
+
+            // Publish worker timings before completing requests so awaiting callers see all stage measurements.
+            forward.Dispose();
 
             // we fan results back out, row i is independent of all other rows
             for (var i = 0; i < batch.Count; i++)

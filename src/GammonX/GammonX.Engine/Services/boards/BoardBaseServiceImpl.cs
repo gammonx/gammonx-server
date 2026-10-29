@@ -1,5 +1,6 @@
 ﻿using GammonX.Models.Contracts;
 
+using GammonX.Engine.Diagnostics;
 using GammonX.Engine.History;
 using GammonX.Engine.Models;
 
@@ -29,7 +30,7 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _);
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
             var sequences = sequencesByBoardHash
                 .Select(sbbh => sbbh.Item2)
@@ -43,7 +44,7 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _);
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
             var sequences = sequencesByBoardHash
                 .Select(sbbh => sbbh.Item2)
@@ -57,19 +58,15 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls);
-            // We only return move sequences which are unique in their board state when the sequence was played
-            var sequences = new List<MoveSequenceModel>();
-            var seen = new HashSet<IBoardModel>();
-            foreach (var item in sequencesByBoardHash)
-            {
-                if (seen.Add(item.Item1))
-                {
-                    sequences.Add(item.Item2);
-                }
-            }
+            using var measurement = EvaluationMetrics.Measure(EvaluationMetrics.MoveGeneration);
+
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out var rawSequenceCount, uniqueBoards: true);
+            var sequences = sequencesByBoardHash.Select(item => item.Item2).ToList();
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
+
+            EvaluationMetrics.RecordSequences(rawSequenceCount, unique.Count);
+
             return unique.ToArray();
         }
 
@@ -442,12 +439,23 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls)
+        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, out int rawSequenceCount, bool uniqueBoards = false)
         {
             var sortedRolls = rolls.ToList();
             sortedRolls.Sort();
             var results = new List<(IBoardModel, MoveSequenceModel)>();
-            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results);
+
+            // We track seen board positions to avoid redundant exploration of identical board states.
+            var seen = uniqueBoards ? new HashSet<IBoardModel>() : null;
+            // We track repeated states separately for identical dice sequences to optimize traversal.
+            var repeatedStates = uniqueBoards && model is BoardBaseImpl && sortedRolls.Count > 2 && sortedRolls[0] == sortedRolls[^1]
+                ? new Dictionary<int, HashSet<IBoardModel>>()
+                : null;
+            // We track the total number of raw sequences explored, including duplicates.
+            rawSequenceCount = 0;
+
+            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount);
+
             return results;
         }
 
@@ -457,8 +465,32 @@ namespace GammonX.Engine.Services
             List<int> remainingRolls,
             List<MoveModel> currentMoves,
             List<int> usedDices,
-            List<(IBoardModel, MoveSequenceModel)> results)
+            List<(IBoardModel, MoveSequenceModel)> results,
+            HashSet<IBoardModel>? seen,
+            Dictionary<int, HashSet<IBoardModel>>? repeatedStates,
+            ref int rawSequenceCount)
         {
+            if (repeatedStates != null && currentMoves.Count > 0 && remainingRolls.Count > 0 && board is BoardBaseImpl position)
+            {
+                // We check if this board position has already been encountered for the given remaining dice count.
+                // With identical dice, remaining count and position fully identify the subtree.
+                if (!repeatedStates.TryGetValue(remainingRolls.Count, out var positions))
+                {
+                    positions = new HashSet<IBoardModel>();
+                    repeatedStates.Add(remainingRolls.Count, positions);
+                }
+                // We can skip exploring this subtree
+                if (positions.Contains(board))
+                {
+                    EvaluationMetrics.RecordReusedState();
+                    return;
+                }
+                using (EvaluationMetrics.Measure(EvaluationMetrics.TraversalSnapshot))
+                {
+                    positions.Add(position.CreatePositionSnapshot());
+                }
+            }
+
             var anyMovePossible = false;
 
             for (int i = 0; i < remainingRolls.Count; i++)
@@ -484,7 +516,7 @@ namespace GammonX.Engine.Services
                     currentMoves.Add(move);
                     usedDices.Add(die);
 
-                    ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results);
+                    ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount);
 
                     usedDices.RemoveAt(usedDices.Count - 1);
                     currentMoves.RemoveAt(currentMoves.Count - 1);
@@ -497,10 +529,27 @@ namespace GammonX.Engine.Services
 
             if (!anyMovePossible && currentMoves.Any())
             {
+                rawSequenceCount++;
+                // we query with the live board, but retain only immutable snapshots as hash-set entries.
+                if (seen != null && seen.Contains(board))
+                {
+                    return;
+                }
+
                 var moveSeq = new MoveSequenceModel();
                 moveSeq.Moves.AddRange(currentMoves);
                 moveSeq.UsedDices.AddRange(usedDices);
-                var boardSnapshot = (IBoardModel)((ICloneable)board).Clone();
+                IBoardModel boardSnapshot;
+
+                using (EvaluationMetrics.Measure(EvaluationMetrics.GenerationClone))
+                {
+                    boardSnapshot = seen != null && board is BoardBaseImpl terminalPosition
+                        ? terminalPosition.CreatePositionSnapshot()
+                        : (IBoardModel)((ICloneable)board).Clone();
+                }
+
+                seen?.Add(boardSnapshot);
+                
                 results.Add(new ValueTuple<IBoardModel, MoveSequenceModel>(boardSnapshot, moveSeq));
             }
         }

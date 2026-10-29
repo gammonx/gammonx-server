@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Models;
+﻿using GammonX.Engine.Diagnostics;
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Engine.Extensions;
 
@@ -33,7 +34,7 @@ namespace GammonX.Mars.NN.Services
 
             if (board is IDoublingCubeModel cubeModel)
             {
-                var eval = CalculateEvalModel(board, isWhite);
+                var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
 
                 var predictions = await _neuralEvalService.PredictAsync(NormalizedEvalResultModel.From(eval), board, isWhite);
                 // we calculate the game equity
@@ -126,7 +127,7 @@ namespace GammonX.Mars.NN.Services
                 return twoPlyScore;
             }
 
-            var eval = CalculateEvalModel(board, isWhite);
+            var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
             return await CalculatePositionScoreAsync(board, isWhite, eval, contactWeights);
         }
 
@@ -185,7 +186,7 @@ namespace GammonX.Mars.NN.Services
         public NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract boardContract, bool isWhite)
         {
             var board = BoardService.CreateBoard(boardContract);
-            var eval = CalculateEvalModel(board, isWhite);
+            var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
             return NormalizedEvalResultModel.From(eval);
         }
 
@@ -226,7 +227,7 @@ namespace GammonX.Mars.NN.Services
                         appliedMoves++;
                     }
 
-                    var eval = CalculateEvalModel(board, isWhite);
+                    var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
                     var evalModel = NormalizedEvalResultModel.From(eval);
                     var score = 0d;
 
@@ -271,7 +272,7 @@ namespace GammonX.Mars.NN.Services
                 // we pass the position score calculation as a func
                 (boardModel, perspectiveIsWhite) =>
                 {
-                    var eval = CalculateEvalModel(boardModel, perspectiveIsWhite);
+                    var eval = CalculateEvalModelWithDiagnostics(boardModel, perspectiveIsWhite);
                     return CalculatePositionScoreAsync(boardModel, perspectiveIsWhite, eval, contactWeights);
                 });
 
@@ -338,6 +339,12 @@ namespace GammonX.Mars.NN.Services
                 _ => 0d
             };
             return true;
+        }
+
+        private EvalResultModel CalculateEvalModelWithDiagnostics(IBoardModel board, bool isWhite)
+        {
+            using var measurement = EvaluationMetrics.Measure(EvaluationMetrics.Features);
+            return CalculateEvalModel(board, isWhite);
         }
 
         /// <summary>

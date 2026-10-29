@@ -124,13 +124,13 @@ namespace GammonX.Engine.Models
 				// assign black values to white
 				BearOffCountWhite = BearOffCountBlack,
 				HomeBarCountWhite = HomeBarCountBlack,
-				// inverted board fieds
+				// inverted board fields
 				Fields = invertedFields,
 			};
 		}
 
 		// <inheritdoc />
-		public override object Clone()
+		protected override BoardBaseImpl CloneWithHistory(IBoardHistory history)
 		{
 			return new PortesBoardModelImpl()
 			{
@@ -140,7 +140,7 @@ namespace GammonX.Engine.Models
 				HomeBarCountBlack = HomeBarCountBlack,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
-				History = (IBoardHistory)((ICloneable)this.History).Clone()
+				History = history
 			};
 		}
 

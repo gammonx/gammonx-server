@@ -45,5 +45,15 @@
         public const string DefaultBoard1 = "{\"fields\":[-1,-2,0,-2,-2,-2,0,-1,0,0,0,0,2,2,2,1,0,3,3,2,0,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":5,\"homebarCountBlack\":0}";
 
         #endregion
+
+        #region Performance Boards
+
+        public const string PerformanceBoard1 = "{\"fields\":[-2,0,0,0,0,5,2,3,0,0,0,-2,3,0,-2,0,-3,2,-5,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+
+        public const string PerformanceBoard2 = "{\"fields\":[0,0,2,2,2,4,0,2,0,0,1,-2,2,0,-2,2,-2,0,-2,0,-1,-1,0,-3],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+        
+        public const string PerformanceBoard3 = "{\"fields\":[0,0,-2,2,2,3,0,3,0,0,0,-2,3,0,-2,0,-3,2,-5,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+        
+        #endregion Performance Boards
     }
 }
