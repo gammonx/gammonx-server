@@ -140,7 +140,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
             startup.Stop();
             output.WriteLine(FormattableString.Invariant($"ModelStartupMs={startup.Elapsed.TotalMilliseconds:F3}"));
             output.WriteLine($"TorchThreads={get_num_threads()}; TorchInteropThreads={get_num_interop_threads()}");
-            output.WriteLine($"ModelSHA256={Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(modelPath)))}");
+            output.WriteLine($"ModelSHA256={Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(modelPath)))}");
 
             var countingService = new CountingNeuralEvalService(neuralService);
             var evalService = FeatureEvalServiceFactory.Create(GameModus.Backgammon, countingService);

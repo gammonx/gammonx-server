@@ -29,6 +29,10 @@ thresholds. See the current implementation notes before reproducing an older bat
   dispatch path. Non-CPU inference retains per-forward tensor creation. The
   test-only `GAMMONX_PERF_REUSE_INPUT` switch compares the old/new input storage;
   it does not restore the removed legacy two-ply mode.
+- Batch 9 measured and prototyped exact per-root input caching. It was **rejected
+  for default enablement** because the repeated workload did not show a reliable
+  latency benefit. Production still scores all neural rows; only the test-only
+  duplicate-input diagnostic was retained.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -1127,6 +1131,186 @@ For timing rather than instrumented stage attribution, use
 `MeasureCpuThreadAndBatchTuning` or `MeasureSharedWorkerInference` and the same
 reuse flag. Alternate order over multiple fresh processes; a single pair is only
 a smoke check. Restore any prior environment settings afterward.
+
+## Batch 9: identical neural inputs within a root search
+
+On **2026-10-29**, exact inference reuse was measured and prototyped across the
+21 opponent dice outcomes of each root candidate. The aim was to avoid repeated
+neural work **without pruning candidates or changing search strength**.
+
+**Decision: do not retain the production cache.** It was correct, but the
+duplicate rate was too small to pay for lookup and bookkeeping reliably. The
+prototype and its runtime comparison switch were removed after measurement.
+The existing input-buffer reuse and all previous accepted optimizations remain.
+
+### Measuring the opportunity
+
+[MeasureIdenticalInputs](./PerformanceTests.InputReuse.cs) observes the actual
+full inference inputs and resets its identity table for every root candidate.
+Every float bit participates in equality, including signed zero and NaN payloads;
+dictionary lookup uses full equality after hashing, not a hash-only identity.
+This includes normalized features, raw board encodings and history-derived
+features. Board equality alone is not used as an inference key.
+
+The diagnostic also enumerates expected reply-group boundaries for the three
+fixed, nonterminal performance fixtures. It checks every observed group's row
+count and attributes repeats to the original opponent dice outcome. That extra
+enumeration and the identity tables are **test-only diagnostic work**, outside
+all latency measurements.
+
+Measured over all root candidates:
+
+| Board | Logical neural rows | Distinct inputs, summed per root | Repeated rows | Duplicate rate |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 104,291 | 96,948 | 7,343 | 7.04% |
+| 2 | 28,008 | 25,044 | 2,964 | 10.58% |
+| 3 | 61,717 | 56,925 | 4,792 | 7.76% |
+
+All measured duplicates were **across opponent dice outcomes**. There were no
+within-batch duplicates or same-roll cross-batch duplicates in these fixtures.
+These are per-root identities, not globally unique positions across the whole
+evaluation. Reuse across different root candidates was not measured.
+
+Most batches still contained at least one new input. Avoiding repeated rows would
+therefore remove only **1 / 0 / 1 entire groups**, respectively. Smaller batches
+do not remove kernel/forward-call overhead in proportion to row-count savings.
+
+### The bounded prototype
+
+The experiment used a cache local to one root candidate's two-ply search, tied
+to that model instance, variant and fixed opponent perspective:
+
+- Retained at most **2,048 input/score entries**, stopping retention when full
+  while continuing to infer every miss.
+- Retained independently extracted feature arrays as immutable owned keys and
+  the derived position score as its value.
+- Coalesced exact duplicates within a batch and reused successful earlier
+  batch scores. Terminal positions bypassed inference as before.
+- Did not retain failed, wrong-sized or nonfinite scoring results.
+- Discarded the cache after that root search, including on failure. Concurrent
+  root searches had independent caches; there was no global cache or model
+  invalidation scheme.
+
+Largest measured unique-root sets were **1,088 / 679 / 827 entries**. Their raw
+feature-key payloads were **940,032 / 586,656 / 714,528 bytes**, excluding array,
+dictionary and other object overhead. None reached the prototype's limit.
+At 2,048 entries, the raw payload bound would be about 1.77 MB for 216 features
+or 2.18 MB for 266 features, **per concurrent root search**, plus overhead.
+
+### Latency and allocation comparison
+
+Three alternating rounds used fresh processes per board and cache-off/on
+configuration, one full warm-up and three timed evaluations per process.
+Settings stayed at Release, CPU, 16 OMP/MKL/inter-op threads, worker limit 32,
+reply cap 32 and input-storage reuse enabled.
+
+There were **18 configuration runs and 54 timed evaluations**, with no stage
+subscriber in timed iterations. Both strategies used the same compiled prototype
+and model; fingerprints stayed fixed throughout the experiment. Cache-off numbers
+below are the experimental comparison path, not a new post-removal production
+baseline.
+
+| Board | Uncached median | Cached median | Change with cache |
+| --- | ---: | ---: | ---: |
+| 1 | 1,781.910 ms | 1,886.202 ms | 5.9% slower |
+| 2 | 570.362 ms | 563.021 ms | 1.3% faster |
+| 3 | 1,078.975 ms | 1,117.802 ms | 3.6% slower |
+
+The sample ranges overlap and individual rounds varied; there is no consistent
+latency win. Managed allocation medians **increased**, rather than decreased:
+
+| Board | Uncached | Cached | Increase |
+| --- | ---: | ---: | ---: |
+| 1 | 768,458,704 bytes | 782,377,600 bytes | 1.8% |
+| 2 | 200,566,312 bytes | 203,514,072 bytes | 1.5% |
+| 3 | 453,232,520 bytes | 461,383,128 bytes | 1.8% |
+
+A separate instrumented profile attributed **54.3 / 13.8 / 31.2 ms** to synchronous
+lookup/insertion work. That stage allocated approximately **14.4 / 3.7 / 8.7 MB**
+across a whole evaluation, largely from bookkeeping. It did not include every
+allocation made by the cache helper, so use total allocation measurements for
+overall impact.
+
+The physical row counts decreased as expected, but median forward counts barely
+changed:
+
+| Board | Forward passes before -> cached | Average batch rows before -> cached |
+| --- | ---: | ---: |
+| 1 | 4,376 -> 4,375 | 23.83 -> 22.16 |
+| 2 | 1,423 -> 1,423 | 19.68 -> 17.60 |
+| 3 | 2,684 -> 2,683 | 22.99 -> 21.22 |
+
+This explains why fewer predicted rows did not translate into a reliable latency
+gain: feature calculation and full logical traversal remained, most forwards
+still ran, and caching added work and memory retention.
+
+### Mixed load and correctness
+
+Three fresh mixed-load processes per strategy ran two simultaneous full Board 1
+evaluations plus 100 serial single-prediction probes with 5 ms spacing:
+
+| Metric | Uncached | Cached |
+| --- | ---: | ---: |
+| Median time for both evaluations | 2,991.850 ms | 2,894.713 ms |
+| Pooled single-probe median | 0.6444 ms | 0.6666 ms |
+| Pooled single-probe p95, nearest rank | 1.0920 ms | 1.4296 ms |
+| Worst probe | 1.8036 ms | 2.7535 ms |
+
+Pooled percentiles use **300 probes per strategy**. Although the two-evaluation
+median improved in this small load test, interactive p95 worsened. Combined with
+the single-evaluation results and extra allocation, this did not justify
+production enablement.
+
+The tested prototype passed 55 focused cases covering forced hash collisions,
+bitwise equality, capacity exhaustion, failure handling, concurrent scope,
+history/perspective features, terminal/pass scoring and actual model comparisons.
+All **280 candidate sets/scores** were checked across repeated runs; maximum
+absolute score difference was **2.93e-8**, below the existing 1e-5 tolerance.
+Selected moves and **logical** coverage stayed unchanged; only physical neural
+rows were reused.
+
+Experimental `PROFILE_CACHE`, `InputReuse` stage counters,
+`GAMMONX_PERF_REUSE_PREDICTIONS` and the production cache helper were removed with
+the rejected path. They are not current supported runtime or benchmark options.
+The archived experiment evidence distinguishes logical from physical work;
+current production again has no prediction-cache hits.
+
+### Retained diagnostic and future use
+
+The retained diagnostic performs the full ordinary uncached search. Run it from
+the repository root in PowerShell:
+
+```powershell
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.MeasureIdenticalInputs" `
+    --logger "trx;LogFileName=duplicate-inputs.trx" `
+    --results-directory ".\TestResults\duplicates-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+`DUPLICATES` emits one row per root with columns:
+
+```text
+board,root,logical_rows,unique_rows,within_batch_duplicates,cross_batch_duplicates,groups,groups_with_new_rows,unique_payload_bytes,cross_roll_duplicates
+```
+
+The first two duplicate counters partition repeated rows; `cross_roll_duplicates`
+is an additional attribution, not another count to add to that partition.
+`unique_payload_bytes` is raw retained feature data, not peak process memory.
+The diagnostic uses the three known nonterminal fixtures and validates their
+expected group boundaries; adapting it to terminal-heavy corpora would require
+matching the scorer's terminal filtering.
+
+[NeuralInputComparerTests](./NeuralInputComparerTests.cs) protects the diagnostic's
+bitwise identity and collision handling. The comparer itself is test-only.
+There is **no production lookup or cache overhead from this rejected experiment**.
+After removing the prototype, **394 NN/performance tests passed**, excluding
+long-running self-play tests. The retained diagnostic rechecked all 280 roots and
+the cross-roll attribution against the restored ordinary inference path.
+
+Reconsider exact caching only if a broader corpus, a different cache scope, or
+different inference hardware shows a substantially better duplicate/forward
+avoidance opportunity. Do not extrapolate these three CPU fixtures to a GPU.
 
 ## Further optimization constraints
 

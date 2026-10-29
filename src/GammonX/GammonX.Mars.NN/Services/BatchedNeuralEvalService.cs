@@ -312,7 +312,9 @@ namespace GammonX.Mars.NN.Services
                 foreach (var request in batch)
                 {
                     for (var row = 0; row < request.Count; row++)
+                    {
                         EvaluationMetrics.RecordQueueWait(request.Queued, batchStarted);
+                    }
                 }
             }
 
@@ -389,7 +391,7 @@ namespace GammonX.Mars.NN.Services
         private static void CopyFeatures(List<InferenceRequest> batch, Span<float> destination)
         {
             var offset = 0;
-            
+
             // we copy features from the batch into the destination span (tensor)
             foreach (var request in batch)
             {
