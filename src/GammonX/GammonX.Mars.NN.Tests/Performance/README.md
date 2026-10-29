@@ -1312,6 +1312,127 @@ Reconsider exact caching only if a broader corpus, a different cache scope, or
 different inference hardware shows a substantially better duplicate/forward
 avoidance opportunity. Do not extrapolate these three CPU fixtures to a GPU.
 
+## Planned Batch 10: bounded cross-candidate pipelining
+
+**Status: proposed, not implemented or benchmarked.** The goal is lower latency
+through better inference availability and batch occupancy, without changing search
+coverage or introducing selective search.
+
+### Motivation and hypothesis
+
+[GetCandidatesByEvalAsync](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs)
+currently finishes each root candidate before starting the next.
+[TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs)
+also awaits each opponent dice outcome and each reply chunk. Multiple replies are
+already batched, but these await boundaries can leave partial batches and gaps
+between submissions:
+
+```text
+Root candidate 1
+    Dice outcome 1 -> batch -> await -> batch -> await
+    Dice outcome 2 -> batch -> await
+    ...
+Root candidate 2
+    ...
+```
+
+The last uncached Board 1 profile scored **104,291 positions in 4,376 forwards**,
+averaging **23.83 rows** at a 32-row limit. Perfect packing across the entire
+request would need `ceil(104291 / 32) = 3260` forwards, approximately **25.5% fewer**.
+That is a theoretical packing bound, not a latency prediction or a promise that
+bounded lookahead can achieve it.
+
+Unlike the rejected cache, this experiment aims to reduce forward-call overhead
+and worker idle gaps, not just remove a small number of rows from mostly unchanged
+batches.
+
+### First experiment: candidate windows of 1, 2 and 4
+
+1. Keep window **1** as the sequential reference.
+2. Prototype at most **2**, then **4**, active root-candidate evaluations. Candidate
+   B can prepare and submit features while candidate A awaits inference.
+3. Feed the **existing single FIFO inference worker**. Keep the 32-row worker
+   limit, 32-row caller cap, CPU input-storage reuse and thread settings fixed.
+   Do not add concurrent model calls, extra inference workers or queue delays.
+4. Bound scheduling itself: do not eagerly start every candidate or retain the
+   entire search's feature vectors. Completed candidates release their owned
+   state before replacement work is admitted.
+5. Add a test-only window selector for controlled comparisons. Do not change
+   production defaults before the experiment meets its acceptance criteria.
+
+Start with bounded asynchronous pipelining, not unrestricted `Task.Run` calls.
+Torch already uses multiple CPU threads; more producers can increase contention
+instead of improving latency. Audit feature/service shared state before permitting
+concurrent evaluation calls.
+
+### Board ownership and correctness requirements
+
+The current candidate loop applies and undoes moves on **one mutable board**.
+It must not simply be wrapped in `Task.WhenAll`.
+
+- Each active candidate needs its own independent board, including full history,
+  fields, pinned state, home bars, bear-off counts and cube state. Constructing
+  several boards around a shared contract array is not sufficient isolation.
+- Preserve history-derived neural inputs and keep reply boards valid through
+  their awaited scoring calls. The equality-only snapshots are not evaluation
+  inputs.
+- Store results at the original candidate index, regardless of completion order.
+  Final ordering and equal-score tie-breaking must match sequential evaluation.
+- Preserve terminal scoring, pass handling, all 21 weighted opponent outcomes,
+  perspective conversion and all candidate/physical prediction counts.
+- Observe every started task on failure or shutdown, restore owned boards in
+  `finally`, and do not leave abandoned evaluations or unobserved exceptions.
+  This experiment does not silently introduce a new public cancellation API.
+
+Tests should cover out-of-order completion, equal scores, the active-window bound,
+board/history isolation, failures, shutdown, terminal/pass cases and all variants.
+Compare every candidate score with the sequential reference using the existing
+1e-5 tolerance, and require unchanged selected moves.
+
+### Whole-request packing remains a limitation
+
+[BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs)
+currently combines **whole queue items only**. Two 20-row requests cannot share
+one 32-row forward, even when both are ready. Bounded concurrency can improve
+availability and combine items that fit, but does not itself solve this packing
+constraint.
+
+Only if measurements show that this remains the limiting factor, consider a
+separate follow-up prototype that splits/repackages rows across request boundaries.
+That would require provenance and per-request completion tracking, correct
+partial-group/error handling, and renewed FIFO/fairness testing. It is not part
+of the initial candidate-window experiment.
+
+### Measurements and acceptance decision
+
+Use fresh Release processes on all three performance boards, alternating window
+order across repeated rounds. Keep binaries/model fingerprints and other settings
+fixed; warm up each configuration and retain individual samples and latency
+spread. Timing runs must have no stage-metrics subscriber.
+
+Collect separately:
+
+- Evaluation wall time (median and tails), process CPU time and managed allocation/
+  GC counts.
+- Actual batch-size distribution, forward-pass count, worker empty-queue wait
+  time and queued work. Do not infer idle time by subtracting overlapping stages.
+- Retained boards/features, peak active candidates and process-memory observations;
+  distinguish these from native allocation measurements.
+- Mixed load with simultaneous evaluations and interactive single-row probes,
+  including p95 and worst-probe latency. Also consider aggregate throughput, not
+  only one request's speed.
+
+Choose practical latency and fairness thresholds **before** collecting the
+comparison. Retain the smallest window with a repeatable, meaningful benefit
+beyond measurement noise, unchanged scoring and bounded memory, with no material
+interactive-p95 regression. If gains are absent or fairness/memory costs dominate,
+retain sequential execution and document the negative result.
+
+Do not treat fuller batches alone as success. The deliverable is a verified
+latency/fairness decision, plus raw comparisons and updated documentation.
+GPU work, selective two-ply search, cross-request caching and whole-search eager
+batching remain outside this experiment.
+
 ## Further optimization constraints
 
 Any further implementation must preserve board restoration, legal dice usage,

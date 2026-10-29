@@ -1,11 +1,14 @@
 # Changelog
 
-## 23.10.2026
+## 29.10.2026
 ### Fixes
 - made JoinRequest validation for bot queue more robust
 - made turn timer match mode specific
 - made match and game session cloneable through out the stack
 - made pre-error match and game states retrievable
+- performance enhancements
+	- significantly reduced memory allocation and GC pressure
+	- reduced 2-ply latency by about 40%-50%
 
 ## 17.09.2026
 - added general implementation for a `ResilientHttpClient`
