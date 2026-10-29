@@ -111,6 +111,7 @@ public class EvaluationMetricsTests
         var queued = EvaluationMetrics.GetQueueTimestamp();
         EvaluationMetrics.RecordSequences(5, 2);
         EvaluationMetrics.RecordReusedState();
+        EvaluationMetrics.RecordInferenceRequest();
 
         await Task.Run(() =>
         {
@@ -128,6 +129,7 @@ public class EvaluationMetricsTests
         Assert.Equal(1, profile.RawMeasurements);
         Assert.Equal(1, profile.UniqueMeasurements);
         Assert.Equal(1, profile.ReusedStates);
+        Assert.Equal(1, profile.InferenceRequests);
         var batch = Assert.Single(profile.BatchSizes);
         Assert.Equal(2, batch.Key);
         Assert.Equal(1, batch.Value);

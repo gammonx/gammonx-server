@@ -123,7 +123,7 @@ namespace GammonX.Mars.NN.Services
             if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
             {
                 // we calculate the score based on a two-ply evaluation of the resulting board state
-                var twoPlyScore = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);
+                var twoPlyScore = await CalculateTwoPlyScoreAsync(board, isWhite);
                 return twoPlyScore;
             }
 
@@ -234,8 +234,7 @@ namespace GammonX.Mars.NN.Services
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the score based on a two-ply evaluation of the resulting board state
-                        // TODO: implement selective two-ply search if necessary analogue to mars training impl
-                        score = await CalculateTwoPlyScoreAsync(board, isWhite, contactWeights);
+                        score = await CalculateTwoPlyScoreAsync(board, isWhite);
                     }
                     else
                     {
@@ -259,8 +258,13 @@ namespace GammonX.Mars.NN.Services
             return evals.OrderByDescending(e => e.Score);
         }
 
-        private Task<double> CalculateTwoPlyScoreAsync(IBoardModel board, bool isWhite, ContactWeightModel contactWeights)
+        private Task<double> CalculateTwoPlyScoreAsync(IBoardModel board, bool isWhite)
         {
+            if (_neuralEvalService == null)
+            {
+                throw new InvalidOperationException("Neural evaluation service is not available for two-ply search.");
+            }
+
             // we check if the game has already ended and return the terminal score if so
             if (TryGetTerminalScore(board, isWhite, out var terminalScore))
             {
@@ -270,11 +274,10 @@ namespace GammonX.Mars.NN.Services
             var evaluator = new TwoPlySearchEvaluator(
                 BoardService,
                 // we pass the position score calculation as a func
-                (boardModel, perspectiveIsWhite) =>
-                {
-                    var eval = CalculateEvalModelWithDiagnostics(boardModel, perspectiveIsWhite);
-                    return CalculatePositionScoreAsync(boardModel, perspectiveIsWhite, eval, contactWeights);
-                });
+                (boards, perspectiveIsWhite)
+                    => CalculatePositionBatchAsync(boards, perspectiveIsWhite, _neuralEvalService),
+                // Bound each callers work item even when the shared worker allows larger batches.
+                maxBatchSize: Math.Min(_neuralEvalService.MaxBatchSize, 32));
 
             return evaluator.EvaluateAsync(board, isWhite);
         }
@@ -297,12 +300,54 @@ namespace GammonX.Mars.NN.Services
             // we calculate the nn model prediction
             var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite);
 
+            return ScorePrediction(board.Modus, predictions);
+        }
+
+        private async Task<double[]> CalculatePositionBatchAsync(IReadOnlyList<IBoardModel> boards, bool isWhite, INeuralEvalService neuralService)
+        {
+            var scores = new double[boards.Count];
+            var features = new List<float[]>(boards.Count);
+            var indices = new List<int>(boards.Count);
+            // we collect all feature vectors from all different board positions that are not terminal
+            for (var index = 0; index < boards.Count; index++)
+            {
+                var board = boards[index];
+                if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+                {
+                    scores[index] = terminalScore;
+                    continue;
+                }
+                var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
+                features.Add(neuralService.ExtractFeatures(NormalizedEvalResultModel.From(eval), board, isWhite));
+                indices.Add(index);
+            }
+
+            if (features.Count == 0)
+            {
+                return scores;
+            }
+
+            var predictions = await neuralService.PredictBatchAsync(features.ToArray());
+            if (predictions.Length != indices.Count)
+            {
+                throw new InvalidDataException("Batch inference must return one result per non-terminal reply.");
+            }
+
+            for (var row = 0; row < indices.Count; row++)
+            {
+                scores[indices[row]] = ScorePrediction(boards[indices[row]].Modus, predictions[row]);
+            }
+
+            return scores;
+        }
+
+        private static double ScorePrediction(GameModus modus, float[] predictions)
+        {
             // TODO: support 5 head output for Plakoto and Fevga
-            if (board.Modus == GameModus.Plakoto || board.Modus == GameModus.Fevga)
+            if (modus == GameModus.Plakoto || modus == GameModus.Fevga)
             {
                 return predictions[0];
             }
-
             return new GameEquityModel(new GameOutcomeModel(predictions)).Equity;
         }
 

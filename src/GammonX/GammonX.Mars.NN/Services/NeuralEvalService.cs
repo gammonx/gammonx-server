@@ -82,23 +82,59 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
-            var vec = _extractor.Extract(model, board, isWhite);
+            var predictions = await PredictBatchAsync([ExtractFeatures(model, board, isWhite)]).ConfigureAwait(false);
+            return predictions[0];
+        }
+
+        // <inheritdoc />
+        public int MaxBatchSize => 32;
+
+        // <inheritdoc />
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        {
+            var features = _extractor.Extract(model, board, isWhite);
+            if (features.Length != _extractor.FeatureCount)
+                throw new InvalidDataException($"The feature extractor must return {_extractor.FeatureCount} values.");
+            return features;
+        }
+
+        // <inheritdoc />
+        public Task<float[][]> PredictBatchAsync(float[][] features)
+        {
+            ArgumentNullException.ThrowIfNull(features);
+            if (features.Length == 0 || features.Length > MaxBatchSize)
+                throw new ArgumentException($"A batch must contain between 1 and {MaxBatchSize} rows.", nameof(features));
+            var flat = new float[features.Length * _extractor.FeatureCount];
+            for (var index = 0; index < features.Length; index++)
+            {
+                var row = features[index];
+                ArgumentNullException.ThrowIfNull(row);
+                if (row.Length != _extractor.FeatureCount)
+                    throw new ArgumentException($"Each row must have {_extractor.FeatureCount} features.", nameof(features));
+                row.CopyTo(flat, index * _extractor.FeatureCount);
+            }
             lock (InferLock)
             {
-                using var raw   = tensor(vec, device: _device);
-                using var input = raw.unsqueeze(0);
+                using var input = tensor(flat, [features.Length, _extractor.FeatureCount], device: _device);
                 using var _ = no_grad();
                 using var output = _netModel.Forward(input);
-                var result = output.data<float>().ToArray();
-                // we normalize single-output nets
-                if (result.Length == 1)
+                using var cpuOutput = output.to(CPU);
+                var values = cpuOutput.data<float>().ToArray();
+                var shape = output.shape;
+                if (shape.Length != 1 && shape.Length != 2)
+                    throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                var width = shape.Length == 1 ? 1 : checked((int)shape[^1]);
+                if (shape[0] != features.Length || (width != 1 && width != 5) || values.Length != features.Length * width)
+                    throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                var results = new float[features.Length][];
+                for (var index = 0; index < results.Length; index++)
                 {
-                    // TODO: enable full GAME equity predictions for plakoto/fevga
-                    return Task.FromResult(new float[] { result[0], 0f, 0f, 0f, 0f });
+                    results[index] = new float[5];
+                    Array.Copy(values, index * width, results[index], 0, width);
                 }
-                return Task.FromResult(result);
+                return Task.FromResult(results);
             }
         }
     }

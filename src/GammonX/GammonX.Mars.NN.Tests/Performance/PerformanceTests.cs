@@ -318,6 +318,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
         Assert.Equal(predictions, profile.GetStage(EvaluationMetrics.FeatureVector).Calls);
         Assert.Equal(predictions, profile.GetStage(EvaluationMetrics.QueueWait).Calls);
         Assert.Equal(predictions, profile.BatchSizes.Sum(batch => batch.Key * batch.Value));
+        Assert.InRange(profile.InferenceRequests, 1, predictions);
         Assert.All(profile.BatchSizes, batch => Assert.InRange(batch.Key, 1, 32));
         var batches = profile.BatchSizes.Sum(batch => batch.Value);
         Assert.Equal(batches, profile.GetStage(EvaluationMetrics.Forward).Calls);
@@ -355,6 +356,11 @@ public partial class PerformanceTests(ITestOutputHelper output)
         output.WriteLine("PROFILE_SEARCH columns: board,workload,iteration,generation_calls,raw_sequences,unique_sequences,reused_states");
         output.WriteLine(FormattableString.Invariant(
             $"PROFILE_SEARCH,{boardName},{workload},{iteration},{profile.RawMeasurements},{profile.RawSequences},{profile.UniqueSequences},{profile.ReusedStates}"));
+        var forwards = profile.BatchSizes.Sum(batch => batch.Value);
+        var predictions = profile.BatchSizes.Sum(batch => batch.Key * batch.Value);
+        output.WriteLine("PROFILE_INFERENCE columns: board,workload,iteration,queue_requests,predictions,forward_passes,average_batch_size");
+        output.WriteLine(FormattableString.Invariant(
+            $"PROFILE_INFERENCE,{boardName},{workload},{iteration},{profile.InferenceRequests},{predictions},{forwards},{(double)predictions / forwards:F6}"));
     }
 
     private void WriteEnvironment(int[] rolls)
@@ -378,20 +384,34 @@ public partial class PerformanceTests(ITestOutputHelper output)
 
     private sealed record EvaluationMeasurement(
         MoveSequenceModel SelectedMove,
+        // ReSharper disable once NotAccessedPositionalProperty.Local
         int RootCandidates,
         FinalEvalResultModels? CandidateScores,
         Measurement[] Samples)
     {
+        // ReSharper disable once UnusedMember.Local
         public double MedianMs => Samples.OrderBy(sample => sample.WallMs).ElementAt(MeasurementIterations / 2).WallMs;
     }
 
     private sealed record CpuTuningConfiguration(string Phase, int Threads, int MaxBatchSize);
 
-    private sealed class CountingNeuralEvalService(INeuralEvalService inner) : INeuralEvalService
+    private sealed class CountingNeuralEvalService(BatchedNeuralEvalService inner) : INeuralEvalService
     {
         private long _predictionCount;
+        private readonly INeuralEvalService _batch = inner;
 
         public long PredictionCount => Interlocked.Read(ref _predictionCount);
+
+        public int MaxBatchSize => _batch.MaxBatchSize;
+
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+            _batch.ExtractFeatures(model, board, isWhite);
+
+        public Task<float[][]> PredictBatchAsync(float[][] features)
+        {
+            Interlocked.Add(ref _predictionCount, features.Length);
+            return _batch.PredictBatchAsync(features);
+        }
 
         public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {

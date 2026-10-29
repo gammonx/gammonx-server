@@ -8,7 +8,7 @@ namespace GammonX.Mars.NN.Features
     /// This is an important feature for the plakoto variant, as stacking more checkers on a pin strengthens the
     /// player's position and increases the chance to bear off checkers and win with a gammon (2pts).
     /// </summary>
-    public sealed class NumbersOfCheckersInFronOfLastPinFeature : IFeature<int>
+    public sealed class NumbersOfCheckersInFrontOfLastPinFeature : IFeature<int>
     {
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)

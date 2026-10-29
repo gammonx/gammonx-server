@@ -316,6 +316,16 @@ public sealed class SelfPlayRunnerTests
 
         public int PredictionCount { get; private set; }
 
+        public int MaxBatchSize => 32;
+
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => [_pWin];
+
+        public Task<float[][]> PredictBatchAsync(float[][] features)
+        {
+            PredictionCount += features.Length;
+            return Task.FromResult(features.Select(row => new[] { row[0], 0.1f, 0.05f, 0.1f, 0.05f }).ToArray());
+        }
+
         public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             PredictionCount++;

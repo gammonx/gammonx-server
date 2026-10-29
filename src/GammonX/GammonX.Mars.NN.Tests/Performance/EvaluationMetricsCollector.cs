@@ -15,6 +15,7 @@ internal sealed class EvaluationMetricsCollector : IDisposable
     private long _rawMeasurements;
     private long _uniqueMeasurements;
     private long _reusedStates;
+    private long _inferenceRequests;
 
     public EvaluationMetricsCollector()
     {
@@ -48,6 +49,9 @@ internal sealed class EvaluationMetricsCollector : IDisposable
                         break;
                     case EvaluationMetrics.ReusedStateCountName:
                         _reusedStates += value;
+                        break;
+                    case EvaluationMetrics.InferenceRequestCountName:
+                        _inferenceRequests += value;
                         break;
                     case EvaluationMetrics.SequenceCountName:
                         switch (GetTag(tags, "kind"))
@@ -88,7 +92,8 @@ internal sealed class EvaluationMetricsCollector : IDisposable
                 _uniqueSequences,
                 _rawMeasurements,
                 _uniqueMeasurements,
-                _reusedStates);
+                _reusedStates,
+                _inferenceRequests);
         }
     }
 
@@ -132,7 +137,8 @@ internal sealed record EvaluationProfile(
     long UniqueSequences,
     long RawMeasurements,
     long UniqueMeasurements,
-    long ReusedStates)
+    long ReusedStates,
+    long InferenceRequests)
 {
     public StageMeasurement GetStage(string stage) => Stages.Single(measurement => measurement.Stage == stage);
 }

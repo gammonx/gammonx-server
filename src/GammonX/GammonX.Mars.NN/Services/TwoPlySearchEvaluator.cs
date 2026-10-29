@@ -8,17 +8,21 @@ namespace GammonX.Mars.NN.Services
     internal sealed class TwoPlySearchEvaluator
     {
         private readonly IBoardService _boardService;
-        private readonly Func<IBoardModel, bool, Task<double>> _evalPositionAsync;
         private readonly Func<IBoardModel, IBoardModel> _cloneBoard;
+        private readonly Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> _evalPositionsAsync;
+        private readonly int _maxBatchSize;
 
         public TwoPlySearchEvaluator(
             IBoardService boardService,
-            Func<IBoardModel, bool, Task<double>> scorePosition,
-            Func<IBoardModel, IBoardModel>? cloneBoard = null)
+            Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> scorePositions,
+            Func<IBoardModel, IBoardModel>? cloneBoard = null,
+            int maxBatchSize = 32)
         {
             _boardService = boardService ?? throw new ArgumentNullException(nameof(boardService));
-            _evalPositionAsync = scorePosition ?? throw new ArgumentNullException(nameof(scorePosition));
+            _evalPositionsAsync = scorePositions ?? throw new ArgumentNullException(nameof(scorePositions));
             _cloneBoard = cloneBoard ?? (board => board.DeepClone());
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBatchSize);
+            _maxBatchSize = maxBatchSize;
         }
 
         public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite)
@@ -50,41 +54,59 @@ namespace GammonX.Mars.NN.Services
             var opponentMoveSequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
             if (opponentMoveSequences.Length == 0)
             {
-                return await _evalPositionAsync(board, opponentIsWhite);
+                var scores = await _evalPositionsAsync([board], opponentIsWhite);
+                if (scores.Length != 1)
+                    throw new InvalidDataException("Batch scoring must return one score for a pass.");
+                return scores[0];
             }
+            return await CalculateBatchedResponsesAsync(board, opponentIsWhite, opponentMoveSequences);
+        }
 
-            var scoreTasks = new List<Task<double>>(opponentMoveSequences.Length);
-            foreach (var opponentMoveSequence in opponentMoveSequences)
+        private async Task<double> CalculateBatchedResponsesAsync(IBoardModel board, bool isWhite, MoveSequenceModel[] sequences)
+        {
+            var best = double.NegativeInfinity;
+            for (var start = 0; start < sequences.Length; start += _maxBatchSize)
             {
-                IBoardModel boardCopy;
-                using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
-                {
-                    boardCopy = _cloneBoard(board);
-                }
-
-                var appliedMoves = 0;
+                var count = Math.Min(_maxBatchSize, sequences.Length - start);
+                var boards = new IBoardModel[count];
+                var applied = new int[count];
                 try
                 {
-                    foreach (var move in opponentMoveSequence.Moves)
+                    // we iterate through all collected board and execute the moves
+                    for (var index = 0; index < count; index++)
                     {
-                        _boardService.MoveCheckerTo(boardCopy, move.From, move.To, opponentIsWhite);
-                        appliedMoves++;
-                    }
+                        using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
+                        {
+                            boards[index] = _cloneBoard(board);
+                        }
 
-                    scoreTasks.Add(_evalPositionAsync(boardCopy, opponentIsWhite));
+                        foreach (var move in sequences[start + index].Moves)
+                        {
+                            _boardService.MoveCheckerTo(boards[index], move.From, move.To, isWhite);
+                            applied[index]++;
+                        }
+                    }
+                    // we then execute the inference in batch
+                    var scores = await _evalPositionsAsync(boards, isWhite);
+                    if (scores.Length != count)
+                    {
+                        throw new InvalidDataException("Batch scoring must return one score per reply.");
+                    }
+                    // scores are from the opponents perspective, so the opponent maximizes them
+                    best = Math.Max(best, scores.Max());
                 }
                 finally
                 {
-                    for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
+                    for (var index = 0; index < count; index++)
                     {
-                        _boardService.UndoMove(boardCopy, opponentMoveSequence.Moves[moveIndex], opponentIsWhite);
+                        for (var moveIndex = applied[index] - 1; moveIndex >= 0; moveIndex--)
+                        {
+                            _boardService.UndoMove(boards[index], sequences[start + index].Moves[moveIndex], isWhite);
+                        }
                     }
                 }
             }
-
-            var opponentScores = await Task.WhenAll(scoreTasks);
-            // scores are from the opponents perspective, so the opponent maximizes them
-            return opponentScores.Max();
+            return best;
         }
     }
 }

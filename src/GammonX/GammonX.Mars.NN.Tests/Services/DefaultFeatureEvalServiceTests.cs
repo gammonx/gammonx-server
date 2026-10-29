@@ -746,6 +746,17 @@ namespace GammonX.Mars.NN.Tests.Services
 
         private sealed class PipAdvantageNeuralEvalService : INeuralEvalService
         {
+            public int MaxBatchSize => 32;
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+                [isWhite ? board.PipCountBlack - board.PipCountWhite : board.PipCountWhite - board.PipCountBlack];
+
+            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+                Task.FromResult(features.Select(row => new[]
+                {
+                    Math.Clamp(0.5f + row[0] / 200f, 0.01f, 0.99f), 0f, 0f, 0f, 0f
+                }).ToArray());
+
             public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
             {
                 var advantage = isWhite
@@ -758,6 +769,14 @@ namespace GammonX.Mars.NN.Tests.Services
 
         private sealed class FixedPerspectiveNeuralEvalService : INeuralEvalService
         {
+            public int MaxBatchSize => 32;
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+                [isWhite ? 0.75f : 0.25f];
+
+            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+                Task.FromResult(features.Select(row => new[] { row[0], 0f, 0f, 0f, 0f }).ToArray());
+
             public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
             {
                 var winProbability = isWhite ? 0.75f : 0.25f;

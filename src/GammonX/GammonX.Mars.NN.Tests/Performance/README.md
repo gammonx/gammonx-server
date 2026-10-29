@@ -1,9 +1,50 @@
 # GammonX Engine and NN Performance Analysis
 
 This folder contains the manual CPU tuning runner and the findings from the
-move-sequence evaluation investigation on **2026-10-26**. The numbers below are
+move-sequence evaluation investigation begun on **2026-10-26**. The numbers below are
 historical measurements on one workstation, not performance guarantees or CI
-thresholds. No production thread or batch-size defaults were changed.
+thresholds. See the current implementation notes before reproducing an older batch.
+
+## Current batch-only implementation (2026-10-29)
+
+- [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs) now owns
+  `MaxBatchSize`, `ExtractFeatures` and `PredictBatchAsync`. The optional batch
+  interface and the legacy two-ply dispatch path have been removed.
+- Two-ply scoring always uses bounded groups of at most
+  `min(service.MaxBatchSize, 32)` replies. A blocked opponent is a pass and is
+  scored as a **one-row batch**, not an empty batch or infinite score.
+- `PredictAsync` remains a supported convenience API for cube/one-ply callers
+  and interactive probes. In the hosted service it uses the same batch queue with
+  one row and preserves the underlying exception/cancellation, rather than a
+  separate single-request implementation.
+- [BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs)
+  is the hosted FIFO worker implementation. The existing serialized, non-hosted
+  [NeuralEvalService](../../GammonX.Mars.NN/Services/NeuralEvalService.cs) also
+  implements the full batch contract for its direct callers; it does not restore
+  the removed two-ply path.
+- The library default **and the current server configuration** are 32 rows.
+  The 64-row server limit mentioned in Batch 7 was historical. Worker limits above
+  32 are still supported; the per-caller reply cap remains 32.
+- `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
+  old environment variable cannot select a legacy path. The obsolete
+  `compare-inference.py` A/B runner was removed: comparing two labels on the same
+  batch-only code would be misleading.
+- [BatchEvaluationTests](../Services/BatchEvaluationTests.cs) replaces the old
+  dual-path tests. Real-model comparisons use a one-row reference scorer versus
+  grouped scoring; other tests retain history, terminal/pass, lifetime, cap and
+  restoration coverage. This is a correctness reference, not a restored
+  production legacy mode.
+
+The commands below run the current batch-only implementation. Historical
+before/after timings and test counts are retained as experiment records, not
+claims about the refactored code. Reproducing the old A/B experiment requires the
+matching earlier source revision and model.
+
+Refactoring validation on 2026-10-29 passed **367 NN feature/service tests**,
+**21 training/search tests** and **14 performance smoke cases**; the Mars server
+Release build also passed. Long-running self-play tests and the complete CPU
+parameter sweep were not rerun. These checks validate contracts and benchmark
+execution, not a new performance improvement claim.
 
 ## Running the CPU experiment manually
 
@@ -72,6 +113,9 @@ With a reference of 16 threads, this is **17 fresh test processes and 51 timed
 evaluations**, plus startup, first inference and full-evaluation warm-ups.
 This is a **sequential screening experiment**, not a full factorial search or proof
 that the selected pair is optimal.
+It now compares thread/worker-limit configurations of the batch-only
+implementation; increasing a worker limit above 32 does not increase the two-ply
+per-caller group cap.
 
 Each process runs
 [MeasureCpuThreadAndBatchTuning](./PerformanceTests.CPU.cs).
@@ -108,7 +152,7 @@ retained, but **do not treat a partial directory as a completed comparison**.
 Rerun into a new directory after resolving the failure.
 
 The Python runner orchestrates the CPU experiment only. To collect the separate
-baseline or stage profiles from the repository root:
+baseline, stage profiles or mixed-load output from the repository root:
 
 ```powershell
 # Baseline: engine-only, one-ply and two-ply, without stage collection.
@@ -124,7 +168,20 @@ dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
     --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
     --logger "trx;LogFileName=stages.trx" `
     --results-directory .\TestResults\performance-stages
+
+# Mixed load: two evaluations sharing the worker with single-row probes.
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.MeasureSharedWorkerInference" `
+    --logger "trx;LogFileName=mixed.trx" `
+    --results-directory .\TestResults\performance-mixed
 ```
+
+`MIXED` now reports
+`evaluations,single_predictions,wall_ms,cpu_ms,single_median_ms,single_p95_ms,single_max_ms`;
+`MIXED_SINGLE` reports one latency value. Neither contains the removed
+`explicit_batching` flag. `MixedMaxBatchSize` records the worker limit, selected
+through `GAMMONX_PERF_BATCH_SIZE` (default 32).
 
 ## Workload and measurement rules
 
@@ -192,6 +249,8 @@ All recorded batches used this workstation and model:
 
 The following tables capture different batches, not a single simultaneous run.
 Differences between tables are not evidence of an optimization.
+Batch 7 records the original comparison with single-position delivery. That
+comparison switch is no longer available in the batch-only implementation.
 
 ## Batch 1: uninstrumented baseline
 
@@ -636,6 +695,242 @@ thread and batch-size defaults remain unchanged.
 The largest remaining inference workload is unchanged: all unique reply positions
 are still scored. Further work should distinguish inference/task scheduling costs
 from generation costs rather than infer end-to-end speed from allocation reductions.
+
+## Batch 7: explicit bounded neural inference groups
+
+On **2026-10-28**, the two-ply evaluator gained explicit prediction groups through
+an optional internal batch capability. At that time, other implementations kept
+their single-position path; the current contract unifies these operations in
+[INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs).
+The following tables describe that historical A/B experiment, not a currently
+selectable legacy mode. Its library worker default was 32, while the server then
+overrode the worker limit to 64; the current server setting is 32.
+
+### Execution and lifetime rules
+
+For each opponent dice outcome, replies are handled in original order in chunks
+of at most **32**, or the service's configured batch limit if smaller:
+
+1. Make full reply-board clones, apply the moves and retain the complete histories.
+2. Score terminal positions directly; calculate the normal features for the
+   remaining positions and extract independent feature arrays.
+3. Submit the feature arrays as one bounded FIFO queue item with one completion
+   source for the group, rather than one per position.
+4. The **same single inference worker** combines whole queue items that fit within
+   the worker's row limit. It does not split a group or exceed that limit. Result rows are
+   mapped back to their original inputs; scalar outputs retain the existing
+   five-element normalization.
+5. After scoring finishes, restore the reply boards in `finally`. The evaluator
+   awaits one chunk before submitting the next, retaining at most one chunk of
+   reply clones at a time and allowing other queued callers between chunks.
+
+The worker does not make parallel model calls or introduce queue delays.
+History-dependent features, dice probabilities, terminal equity, candidate sets
+and perspective conversion are unchanged. No mutable board is shared with the
+worker; it receives feature arrays that remain unchanged until completion.
+
+Forward errors fault the affected requests rather than returning defaults.
+Shutdown and linked worker cancellation finish pending requests with failure or
+cancellation, including callers waiting for channel capacity. Work submitted
+before startup or after shutdown is rejected explicitly. This does not add
+per-prediction cancellation to the existing public API.
+
+The queue remains bounded by **queue items**, not feature rows. Explicit items
+can contain up to 32 rows at the default setting, so the worst-case queued feature
+storage under many callers is larger than when every item held one row.
+The evaluator's one-outstanding-chunk-per-request rule limits prefetching, but
+deployment-scale concurrency and native/peak memory still merit separate testing.
+
+### Alternating comparison method
+
+Both paths were built into the same binaries. Three rounds alternated baseline
+and candidate order by round and board, using a fresh test process for every
+configuration. Each run performed a full warm-up and three timed iterations.
+This yielded **18 configuration runs and 54 timed evaluations**: nine timed
+samples per path per board.
+
+Settings: Release, CPU, `OMP_NUM_THREADS=MKL_NUM_THREADS=16`, 16 inter-op threads
+and maximum batch size 32. Neither timed path had a stage-metrics subscriber.
+Every run exported all candidate scores, checked its worker thread settings during
+warm-up, and was compared against a reference for that board. Model and application
+fingerprints stayed fixed throughout the paired experiment.
+
+### Latency, CPU and allocation results
+
+The medians below pool the nine individual samples for each path, rather than
+taking the median of run medians:
+
+| Board | Single-request delivery | Explicit groups | Speedup | Latency reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 4,727.750 ms | 2,773.901 ms | 1.704x | 41.3% |
+| 2 | 1,410.334 ms | 731.375 ms | 1.928x | 48.1% |
+| 3 | 2,654.000 ms | 1,743.542 ms | 1.522x | 34.3% |
+
+The explicit path had a lower median in **every board/round pair**, unlike the
+previous smaller latency changes. There was still substantial spread on the
+shared workstation; for example, Board 1 ranged from 3,017 to 5,923 ms on the
+legacy path and 2,409 to 4,247 ms with explicit groups. These observations support
+enablement on this workload, not a universal deployment guarantee.
+
+| Board | Managed allocations, single delivery | Explicit groups | Reduction | Median process CPU reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 1,054,155,544 bytes | 947,309,240 bytes | 10.1% | 44.4% |
+| 2 | 278,008,160 bytes | 248,568,240 bytes | 10.6% | 51.6% |
+| 3 | 623,237,064 bytes | 559,059,840 bytes | 10.3% | 35.2% |
+
+Allocations remain cumulative managed bytes, not peak memory or native Torch
+allocation totals. The reduction reflects fewer per-position tasks, completion
+sources and queue operations; board generation and the number of neural positions
+scored are unchanged.
+
+### Separate instrumented batching evidence
+
+Three stage-profile iterations per board/path were collected separately from
+the latency comparison:
+
+| Board | Queue items before -> after | Median forward passes before -> after | Average actual batch before -> after |
+| --- | ---: | ---: | ---: |
+| 1 | 104,291 -> 4,376 | 6,616 -> 4,376 | 15.71 -> 23.83 |
+| 2 | 28,008 -> 1,423 | 2,359 -> 1,423 | 11.74 -> 19.68 |
+| 3 | 61,717 -> 2,684 | 4,504 -> 2,684 | 13.88 -> 22.99 |
+
+Queue-item counts are per evaluation. Actual batch averages pool the three
+instrumented iterations; full batches increased from **22.9% to 39.2%** on Board 1,
+**10.9% to 21.8%** on Board 2 and **14.1% to 24.9%** on Board 3. Partial chunks at
+roll boundaries remain, so average batches are not expected to reach 32.
+
+Batch preparation still allocates nearly the same total flat feature storage,
+because it processes the same number of feature values. This batch does **not**
+establish a benefit from pooling or reusing those buffers.
+
+The new counter `gammonx.evaluation.inference.requests` records successfully
+queued items, distinct from predicted positions. `PROFILE_INFERENCE` adds a
+separate report line with columns:
+
+```text
+board,workload,iteration,queue_requests,predictions,forward_passes,average_batch_size
+```
+
+`PROFILE_BATCH` still reports row counts, and queue-wait measurements still count
+each predicted row even when several share one queue item. Search-report columns
+and traversal semantics are unchanged.
+
+### Shared-worker fairness and mixed-load latency
+
+Three fresh processes per path ran **two simultaneous full Board 1 Expert
+evaluations**, plus up to 100 serial single-prediction probes with a 5 ms delay
+between probes. Probes started only while evaluation work was active; all three
+runs completed 100 probes per path. There were no stage subscribers in these runs.
+
+| Metric | Single-request delivery | Explicit groups |
+| --- | ---: | ---: |
+| Median time for both evaluations | 7,346.953 ms | 5,409.180 ms |
+| Pooled single-probe median | 3.1285 ms | 1.9171 ms |
+| Pooled single-probe p95, nearest rank | 37.7175 ms | 13.1412 ms |
+| Worst probe | 904.4044 ms | 33.1296 ms |
+
+Pooled probe percentiles use 300 samples per path. One paired round had a worse
+single-probe p95 with explicit groups (**19.34 vs 8.52 ms**); the other two favored
+groups. Therefore the result is an overall improvement for this tested load,
+not proof that no individual request or deployment load can regress.
+
+A deterministic worker test additionally holds one group in flight, enqueues a
+single, then releases the group. It verifies that the queued single is served
+before the large caller's next chunk, independently of timing measurements.
+
+### Historical 64-row hosted-worker configuration
+
+The server then configured a 64-row worker limit, rather than relying on the
+library's 32-row default. An initial prototype also allowed **64 rows per explicit
+caller group**. Although it reduced evaluation latency, its pooled mixed-load
+single-probe p95 regressed from **5.7440 to 9.0089 ms**. That version was rejected
+for default enablement.
+
+The accepted implementation caps **each caller group at 32 rows**, independently
+of the worker limit. The worker can still combine whole items into up to 64 rows,
+but a caller cannot prefill the queue with a whole roll or monopolize it with
+64-row reply groups.
+
+Another three alternating rounds tested the final cap with the existing 64-row
+worker limit: **18 fresh configuration processes, 54 timed evaluations and six
+mixed-load processes**. These measurements are separate from the 32-row-worker
+table, not a direct comparison between worker limits.
+
+| Board | Legacy median, worker 64 | Explicit median, caller cap 32 | Speedup |
+| --- | ---: | ---: | ---: |
+| 1 | 3,785.719 ms | 3,401.213 ms | 1.113x |
+| 2 | 1,408.111 ms | 818.598 ms | 1.720x |
+| 3 | 2,840.946 ms | 1,734.423 ms | 1.638x |
+
+Every board/round pair had a lower explicit-path median. Managed allocations
+remained about 10% lower. Pooled mixed-load single-probe median/p95 were
+**2.0253 / 5.1417 ms legacy** versus **1.4591 / 3.5612 ms explicit**, with 300
+probes per path. Median time for both simultaneous evaluations fell from
+**5,713.917 to 4,364.474 ms**.
+
+The maximum probe was slightly worse (**18.7964 vs 14.6464 ms**), and one round's
+p95 was slightly worse (**4.2119 vs 3.9298 ms**). The decision is based on repeated
+evaluation gains and improved pooled tail latency, not a claim that every request
+improves. Larger production concurrency and native/peak memory remain unmeasured.
+Correctness comparisons with actual model weights cover all five variants at
+both worker limits, and a regression asserts that reply groups remain capped at
+32 when the service advertises 64.
+
+### Correctness and enablement decision
+
+- **74 focused evaluation/performance/diagnostics tests passed**, including real
+  model comparisons for all five game variants, terminal and pass replies,
+  history-feature equivalence, awaited board lifetimes and restoration on errors.
+- Single-output `[N]` and `[N,1]` and five-output `[N,5]` mappings are covered,
+  including mixed single/group callers and partial groups. Invalid input groups
+  and invalid output shapes fail explicitly.
+- Forward failures, worker recovery, FIFO chunk fairness, shutdown and cancellation
+  of queued/backpressured single and group requests are tested.
+- All **597 engine regression tests passed**.
+- The alternating runs checked every candidate set and score: 280 candidates
+  across the three boards, with maximum absolute cross-run score difference
+  **8.0e-8**, below the existing 1e-5 tolerance. Selected moves and the
+  **104,291 / 28,008 / 61,717** predictions per evaluation stayed unchanged.
+
+**Decision: enable explicit bounded groups by default for batch-capable services.**
+The repeated latency/CPU gains, lower allocations and mixed-load evidence justify
+this change, while retaining the legacy path for other implementations and paired
+tests. The 32-row caller cap is part of this decision. Thread settings, worker
+batch-size defaults and the server's existing 64-row worker configuration are
+not changed.
+
+### Measuring the current batch-only path
+
+The historical switch and A/B runner are obsolete. To record a current
+configuration with candidate scores, from the repository root in PowerShell:
+
+```powershell
+dotnet build .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore
+
+$env:OMP_NUM_THREADS = '16'
+$env:MKL_NUM_THREADS = '16'
+$env:GAMMONX_PERF_THREADS = '16'
+$env:GAMMONX_PERF_BATCH_SIZE = '32'
+$env:GAMMONX_PERF_BOARD = '1'
+$env:GAMMONX_PERF_PHASE = 'ConfirmDefault'
+
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-build --no-restore `
+    --filter "FullyQualifiedName=GammonX.Mars.NN.Tests.Performance.PerformanceTests.MeasureCpuThreadAndBatchTuning" `
+    --logger "trx;LogFileName=inference.trx" `
+    --results-directory ".\TestResults\inference-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+if ($LASTEXITCODE -ne 0) { throw "Inference measurement failed" }
+```
+
+Run this in a fresh PowerShell process or restore any pre-existing environment
+values afterward. This is a measurement of one configuration, not a legacy/batch
+comparison. Use new result directories for repeat runs.
+Use `MeasureSharedWorkerInference` as the test-name filter for mixed-load output,
+and `ProfileTwoPlyPerformance` for separate instrumented batch statistics.
+Set `GAMMONX_PERF_BATCH_SIZE=64` to test an alternative worker limit;
+reply groups remain capped at 32. The mixed-load benchmark reads this
+setting too, while the general stage-profile cases use their fixed 32-row worker.
 
 ## Further optimization constraints
 

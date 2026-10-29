@@ -48,6 +48,9 @@ builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, FevgaFeatureVectorEx
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Backgammon);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Tavla);
 builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVectorExtractor>(GameModus.Portes);
+// The given max batch size for neural network inference was evaluated, test and set to 32
+// Consider "../../GammonX.Mars.NN.Tests/Performance/**" for performance evaluation of different batch sizes.
+const int maxInferenceBatchSize = 32;
 // -------------------------------------------------------------------------------
 // NEURAL EVAL SERVICE SETUP
 // TorchSharp configuration
@@ -55,35 +58,35 @@ builder.Services.AddKeyedSingleton<IFeatureVectorExtractor, DefaultFeatureVector
 // - OMP_NUM_THREADS: the number of threads to use for parallel processing
 // - MKL_NUM_THREADS: the number of threads to use for MKL parallel processing
 // -------------------------------------------------------------------------------
-var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Plakoto, 64);
+var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Plakoto, maxInferenceBatchSize);
 if (plakotoInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Plakoto, (_, _) => plakotoInference);
-    builder.Services.AddSingleton<IHostedService>(plakotoInference);
+    builder.Services.AddSingleton((IHostedService)plakotoInference);
 }
-var fevgaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Fevga, 64);
+var fevgaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Fevga, maxInferenceBatchSize);
 if (fevgaInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Fevga, (_, _) => fevgaInference);
-    builder.Services.AddSingleton<IHostedService>(fevgaInference);
+    builder.Services.AddSingleton((IHostedService)fevgaInference);
 }
-var backgammonInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Backgammon, 64);
+var backgammonInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Backgammon, maxInferenceBatchSize);
 if (backgammonInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Backgammon, (_, _) => backgammonInference);
-    builder.Services.AddSingleton<IHostedService>(backgammonInference);
+    builder.Services.AddSingleton((IHostedService)backgammonInference);
 }
-var tavlaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Tavla, 64);
+var tavlaInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Tavla, maxInferenceBatchSize);
 if (tavlaInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Tavla, (_, _) => tavlaInference);
-    builder.Services.AddSingleton<IHostedService>(tavlaInference);
+    builder.Services.AddSingleton((IHostedService)tavlaInference);
 }
-var portesInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Portes, 64);
+var portesInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Portes, maxInferenceBatchSize);
 if (portesInference != null)
 {
     builder.Services.AddKeyedSingleton<INeuralEvalService>(GameModus.Portes, (_, _) => portesInference);
-    builder.Services.AddSingleton<IHostedService>(portesInference);
+    builder.Services.AddSingleton((IHostedService)portesInference);
 }
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
