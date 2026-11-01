@@ -15,6 +15,12 @@ namespace GammonX.Mars.NN.Services
     {
         private readonly INeuralEvalService? _neuralEvalService;
 
+        /// <summary>
+        /// Gets or sets the number of concurrent candidates to evaluate in parallel. Default is 1.
+        /// Consider TODO:
+        /// </summary>
+        internal int ParallelCandidateCount { get; set; } = 1;
+
         protected abstract IBoardService BoardService { get; }
 
         protected BaseFeatureEvalServiceImpl(INeuralEvalService? neuralEvalService)
@@ -202,7 +208,7 @@ namespace GammonX.Mars.NN.Services
             return evalResult[0];
         }
 
-        private async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(
+        internal async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(
             IBoardModel board,
             MoveSequenceModel[] legalMovesSeq,
             bool isWhite,
@@ -210,52 +216,109 @@ namespace GammonX.Mars.NN.Services
             int evalCount,
             BotLevel botLevel)
         {
-            var evals = new List<FinalEvalResultModel>();
+            if (evalCount <= 0)
+                return [];
+            
+            var parallelCandidates = ParallelCandidateCount;
+
+            var evals = new FinalEvalResultModel[evalCount];
             var searchDepth = botLevel.ToSearchDepth();
 
-            for (var idx = 0; idx < evalCount; idx++)
+            if (searchDepth != SearchDepth.TwoPly || _neuralEvalService == null)
             {
-                var moveSeq = legalMovesSeq[idx];
+                
+            }
 
+            if (parallelCandidates == 1)
+            {
+                // we want to process the candidates sequentially
+                for (var index = 0; index < evalCount; index++)
+                {
+                    await EvaluateCandidateAsync(board, index);
+                }
+            }
+            else
+            {
+                // we want to process the candidates in parallel
+                var next = -1;
+                var failed = 0;
+                var workers = new Task[Math.Min(parallelCandidates, evalCount)];
+                // we start workers until parallel candidate count is reached
+                for (var index = 0; index < workers.Length; index++)
+                {
+                    workers[index] = RunAsync();
+                }
+
+                // we expect whenAll to observes every producer, including failures during shutdown.
+                await Task.WhenAll(workers);
+
+                async Task RunAsync()
+                {
+                    try
+                    {
+                        while (Volatile.Read(ref failed) == 0)
+                        {
+                            var index = Interlocked.Increment(ref next);
+                            if (index >= evalCount)
+                                return;
+                            await EvaluateCandidateAsync(board.DeepClone(), index);
+                        }
+                    }
+                    catch
+                    {
+                        Interlocked.Exchange(ref failed, 1);
+                        throw;
+                    }
+                }
+            }
+
+            // Stable sorting preserves original candidate order for equal scores.
+            return evals.OrderByDescending(e => e.Score);
+
+            async Task EvaluateCandidateAsync(IBoardModel ownedBoard, int index)
+            {
+                var moveSeq = legalMovesSeq[index];
                 var appliedMoves = 0;
+                EvaluationMetrics.RecordActiveCandidates(1);
                 try
                 {
                     // we iterate over all possible moves for the active player
                     foreach (var move in moveSeq.Moves)
                     {
-                        BoardService.MoveCheckerTo(board, move.From, move.To, isWhite);
+                        BoardService.MoveCheckerTo(ownedBoard, move.From, move.To, isWhite);
                         appliedMoves++;
                     }
 
-                    var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
+                    var eval = CalculateEvalModelWithDiagnostics(ownedBoard, isWhite);
                     var evalModel = NormalizedEvalResultModel.From(eval);
                     var score = 0d;
 
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the score based on a two-ply evaluation of the resulting board state
-                        score = await CalculateTwoPlyScoreAsync(board, isWhite);
+                        score = await CalculateTwoPlyScoreAsync(ownedBoard, isWhite);
                     }
                     else
                     {
                         // we calculate the one-ply score for the active player and his move
-                        score = await CalculatePositionScoreAsync(board, isWhite, eval, contactWeights);
+                        score = await CalculatePositionScoreAsync(ownedBoard, isWhite, eval, contactWeights);
                     }
 
-                    evals.Add(new FinalEvalResultModel(score, moveSeq, evalModel));
+                    evals[index] = new FinalEvalResultModel(score, moveSeq, evalModel);
                 }
                 finally
                 {
-                    // we undo all moves to restore the board state for the next evaluation
-                    // we do this in order to avoid allocating board copies for each move sequence, which would be expensive
-                    for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
+                    try
                     {
-                        BoardService.UndoMove(board, moveSeq.Moves[moveIndex], isWhite);
+                        for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
+                            BoardService.UndoMove(ownedBoard, moveSeq.Moves[moveIndex], isWhite);
+                    }
+                    finally
+                    {
+                        EvaluationMetrics.RecordActiveCandidates(-1);
                     }
                 }
             }
-
-            return evals.OrderByDescending(e => e.Score);
         }
 
         private Task<double> CalculateTwoPlyScoreAsync(IBoardModel board, bool isWhite)
@@ -327,7 +390,18 @@ namespace GammonX.Mars.NN.Services
                 return scores;
             }
 
-            var predictions = await neuralService.PredictBatchAsync(features.ToArray());
+            float[][] predictions;
+            EvaluationMetrics.RecordFeatureRows(features.Count);
+
+            try
+            {
+                predictions = await neuralService.PredictBatchAsync(features.ToArray());
+            }
+            finally
+            {
+                EvaluationMetrics.RecordFeatureRows(-features.Count);
+            }
+
             if (predictions.Length != indices.Count)
             {
                 throw new InvalidDataException("Batch inference must return one result per non-terminal reply.");

@@ -5,7 +5,7 @@ move-sequence evaluation investigation begun on **2026-10-26**. The numbers belo
 historical measurements on one workstation, not performance guarantees or CI
 thresholds. See the current implementation notes before reproducing an older batch.
 
-## Current batch-only implementation (2026-10-29)
+## Current batch-only implementation (2026-10-30)
 
 - [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs) now owns
   `MaxBatchSize`, `ExtractFeatures` and `PredictBatchAsync`. The optional batch
@@ -33,6 +33,10 @@ thresholds. See the current implementation notes before reproducing an older bat
   for default enablement** because the repeated workload did not show a reliable
   latency benefit. Production still scores all neural rows; only the test-only
   duplicate-input diagnostic was retained.
+- Batch 10 tested bounded candidate windows of 2 and 4. Both improved standalone
+  latency but failed the predeclared interactive-latency gates. **Production
+  remains sequential (window 1).** The internal selector and manual comparison
+  harness are retained for controlled experiments, not runtime configuration.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -1312,126 +1316,198 @@ Reconsider exact caching only if a broader corpus, a different cache scope, or
 different inference hardware shows a substantially better duplicate/forward
 avoidance opportunity. Do not extrapolate these three CPU fixtures to a GPU.
 
-## Planned Batch 10: bounded cross-candidate pipelining
+## Batch 10: bounded cross-candidate pipelining
 
-**Status: proposed, not implemented or benchmarked.** The goal is lower latency
-through better inference availability and batch occupancy, without changing search
-coverage or introducing selective search.
+**Completed 2026-10-30. Decision: retain sequential production execution.**
+Windows 2 and 4 reduced standalone medians on every board, but both materially
+worsened interactive p95 and worst-probe latency on the shared FIFO worker.
+Neither passed the acceptance gates; fuller batches are not sufficient success.
 
-### Motivation and hypothesis
+### Implementation and ownership
 
 [GetCandidatesByEvalAsync](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs)
-currently finishes each root candidate before starting the next.
-[TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs)
-also awaits each opponent dice outcome and each reply chunk. Multiple replies are
-already batched, but these await boundaries can leave partial batches and gaps
-between submissions:
+has an **internal, test-only** `CandidateWindow` selector accepting 1, 2 or 4.
+There is no production environment switch or new public cancellation API.
+Window 1 preserves sequential apply/undo on the original board; one-ply and linear
+evaluation remain sequential regardless of the experimental selector.
 
-```text
-Root candidate 1
-    Dice outcome 1 -> batch -> await -> batch -> await
-    Dice outcome 2 -> batch -> await
-    ...
-Root candidate 2
-    ...
+Windows 2 and 4 run that many bounded asynchronous producers, without `Task.Run`,
+eager whole-search tasks, or retaining the whole search's features. Each producer
+finishes and restores its owned candidate before admitting a replacement.
+Candidate boards use the existing full `DeepClone`, not equality-only snapshots
+or new boards around shared contract arrays. Fields, history events and values,
+pins, home bars, bear-off counts and cube state remain independent.
+
+Results are stored at the original candidate index, then stably sorted by score.
+On failure, admission stops and `Task.WhenAll` observes all started producers;
+root and reply restoration remains in `finally`. All 21 weighted opponent rolls,
+perspective conversion, terminal filtering, passes and neural rows are unchanged.
+Shared feature objects, extractors and board services have no mutable per-call
+fields; their search state and buffers are local to the call/owned board.
+
+The existing single FIFO worker, 32-row worker limit, 32-row caller cap and reusable
+CPU input storage are unchanged. Whole queue items are still indivisible: two
+20-row requests cannot share one 32-row forward. Splitting/repacking requests,
+extra workers, queue delays, selective search, caching and GPU work were not added.
+
+### Predeclared gates and measurement protocol
+
+The [runner](./run-candidate-windows.py) writes its thresholds before comparisons:
+
+- At least **5%** pooled median improvement on **each** board, also achieved in
+  at least **2 of 3** paired rounds. Choose the smallest passing window.
+- Managed allocation at most **110%** of reference on each board; median observed
+  private memory at most **120% + 32 MiB** of reference. Root/reply/feature counts
+  must respect the explicit window and reply cap.
+- Pooled interactive p95 may increase by at most **max(10%, 0.10 ms)** of reference;
+  worst probe by at most **max(25%, 0.50 ms)**. Mixed aggregate throughput must
+  remain at least **97%** of reference.
+- All candidate scores must match within **1e-5**, with unchanged candidate sets,
+  selected moves and prediction counts.
+
+The final comparison used **45 fresh Release test processes**: 27 timing,
+9 diagnostic and 9 mixed-load processes. Timing has three rounds, three boards,
+three windows and three measured evaluations per process: **81 raw samples**,
+or nine per board/window. Window order was 1/2/4, then 4/2/1, then 1/2/4.
+Every process runs a full sequential correctness reference followed by a full
+configuration warm-up. No forced GC was used.
+
+Torch intra-op and inter-op counts were **16/16** throughout, with CPU storage
+reuse enabled and the 32-row limits fixed. Application assemblies, dependency
+manifest, model and metadata were SHA-256 checked before and after each process.
+The [raw results](./batch10-results.json) retain fingerprints, all samples, GC/CPU/
+allocation/memory observations, candidate scores, cross-process checks, complete
+diagnostic batch distributions and every interactive probe. The supplied runner
+also retains individual TRX/log files in its ignored output directory.
+
+Timing and mixed-load processes have **no metrics subscriber**. Separate
+diagnostics subscribe only to batch/ownership/queue metrics, not synchronous stage
+timings. Worker idle is measured directly around incomplete `WaitToReadAsync`
+operations, including continuation dispatch until the worker resumes; it is not
+inferred by subtracting overlapping stages. Only completed waits in the observed
+interval are included. Queued rows include pending channel admission and exclude
+rows already taken by the worker.
+
+### Standalone latency
+
+Median and min/max milliseconds across all nine samples, without dropping outliers:
+
+| Board | Window 1 median (range) | Window 2 median (range) | Window 4 median (range) |
+| --- | ---: | ---: | ---: |
+| 1 | 2,011.135 (1,803.829-3,001.449) | 1,550.658 (1,357.895-1,592.511) | 1,389.225 (1,282.700-2,070.080) |
+| 2 | 629.776 (581.309-703.447) | 484.621 (431.725-521.518) | 386.264 (353.712-495.009) |
+| 3 | 1,247.369 (1,191.249-1,286.513) | 917.609 (853.078-1,473.602) | 850.617 (695.575-1,300.179) |
+
+Window 2 improved pooled medians by **22.9%, 23.0%, 26.4%**; window 4 by
+**30.9%, 38.7%, 31.8%**. Each won all three rounds on each board. Tails were noisy:
+Board 3's maximum was worse for both windows. With nine samples, nearest-rank p95
+is the maximum, not a well-estimated production tail.
+
+Process CPU and managed allocation medians per evaluation:
+
+| Board | CPU ms, windows 1 / 2 / 4 | Managed MB, windows 1 / 2 / 4 |
+| --- | ---: | ---: |
+| 1 | 18,953 / 15,344 / 15,516 | 766.358 / 766.076 / 765.303 |
+| 2 | 6,203 / 4,531 / 4,297 | 199.938 / 199.850 / 199.363 |
+| 3 | 11,891 / 8,969 / 9,328 | 451.971 / 451.812 / 451.398 |
+
+MB above is decimal; these are process-wide managed counters, **not native Torch
+allocation**. Gen0/1/2 collection totals across the nine samples were Board 1:
+551/2/2, 550/0/0, 552/1/1 for windows 1/2/4; Board 2: 144/0/0 for each;
+Board 3: 324/0/0 for each. Private-memory medians ranged from **157.0 to 177.2 MB**
+across timing configurations; the largest timing-process peak working set was
+**196.4 MB**. Neither allocation nor observed memory failed its gate. These
+process-memory observations include runtime/native memory but are not native
+allocation or exhaustive live-object profiling.
+
+### Worker availability, occupancy and bounded retention
+
+One separate diagnostic evaluation per configuration:
+
+| Board | Rows | Forwards, windows 1 / 2 / 4 | Completed empty-queue wait ms, windows 1 / 2 / 4 |
+| --- | ---: | ---: | ---: |
+| 1 | 104,291 | 4,376 / 4,376 / 3,970 | 489.665 / 7.624 / 1.028 |
+| 2 | 28,008 | 1,423 / 1,423 / 1,158 | 130.057 / 2.243 / 1.348 |
+| 3 | 61,717 | 2,684 / 2,684 / 2,459 | 357.295 / 3.881 / 0.516 |
+
+Window 2 mostly improved availability, not packing: forward counts were unchanged
+in these profiles. Window 4 reduced forwards by **9.3%, 18.6%, 8.4%**. Board 1's
+theoretical 3,260-forward perfect-packing bound was not reached. Distribution and
+queue interleaving are scheduling-dependent; these diagnostic counts are not
+timing-run forward counts.
+
+Peak active roots were exactly **1/2/4**, and owned reply boards and pending neural
+feature rows exactly **32/64/128**. At 216 floats per row this bounds the latter
+payload to **27/54/108 KiB**, excluding arrays, other features and worker storage.
+Peak queued rows by board were 32/64/96, 32/44/96 and 32/45/102. All tracked
+ownership/queue counts returned to zero. Counts describe active root/reply and
+inference-feature ownership, not move-generation temporaries or all GC-live
+objects. No whole-search feature retention was introduced.
+
+### Mixed load and acceptance decision
+
+Three fresh processes per window ran two simultaneous full Board 1 evaluations
+plus **100 serial single-row probes**, spaced by 5 ms, with every probe overlapping
+at least one search. Each simultaneous request used its own deserialized board
+contract: `CreateBoard(contract)` owns the contract's mutable fields array.
+An initial harness attempt accidentally shared this array between requests;
+that attempt was aborted, corrected, and **all final comparisons rerun on fixed
+binaries**. None of its measurements are included in the raw results.
+
+| Metric | Window 1 | Window 2 | Window 4 |
+| --- | ---: | ---: | ---: |
+| Median time for both evaluations | 3,479.253 ms | 3,189.294 ms | 3,217.177 ms |
+| Aggregate evaluations/second | 0.575 | 0.627 | 0.622 |
+| Pooled probe median | 0.8049 ms | 1.5026 ms | 2.8512 ms |
+| Pooled probe p95, nearest rank | 1.5479 ms | 4.1688 ms | 4.4306 ms |
+| Worst probe | 3.1541 ms | 21.9113 ms | 12.8593 ms |
+
+Percentiles pool **300 probes per window**. Throughput improved by 9.1% and 8.1%,
+but the predetermined p95 limit was **1.7027 ms** and worst-probe limit
+**3.9426 ms**. Both windows failed both fairness gates by a substantial margin.
+The FIFO worker cannot prioritize interactive work ahead of already queued search
+items; more available producers increase that competing work. Do not enable either
+window just because standalone requests or batch occupancy improve.
+
+**Window 1 remains the production default.** The experimental selector is internal
+and disabled by default; no server or runtime configuration was changed. A future
+fairness/repacking experiment would need a separate design, measured thresholds
+and renewed FIFO/error/completion tests, not an unmeasured scheduling change here.
+
+### Correctness and reproduction
+
+[CandidateWindowTests](../Services/CandidateWindowTests.cs) covers out-of-order
+completion, stable ties, bounded admission, independent boards/history/cube state,
+draining on failure/cancellation, real worker shutdown, terminal candidates and
+exact feature-multiset/score comparisons for both perspectives of all five
+variants. Existing batch, traversal and clone tests retain pass, weighted-roll,
+terminal-reply, pins/home bars, lifetime and restoration coverage.
+
+Every configured warm-up and measured result was compared candidate-by-candidate
+to its process's sequential reference. All **280 roots** across the three boards
+retained their sets, selected moves and neural-row counts. Maximum absolute
+within-process score difference was **3.46e-8**; cross-process configured warm-up
+difference was **2.76e-8**, both below 1e-5. Final focused Release validation passed
+**92 NN/inference/diagnostic cases** and **23 engine clone/history/snapshot cases**;
+the Mars server Release build passed with no warnings or errors. The 45 final
+performance-process tests also passed. Long-running self-play was not rerun.
+
+From the repository root in PowerShell, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-candidate-windows.py `
+    --threads 16 `
+    --output-dir "$env:TEMP\gammonx-windows-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
 
-The last uncached Board 1 profile scored **104,291 positions in 4,376 forwards**,
-averaging **23.83 rows** at a 32-row limit. Perfect packing across the entire
-request would need `ceil(104291 / 32) = 3260` forwards, approximately **25.5% fewer**.
-That is a theoretical packing bound, not a latency prediction or a promise that
-bounded lookahead can achieve it.
-
-Unlike the rejected cache, this experiment aims to reduce forward-call overhead
-and worker idle gaps, not just remove a small number of rows from mostly unchanged
-batches.
-
-### First experiment: candidate windows of 1, 2 and 4
-
-1. Keep window **1** as the sequential reference.
-2. Prototype at most **2**, then **4**, active root-candidate evaluations. Candidate
-   B can prepare and submit features while candidate A awaits inference.
-3. Feed the **existing single FIFO inference worker**. Keep the 32-row worker
-   limit, 32-row caller cap, CPU input-storage reuse and thread settings fixed.
-   Do not add concurrent model calls, extra inference workers or queue delays.
-4. Bound scheduling itself: do not eagerly start every candidate or retain the
-   entire search's feature vectors. Completed candidates release their owned
-   state before replacement work is admitted.
-5. Add a test-only window selector for controlled comparisons. Do not change
-   production defaults before the experiment meets its acceptance criteria.
-
-Start with bounded asynchronous pipelining, not unrestricted `Task.Run` calls.
-Torch already uses multiple CPU threads; more producers can increase contention
-instead of improving latency. Audit feature/service shared state before permitting
-concurrent evaluation calls.
-
-### Board ownership and correctness requirements
-
-The current candidate loop applies and undoes moves on **one mutable board**.
-It must not simply be wrapped in `Task.WhenAll`.
-
-- Each active candidate needs its own independent board, including full history,
-  fields, pinned state, home bars, bear-off counts and cube state. Constructing
-  several boards around a shared contract array is not sufficient isolation.
-- Preserve history-derived neural inputs and keep reply boards valid through
-  their awaited scoring calls. The equality-only snapshots are not evaluation
-  inputs.
-- Store results at the original candidate index, regardless of completion order.
-  Final ordering and equal-score tie-breaking must match sequential evaluation.
-- Preserve terminal scoring, pass handling, all 21 weighted opponent outcomes,
-  perspective conversion and all candidate/physical prediction counts.
-- Observe every started task on failure or shutdown, restore owned boards in
-  `finally`, and do not leave abandoned evaluations or unobserved exceptions.
-  This experiment does not silently introduce a new public cancellation API.
-
-Tests should cover out-of-order completion, equal scores, the active-window bound,
-board/history isolation, failures, shutdown, terminal/pass cases and all variants.
-Compare every candidate score with the sequential reference using the existing
-1e-5 tolerance, and require unchanged selected moves.
-
-### Whole-request packing remains a limitation
-
-[BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs)
-currently combines **whole queue items only**. Two 20-row requests cannot share
-one 32-row forward, even when both are ready. Bounded concurrency can improve
-availability and combine items that fit, but does not itself solve this packing
-constraint.
-
-Only if measurements show that this remains the limiting factor, consider a
-separate follow-up prototype that splits/repackages rows across request boundaries.
-That would require provenance and per-request completion tracking, correct
-partial-group/error handling, and renewed FIFO/fairness testing. It is not part
-of the initial candidate-window experiment.
-
-### Measurements and acceptance decision
-
-Use fresh Release processes on all three performance boards, alternating window
-order across repeated rounds. Keep binaries/model fingerprints and other settings
-fixed; warm up each configuration and retain individual samples and latency
-spread. Timing runs must have no stage-metrics subscriber.
-
-Collect separately:
-
-- Evaluation wall time (median and tails), process CPU time and managed allocation/
-  GC counts.
-- Actual batch-size distribution, forward-pass count, worker empty-queue wait
-  time and queued work. Do not infer idle time by subtracting overlapping stages.
-- Retained boards/features, peak active candidates and process-memory observations;
-  distinguish these from native allocation measurements.
-- Mixed load with simultaneous evaluations and interactive single-row probes,
-  including p95 and worst-probe latency. Also consider aggregate throughput, not
-  only one request's speed.
-
-Choose practical latency and fairness thresholds **before** collecting the
-comparison. Retain the smallest window with a repeatable, meaningful benefit
-beyond measurement noise, unchanged scoring and bounded memory, with no material
-interactive-p95 regression. If gains are absent or fairness/memory costs dominate,
-retain sequential execution and document the negative result.
-
-Do not treat fuller batches alone as success. The deliverable is a verified
-latency/fairness decision, plus raw comparisons and updated documentation.
-GPU work, selective two-ply search, cross-request caching and whole-search eager
-batching remain outside this experiment.
+The runner builds Release without restore, discovers the configured artifact path,
+rejects nonempty output directories, passes environment settings only to child processes,
+checks fingerprints and writes `thresholds.json`, incremental `runs.json` and the
+final `results.json` with the smallest passing window (1 when neither passes).
+It does not change production defaults. Manual single-process selectors are
+`GAMMONX_PERF_WINDOW=1|2|4`, `GAMMONX_PERF_BOARD=1|2|3` and
+`GAMMONX_PERF_WINDOW_MODE=Timing|Diagnostic|Mixed`, used only by
+[MeasureCandidateWindows](./PerformanceTests.CandidateWindows.cs).
 
 ## Further optimization constraints
 

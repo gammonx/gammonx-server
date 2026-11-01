@@ -70,6 +70,8 @@ namespace GammonX.Mars.NN.Services
                 var count = Math.Min(_maxBatchSize, sequences.Length - start);
                 var boards = new IBoardModel[count];
                 var applied = new int[count];
+                var retained = 0;
+
                 try
                 {
                     // we iterate through all collected board and execute the moves
@@ -79,6 +81,10 @@ namespace GammonX.Mars.NN.Services
                         {
                             boards[index] = _cloneBoard(board);
                         }
+
+                        retained++;
+
+                        EvaluationMetrics.RecordReplyBoards(1);
 
                         foreach (var move in sequences[start + index].Moves)
                         {
@@ -92,6 +98,7 @@ namespace GammonX.Mars.NN.Services
                     {
                         throw new InvalidDataException("Batch scoring must return one score per reply.");
                     }
+
                     // scores are from the opponents perspective, so the opponent maximizes them
                     best = Math.Max(best, scores.Max());
                 }
@@ -104,6 +111,8 @@ namespace GammonX.Mars.NN.Services
                             _boardService.UndoMove(boards[index], sequences[start + index].Moves[moveIndex], isWhite);
                         }
                     }
+
+                    EvaluationMetrics.RecordReplyBoards(-retained);
                 }
             }
             return best;

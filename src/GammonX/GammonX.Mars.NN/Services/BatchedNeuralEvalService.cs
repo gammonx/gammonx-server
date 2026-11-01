@@ -162,13 +162,19 @@ namespace GammonX.Mars.NN.Services
             EnsureRunning();
             var tcs = new TaskCompletionSource<float[][]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            await _channel.Writer.WriteAsync(
-                new InferenceRequest(
-                    features,
-                    tcs,
-                    EvaluationMetrics.GetQueueTimestamp()),
-                _cts.Token)
-                .ConfigureAwait(false);
+            EvaluationMetrics.RecordQueuedRows(features.Length);
+
+            try
+            {
+                await _channel.Writer.WriteAsync(
+                    new InferenceRequest(features, tcs, EvaluationMetrics.GetQueueTimestamp()),
+                    _cts.Token).ConfigureAwait(false);
+            }
+            catch
+            {
+                EvaluationMetrics.RecordQueuedRows(-features.Length);
+                throw;
+            }
 
             EvaluationMetrics.RecordInferenceRequest();
 
@@ -253,17 +259,29 @@ namespace GammonX.Mars.NN.Services
             
             try
             {
-                while (await _channel.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
+                while (true)
                 {
+                    var waiting = _channel.Reader.WaitToReadAsync(ct);
+
+                    var waitStarted = waiting.IsCompletedSuccessfully ? 0 : EvaluationMetrics.GetWorkerWaitTimestamp();
+                    var available = await waiting.ConfigureAwait(false);
+                    
+                    EvaluationMetrics.RecordWorkerWait(waitStarted);
+
+                    if (!available)
+                        break;
+
                     ct.ThrowIfCancellationRequested();
                     batch.Clear();
                     var rowCount = 0;
+
                     while (_channel.Reader.TryPeek(out var next) && rowCount + next.Count <= MaxBatchSize)
                     {
                         if (!_channel.Reader.TryRead(out var request))
                             break;
                         batch.Add(request);
                         rowCount += request.Count;
+                        EvaluationMetrics.RecordQueuedRows(-request.Count);
                     }
 
                     if (batch.Count == 0)
@@ -298,6 +316,7 @@ namespace GammonX.Mars.NN.Services
 
                 while (_channel.Reader.TryRead(out var request))
                 {
+                    EvaluationMetrics.RecordQueuedRows(-request.Count);
                     request.Cancel(ct);
                 }
             }

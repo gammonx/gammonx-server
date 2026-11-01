@@ -21,8 +21,17 @@ internal sealed class EvaluationMetricsCollector : IDisposable
     {
         _listener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == EvaluationMetrics.MeterName)
+            if (instrument.Meter.Name == EvaluationMetrics.MeterName &&
+                instrument.Name is
+                    EvaluationMetrics.DurationName or
+                    EvaluationMetrics.AllocationName or
+                    EvaluationMetrics.BatchSizeName or
+                    EvaluationMetrics.ReusedStateCountName or
+                    EvaluationMetrics.InferenceRequestCountName or
+                    EvaluationMetrics.SequenceCountName)
+            {
                 listener.EnableMeasurementEvents(instrument);
+            }
         };
         _listener.SetMeasurementEventCallback<double>((_, value, tags, _) =>
         {
