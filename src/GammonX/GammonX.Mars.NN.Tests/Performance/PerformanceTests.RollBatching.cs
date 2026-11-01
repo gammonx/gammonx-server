@@ -17,6 +17,13 @@ public partial class PerformanceTests
             configured.BatchAcrossRolls = setting == "1";
         }
         output.WriteLine($"CrossRollBatching={configured.BatchAcrossRolls}");
+        var reuse = Environment.GetEnvironmentVariable("GAMMONX_PERF_REUSE_REPLY_BOARD");
+        if (reuse != null)
+        {
+            Assert.Contains(reuse, new[] { "0", "1" });
+            configured.ReuseReplyBoard = reuse == "1";
+        }
+        output.WriteLine($"ReuseReplyBoard={configured.ReuseReplyBoard}");
     }
 
     private sealed class WorkerThreadVerifier : IDisposable

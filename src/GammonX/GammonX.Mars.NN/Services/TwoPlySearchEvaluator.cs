@@ -5,7 +5,7 @@ using GammonX.Engine.Services;
 
 namespace GammonX.Mars.NN.Services
 {
-    internal sealed class TwoPlySearchEvaluator
+    internal sealed partial class TwoPlySearchEvaluator
     {
         private readonly IBoardService _boardService;
         private readonly Func<IBoardModel, IBoardModel> _cloneBoard;

@@ -62,6 +62,7 @@ public class BatchEvaluationTests
         var neural = new DeterministicNeuralService(GameModus.Backgammon, 64);
         var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
+        service.ReuseReplyBoard = true;
         var board = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PerformanceBoard1);
         Assert.NotNull(board);
         await service.EvalBoardStateAsync(new EvalBoardRequestContract
@@ -96,6 +97,7 @@ public class BatchEvaluationTests
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
                 FeatureEvalServiceFactory.Create(modus, neural));
             service.BatchAcrossRolls = true;
+            service.ReuseReplyBoard = true;
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var request = new EvalBoardRequestContract
@@ -144,6 +146,7 @@ public class BatchEvaluationTests
         var originalHistory = board.History.Events.ToArray();
         var neural = new DeterministicNeuralService(modus);
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(modus, neural));
+        eval.ReuseReplyBoard = true;
         var request = new EvalBoardRequestContract
         {
             Board = board.ToContract(false),
@@ -183,14 +186,40 @@ public class BatchEvaluationTests
             Assert.Equal(legacyFeatures[row], batchFeatures[row]);
         Assert.Equal(originalHistory, board.History.Events.ToArray());
 
+        IBoardModel? working = null;
+        var preparedFeatures = new List<float[]>();
+        var preparedEvaluator = new TwoPlySearchEvaluator(boardService, Batch,
+            position => working = position.DeepClone(), maxBatchSize: 4, batchAcrossRolls: true);
+        var preparedScore = await preparedEvaluator.EvaluatePreparedAsync(board, rootIsWhite,
+            (position, white) =>
+            {
+                var features = FeatureVectorExtractorFactory.Create(modus).Extract(
+                    eval.EvalPositionForTraining(position.ToContract(false), white), position, white);
+                preparedFeatures.Add(features);
+                return new PreparedPosition(features);
+            }, async positions =>
+            {
+                await Task.Yield();
+                Assert.NotNull(working);
+                Assert.True(working.Equals(board));
+                Assert.Equal(JsonConvert.SerializeObject(board.History), JsonConvert.SerializeObject(working.History));
+                return positions.Select(position => position.Features!.Sum(value => (double)value)).ToArray();
+            });
+        Assert.Equal(BitConverter.DoubleToInt64Bits(legacy), BitConverter.DoubleToInt64Bits(preparedScore));
+        Assert.Equal(legacyFeatures.Count, preparedFeatures.Count);
+        for (var row = 0; row < legacyFeatures.Count; row++)
+            Assert.Equal(legacyFeatures[row], preparedFeatures[row]);
+
         var score = await eval.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights);
         Assert.True(double.IsFinite(score));
         Assert.True(neural.Predictions > 0);
         Assert.True(neural.Batches > 0);
     }
 
-    [Fact]
-    public async Task TerminalRepliesAreNotSentToBatchInference()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TerminalRepliesAreNotSentToBatchInference(bool reuseReplyBoard)
     {
         var fields = new int[24];
         fields[0] = 1;
@@ -198,6 +227,7 @@ public class BatchEvaluationTests
         var neural = new DeterministicNeuralService(GameModus.Backgammon);
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
+        eval.ReuseReplyBoard = reuseReplyBoard;
         var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
         {
             Board = new BoardModelContract
@@ -215,9 +245,11 @@ public class BatchEvaluationTests
     }
 
     [Theory]
-    [InlineData(false, 21)]
-    [InlineData(true, 6)]
-    public async Task NoLegalOpponentReplyContributesOneRowPerRollToBoundedBatches(bool batchAcrossRolls, int expectedBatches)
+    [InlineData(false, false, 21)]
+    [InlineData(false, true, 21)]
+    [InlineData(true, false, 6)]
+    [InlineData(true, true, 6)]
+    public async Task NoLegalOpponentReplyContributesOneRowPerRollToBoundedBatches(bool batchAcrossRolls, bool reuseReplyBoard, int expectedBatches)
     {
         var fields = new int[24];
         Array.Fill(fields, 2, 0, 6);
@@ -225,6 +257,7 @@ public class BatchEvaluationTests
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
         eval.BatchAcrossRolls = batchAcrossRolls;
+        eval.ReuseReplyBoard = reuseReplyBoard;
 
         var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
         {
@@ -244,9 +277,11 @@ public class BatchEvaluationTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task MixedTerminalAndNeuralRepliesKeepTheirRollScores(bool batchAcrossRolls)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MixedTerminalAndNeuralRepliesKeepTheirRollScores(bool batchAcrossRolls, bool reuseReplyBoard)
     {
         var fields = new int[24];
         fields[5] = 1;
@@ -272,6 +307,7 @@ public class BatchEvaluationTests
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural.Object));
         eval.BatchAcrossRolls = batchAcrossRolls;
+        eval.ReuseReplyBoard = reuseReplyBoard;
 
         var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
         {
@@ -326,6 +362,67 @@ public class BatchEvaluationTests
             (_, _) => Task.FromResult(Array.Empty<double>()));
         await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(board, true));
         Assert.True(board.Equals(original));
+    }
+
+    [Theory]
+    [InlineData("hit", true)]
+    [InlineData("bar", true)]
+    [InlineData("bearoff", true)]
+    [InlineData("pins", true)]
+    [InlineData("pins", false)]
+    public async Task PreparedRepliesPreserveSpecialBoardState(string scenario, bool rootIsWhite)
+    {
+        var modus = scenario == "pins" ? GameModus.Plakoto : GameModus.Backgammon;
+        var boards = BoardServiceFactory.Create(modus);
+        var fields = new int[24];
+        var contract = new BoardModelContract { Fields = fields, DoublingCubeValue = 2 };
+        switch (scenario)
+        {
+            case "hit": fields[0] = -14; fields[22] = -1; fields[23] = 15; break;
+            case "bar":
+                fields[0] = -4; fields[23] = -1; fields[10] = 14;
+                for (var index = 18; index < 23; index++) fields[index] = -2;
+                contract.HomeBarCountBlack = 1;
+                break;
+            case "bearoff": fields[5] = 15; fields[23] = -15; break;
+            case "pins":
+                fields[6] = -2; fields[8] = 1; fields[12] = 2;
+                contract.PinnedFields = new int[24]; contract.PinnedFields[12] = -1;
+                contract.BearOffCountWhite = contract.BearOffCountBlack = 12;
+                break;
+        }
+        var board = boards.CreateBoard(contract);
+        boards.AddRollEventToHistory(board, true, [2, 3]);
+        var original = Snapshot(board);
+        var expected = new List<string>();
+        var evaluator = new TwoPlySearchEvaluator(boards, (positions, _) =>
+        {
+            expected.AddRange(positions.Select(Snapshot));
+            return Task.FromResult(new double[positions.Count]);
+        }, maxBatchSize: 4, batchAcrossRolls: true);
+        await evaluator.EvaluateAsync(board, rootIsWhite);
+        var actual = new List<string>();
+        IBoardModel? working = null;
+        evaluator = new TwoPlySearchEvaluator(boards, (_, _) => throw new Exception(),
+            position => working = position.DeepClone(), 4, true);
+        await evaluator.EvaluatePreparedAsync(board, rootIsWhite, (position, _) =>
+        {
+            actual.Add(Snapshot(position));
+            return new PreparedPosition([0]);
+        }, async positions =>
+        {
+            await Task.Yield();
+            Assert.Equal(original, Snapshot(working!));
+            return new double[positions.Count];
+        });
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, actual);
+        Assert.Equal(original, Snapshot(board));
+
+        static string Snapshot(IBoardModel position) => JsonConvert.SerializeObject(new
+        {
+            Board = position.ToContract(false), History = position.History
+        });
     }
 
     private sealed class DeterministicNeuralService(GameModus modus, int maxBatchSize = 4) : INeuralEvalService

@@ -61,11 +61,14 @@ public partial class PerformanceTests
             using (var workerThreads = new WorkerThreadVerifier(ReadTuningInt("GAMMONX_PERF_THREADS", get_num_threads())))
             {
                 var defaultBatchAcrossRolls = service.BatchAcrossRolls;
+                var defaultReuseReplyBoard = service.ReuseReplyBoard;
                 service.BatchAcrossRolls = false;
+                service.ReuseReplyBoard = false;
                 before = counting.PredictionCount;
                 reference = await Evaluate();
                 expectedRows = counting.PredictionCount - before;
                 service.BatchAcrossRolls = defaultBatchAcrossRolls;
+                service.ReuseReplyBoard = defaultReuseReplyBoard;
                 ConfigureRollBatching(service);
                 service.ParallelCandidateCount = window;
                 warmup = await Evaluate();
@@ -136,7 +139,8 @@ public partial class PerformanceTests
                 Assert.Equal(expectedRows, counting.PredictionCount - before);
                 Assert.Equal(expectedRows, profile.BatchSizes.Sum(pair => pair.Key * pair.Value));
                 Assert.InRange(profile.PeakCandidates, 1, window);
-                Assert.InRange(profile.PeakReplyBoards, 1, window * 32);
+                Assert.InRange(profile.PeakReplyBoards, 1, window * (service.ReuseReplyBoard ? 1 : 32));
+                Assert.Equal(service.ReuseReplyBoard ? reference.Count : expectedRows, profile.ReplyClones);
                 Assert.InRange(profile.PeakFeatures, 1, window * 32);
                 Assert.InRange(profile.PeakQueuedRows, 1, window * 32);
                 Assert.All(profile.BatchSizes, pair => Assert.InRange(pair.Key, 1, 32));
@@ -155,7 +159,8 @@ public partial class PerformanceTests
 
             output.WriteLine("WINDOW_JSON," + JsonConvert.SerializeObject(new
             {
-                Board = boardNumber, Window = window, Mode = mode, CrossRollBatching = service.BatchAcrossRolls, Threads = get_num_threads(),
+                Board = boardNumber, Window = window, Mode = mode, CrossRollBatching = service.BatchAcrossRolls,
+                ReuseReplyBoard = service.ReuseReplyBoard, Threads = get_num_threads(),
                 InteropThreads = get_num_interop_threads(), Rows = expectedRows, Candidates = reference.Count,
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,
@@ -203,6 +208,7 @@ public partial class PerformanceTests
         private readonly Dictionary<string, long> _current = new();
         private readonly Dictionary<string, long> _peak = new();
         private readonly Dictionary<long, long> _batches = new();
+        private long _replyClones;
 
         public WindowMetricsCollector()
         {
@@ -211,7 +217,7 @@ public partial class PerformanceTests
                 if (instrument.Meter.Name == EvaluationMetrics.MeterName &&
                     instrument.Name is EvaluationMetrics.ActiveCandidatesName or EvaluationMetrics.ReplyBoardsName or
                         EvaluationMetrics.FeatureRowsName or EvaluationMetrics.QueuedRowsName or
-                        EvaluationMetrics.BatchSizeName or EvaluationMetrics.WorkerIdleName)
+                        EvaluationMetrics.BatchSizeName or EvaluationMetrics.DurationName)
                     listener.EnableMeasurementEvents(instrument);
             };
             _listener.SetMeasurementEventCallback<long>((instrument, value, _, _) =>
@@ -228,6 +234,14 @@ public partial class PerformanceTests
                     }
                 }
             });
+            _listener.SetMeasurementEventCallback<double>((instrument, _, tags, _) =>
+            {
+                if (instrument.Name != EvaluationMetrics.DurationName)
+                    return;
+                foreach (var tag in tags)
+                    if (tag.Key == "stage" && tag.Value is EvaluationMetrics.ReplyClone)
+                        Interlocked.Increment(ref _replyClones);
+            });
             _listener.Start();
         }
 
@@ -239,6 +253,7 @@ public partial class PerformanceTests
                     _peak.GetValueOrDefault(EvaluationMetrics.ReplyBoardsName),
                     _peak.GetValueOrDefault(EvaluationMetrics.FeatureRowsName),
                     _peak.GetValueOrDefault(EvaluationMetrics.QueuedRowsName),
+                    Interlocked.Read(ref _replyClones),
                     _batches.OrderBy(pair => pair.Key).ToDictionary());
         }
 
@@ -255,5 +270,6 @@ public partial class PerformanceTests
         long PeakReplyBoards, 
         long PeakFeatures, 
         long PeakQueuedRows,
+        long ReplyClones,
         Dictionary<long, long> BatchSizes);
 }

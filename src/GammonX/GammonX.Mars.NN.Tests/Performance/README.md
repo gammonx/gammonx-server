@@ -12,7 +12,7 @@ thresholds. See the current implementation notes before reproducing an older bat
   interface and the legacy two-ply dispatch path have been removed.
 - Two-ply scoring always uses bounded groups of at most
   `min(service.MaxBatchSize, 32)` replies. A blocked opponent is a pass and is
-  scored as a **one-row batch**, not an empty batch or infinite score.
+  scored as **one row per roll**, which can share a group with other rolls.
 - `PredictAsync` remains a supported convenience API for cube/one-ply callers
   and interactive probes. In the hosted service it uses the same batch queue with
   one row and preserves the underlying exception/cancellation, rather than a
@@ -39,8 +39,13 @@ thresholds. See the current implementation notes before reproducing an older bat
   harness are retained for controlled experiments, not runtime configuration.
 - Follow-up step 3 tested filling reply groups across opponent dice rolls while
   retaining window 1 and the 32-row cap. It failed repeatability and interactive
-  latency gates. **Production still flushes each roll separately.** The internal
-  cross-roll selector defaults to false; only tests can opt in.
+  latency gates. **Cross-roll batching is nevertheless enabled by the owner's
+  explicit choice on 2026-11-01.** `BatchAcrossRolls` defaults to true in the
+  feature service; the measured fairness regression remains documented below.
+- Follow-up step 4 prepares feature rows using one apply/undo working board.
+  It reduced managed allocation by 18-22% but failed latency and mixed-load
+  gates. **`ReuseReplyBoard` remains false by default**; the implementation is
+  retained for controlled comparisons. Cross-roll batching remains enabled.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -1602,10 +1607,12 @@ Local evidence is in repository-root `TestResults/latency-step2-20261101/`:
 
 Implemented bounded cross-roll packing in
 [TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs),
-then **rejected it for default enablement** after the repeated comparison.
-`BatchAcrossRolls` defaults to false in both the evaluator and feature service.
-The prototype and reproduction harness remain available for controlled tests;
-there is no server/runtime setting.
+then **rejected it for automatic default enablement** after the repeated comparison.
+At the step-3 checkpoint, `BatchAcrossRolls` defaulted to false. The owner then
+explicitly chose to enable it for now before starting step 4, so the feature
+service now passes true by default. This is a deliberate override of the
+benchmark recommendation, not a change to its results. The internal comparison
+selector remains available to tests; there is no server/runtime setting.
 
 The prototype fills one group across adjacent opponent rolls, attaching a roll
 index to each reply or pass. Scores are reduced to the best reply for each of
@@ -1688,7 +1695,107 @@ in `results.json` for the enablement decision.
 Local evidence is under repository-root
 `TestResults/latency-step3-20261101/`: `validation-final.trx` and
 `comparison/{thresholds,runs,results}.json`, plus each process's log and TRX.
-These files are ignored by Git. Steps 4 and 5 are not implemented here.
+These files are ignored by Git. Step 4 is recorded below; step 5 is not implemented.
+
+## Follow-up step 4: prepare replies with one working board (2026-11-01)
+
+Implemented [prepared reply evaluation](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.Prepared.cs)
+and its terminal/neural scoring adapter in
+[BaseFeatureEvalServiceImpl](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs).
+The internal `ReuseReplyBoard` selector remains **false by default** because the
+comparison failed its latency gates. The owner's step-3 choice is preserved:
+`BatchAcrossRolls` remains true, independently of this selector.
+
+The prepared path lazily deep-clones one working board per root candidate.
+For each legal reply it applies the moves, synchronously extracts an independent
+feature vector (or terminal score), and undoes the moves in a `finally` block.
+Restoration happens **before** asynchronous scoring. Only prepared rows cross
+the await; no mutable board is retained by the inference request. The working
+board is private to that root search. An all-pass search needs no working clone.
+
+Passes, row order, terminal filtering, dice weights, opponent maxima and the
+32-row group limit are preserved. Pending feature references and ownership
+counters are released on success, preparation/generation/scoring errors and
+cancellation. Feature arrays are still independently allocated; this step does
+not introduce feature-buffer pooling or change legal-move generation.
+
+The runner compared **clone-per-reply versus one working board with cross-roll
+batching enabled on both sides**. Both paths used the same binary/model, CPU,
+16 OMP/MKL and inter-op threads, reusable CPU tensor input, sequential candidates
+and a 32-row worker. It ran 30 fresh processes using the step-3 protocol and
+unchanged predeclared thresholds: 18 timing processes with three samples each,
+six diagnostic processes and six mixed-load processes. Pair order alternated
+across three rounds. Warm-up verified worker threads, and timed samples had no
+metrics listeners. Binary/model fingerprints remained fixed during comparison.
+
+| Board | Clone-per-reply allocations | Working-board allocations | Reduction | Reply clones before -> after |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 628,450,480 bytes | 490,181,056 bytes | 22.0% | 104,291 -> 131 |
+| 2 | 162,788,368 bytes | 133,107,664 bytes | 18.2% | 28,008 -> 53 |
+| 3 | 371,140,664 bytes | 289,628,920 bytes | 22.0% | 61,717 -> 96 |
+
+These are medians over nine uninstrumented samples per board/configuration.
+The diagnostic runs confirmed peak retained reply boards fell from **32 to 1**.
+Feature and queued-row peaks remained at most 32 and ownership counters drained
+to zero. Forward counts stayed **3,305 / 904 / 1,981**, and neural rows stayed
+**104,291 / 28,008 / 61,717**. Both allocation and private-memory gates passed.
+
+| Board | Clone-per-reply median | Working-board median | Improvement | Rounds with >=5% gain |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 1,800.420 ms | 1,676.642 ms | 6.9% | 2/3 |
+| 2 | 493.273 ms | 477.401 ms | 3.2% | **1/3** |
+| 3 | 1,154.513 ms | 1,110.076 ms | 3.8% | **1/3** |
+
+Boards 2 and 3 failed both the median-gain and repeatability requirements.
+Lower allocation alone did not establish a reliable latency benefit.
+
+Mixed load used two simultaneous Board 1 searches and 100 serial interactive
+predictions spaced 5 ms apart in each process. All probes overlapped search;
+percentiles pool 300 probes per configuration.
+
+| Metric | Clone per reply | Working board | Allowed working-board limit |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 2,955.384 ms | 3,317.973 ms | Throughput >=97% of reference |
+| Interactive p95, nearest rank | 2.3845 ms | **5.4376 ms** | 2.6230 ms |
+| Worst interactive probe | 25.1650 ms | **39.4832 ms** | 31.4563 ms |
+
+Mixed throughput fell **10.9%**, and both interactive-latency gates failed.
+The benchmark therefore rejects automatic default enablement. It does not
+identify the exact cause of these regressions or establish comparisons against
+earlier experiments run at different times.
+
+All **280 configured candidate scores matched exactly** between clone-per-reply
+and working-board runs (maximum absolute difference **0**), with identical
+candidate sets, selected moves and row counts. The separate per-roll reference
+in each process differed by at most **4.90e-8**, within the existing 1e-5 tolerance.
+
+Final Release validation passed **119 focused tests**. Coverage includes exact
+feature equality for both perspectives of all five variants, real neural models,
+hits, home-bar entry, bear-off, Plakoto pins, history/cube state, terminal/pass
+groups, a single working clone, bounded admission, independent rows across await,
+failure/cancellation restoration and candidate concurrency. The 30 benchmark
+processes also passed their correctness checks. No engine movement code changed;
+long-running self-play was not rerun.
+
+Reproduce from the repository root, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization reply-board --threads 16 `
+    --output-dir "$env:TEMP\gammonx-reply-board-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+This mode fixes cross-roll batching to true and varies the test-only
+`GAMMONX_PERF_REUSE_REPLY_BOARD=0|1` selector. The default `--optimization
+roll-batching` instead fixes board reuse to false and varies cross-roll packing,
+so the two changes are not conflated. Neither runner changes production defaults.
+
+Local evidence is in repository-root `TestResults/latency-step4-20261101/`:
+`validation-final.trx` records the prepared-path profiles;
+`validation-defaults.trx` checks the final defaults and both scoring paths;
+`comparison/{thresholds,runs,results}.json` and per-process logs/TRX contain the
+comparison evidence. These files are ignored by Git. Step 5 remains pending
+manual approval.
 
 ## Further optimization constraints
 

@@ -229,7 +229,8 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 },
                 countingService,
                 collectDiagnostics,
-                tuning);
+                tuning,
+                Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(evalService).ReuseReplyBoard);
             WriteProcessMemory("AfterMeasurements");
             return new EvaluationMeasurement(warmup, legalMoves.Length, candidateScores, samples);
         }
@@ -248,7 +249,8 @@ public partial class PerformanceTests(ITestOutputHelper output)
         Action<T> validate,
         CountingNeuralEvalService? neuralService = null,
         bool collectDiagnostics = false,
-        CpuTuningConfiguration? tuning = null)
+        CpuTuningConfiguration? tuning = null,
+        bool reuseReplyBoard = true)
     {
         using var process = Process.GetCurrentProcess();
         var samples = new Measurement[MeasurementIterations];
@@ -282,7 +284,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
             if (diagnostics != null)
             {
                 var profile = diagnostics.Snapshot();
-                ValidateProfile(profile, rootCandidates, samples[iteration].Predictions);
+                ValidateProfile(profile, rootCandidates, samples[iteration].Predictions, reuseReplyBoard);
                 WriteProfile(boardName, workload, iteration + 1, profile);
             }
         }
@@ -307,7 +309,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
         return samples;
     }
 
-    private static void ValidateProfile(EvaluationProfile profile, int rootCandidates, long predictions)
+    private static void ValidateProfile(EvaluationProfile profile, int rootCandidates, long predictions, bool reuseReplyBoard)
     {
         var generation = profile.GetStage(EvaluationMetrics.MoveGeneration);
         Assert.Equal(1 + 21L * rootCandidates, generation.Calls);
@@ -317,7 +319,8 @@ public partial class PerformanceTests(ITestOutputHelper output)
         Assert.True(profile.GetStage(EvaluationMetrics.GenerationClone).Calls < profile.RawSequences);
         Assert.True(profile.ReusedStates > 0);
         Assert.True(profile.GetStage(EvaluationMetrics.TraversalSnapshot).Calls > 0);
-        Assert.Equal(profile.UniqueSequences - rootCandidates, profile.GetStage(EvaluationMetrics.ReplyClone).Calls);
+        Assert.Equal(reuseReplyBoard ? rootCandidates : profile.UniqueSequences - rootCandidates,
+            profile.GetStage(EvaluationMetrics.ReplyClone).Calls);
         Assert.True(profile.GetStage(EvaluationMetrics.ReplyClone).Calls <= predictions);
         Assert.Equal(rootCandidates + predictions, profile.GetStage(EvaluationMetrics.Features).Calls);
         Assert.Equal(predictions, profile.GetStage(EvaluationMetrics.FeatureVector).Calls);

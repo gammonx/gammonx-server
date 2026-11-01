@@ -1,4 +1,4 @@
-"""Compare per-roll and cross-roll batching in 30 fresh Release test processes.
+"""Compare roll batching or reply-board reuse in 30 fresh Release test processes.
 
 Run from any directory: python run-roll-batching.py --threads 16
 Requires restored packages, the .NET 10 SDK and the checked-in Backgammon model.
@@ -31,12 +31,12 @@ THRESHOLDS = {
 }
 
 
-def compare(runs):
+def compare(runs, field="CrossRollBatching"):
     reasons, boards = [], []
     for board in (1, 2, 3):
         timing = [run for run in runs if run["Mode"] == "Timing" and run["Board"] == board]
-        baseline = [run for run in timing if not run["CrossRollBatching"]]
-        candidate = [run for run in timing if run["CrossRollBatching"]]
+        baseline = [run for run in timing if not run[field]]
+        candidate = [run for run in timing if run[field]]
         before = statistics.median(windows.samples(baseline))
         after = statistics.median(windows.samples(candidate))
         wins = sum(
@@ -58,8 +58,8 @@ def compare(runs):
         boards.append({"Board": board, "BeforeMs": before, "AfterMs": after,
                        "Gain": 1 - after / before, "WinningRounds": wins, "AllocationRatio": allocation})
 
-    baseline = [run for run in runs if run["Mode"] == "Mixed" and not run["CrossRollBatching"]]
-    candidate = [run for run in runs if run["Mode"] == "Mixed" and run["CrossRollBatching"]]
+    baseline = [run for run in runs if run["Mode"] == "Mixed" and not run[field]]
+    candidate = [run for run in runs if run["Mode"] == "Mixed" and run[field]]
     before_probes = [probe for run in baseline for probe in run["Probes"]]
     after_probes = [probe for run in candidate for probe in run["Probes"]]
     before_p95, after_p95 = windows.percentile(before_probes, 0.95), windows.percentile(after_probes, 0.95)
@@ -92,22 +92,24 @@ def run_experiment(args):
     fingerprints = windows.fingerprints(target.parent)
     commit = windows.execute(["git", "rev-parse", "HEAD"], repo)
     runs = []
+    field = "ReuseReplyBoard" if args.optimization == "reply-board" else "CrossRollBatching"
 
     def run(round_number, board, cross_roll, mode):
-        name = f"{mode}-r{round_number}-b{board}-cross{int(cross_roll)}"
+        name = f"{mode}-r{round_number}-b{board}-{field}{int(cross_roll)}"
         print(f"Running {name}", flush=True)
         env = os.environ.copy()
         env.update(OMP_NUM_THREADS=str(args.threads), MKL_NUM_THREADS=str(args.threads),
                    GAMMONX_PERF_THREADS=str(args.threads), GAMMONX_PERF_WINDOW="1",
                    GAMMONX_PERF_BOARD=str(board), GAMMONX_PERF_WINDOW_MODE=mode,
-                   GAMMONX_PERF_CROSS_ROLL_BATCHING=str(int(cross_roll)))
+                   GAMMONX_PERF_CROSS_ROLL_BATCHING="1" if field == "ReuseReplyBoard" else str(int(cross_roll)),
+                   GAMMONX_PERF_REUSE_REPLY_BOARD=str(int(cross_roll)) if field == "ReuseReplyBoard" else "0")
         if windows.fingerprints(target.parent) != fingerprints:
             raise windows.BenchmarkError("Artifacts changed before " + name)
         windows.execute(["dotnet", "test", project, "-c", "Release", "--no-build", "--no-restore",
                          "--filter", windows.TEST_FILTER, "--logger", f"trx;LogFileName={name}.trx",
                          "--results-directory", str(output)], repo, log=output / f"{name}.log", env=env)
         result = windows.read_result(output / f"{name}.trx", args.threads, board, 1, mode)
-        if result["CrossRollBatching"] != cross_roll:
+        if result[field] != cross_roll or (field == "ReuseReplyBoard" and not result["CrossRollBatching"]) or (field == "CrossRollBatching" and result["ReuseReplyBoard"]):
             raise windows.BenchmarkError("Wrong batching configuration: " + name)
         if mode == "Mixed" and len(result["Probes"]) != 100:
             raise windows.BenchmarkError("Expected 100 overlapping probes: " + name)
@@ -131,9 +133,9 @@ def run_experiment(args):
             run(round_number, 1, cross_roll, "Mixed")
 
     score_checks = windows.check_scores(runs)
-    comparison = compare(runs)
+    comparison = compare(runs, field)
     windows.save_json(output / "results.json", {
-        "StartedFromCommit": commit, "RecordedAt": datetime.now().astimezone().isoformat(),
+        "StartedFromCommit": commit, "Optimization": args.optimization, "RecordedAt": datetime.now().astimezone().isoformat(),
         "Fingerprints": fingerprints, "Thresholds": THRESHOLDS, "Comparison": comparison,
         "ScoreChecks": score_checks, "Runs": runs,
     })
@@ -144,6 +146,7 @@ def run_experiment(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--threads", type=windows.positive_int, default=16)
+    parser.add_argument("--optimization", choices=("roll-batching", "reply-board"), default="roll-batching")
     parser.add_argument("--output-dir", type=Path, default=Path(__file__).resolve().parent / "TestResults"
                         / datetime.now().strftime("roll-batching-%Y%m%d-%H%M%S-%f"))
     args = parser.parse_args()

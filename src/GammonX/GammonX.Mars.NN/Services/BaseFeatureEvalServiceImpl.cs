@@ -28,6 +28,15 @@ namespace GammonX.Mars.NN.Services
         /// </remarks>
         internal bool BatchAcrossRolls { get; set; } = true;
 
+        /// <summary>
+        /// If set to true, the working board used for scoring is reused for each inference reply; if false, a new board is cloned for each reply.
+        /// Reused in this specific case means that the move sequences are executed, feature vectors are extracted and the moves undone before the inference is started.
+        /// </summary>
+        /// <remarks>
+        /// Although the latency gains were not fully verified, we do want to activate the option for now.
+        /// </remarks>
+        internal bool ReuseReplyBoard { get; set; } = true;
+
         protected abstract IBoardService BoardService { get; }
 
         protected BaseFeatureEvalServiceImpl(INeuralEvalService? neuralEvalService)
@@ -350,7 +359,70 @@ namespace GammonX.Mars.NN.Services
                 maxBatchSize: Math.Min(_neuralEvalService.MaxBatchSize, 32),
                 batchAcrossRolls: BatchAcrossRolls);
 
+            if (ReuseReplyBoard)
+            {
+                // we reuse the same board instance for each inference reply, applying and undoing the moves before inference.
+                return evaluator.EvaluatePreparedAsync(board, isWhite,
+                    (position, perspective) => PreparePosition(position, perspective, _neuralEvalService),
+                    positions => ScorePreparedPositionsAsync(positions, board.Modus, _neuralEvalService));
+            }
+
+            // we create board deep clones for each board inference
             return evaluator.EvaluateAsync(board, isWhite);
+        }
+
+        private PreparedPosition PreparePosition(IBoardModel board, bool isWhite, INeuralEvalService neural)
+        {
+            if (TryGetTerminalScore(board, isWhite, out var score))
+            {
+                return new PreparedPosition(null, score);
+            }
+
+            var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
+            var normalizedEval = NormalizedEvalResultModel.From(eval);
+            var featureVectors = neural.ExtractFeatures(normalizedEval, board, isWhite);
+
+            return new PreparedPosition(featureVectors);
+        }
+
+        private static async Task<double[]> ScorePreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural)
+        {
+            var scores = new double[positions.Count];
+            var features = new List<float[]>(positions.Count);
+            var indices = new List<int>(positions.Count);
+
+            for (var index = 0; index < positions.Count; index++)
+            {
+                var position = positions[index];
+                if (position.Features == null)
+                {
+                    scores[index] = position.TerminalScore;
+                }
+                else
+                {
+                    features.Add(position.Features);
+                    indices.Add(index);
+                }
+            }
+
+            if (features.Count == 0)
+            {
+                return scores;
+            }
+
+            var predictions = await neural.PredictBatchAsync(features.ToArray());
+
+            if (predictions.Length != indices.Count)
+            {
+                throw new InvalidDataException("Batch inference must return one result per non-terminal reply.");
+            }
+
+            for (var row = 0; row < indices.Count; row++)
+            {
+                scores[indices[row]] = ScorePrediction(modus, predictions[row]);
+            }
+
+            return scores;
         }
 
         private async Task<double> CalculatePositionScoreAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)

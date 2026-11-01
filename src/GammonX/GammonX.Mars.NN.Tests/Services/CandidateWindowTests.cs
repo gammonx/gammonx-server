@@ -116,6 +116,7 @@ public class CandidateWindowTests
         var rows = neural.Rows.ToArray();
         neural.Rows.Clear();
         service.ParallelCandidateCount = window;
+        service.ReuseReplyBoard = true;
         var actual = (await service.GetCandidatesByEvalAsync(board, moves, white, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert)).ToArray();
 
         Assert.Equal(reference.Select(row => row.MoveSequence), actual.Select(row => row.MoveSequence));
@@ -210,7 +211,7 @@ public class CandidateWindowTests
         mock.Setup(service => service.UndoMove(It.IsAny<IBoardModel>(), It.IsAny<MoveModel>(), It.IsAny<bool>()))
             .Callback<IBoardModel, MoveModel, bool>(real.UndoMove);
         var neural = new GatedScorer();
-        var service = new ControlledService(neural, mock.Object) { ParallelCandidateCount = window };
+        var service = new ControlledService(neural, mock.Object) { ParallelCandidateCount = window, ReuseReplyBoard = true };
         var moves = Enumerable.Range(1, 5).Select(to =>
             new MoveSequenceModel { Moves = [new MoveModel(0, to)] }).ToArray();
         // Point 5 is occupied; use a different legal starting checker for the final candidate.
