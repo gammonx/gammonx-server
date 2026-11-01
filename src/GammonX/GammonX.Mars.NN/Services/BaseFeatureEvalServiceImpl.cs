@@ -422,7 +422,7 @@ namespace GammonX.Mars.NN.Services
             {
                 return predictions[0];
             }
-            return new GameEquityModel(new GameOutcomeModel(predictions)).Equity;
+            return GameEquityModel.CalculateEquity(predictions);
         }
 
         private static bool TryGetTerminalScore(IBoardModel board, bool isWhite, out double score)

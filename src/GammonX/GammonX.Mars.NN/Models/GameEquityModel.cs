@@ -98,21 +98,46 @@
                 + LoseSingleP
                 + LoseGammonP
                 + LoseBackgammonP;
-            Equity = CalculateEquity(this);
+            Equity = CalculateEquity(
+                WinSingleP, WinGammonP, WinBackgammonP, LoseSingleP, LoseGammonP, LoseBackgammonP);
+        }
+
+        /// <summary>
+        /// Calculates search equity without allocating outcome models or diagnostic reports.
+        /// Like <see cref="GameOutcomeModel"/>, uses the first five heads and projects invalid probabilities.
+        /// </summary>
+        internal static double CalculateEquity(float[] netPredictions)
+        {
+            ArgumentNullException.ThrowIfNull(netPredictions);
+            if (netPredictions.Length < GameOutcomeConstraintValidator.FullHeadCount)
+            {
+                throw new ArgumentException("Five outcome heads are required.", nameof(netPredictions));
+            }
+
+            var (win, winGammon, winBackgammon, loseGammon, loseBackgammon) =
+                GameOutcomeConstraintValidator.ProjectProbabilities(
+                    netPredictions[0], netPredictions[1], netPredictions[2], netPredictions[3], netPredictions[4]);
+
+            // Preserve the diagnostic model's decomposition and operation order, including rounding.
+            return CalculateEquity(
+                win - winGammon, winGammon - winBackgammon, winBackgammon,
+                (1d - win) - loseGammon, loseGammon - loseBackgammon, loseBackgammon);
         }
 
         /// <summary>
         /// Calculates expected equity (cubeless game points) by weighting each atomic result by its game value.
         /// </summary>
-        private static double CalculateEquity(GameEquityModel model)
+        private static double CalculateEquity(
+            double winSingle, double winGammon, double winBackgammon,
+            double loseSingle, double loseGammon, double loseBackgammon)
         {
             // Single, gammon, and backgammon outcomes are worth one, two, and three points respectively.
-            var equity = model.WinSingleP * 1
-                       + model.WinGammonP * 2
-                       + model.WinBackgammonP * 3
-                       - model.LoseSingleP * 1
-                       - model.LoseGammonP * 2
-                       - model.LoseBackgammonP * 3;
+            var equity = winSingle * 1
+                       + winGammon * 2
+                       + winBackgammon * 3
+                       - loseSingle * 1
+                       - loseGammon * 2
+                       - loseBackgammon * 3;
             return equity;
         }
     }

@@ -1543,6 +1543,57 @@ is under this folder's `TestResults/latency-review-20261101/`. These result
 directories are ignored by Git. Later optimization steps are not included in
 this change.
 
+## Follow-up step 2: score-only equity calculation (2026-11-01)
+
+[GameEquityModel.CalculateEquity](../../GammonX.Mars.NN/Models/GameEquityModel.cs)
+now provides an internal score-only path for neural move/position evaluation.
+It avoids allocating outcome/equity models, constraint reports, projection
+objects and temporary diagnostic arrays for each predicted reply. Backgammon,
+Portes and Tavla use it; the scalar Plakoto/Fevga path remains unchanged.
+Cube evaluation and other callers that need full diagnostic models retain them.
+
+Both scoring paths share the probability projection rules and the six-outcome
+equity arithmetic. The fast path preserves double precision, operation order,
+NaN/infinity sanitization, clamping and hierarchy bounds. It also preserves the
+old input contract: reject null/fewer than five heads and ignore extra heads.
+No inference, feature, queue or search scheduling changes are included.
+
+Fresh-process measurements compared the step-1 code with this change on all
+three boards, with one process per board/configuration, one full warm-up and
+three timed evaluations: **six processes and 18 timed samples**. These used
+Release, CPU, 16 OMP/MKL and inter-op threads, a 32-row worker, sequential
+candidates and reusable CPU input. Worker thread counts were verified during
+warm-up; timed samples had no metrics listener. Median managed allocations were:
+
+| Board | Step 1 baseline | Score-only equity | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 697,972,008 bytes | 632,894,424 bytes | 65,077,584 bytes (9.3%) |
+| 2 | 182,132,976 bytes | 164,655,312 bytes | 17,477,664 bytes (9.6%) |
+| 3 | 412,548,016 bytes | 374,036,608 bytes | 38,511,408 bytes (9.3%) |
+
+All **280 candidate scores** matched the pre-change binary with maximum absolute
+difference **0**. Candidate sets, selected moves, model hash and prediction counts
+were unchanged; warm-up batch counts were unchanged too.
+
+Wall-time medians were **1,808.732 -> 1,909.417 ms**, **647.991 -> 740.581 ms**
+and **1,087.415 -> 1,139.457 ms**. These sequential before/after observations were
+slower after the change and **do not establish an end-to-end latency benefit**.
+A separate isolated probe alternated diagnostic/scalar scoring for six rounds
+of 104,291 calls each: scalar scoring was faster in every round and allocated
+zero bytes. JIT tiering affected the probe timings; these synthetic measurements
+do not explain the end-to-end timing variation or replace repeated alternating
+search benchmarks. The demonstrated production-workload benefit is lower
+managed allocation.
+
+Validation passed **136 focused tests**, including 22 new scoring cases, plus
+the six benchmark processes. Coverage includes exact bitwise score agreement
+on 10,000 deterministic input vectors, fixed expected outcomes, nonfinite and
+invalid probabilities, input immutability/contracts, zero scoring allocations,
+cube/match equity and existing real-model batch/search tests across all variants.
+Local evidence is in repository-root `TestResults/latency-step2-20261101/`:
+`before-board*.trx`, `after-board*.trx`, `correctness-final.trx`,
+`comparison.json` and `scoring-probe/results.txt`. These files are ignored by Git.
+
 ## Further optimization constraints
 
 Any further implementation must preserve board restoration, legal dice usage,
