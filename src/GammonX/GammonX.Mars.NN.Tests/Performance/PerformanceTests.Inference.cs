@@ -24,6 +24,7 @@ public partial class PerformanceTests
         try
         {
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
+            ConfigureRollBatching(service);
             var contract = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PerformanceBoard1);
             Assert.NotNull(contract);
 

@@ -16,11 +16,14 @@ namespace GammonX.Mars.NN.Tests.Services;
 public class CandidateWindowTests
 {
     [Theory]
-    [InlineData(2)]
-    [InlineData(4)]
-    public async Task BoundsAdmissionAndPreservesTiesDespiteOutOfOrderCompletion(int window)
+    [InlineData(2, false)]
+    [InlineData(2, true)]
+    [InlineData(4, false)]
+    [InlineData(4, true)]
+    public async Task BoundsAdmissionAndPreservesTiesDespiteOutOfOrderCompletion(int window, bool batchAcrossRolls)
     {
         var (service, board, moves, neural) = Controlled(window);
+        service.BatchAcrossRolls = batchAcrossRolls;
         var original = board.DeepClone();
         var evaluation = service.GetCandidatesByEvalAsync(board, moves, true, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert);
         for (var index = 1; index <= window; index++)
@@ -44,7 +47,7 @@ public class CandidateWindowTests
         Assert.Equal(moves, result.Select(row => row.MoveSequence));
         Assert.True(result[0].MoveSequence.Equals(moves[0]));
         Assert.InRange(neural.Peak, 2, window);
-        Assert.Equal(21 * moves.Length, neural.Calls);
+        Assert.Equal((batchAcrossRolls ? 1 : 21) * moves.Length, neural.Calls);
         Assert.True(board.Equals(original));
         Assert.All(neural.Boards.Values, owned =>
         {
@@ -272,7 +275,7 @@ public class CandidateWindowTests
             try
             {
                 await _gates[key].Task;
-                return [[0.5f, 0, 0, 0, 0]];
+                return features.Select(_ => new[] { 0.5f, 0f, 0f, 0f, 0f }).ToArray();
             }
             finally
             {

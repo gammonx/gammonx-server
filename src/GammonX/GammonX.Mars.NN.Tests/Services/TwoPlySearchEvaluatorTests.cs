@@ -10,7 +10,7 @@ using Moq;
 
 namespace GammonX.Mars.NN.Tests.Services
 {
-    public class TwoPlySearchEvaluatorTests
+    public partial class TwoPlySearchEvaluatorTests
     {
         [Fact]
         public async Task UsesBackgammonDiceProbabilities()
@@ -63,20 +63,24 @@ namespace GammonX.Mars.NN.Tests.Services
         public async Task ScoresEveryReplyInTheBatchBeforeRestoringItsBoard()
         {
             var harness = CreateHarness(_ => [CreateSequence(1), CreateSequence(2)]);
-            var batches = 0;
+            var batchSizes = new List<int>();
+            var scoredBoards = new List<IBoardModel>();
             var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
                 async (boards, _) =>
                 {
                     await Task.Yield();
-                    Assert.Equal(new[] { 1, 2 }, boards.Select(board => board.Fields[0]));
-                    batches++;
+                    Assert.Equal(Enumerable.Range(0, boards.Count).Select(index => index % 2 + 1),
+                        boards.Select(board => board.Fields[0]));
+                    batchSizes.Add(boards.Count);
+                    scoredBoards.AddRange(boards);
                     return boards.Select(board => (double)board.Fields[0]).ToArray();
-                }, board => CloneBoard(board));
+                }, board => CloneBoard(board), batchAcrossRolls: true);
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
             Assert.Equal(-2d, score, 10);
-            Assert.Equal(21, batches);
+            Assert.Equal(new[] { 32, 10 }, batchSizes);
+            Assert.All(scoredBoards, board => Assert.Equal(0, board.Fields[0]));
             Assert.Equal(0, harness.Fields[0]);
         }
 

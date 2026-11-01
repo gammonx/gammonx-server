@@ -42,11 +42,11 @@ public partial class PerformanceTests
         try
         {
             var observer = new DuplicateInputObserver(neural);
-            var service = FeatureEvalServiceFactory.Create(GameModus.Backgammon, observer);
+            var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(GameModus.Backgammon, observer));
             output.WriteLine("DUPLICATES columns: board,root,logical_rows,unique_rows,within_batch_duplicates,cross_batch_duplicates,groups,groups_with_new_rows,unique_payload_bytes,cross_roll_duplicates");
             for (var index = 0; index < moves.Length; index++)
             {
-                observer.Reset(ExpectedReplyGroups(boardService, board, moves[index]));
+                observer.Reset(ExpectedReplyGroups(boardService, board, moves[index], service.BatchAcrossRolls));
                 var result = await service.EvalMoveSequenceAsync(
                     contract, false, moves[index], BotLevel.Expert, EvalWeights.DefaultContactWeights);
                 Assert.True(double.IsFinite(result.Score));
@@ -62,28 +62,43 @@ public partial class PerformanceTests
         }
     }
 
-    private static IEnumerable<(int Roll, int Rows)> ExpectedReplyGroups(
-        IBoardService service, IBoardModel initial, MoveSequenceModel move)
+    private static IEnumerable<int[]> ExpectedReplyGroups(
+        IBoardService service, IBoardModel initial, MoveSequenceModel move, bool batchAcrossRolls)
     {
         var root = initial.DeepClone();
         foreach (var step in move.Moves)
             service.MoveCheckerTo(root, step.From, step.To, false);
+        var pending = new List<int>(32);
         for (var die1 = 1; die1 <= 6; die1++)
         {
             for (var die2 = die1; die2 <= 6; die2++)
             {
                 int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
                 var count = Math.Max(1, service.GetUniqueLegalMoveSequences(root, true, rolls).Length);
-                for (var start = 0; start < count; start += 32)
-                    yield return (die1 * 10 + die2, Math.Min(32, count - start));
+                for (var row = 0; row < count; row++)
+                {
+                    pending.Add(die1 * 10 + die2);
+                    if (pending.Count == 32)
+                    {
+                        yield return pending.ToArray();
+                        pending.Clear();
+                    }
+                }
+                if (!batchAcrossRolls && pending.Count > 0)
+                {
+                    yield return pending.ToArray();
+                    pending.Clear();
+                }
             }
         }
+        if (pending.Count > 0)
+            yield return pending.ToArray();
     }
 
     private sealed class DuplicateInputObserver(INeuralEvalService inner) : INeuralEvalService
     {
         private readonly Dictionary<float[], int> _seen = new(NeuralInputComparer.Instance);
-        private Queue<(int Roll, int Rows)> _groups = new();
+        private Queue<int[]> _groups = new();
         public int Rows { get; private set; }
         public int Unique => _seen.Count;
         public int WithinBatchDuplicates { get; private set; }
@@ -95,10 +110,10 @@ public partial class PerformanceTests
         public int MaxBatchSize => inner.MaxBatchSize;
         public int RemainingGroups => _groups.Count;
 
-        public void Reset(IEnumerable<(int Roll, int Rows)> groups)
+        public void Reset(IEnumerable<int[]> groups)
         {
             _seen.Clear();
-            _groups = new Queue<(int Roll, int Rows)>(groups);
+            _groups = new Queue<int[]>(groups);
             Rows = WithinBatchDuplicates = CrossBatchDuplicates = Groups = GroupsWithNewRows = 0;
             CrossRollDuplicates = 0;
             PayloadBytes = 0;
@@ -113,30 +128,32 @@ public partial class PerformanceTests
         public Task<float[][]> PredictBatchAsync(float[][] features)
         {
             var group = _groups.Dequeue();
-            Assert.Equal(group.Rows, features.Length);
+            Assert.Equal(group.Length, features.Length);
             var batch = new HashSet<float[]>(NeuralInputComparer.Instance);
             var misses = 0;
             Groups++;
-            foreach (var row in features)
+            for (var index = 0; index < features.Length; index++)
             {
+                var row = features[index];
+                var roll = group[index];
                 Rows++;
                 if (!batch.Add(row))
                 {
                     WithinBatchDuplicates++;
-                    if (_seen[row] != group.Roll)
+                    if (_seen[row] != roll)
                         CrossRollDuplicates++;
                     continue;
                 }
                 if (!_seen.TryGetValue(row, out var firstRoll))
                 {
-                    _seen.Add(row, group.Roll);
+                    _seen.Add(row, roll);
                     misses++;
                     PayloadBytes += row.Length * sizeof(float);
                 }
                 else
                 {
                     CrossBatchDuplicates++;
-                    if (firstRoll != group.Roll)
+                    if (firstRoll != roll)
                         CrossRollDuplicates++;
                 }
             }

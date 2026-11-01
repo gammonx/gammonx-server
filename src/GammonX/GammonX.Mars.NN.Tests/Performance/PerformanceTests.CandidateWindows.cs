@@ -52,14 +52,25 @@ public partial class PerformanceTests
             output.WriteLine($"ModelSHA256={Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(modelPath, TestContext.Current.CancellationToken)))}");
             var counting = new CountingNeuralEvalService(neural);
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(GameModus.Backgammon, counting));
-
             // Every fresh process validates against sequential scores, not just its selected move.
-            var before = counting.PredictionCount;
-            var reference = await Evaluate();
-            var expectedRows = counting.PredictionCount - before;
-            service.ParallelCandidateCount = window;
             var maximumScoreDifference = 0d;
-            var warmup = await Evaluate();
+            long before;
+            long expectedRows;
+            FinalEvalResultModels reference;
+            FinalEvalResultModels warmup;
+            using (var workerThreads = new WorkerThreadVerifier(ReadTuningInt("GAMMONX_PERF_THREADS", get_num_threads())))
+            {
+                var defaultBatchAcrossRolls = service.BatchAcrossRolls;
+                service.BatchAcrossRolls = false;
+                before = counting.PredictionCount;
+                reference = await Evaluate();
+                expectedRows = counting.PredictionCount - before;
+                service.BatchAcrossRolls = defaultBatchAcrossRolls;
+                ConfigureRollBatching(service);
+                service.ParallelCandidateCount = window;
+                warmup = await Evaluate();
+                workerThreads.Verify();
+            }
 
             Validate(warmup);
             WriteProcessMemory("AfterWarmup");
@@ -144,7 +155,7 @@ public partial class PerformanceTests
 
             output.WriteLine("WINDOW_JSON," + JsonConvert.SerializeObject(new
             {
-                Board = boardNumber, Window = window, Mode = mode, Threads = get_num_threads(),
+                Board = boardNumber, Window = window, Mode = mode, CrossRollBatching = service.BatchAcrossRolls, Threads = get_num_threads(),
                 InteropThreads = get_num_interop_threads(), Rows = expectedRows, Candidates = reference.Count,
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,

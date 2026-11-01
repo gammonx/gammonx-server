@@ -5,7 +5,7 @@ move-sequence evaluation investigation begun on **2026-10-26**. The numbers belo
 historical measurements on one workstation, not performance guarantees or CI
 thresholds. See the current implementation notes before reproducing an older batch.
 
-## Current batch-only implementation (2026-10-30)
+## Current batch-only implementation (2026-11-01)
 
 - [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs) now owns
   `MaxBatchSize`, `ExtractFeatures` and `PredictBatchAsync`. The optional batch
@@ -37,6 +37,10 @@ thresholds. See the current implementation notes before reproducing an older bat
   latency but failed the predeclared interactive-latency gates. **Production
   remains sequential (window 1).** The internal selector and manual comparison
   harness are retained for controlled experiments, not runtime configuration.
+- Follow-up step 3 tested filling reply groups across opponent dice rolls while
+  retaining window 1 and the 32-row cap. It failed repeatability and interactive
+  latency gates. **Production still flushes each roll separately.** The internal
+  cross-roll selector defaults to false; only tests can opt in.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -77,7 +81,7 @@ From the repository root in PowerShell:
 ```powershell
 dotnet restore .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj
 
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-cpu-tuning.py `
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-cpu-tuning.py `
     --baseline-threads 16 `
     --output-dir "$env:TEMP\gammonx-cpu-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -90,8 +94,8 @@ The repository is discovered relative to the script, so it is also possible to
 run from this folder or invoke the script by its absolute path:
 
 ```powershell
-python .\run-cpu-tuning.py --help
-python .\run-cpu-tuning.py --baseline-threads 16
+python .\scripts\run-cpu-tuning.py --help
+python .\scripts\run-cpu-tuning.py --baseline-threads 16
 ```
 
 | Option | Meaning |
@@ -1352,7 +1356,7 @@ extra workers, queue delays, selective search, caching and GPU work were not add
 
 ### Predeclared gates and measurement protocol
 
-The [runner](./run-candidate-windows.py) writes its thresholds before comparisons:
+The [runner](./scripts/run-candidate-windows.py) writes its thresholds before comparisons:
 
 - At least **5%** pooled median improvement on **each** board, also achieved in
   at least **2 of 3** paired rounds. Choose the smallest passing window.
@@ -1495,7 +1499,7 @@ performance-process tests also passed. Long-running self-play was not rerun.
 From the repository root in PowerShell, with restored packages and a quiet machine:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-candidate-windows.py `
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-candidate-windows.py `
     --threads 16 `
     --output-dir "$env:TEMP\gammonx-windows-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -1593,6 +1597,98 @@ cube/match equity and existing real-model batch/search tests across all variants
 Local evidence is in repository-root `TestResults/latency-step2-20261101/`:
 `before-board*.trx`, `after-board*.trx`, `correctness-final.trx`,
 `comparison.json` and `scoring-probe/results.txt`. These files are ignored by Git.
+
+## Follow-up step 3: cross-roll reply packing (2026-11-01)
+
+Implemented bounded cross-roll packing in
+[TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs),
+then **rejected it for default enablement** after the repeated comparison.
+`BatchAcrossRolls` defaults to false in both the evaluator and feature service.
+The prototype and reproduction harness remain available for controlled tests;
+there is no server/runtime setting.
+
+The prototype fills one group across adjacent opponent rolls, attaching a roll
+index to each reply or pass. Scores are reduced to the best reply for each of
+the 21 rolls before applying the original weights and perspective conversion.
+It preserves row order, terminal filtering and one pass row per blocked roll.
+Each group is awaited before admitting more work; candidates remain sequential
+and the production caller cap remains `min(MaxBatchSize, 32)`. Reply boards still
+use full deep clones. Pending replies are restored after scoring and on failure,
+including a failure while preparing a later roll in a partial group.
+
+The comparison uses **the same compiled implementation**, with a per-roll flush
+as the reference and cross-roll packing as the candidate. It isolates the flush
+strategy, not the total effect of the evaluator refactor against the old binary.
+Both modes reuse one bounded buffer within an evaluation.
+
+The [runner](./run-roll-batching.py) recorded thresholds before launching **30
+fresh Release processes**: 18 timing processes (three paired rounds on each of
+three boards, three samples per process), six diagnostic processes and six
+mixed-load processes. Pair order alternated by round. All used CPU, 16 OMP/MKL
+and inter-op threads, reusable CPU input, window 1 and a 32-row worker. Every
+warm-up worker batch verified its Torch thread count; timing and mixed-load
+samples had no metrics listener. Binary/model fingerprints stayed fixed.
+
+The predeclared gates required at least 5% median improvement on every board and
+in at least two of three paired rounds per board, allocations at most 110%,
+private bytes at most 120% plus 32 MiB, mixed throughput at least 97%, and the
+same interactive p95/worst limits as Batch 10.
+
+| Board | Per-roll median | Cross-roll median | Improvement | Rounds with >=5% gain | Forwards per-roll -> cross-roll |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,357.367 ms | 2,006.363 ms | 14.9% | 2/3 | 4,376 -> 3,305 |
+| 2 | 592.679 ms | 554.035 ms | 6.5% | **1/3** | 1,423 -> 904 |
+| 3 | 1,164.156 ms | 1,034.708 ms | 11.1% | 2/3 | 2,684 -> 1,981 |
+
+Medians pool nine timed samples per board/configuration. Board 2's overall
+median passed, but its paired rounds did not establish the required repeatable
+gain. Allocations fell by 0.4%, 0.8% and 0.5%; all memory gates passed. The
+diagnostic runs retained exactly 104,291 / 28,008 / 61,717 neural rows, and peak
+reply boards, feature rows and queued rows remained at most 32. Ownership
+counters drained to zero.
+
+Mixed-load runs used two simultaneous Board 1 searches plus 100 serial
+interactive predictions, spaced 5 ms apart, in each process. All probes
+overlapped search; the percentiles below pool 300 probes per configuration.
+
+| Metric | Per-roll | Cross-roll | Allowed cross-roll limit |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 3,080.041 ms | 2,809.475 ms | Throughput >=97% of reference |
+| Interactive p95, nearest rank | 1.3856 ms | **1.9792 ms** | 1.5242 ms |
+| Worst interactive probe | 3.8949 ms | **16.2919 ms** | 4.8686 ms |
+
+Mixed throughput improved by 9.6%, but both interactive latency gates failed.
+Fewer forwards and fuller batches therefore do not justify default enablement.
+This experiment does not establish the exact cause of the latency spikes.
+
+All 280 candidate scores retained their candidate sets and selected moves;
+maximum absolute score difference within and across processes was **4.90e-8**,
+below 1e-5. Final Release validation passed **96 focused tests**, covering
+both flush strategies, all five variants and perspectives, real-model scores,
+weighted maxima, passes, mixed terminal/nonterminal groups, history features,
+bounded admission, cancellation/errors and board restoration. The 30 comparison
+processes also passed their correctness checks. Long-running self-play was not
+rerun.
+
+From the repository root, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --threads 16 `
+    --output-dir "$env:TEMP\gammonx-rolls-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+`GAMMONX_PERF_CROSS_ROLL_BATCHING=0|1` is a **test-only** selector used by the
+comparison harness, general search profiles and shared-worker measurements.
+The runner checks scores, row counts, worker configuration and fingerprints,
+and writes incremental evidence without changing defaults. A successful runner
+exit means the comparison completed; inspect `Comparison.Accepted` and `Reasons`
+in `results.json` for the enablement decision.
+
+Local evidence is under repository-root
+`TestResults/latency-step3-20261101/`: `validation-final.trx` and
+`comparison/{thresholds,runs,results}.json`, plus each process's log and TRX.
+These files are ignored by Git. Steps 4 and 5 are not implemented here.
 
 ## Further optimization constraints
 

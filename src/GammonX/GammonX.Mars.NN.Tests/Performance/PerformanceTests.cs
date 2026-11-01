@@ -144,6 +144,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
 
             var countingService = new CountingNeuralEvalService(neuralService);
             var evalService = FeatureEvalServiceFactory.Create(GameModus.Backgammon, countingService);
+            ConfigureRollBatching(evalService);
             var features = evalService.EvalPositionForTraining(boardContract, false);
             var request = new EvalMoveRequestContract
             {

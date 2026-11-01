@@ -11,6 +11,7 @@ using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using Newtonsoft.Json;
+using Moq;
 
 namespace GammonX.Mars.NN.Tests.Services;
 
@@ -94,6 +95,7 @@ public class BatchEvaluationTests
         {
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
                 FeatureEvalServiceFactory.Create(modus, neural));
+            service.BatchAcrossRolls = true;
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var request = new EvalBoardRequestContract
@@ -123,12 +125,17 @@ public class BatchEvaluationTests
     }
 
     [Theory]
-    [InlineData(GameModus.Backgammon)]
-    [InlineData(GameModus.Portes)]
-    [InlineData(GameModus.Tavla)]
-    [InlineData(GameModus.Fevga)]
-    [InlineData(GameModus.Plakoto)]
-    public async Task MatchesSinglePositionScoringAndPreservesHistoryFeatures(GameModus modus)
+    [InlineData(GameModus.Backgammon, true)]
+    [InlineData(GameModus.Backgammon, false)]
+    [InlineData(GameModus.Portes, true)]
+    [InlineData(GameModus.Portes, false)]
+    [InlineData(GameModus.Tavla, true)]
+    [InlineData(GameModus.Tavla, false)]
+    [InlineData(GameModus.Fevga, true)]
+    [InlineData(GameModus.Fevga, false)]
+    [InlineData(GameModus.Plakoto, true)]
+    [InlineData(GameModus.Plakoto, false)]
+    public async Task MatchesSinglePositionScoringAndPreservesHistoryFeatures(GameModus modus, bool rootIsWhite)
     {
         var boardService = BoardServiceFactory.Create(modus);
         var board = boardService.CreateBoard();
@@ -140,7 +147,7 @@ public class BatchEvaluationTests
         var request = new EvalBoardRequestContract
         {
             Board = board.ToContract(false),
-            IsWhite = true,
+            IsWhite = rootIsWhite,
             Modus = modus,
             BotLevel = BotLevel.Expert
         };
@@ -156,7 +163,7 @@ public class BatchEvaluationTests
         }
         var legacy = await new TwoPlySearchEvaluator(boardService,
             (positions, isWhite) => Task.WhenAll(positions.Select(position => Single(position, isWhite))),
-            maxBatchSize: 1).EvaluateAsync(board, true);
+            maxBatchSize: 1, batchAcrossRolls: false).EvaluateAsync(board, rootIsWhite);
         var batchFeatures = new List<float[]>();
         async Task<double[]> Batch(IReadOnlyList<IBoardModel> positions, bool isWhite)
         {
@@ -169,7 +176,7 @@ public class BatchEvaluationTests
                 return features.Sum(value => (double)value);
             }).ToArray();
         }
-        var batched = await new TwoPlySearchEvaluator(boardService, Batch, maxBatchSize: 4).EvaluateAsync(board, true);
+        var batched = await new TwoPlySearchEvaluator(boardService, Batch, maxBatchSize: 4, batchAcrossRolls: true).EvaluateAsync(board, rootIsWhite);
         Assert.Equal(legacy, batched, 10);
         Assert.Equal(legacyFeatures.Count, batchFeatures.Count);
         for (var row = 0; row < legacyFeatures.Count; row++)
@@ -207,14 +214,17 @@ public class BatchEvaluationTests
         Assert.Equal(0, neural.Predictions);
     }
 
-    [Fact]
-    public async Task NoLegalOpponentReplyIsScoredAsASingleRowBatch()
+    [Theory]
+    [InlineData(false, 21)]
+    [InlineData(true, 6)]
+    public async Task NoLegalOpponentReplyContributesOneRowPerRollToBoundedBatches(bool batchAcrossRolls, int expectedBatches)
     {
         var fields = new int[24];
         Array.Fill(fields, 2, 0, 6);
         var neural = new DeterministicNeuralService(GameModus.Backgammon);
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
+        eval.BatchAcrossRolls = batchAcrossRolls;
 
         var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
         {
@@ -230,7 +240,54 @@ public class BatchEvaluationTests
 
         Assert.True(double.IsFinite(score));
         Assert.Equal(21, neural.Predictions);
-        Assert.Equal(21, neural.Batches);
+        Assert.Equal(expectedBatches, neural.Batches);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MixedTerminalAndNeuralRepliesKeepTheirRollScores(bool batchAcrossRolls)
+    {
+        var fields = new int[24];
+        fields[5] = 1;
+        fields[23] = -1;
+        var sizes = new List<int>();
+        var neural = new Mock<INeuralEvalService>(MockBehavior.Strict);
+        neural.SetupGet(service => service.MaxBatchSize).Returns(4);
+        neural.Setup(service => service.ExtractFeatures(
+                It.IsAny<NormalizedEvalResultModel>(), It.IsAny<IBoardModel>(), It.IsAny<bool>()))
+            .Returns((NormalizedEvalResultModel _, IBoardModel board, bool isWhite) =>
+            {
+                Assert.False(isWhite);
+                Assert.Equal(14, board.BearOffCountBlack);
+                return new float[] { 0 };
+            });
+        neural.Setup(service => service.PredictBatchAsync(It.IsAny<float[][]>()))
+            .Returns(async (float[][] rows) =>
+            {
+                sizes.Add(rows.Length);
+                await Task.Yield();
+                return rows.Select(_ => new[] { 0.5f, 0f, 0f, 0f, 0f }).ToArray();
+            });
+        var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
+            FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural.Object));
+        eval.BatchAcrossRolls = batchAcrossRolls;
+
+        var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
+        {
+            Board = new BoardModelContract
+            {
+                Fields = fields, BearOffCountWhite = 14, BearOffCountBlack = 14
+            },
+            IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
+        }, EvalWeights.DefaultContactWeights);
+
+        // Only 11, 12, 13, 14 and 23 fail to bear off: nine of 36 equally likely rolls.
+        // Their neural equity is zero; all other rolls win a single for the opponent.
+        Assert.Equal(-27d / 36d, score, 12);
+        Assert.Equal(batchAcrossRolls ? new[] { 4, 1 } : new[] { 1, 1, 1, 1, 1 }, sizes);
+        Assert.Equal(1, fields[5]);
+        Assert.Equal(-1, fields[23]);
     }
 
     [Fact]

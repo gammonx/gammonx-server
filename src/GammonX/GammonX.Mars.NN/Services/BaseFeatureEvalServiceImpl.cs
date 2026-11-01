@@ -17,9 +17,16 @@ namespace GammonX.Mars.NN.Services
 
         /// <summary>
         /// Gets or sets the number of concurrent candidates to evaluate in parallel. Default is 1.
-        /// Consider TODO:
         /// </summary>
         internal int ParallelCandidateCount { get; set; } = 1;
+
+        /// <summary>
+        /// If set to true, each inference batch is filled and may contain replies from multiple rolls; if false, each batch is flushed after each roll.
+        /// </summary>
+        /// <remarks>
+        /// Although the latency gains were not fully verified, we do want to activate the option for now.
+        /// </remarks>
+        internal bool BatchAcrossRolls { get; set; } = true;
 
         protected abstract IBoardService BoardService { get; }
 
@@ -340,7 +347,8 @@ namespace GammonX.Mars.NN.Services
                 (boards, perspectiveIsWhite)
                     => CalculatePositionBatchAsync(boards, perspectiveIsWhite, _neuralEvalService),
                 // Bound each callers work item even when the shared worker allows larger batches.
-                maxBatchSize: Math.Min(_neuralEvalService.MaxBatchSize, 32));
+                maxBatchSize: Math.Min(_neuralEvalService.MaxBatchSize, 32),
+                batchAcrossRolls: BatchAcrossRolls);
 
             return evaluator.EvaluateAsync(board, isWhite);
         }
