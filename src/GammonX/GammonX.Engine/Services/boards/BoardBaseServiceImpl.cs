@@ -140,11 +140,11 @@ namespace GammonX.Engine.Services
                     homeBarModel.RemoveFromHomeBar(lastEvent.IsWhite, 1);
                     if (lastEvent.IsWhite)
                     {
-                        model.Fields.SetValue(model.Fields[hitFieldIndex.Value] -= 1, hitFieldIndex.Value);
+                        model.Fields[hitFieldIndex.Value] -= 1;
                     }
                     else
                     {
-                        model.Fields.SetValue(model.Fields[hitFieldIndex.Value] += 1, hitFieldIndex.Value);
+                        model.Fields[hitFieldIndex.Value] += 1;
                     }
                 }
                 editableHistory.TryRemoveLast();
@@ -270,14 +270,14 @@ namespace GammonX.Engine.Services
                 if (isWhite)
                 {
                     // we remove the black checker from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
+                    model.Fields[fieldIndex] -= 1;
                     // and move it to the black home bar
                     homeBarModel.AddToHomeBar(!isWhite, 1);
                 }
                 else
                 {
                     // we remove the white checker from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
+                    model.Fields[fieldIndex] += 1;
                     // and move it to the white home bar
                     homeBarModel.AddToHomeBar(!isWhite, 1);
                 }
@@ -329,12 +329,12 @@ namespace GammonX.Engine.Services
                 {
                     ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
                     // add a negative checker to the new position
-                    model.Fields.SetValue(model.Fields[to] -= 1, to);
+                    model.Fields[to] -= 1;
                 }
                 else
                 {
                     // remove a negative checker from the old position
-                    model.Fields.SetValue(model.Fields[from] += 1, from);
+                    model.Fields[from] += 1;
                     // check if its an undo move back to the homebar
                     if (to == BoardPositions.HomeBarWhite && model is IHomeBarModel homeBarModel)
                     {
@@ -343,7 +343,7 @@ namespace GammonX.Engine.Services
                     else
                     {
                         // add a negative checker to the new position
-                        model.Fields.SetValue(model.Fields[to] -= 1, to);
+                        model.Fields[to] -= 1;
                     }
                 }
             }
@@ -353,12 +353,12 @@ namespace GammonX.Engine.Services
                 {
                     ((IHomeBarModel)model).RemoveFromHomeBar(isWhite, 1);
                     // add a positive checker to the new position
-                    model.Fields.SetValue(model.Fields[to] += 1, to);
+                    model.Fields[to] += 1;
                 }
                 else
                 {
                     // remove a positive checker from the old position
-                    model.Fields.SetValue(model.Fields[from] -= 1, from);
+                    model.Fields[from] -= 1;
                     // check if its an undo move back to the homebar
                     if (to == BoardPositions.HomeBarBlack && model is IHomeBarModel homeBarModel)
                     {
@@ -367,7 +367,7 @@ namespace GammonX.Engine.Services
                     else
                     {
                         // add a positive checker to the new position
-                        model.Fields.SetValue(model.Fields[to] += 1, to);
+                        model.Fields[to] += 1;
                     }
                 }
             }
@@ -380,7 +380,7 @@ namespace GammonX.Engine.Services
                 if (to == BoardPositions.BearOffWhite)
                 {
                     // we remove a negative checker from the old position
-                    model.Fields.SetValue(model.Fields[from] += 1, from);
+                    model.Fields[from] += 1;
                     // and bear off the checker
                     model.BearOffChecker(isWhite, 1);
                     return true;
@@ -389,7 +389,7 @@ namespace GammonX.Engine.Services
                 else if (from == BoardPositions.BearOffWhite)
                 {
                     // we add a negative checker to the old position
-                    model.Fields.SetValue(model.Fields[to] -= 1, to);
+                    model.Fields[to] -= 1;
                     // and undo the bear off
                     model.BearOffChecker(isWhite, -1);
                     return true;
@@ -400,7 +400,7 @@ namespace GammonX.Engine.Services
                 if (to == BoardPositions.BearOffBlack)
                 {
                     // we remove a positive checker from the old position
-                    model.Fields.SetValue(model.Fields[from] -= 1, from);
+                    model.Fields[from] -= 1;
                     // and bear off the checker
                     model.BearOffChecker(isWhite, 1);
                     return true;
@@ -409,7 +409,7 @@ namespace GammonX.Engine.Services
                 else if (from == BoardPositions.BearOffBlack)
                 {
                     // we add a positive checker from the old position
-                    model.Fields.SetValue(model.Fields[to] += 1, to);
+                    model.Fields[to] += 1;
                     // and undo the bear off
                     model.BearOffChecker(isWhite, -1);
                     return true;

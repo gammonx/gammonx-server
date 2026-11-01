@@ -1509,6 +1509,40 @@ It does not change production defaults. Manual single-process selectors are
 `GAMMONX_PERF_WINDOW_MODE=Timing|Diagnostic|Mixed`, used only by
 [MeasureCandidateWindows](./PerformanceTests.CandidateWindows.cs).
 
+## Follow-up step 1: direct checker-array updates (2026-11-01)
+
+Removed 22 redundant `Array.SetValue` calls from
+[BoardBaseServiceImpl](../../GammonX.Engine/Services/boards/BoardBaseServiceImpl.cs)
+and [PlakotoBoardService](../../GammonX.Engine/Services/boards/PlakotoBoardService.cs).
+Each call already updated the same `int[]` element through its argument, for
+example `Fields.SetValue(Fields[from] += 1, from)`. Keeping only `Fields[from] += 1`
+removes the boxed integer and second write. This covers movement, hitting,
+bear-off, pinning and their undo paths; move/history logic is unchanged.
+
+The earlier review profile and the post-change profile each used Release, CPU,
+16 OMP/MKL threads, a 32-row worker, sequential candidates, reusable CPU input,
+one full warm-up and three instrumented evaluations per board. Median cumulative
+managed allocations per two-ply evaluation were:
+
+| Board | Review baseline | Direct updates | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 766,520,224 bytes | 698,138,752 bytes | 68,381,472 bytes (8.9%) |
+| 2 | 200,073,048 bytes | 182,278,904 bytes | 17,794,144 bytes (8.9%) |
+| 3 | 451,970,992 bytes | 412,635,848 bytes | 39,335,144 bytes (8.7%) |
+
+These are sequential instrumented observations, not alternating uninstrumented
+latency comparisons. They demonstrate lower allocations; **no repeatable
+end-to-end latency improvement is claimed**. Prediction counts remained
+104,291 / 28,008 / 61,717 and forward counts 4,376 / 1,423 / 2,684. Each measured
+evaluation selected the same move as its own warm-up.
+
+Validation passed **597 engine tests** and **28 NN batch-evaluation/profile
+cases**, including all three stage profiles. Local TRX evidence is under the
+repository-root `TestResults/latency-step1-20261101/`; the earlier review profile
+is under this folder's `TestResults/latency-review-20261101/`. These result
+directories are ignored by Git. Later optimization steps are not included in
+this change.
+
 ## Further optimization constraints
 
 Any further implementation must preserve board restoration, legal dice usage,
