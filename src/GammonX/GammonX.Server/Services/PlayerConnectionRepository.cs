@@ -6,7 +6,9 @@ namespace GammonX.Server.Services
 {
     /// <summary>
 	/// Single player connection session repository that manages all client player connections within the match hub.
-	/// </summary>
+	/// TODO: extract repository into dynamo db in order to make game server stateless
+    /// TODO: provide an interface
+    /// </summary>
     public sealed class PlayerConnectionRepository
     {
         private readonly ConcurrentDictionary<Guid, Lazy<PlayerConnection>> _connections = new();

@@ -15,6 +15,100 @@ namespace GammonX.Server.Tests
     public class DiceRollsModelTests
     {
         [Theory]
+        [InlineData(1, false)]
+        [InlineData(1, true)]
+        [InlineData(6, false)]
+        [InlineData(6, true)]
+        public void DiceRollContractClonePreservesRollAndUsageIndependently(int roll, bool used)
+        {
+            var dice = new DiceRollContract(roll) { Used = used };
+
+            var clone = Assert.IsType<DiceRollContract>(((ICloneable)dice).Clone());
+
+            Assert.NotSame(dice, clone);
+            Assert.Equal(roll, clone.Roll);
+            Assert.Equal(used, clone.Used);
+            clone.Roll = 99;
+            clone.Used = !used;
+            Assert.Equal(roll, dice.Roll);
+            Assert.Equal(used, dice.Used);
+        }
+
+        [Fact]
+        public void DiceRollsCloneCopiesCollectionAndEachDie()
+        {
+            var dice = new DiceRollsModel
+            {
+                new DiceRollContract(2) { Used = true },
+                new DiceRollContract(3),
+                new DiceRollContract(6) { Used = true }
+            };
+
+            var clone = Assert.IsType<DiceRollsModel>(((ICloneable)dice).Clone());
+
+            Assert.NotSame(dice, clone);
+            Assert.Equal(dice.Count, clone.Count);
+            Assert.Equal(dice.HasUnused, clone.HasUnused);
+            for (var diceIndex = 0; diceIndex < dice.Count; diceIndex++)
+            {
+                Assert.NotSame(dice[diceIndex], clone[diceIndex]);
+                Assert.Equal(dice[diceIndex].Roll, clone[diceIndex].Roll);
+                Assert.Equal(dice[diceIndex].Used, clone[diceIndex].Used);
+            }
+            clone[0].Revert();
+            clone[2].Roll = 99;
+            Assert.True(dice[0].Used);
+            Assert.Equal(6, dice[2].Roll);
+            dice[1].Use();
+            Assert.False(clone[1].Used);
+            clone.Add(new DiceRollContract(1));
+            Assert.Equal(3, dice.Count);
+            dice.Clear();
+            Assert.Equal(4, clone.Count);
+        }
+
+        [Fact]
+        public void DiceRollsCloneOfEmptyCollectionIsIndependent()
+        {
+            var dice = new DiceRollsModel();
+
+            var clone = Assert.IsType<DiceRollsModel>(dice.Clone());
+
+            Assert.NotSame(dice, clone);
+            Assert.Empty(clone);
+            Assert.False(clone.HasUnused);
+            clone.Add(new DiceRollContract(2));
+            Assert.Empty(dice);
+        }
+
+        [Fact]
+        public void DiceRollsConstructorCopiesCollectionInOrder()
+        {
+            var firstDice = new DiceRollContract(6) { Used = true };
+            var secondDice = new DiceRollContract(2);
+            var source = new List<DiceRollContract> { firstDice, secondDice };
+
+            var dice = new DiceRollsModel(source.Select(roll => roll));
+
+            source.Clear();
+            Assert.Equal(2, dice.Count);
+            Assert.Same(firstDice, dice[0]);
+            Assert.Same(secondDice, dice[1]);
+            Assert.True(dice[0].Used);
+            Assert.False(dice[1].Used);
+            Assert.True(dice.HasUnused);
+        }
+
+        [Fact]
+        public void DiceRollsConstructorAcceptsEmptyCollection()
+        {
+            var dice = new DiceRollsModel(Array.Empty<DiceRollContract>());
+
+            Assert.Empty(dice);
+            Assert.False(dice.HasUnused);
+        }
+
+        [Theory]
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]

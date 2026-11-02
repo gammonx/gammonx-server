@@ -213,13 +213,14 @@ id_id=$(create_api_resource "$api_id" "$players_id" "{id}")
 games_id=$(create_api_resource "$api_id" "$id_id" "games")
 rating_id=$(create_api_resource "$api_id" "$id_id" "rating")
 variant_id=$(create_api_resource "$api_id" "$rating_id" "{variant}")
+type_id=$(create_api_resource "$api_id" "$variant_id" "{type}")
 
 lambda_arn=$(awslocal lambda get-function \
   --function-name API_GATEWAY_HANDLER \
   --query "Configuration.FunctionArn" \
   --output text)
 
-attach_lambda_to_method "$api_id" "$variant_id" "GET" "$lambda_arn"
+attach_lambda_to_method "$api_id" "$type_id" "GET" "$lambda_arn"
 attach_lambda_to_method "$api_id" "$games_id" "GET" "$lambda_arn"
 
 awslocal apigateway create-deployment \

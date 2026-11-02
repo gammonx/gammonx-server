@@ -1,6 +1,6 @@
 ﻿namespace GammonX.Server.Models
 {
-	public class MatchPlayerModel
+	public class MatchPlayerModel : ICloneable
 	{
 		private readonly PlayerConnection _playerConnection;
 
@@ -73,5 +73,16 @@
 		{
 			StartDiceRoll = roll;
         }
+		// <inheritdoc />
+		public object Clone()
+		{
+			// we keep the player connection shared between clones, as it represents the actual connection of the player
+			return new MatchPlayerModel(_playerConnection)
+			{
+				StartDiceRoll = this.StartDiceRoll,
+				NextGameAccepted = this.NextGameAccepted,
+				Points = this.Points
+			};
+		}
     }
 }

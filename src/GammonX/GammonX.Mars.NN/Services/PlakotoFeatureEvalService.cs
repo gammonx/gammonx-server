@@ -18,7 +18,7 @@ namespace GammonX.Mars.NN.Services
         private readonly BlotInStartRangeCountFeature _blotStartRangeCountFeature = new BlotInStartRangeCountFeature();
         private readonly AnchorCountFeature _anchorCountFeature = new AnchorCountFeature();
         private readonly PipDifferenceFeature _pipDifferenceFeature = new PipDifferenceFeature();
-        private readonly NumbersOfCheckersInFronOfLastPinFeature _numChFronLastPinFeature = new NumbersOfCheckersInFronOfLastPinFeature();
+        private readonly NumbersOfCheckersInFrontOfLastPinFeature _numChFrontLastPinFeature = new NumbersOfCheckersInFrontOfLastPinFeature();
         private readonly PinEvalFeature _pinEvalFeature = new PinEvalFeature();
         private readonly MotherDistanceFeature _motherDistanceFeature = new MotherDistanceFeature();
         private readonly AverageStackHeightFeature _averageStackHeightFeature = new AverageStackHeightFeature();
@@ -27,11 +27,12 @@ namespace GammonX.Mars.NN.Services
 
         protected override IBoardService BoardService { get; }
 
-        public PlakotoFeatureEvalService(
-            [FromKeyedServices(GameModus.Plakoto)] INeuralEvalService neuralEvalService) : base(neuralEvalService)
+        public PlakotoFeatureEvalService([FromKeyedServices(GameModus.Plakoto)] INeuralEvalService neuralEvalService)
+            : base(neuralEvalService)
         {
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
         }
+
         protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
         {
             var pinEval = _pinEvalFeature.Eval(board, isWhite);
@@ -42,8 +43,8 @@ namespace GammonX.Mars.NN.Services
                 PipToBearOff = _pipsToBearOffFeature.Eval(board, isWhite),
                 PipToBearOffOpp = _pipsToBearOffFeature.Eval(board, !isWhite),
                 PipDifference = _pipDifferenceFeature.Eval(board, isWhite),
-                NumChFrontLastPin = _numChFronLastPinFeature.Eval(board, isWhite),
-                NumChFrontLastPinOpp = _numChFronLastPinFeature.Eval(board, !isWhite),
+                NumChFrontLastPin = _numChFrontLastPinFeature.Eval(board, isWhite),
+                NumChFrontLastPinOpp = _numChFrontLastPinFeature.Eval(board, !isWhite),
                 PinCountOpp = pinEval.PinnedOppCount,
                 PinCountPlayer = pinEval.PinnedPlayerCount,
                 OppMotherPinned = pinEval.OppMotherPinned,

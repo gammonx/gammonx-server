@@ -1,4 +1,6 @@
-﻿using GammonX.Models.Contracts;
+﻿using GammonX.Engine.History;
+
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Engine.Models
@@ -288,7 +290,7 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public override object Clone()
+		protected override BoardBaseImpl CloneWithHistory(IBoardHistory history)
 		{
 			return new FevgaBoardModelImpl()
 			{
@@ -298,6 +300,7 @@ namespace GammonX.Engine.Models
 				HomeBarCountWhite = HomeBarCountWhite,
 				// clone is okay for primitive types
 				Fields = (int[])Fields.Clone(),
+				History = history
 			};
 		}
 

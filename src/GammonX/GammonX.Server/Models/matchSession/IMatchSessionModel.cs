@@ -9,7 +9,7 @@ namespace GammonX.Server.Models
 	/// <summary>
 	/// Represents a match session model that contains all information about a match session.
 	/// </summary>
-	public interface IMatchSessionModel : IAsyncStateMutex
+	public interface IMatchSessionModel : IAsyncStateMutex, ICloneable
     {
 		/// <summary>
 		/// Gets the match id of this match session.
@@ -183,7 +183,7 @@ namespace GammonX.Server.Models
 		/// Returns all game sessions of this match session.
 		/// </summary>
 		/// <returns>An array of <see cref="IGameSessionModel"/> instances.</returns>
-		IGameSessionModel[] GetGameSessions();
+		IGameSessionModel?[] GetGameSessions();
 
 		/// <summary>
 		/// Creates a game state payload which can be sent to a client.

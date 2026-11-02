@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
+using System.Net;
 using System.Net.Http.Json;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -33,6 +34,106 @@ namespace GammonX.Server.Tests
 			_serviceProvider = _factory.Services;
 			Assert.NotNull(_serviceProvider);
 			Assert.NotNull(_factory);
+		}
+
+		[Theory]
+		[InlineData(false, null)]
+		[InlineData(true, null)]
+		[InlineData(true, BotLevel.Unknown)]
+		[InlineData(true, (BotLevel)(-1))]
+		[InlineData(true, (BotLevel)4)]
+		[InlineData(true, (BotLevel)int.MinValue)]
+		[InlineData(true, (BotLevel)int.MaxValue)]
+		public async Task BotQueueRejectsMissingOrInvalidBotLevel(bool includeBotLevel, BotLevel? botLevel)
+		{
+			using var client = _factory.CreateClient();
+			var playerId = Guid.NewGuid();
+			var request = new Dictionary<string, object?>
+			{
+				["playerId"] = playerId,
+				["matchVariant"] = MatchVariant.Backgammon,
+				["matchModus"] = MatchModus.Bot,
+				["matchType"] = MatchType.CashGame,
+			};
+			if (includeBotLevel)
+			{
+				request["botLevel"] = botLevel;
+			}
+
+			using var response = await client.PostAsJsonAsync("/game/api/matches/join", request, TestContext.Current.CancellationToken);
+			var resultJson = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+			var joinResponse = JsonConvert.DeserializeObject<ResponseContract<RequestErrorPayload>>(resultJson);
+
+			Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+			Assert.NotNull(joinResponse);
+			Assert.Equal("ERROR", joinResponse.Type);
+			Assert.Equal("JOIN_ERROR", joinResponse.Payload.Code);
+			Assert.Equal("bot level must be specified in order to join this queue", joinResponse.Payload.Message);
+
+			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Bot);
+			Assert.DoesNotContain(matchmakingService.GetQueueEntries(), entry => entry.PlayerId == playerId);
+			Assert.DoesNotContain(matchmakingService.GetMatchLobbies(), lobby => lobby.Player1.Id == playerId);
+		}
+
+		[Theory]
+		[InlineData(BotLevel.Easy)]
+		[InlineData(BotLevel.Medium)]
+		[InlineData(BotLevel.Hard)]
+		[InlineData(BotLevel.Expert)]
+		public async Task BotQueuePreservesRequestedBotLevel(BotLevel botLevel)
+		{
+			using var client = _factory.CreateClient();
+			var request = new JoinRequest(Guid.NewGuid(), MatchVariant.Backgammon, MatchModus.Bot, MatchType.CashGame, botLevel);
+
+			using var response = await client.PostAsJsonAsync("/game/api/matches/join", request, TestContext.Current.CancellationToken);
+			var resultJson = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+			var joinResponse = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson);
+
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.NotNull(joinResponse);
+			Assert.Equal("OK", joinResponse.Type);
+			Assert.NotNull(joinResponse.Payload.QueueId);
+
+			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Bot);
+			Assert.True(matchmakingService.TryFindMatchLobby(joinResponse.Payload.QueueId.Value, out var lobby));
+			Assert.NotNull(lobby);
+			Assert.Equal(request.PlayerId, lobby.Player1.Id);
+			Assert.Equal(botLevel, lobby.QueueKey.BotLevel);
+			Assert.True(matchmakingService.TryRemoveMatchLobby(lobby.MatchId));
+		}
+
+		[Theory]
+		[InlineData(false)]
+		[InlineData(true)]
+		public async Task NormalQueueAcceptsMissingBotLevel(bool includeBotLevel)
+		{
+			using var client = _factory.CreateClient();
+			var request = new Dictionary<string, object?>
+			{
+				["playerId"] = Guid.NewGuid(),
+				["matchVariant"] = MatchVariant.Backgammon,
+				["matchModus"] = MatchModus.Normal,
+				["matchType"] = MatchType.CashGame,
+			};
+			if (includeBotLevel)
+			{
+				request["botLevel"] = null;
+			}
+
+			using var response = await client.PostAsJsonAsync("/game/api/matches/join", request, TestContext.Current.CancellationToken);
+			var resultJson = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+			var joinResponse = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson);
+
+			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+			Assert.NotNull(joinResponse);
+			Assert.Equal("OK", joinResponse.Type);
+			Assert.NotNull(joinResponse.Payload.QueueId);
+
+			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Normal);
+			Assert.True(matchmakingService.TryFindQueueEntry(joinResponse.Payload.QueueId.Value, out var entry));
+			Assert.NotNull(entry);
+			Assert.Equal(BotLevel.Unknown, entry.QueueKey.BotLevel);
+			await matchmakingService.LeaveQueueAsync(entry);
 		}
 
 		[Theory]
@@ -156,7 +257,7 @@ namespace GammonX.Server.Tests
 
         private static JoinRequest CreatePlayer(Guid playerId, MatchVariant variant, MatchModus queueType)
 		{
-			return new JoinRequest(playerId, variant, queueType, MatchType.CashGame);
+			return new JoinRequest(playerId, variant, queueType, MatchType.CashGame, BotLevel.Hard);
 		}
 	}
 }

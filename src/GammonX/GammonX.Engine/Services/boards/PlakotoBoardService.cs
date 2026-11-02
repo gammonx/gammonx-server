@@ -145,16 +145,16 @@ namespace GammonX.Engine.Services
                 if (isWhite)
                 {
                     // we move the black checker to the pinned fields list
-                    pinModel.PinnedFields.SetValue(pinModel.PinnedFields[fieldIndex] += 1, fieldIndex);
+                    pinModel.PinnedFields[fieldIndex] += 1;
                     // we removed it from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
+                    model.Fields[fieldIndex] -= 1;
                 }
                 else
                 {
                     // we move the white checker to the pinned fields list
-                    pinModel.PinnedFields.SetValue(pinModel.PinnedFields[fieldIndex] -= 1, fieldIndex);
+                    pinModel.PinnedFields[fieldIndex] -= 1;
                     // we removed it from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
+                    model.Fields[fieldIndex] += 1;
                 }
             }
             else
@@ -174,16 +174,16 @@ namespace GammonX.Engine.Services
                 if (isWhite)
                 {
                     // we remove the black checker to the pinned fields list
-                    pinModel.PinnedFields.SetValue(pinModel.PinnedFields[fieldIndex] -= 1, fieldIndex);
+                    pinModel.PinnedFields[fieldIndex] -= 1;
                     // we removed it from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] += 1, fieldIndex);
+                    model.Fields[fieldIndex] += 1;
                 }
                 else
                 {
                     // we remove the white checker to the pinned fields list
-                    pinModel.PinnedFields.SetValue(pinModel.PinnedFields[fieldIndex] += 1, fieldIndex);
+                    pinModel.PinnedFields[fieldIndex] += 1;
                     // we move it from the moveable fields array
-                    model.Fields.SetValue(model.Fields[fieldIndex] -= 1, fieldIndex);
+                    model.Fields[fieldIndex] -= 1;
                 }
             }
             else

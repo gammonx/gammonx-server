@@ -1,0 +1,2021 @@
+# GammonX Engine and NN Performance Analysis
+
+This folder contains the manual CPU tuning runner and the findings from the
+move-sequence evaluation investigation begun on **2026-10-26**. The numbers below are
+historical measurements on one workstation, not performance guarantees or CI
+thresholds. See the current implementation notes before reproducing an older batch.
+
+## Current batch-only implementation (2026-11-02)
+
+- [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs) now owns
+  `MaxBatchSize`, `ExtractFeatures` and `PredictBatchAsync`. The optional batch
+  interface and the legacy two-ply dispatch path have been removed.
+- Two-ply scoring always uses bounded groups of at most
+  `min(service.MaxBatchSize, 32)` replies. A blocked opponent is a pass and is
+  scored as **one row per roll**, which can share a group with other rolls.
+- `PredictAsync` remains a supported convenience API for cube/one-ply callers
+  and interactive probes. In the hosted service it uses the same batch queue with
+  one row and preserves the underlying exception/cancellation, rather than a
+  separate single-request implementation.
+- [BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs)
+  is the hosted FIFO worker implementation. The existing serialized, non-hosted
+  [NeuralEvalService](../../GammonX.Mars.NN/Services/NeuralEvalService.cs) also
+  implements the full batch contract for its direct callers; it does not restore
+  the removed two-ply path.
+- The library default **and the current server configuration** are 32 rows.
+  The 64-row server limit mentioned in Batch 7 was historical. Worker limits above
+  32 are still supported; the per-caller reply cap remains 32.
+- Batch 8 adds worker-owned reusable **CPU input staging**, not another inference
+  dispatch path. Non-CPU inference retains per-forward tensor creation. The
+  test-only `GAMMONX_PERF_REUSE_INPUT` switch compares the old/new input storage;
+  it does not restore the removed legacy two-ply mode.
+- Batch 9 measured and prototyped exact per-root input caching. It was **rejected
+  for default enablement** because the repeated workload did not show a reliable
+  latency benefit. Production still scores all neural rows; only the test-only
+  duplicate-input diagnostic was retained.
+- Batch 10 tested bounded candidate windows of 2 and 4. Both improved standalone
+  latency but failed the predeclared interactive-latency gates. **Production
+  remains sequential (window 1).** The internal selector and manual comparison
+  harness are retained for controlled experiments, not runtime configuration.
+- Follow-up step 3 tested filling reply groups across opponent dice rolls while
+  retaining window 1 and the 32-row cap. It failed repeatability and interactive
+  latency gates. **Cross-roll batching is nevertheless enabled by the owner's
+  explicit choice on 2026-11-01.** `BatchAcrossRolls` defaults to true in the
+  feature service; the measured fairness regression remains documented below.
+- Follow-up step 4 prepares feature rows using one apply/undo working board.
+  It reduced managed allocation by 18-22% but failed latency and mixed-load
+  gates. **The owner explicitly enabled `ReuseReplyBoard` before step 5.**
+  It and cross-roll batching are currently enabled despite the benchmark
+  recommendations recorded below.
+- Follow-up step 5 adds feature buffers owned by each root search. A shortened
+  comparison reduced allocation by 17.5-18.1% but showed mixed latency results.
+  **`ReuseFeatureBuffers` remains false by default** pending stronger evidence.
+- `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
+  old environment variable cannot select a legacy path. The obsolete
+  `compare-inference.py` A/B runner was removed: comparing two labels on the same
+  batch-only code would be misleading.
+- [BatchEvaluationTests](../Services/BatchEvaluationTests.cs) replaces the old
+  dual-path tests. Real-model comparisons use a one-row reference scorer versus
+  grouped scoring; other tests retain history, terminal/pass, lifetime, cap and
+  restoration coverage. This is a correctness reference, not a restored
+  production legacy mode.
+
+The commands below run the current batch-only implementation. Historical
+before/after timings and test counts are retained as experiment records, not
+claims about the refactored code. Reproducing the old A/B experiment requires the
+matching earlier source revision and model.
+
+Refactoring validation on 2026-10-29 passed **367 NN feature/service tests**,
+**21 training/search tests** and **14 performance smoke cases**; the Mars server
+Release build also passed. Long-running self-play tests and the complete CPU
+parameter sweep were not rerun. These checks validate contracts and benchmark
+execution, not a new performance improvement claim.
+
+## Running the CPU experiment manually
+
+### Prerequisites
+
+- Python **3.10+**. The runner uses only the standard library; no pip install is
+  needed.
+- The **.NET 10 SDK** on `PATH`, with the test project's NuGet packages restored.
+- The Backgammon model and its metadata available in the checkout:
+  [NeuralNets/Backgammon](../../GammonX.Mars.Server/NeuralNets/Backgammon).
+  The test project copies these into its build output.
+- A quiet machine. Run only one experiment at a time, without a debugger,
+  coverage collection, other test runs, or edits/builds in the same checkout.
+  Allow several minutes and substantial CPU/GC activity.
+
+From the repository root in PowerShell:
+
+```powershell
+dotnet restore .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj
+
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-cpu-tuning.py `
+    --baseline-threads 16 `
+    --output-dir "$env:TEMP\gammonx-cpu-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+Use the thread count of the deployment/reference configuration for
+`--baseline-threads`; **16 is the value used in the recorded experiment**, not
+a universal recommendation.
+
+The repository is discovered relative to the script, so it is also possible to
+run from this folder or invoke the script by its absolute path:
+
+```powershell
+python .\scripts\run-cpu-tuning.py --help
+python .\scripts\run-cpu-tuning.py --baseline-threads 16
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--baseline-threads N` | Required positive reference thread count; reference maximum batch size is 32. |
+| `--repo PATH` | Optional repository root override. By default, discover the checkout above the script, not from the shell's working directory. |
+| `--output-dir PATH` | Optional new or empty output directory. Default: a timestamped folder under `TestResults` beside the script, already covered by the repository's ignore rules. |
+
+Paths containing spaces must be quoted. Relative option paths are resolved from
+the shell's working directory. Existing non-empty result directories are rejected;
+use a new directory for every experiment. The runner does not install dependencies,
+restore packages, reuse cached TRX files, or change the parent shell's environment.
+Importing the Python module does not run the experiment.
+
+### What the runner does
+
+1. Builds the test project in **Release**, with `--no-restore`, then fingerprints
+   the application assemblies, dependency manifest, model and available metadata.
+2. Screens Board 1 at batch limit 32: the reference thread count, followed by
+   1, 8, 2 and 4 threads, omitting a duplicate reference value.
+3. Uses the fastest observed thread count to screen batch limits **8, 32, 16, 64**.
+4. Confirms the chosen pair against the reference on **all three boards**,
+   alternating which configuration runs first.
+5. Repeats Board 2 after the other boards, reversing its initial tuned-first order.
+   The Board 2 comparison pools **six raw timed samples per configuration**, not
+   the median of two run medians. Boards 1 and 3 have three samples per configuration.
+6. Checks that the fingerprint has not changed and writes the final comparison
+   and context reports.
+
+With a reference of 16 threads, this is **17 fresh test processes and 51 timed
+evaluations**, plus startup, first inference and full-evaluation warm-ups.
+This is a **sequential screening experiment**, not a full factorial search or proof
+that the selected pair is optimal.
+It now compares thread/worker-limit configurations of the batch-only
+implementation; increasing a worker limit above 32 does not increase the two-ply
+per-caller group cap.
+
+Each process runs
+[MeasureCpuThreadAndBatchTuning](./PerformanceTests.CPU.cs).
+The runner sets `OMP_NUM_THREADS` and `MKL_NUM_THREADS` before Torch loads, together
+with the test's `GAMMONX_PERF_*` configuration variables. The C# test verifies the
+requested thread count on **every inference-worker batch during warm-up**.
+Inter-op threads are not tuned. There is **no metrics listener in the three timed
+evaluations**. Model loading, first inference, warm-up and cleanup are outside
+their timed regions.
+
+Cross-process checks require unchanged selected moves, candidate move sets,
+root-candidate and prediction counts, model, runtime and inter-op thread settings.
+Every candidate's warm-up equity is compared with an absolute tolerance of
+**1e-5**. Timed evaluations also assert that the selected move matches warm-up.
+
+### Reports and failures
+
+All outputs are placed below the selected output directory:
+
+| Output | Contents |
+| --- | --- |
+| `fresh-process/<run>/result.trx` | Original test output, including timings, scores and worker-setting verification. |
+| `tuning-summary.csv` | Per-run min/median/max wall time, median process CPU time, managed allocations, GC counts and search counts. |
+| `tuning-samples.csv` | Individual measured iterations. |
+| `candidate-scores.csv` | All candidate move keys and warm-up scores for each configuration. |
+| `confirmation-comparison.csv` | Per-board reference/candidate comparison; `Speedup = default median / tuned median`. Values above 1 favor the candidate. |
+| `tuning-context.json` | Successful-run context: selected pair, fingerprints, environment, tolerance, run counts and worker evidence. |
+
+The three raw CSV reports are saved after each successfully validated run.
+A failing build/test, invalid TRX output, changed result or changed runtime
+fingerprint stops the experiment with a nonzero exit code. Tool failures include
+the command's output. Cancellation returns exit code 130. Partial reports are
+retained, but **do not treat a partial directory as a completed comparison**.
+Rerun into a new directory after resolving the failure.
+
+The Python runner orchestrates the CPU experiment only. To collect the separate
+baseline, stage profiles or mixed-load output from the repository root:
+
+```powershell
+# Baseline: engine-only, one-ply and two-ply, without stage collection.
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.MeasureEvalPerformance|FullyQualifiedName~PerformanceTests.MeasureEnginePerformance" `
+    --logger "trx;LogFileName=baseline.trx" `
+    --results-directory .\TestResults\performance-baseline
+
+# Stage profiles: opt-in collection during measured two-ply evaluations.
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
+    --logger "trx;LogFileName=stages.trx" `
+    --results-directory .\TestResults\performance-stages
+
+# Mixed load: two evaluations sharing the worker with single-row probes.
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.MeasureSharedWorkerInference" `
+    --logger "trx;LogFileName=mixed.trx" `
+    --results-directory .\TestResults\performance-mixed
+```
+
+`MIXED` now reports
+`evaluations,single_predictions,wall_ms,cpu_ms,single_median_ms,single_p95_ms,single_max_ms`;
+`MIXED_SINGLE` reports one latency value. Neither contains the removed
+`explicit_batching` flag. `MixedMaxBatchSize` records the worker limit, selected
+through `GAMMONX_PERF_BATCH_SIZE` (default 32).
+
+## Workload and measurement rules
+
+The fixtures are defined in
+[MockBoardContracts.cs](../Data/MockBoardContracts.cs):
+
+| Fixture | Player | Dice | Unique root candidates |
+| --- | --- | --- | ---: |
+| Board 1 | Black | Double 2: `[2,2,2,2]` | 131 |
+| Board 2 | Black | `[3,2]` | 53 |
+| Board 3 | Black | Double 2: `[2,2,2,2]` | 96 |
+
+`Hard` uses one-ply neural evaluation; `Expert` uses two-ply.
+[TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs)
+evaluates every root candidate against **21 distinct opponent dice outcomes**,
+weighted to represent all 36 ordered rolls. It scores all unique replies and
+selects the opponent's best score for each outcome. There is no candidate limit
+in these experiments.
+
+Consequently, work scales approximately as:
+
+```text
+root candidates x 21 dice outcomes x average opponent replies
+```
+
+An engine-only test measures initial root generation, **not** all opponent
+generation inside two-ply. Fast root generation does not establish that move
+generation is cheap across the entire search.
+
+[PerformanceTests.cs](./PerformanceTests.cs) fixes the device to CPU,
+uses one full warm-up and three timed iterations, and isolates its collection
+from parallel test collections. Inference workers are stopped and disposed.
+There is no forced GC.
+
+Interpret the measurements carefully:
+
+- Wall time is elapsed request latency. Process CPU time sums work across threads
+  and can exceed wall time; very short operations can read as zero CPU time.
+- Baseline allocation and GC counters are **process-wide**, including worker
+  allocations across `await` continuations. They assume no unrelated test work.
+- Allocations are **cumulative managed bytes**, not peak/resident memory, and
+  exclude native Torch allocations.
+- Stage scopes use synchronous **current-thread allocation deltas** and must
+  not span an `await`.
+- Stage durations are cumulative elapsed work, not a CPU profile or an exclusive
+  partition of request wall time. Worker and producer work can overlap.
+- `GenerationClone` is nested inside `MoveGeneration`; do not add them together.
+  Queue waits overlap between requests and include channel backpressure.
+- `Forward` includes the network forward pass, output transfer to CPU and
+  materialization of the output array. It is not pure neural-kernel time.
+- Instrumentation can change scheduling and batch occupancy. Keep instrumented
+  results separate from uninstrumented baselines and compare within a run.
+
+## Recorded environment
+
+All recorded batches used this workstation and model:
+
+- Intel Core Ultra 7 265H, 16 logical processors.
+- Windows 10.0.26200, x64; .NET SDK 10.0.403, runtime .NET 10.0.14.
+- TorchSharp CPU package 0.106.0; CPU inference.
+- Initial Torch intra-op / inter-op counts: 16 / 16. Inter-op stayed at 16
+  throughout the CPU tuning experiment.
+- Backgammon model SHA-256:
+  `F65C0695C4074E5ED02193E8C4AC2AEFDA15D52FFF9871DED64BD8B24636DF8E`.
+
+The following tables capture different batches, not a single simultaneous run.
+Differences between tables are not evidence of an optimization.
+Batch 7 records the original comparison with single-position delivery. That
+comparison switch is no longer available in the batch-only implementation.
+
+## Batch 1: uninstrumented baseline
+
+Medians of three timed iterations after warm-up, using 16 threads / batch limit 32:
+
+| Board | Engine | One-ply | Two-ply | Two-ply NN requests | Two-ply managed allocations |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.743 ms | 36.809 ms | 4,660.399 ms | 104,291 | 2.458 GB |
+| 2 | 0.067 ms | 11.115 ms | 994.445 ms | 28,008 | 0.591 GB |
+| 3 | 0.733 ms | 17.801 ms | 2,164.606 ms | 61,717 | 1.344 GB |
+
+GB here means decimal gigabytes. Two-ply generated roughly **529-796 times**
+as many neural requests as one-ply. Board 1's process CPU / wall-time ratio was
+about 10.3, illustrating substantial multithreaded work.
+
+Cold startup was recorded separately: the first service load/start took about
+**1.33 s**, and its first inference about **27.8 ms**. Later service startups
+in the same process took roughly 3-4 ms. Do not mix those cold/warm startup
+observations into steady-state evaluation latency.
+
+The baseline batch passed 24 focused tests.
+
+## Batch 2: stage attribution and actual batching
+
+Medians from three **instrumented** evaluations:
+
+| Board | Move generation | Nested terminal clones | Reply clones | Features + vector | Batch preparation | Forward/output |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1,128 ms | 661 ms | 58 ms | 201 ms | 89 ms | 2,837 ms |
+| 2 | 255 ms | 113 ms | 15 ms | 57 ms | 28 ms | 1,133 ms |
+| 3 | 563 ms | 292 ms | 36 ms | 132 ms | 72 ms | 2,656 ms |
+
+Forward/output was the largest measured duration component. Feature calculation
+was comparatively small. Move generation accounted for **65-68% of managed
+allocations** in the instrumented evaluations.
+
+| Board | Generation calls | Raw terminal snapshots | Retained sequences | Raw / retained | Average batch | Full batches |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,752 | 674,385 | 104,422 | 6.46 | 15.21 | 21.1% |
+| 2 | 1,114 | 174,635 | 28,061 | 6.22 | 11.78 | 9.2% |
+| 3 | 2,017 | 353,862 | 61,813 | 5.72 | 13.47 | 13.1% |
+
+Search counts include root and opponent generation **per evaluation**; retained
+sequences are summed over generation calls, not globally unique across the whole
+search. Batch averages and percentages pool the three measured iterations, with
+maximum batch size 32.
+
+[BoardBaseServiceImpl](../../GammonX.Engine/Services/boards/BoardBaseServiceImpl.cs)
+originally created full terminal-board snapshots **before deduplication**.
+Backgammon cloning also copies history. On Board 1, terminal snapshot cloning alone allocated
+approximately **1.17 GB**, within about **1.67 GB** attributed to move generation.
+The evaluator additionally clones each retained opponent reply.
+
+The worker drains currently queued predictions immediately; it does not wait
+for a full batch. Underfilled batches are therefore real, but some arise at
+roll boundaries. Adding a queue delay or parallelizing more work is not
+automatically an improvement.
+
+Validation passed 31 evaluation/profile/metrics tests and 565 engine regression
+tests. Instrumented selected moves matched uninstrumented warm-up; stage counts,
+prediction counts and batch membership reconciled.
+
+### Does metric capture affect production?
+
+[EvaluationMetrics](../../GammonX.Engine/Diagnostics/EvaluationMetrics.cs) is
+**runtime opt-in, not compiled out of production**:
+
+- Without a metrics subscriber, scopes do not read timestamps or allocation
+  counters, histogram calls have no consumer, and queue timing returns zero.
+- The disabled path still has helper calls, enabled checks and no-op disposal,
+  one-time meter initialization, and an extra timestamp field per inference
+  request. This overhead has **not** been quantified as zero.
+- Creating the test-only
+  [EvaluationMetricsCollector](./EvaluationMetricsCollector.cs)
+  enables synchronous callbacks, aggregation and locking. Another `MeterListener`
+  or configured metrics integration could enable these instruments in production
+  too.
+- Collection is process-wide. Disposing the collector disables capture only if
+  no other subscriber remains.
+
+## Batch 3: CPU thread and batch-limit tuning
+
+### Rejected attempt and corrected method
+
+An initial in-process sweep changed Torch's thread setting at runtime. The
+inference-worker check caught **requested 8, observed 4**. Those measurements were
+rejected; checking the caller's thread setting alone was insufficient.
+
+The accepted experiment used the fresh-process method described above. Native
+thread settings were applied before Torch loaded and verified throughout warm-up.
+The timed evaluations had no metrics collector.
+
+### Board 1 screening results
+
+Thread sweep at batch limit 32:
+
+| Threads | Median wall time |
+| ---: | ---: |
+| 16 (reference) | 3,258.598 ms |
+| 1 | 7,954.512 ms |
+| 8 | **2,881.269 ms** |
+| 2 | 3,654.447 ms |
+| 4 | 3,118.577 ms |
+
+Batch-limit sweep at 8 threads:
+
+| Maximum batch size | Median wall time |
+| ---: | ---: |
+| 8 | 5,349.751 ms |
+| 32 | **3,016.590 ms** |
+| 16 | 3,502.623 ms |
+| 64 | 3,212.439 ms |
+
+The final screening selected **8 threads / batch limit 32**. One thread was about
+2.4 times slower than the 16-thread reference; smaller batch limits hurt latency.
+An earlier sweep briefly favored batch limit 64, but this was not consistent
+across reruns.
+
+### Confirmation against 16 threads / batch limit 32
+
+| Board | Reference median | Candidate median (8 / 32) | Speedup | Wall-time reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 3,310.992 ms | 3,238.096 ms | 1.023x | 2.2% |
+| 2 | 975.938 ms | 900.327 ms | 1.084x | 7.7% |
+| 3 | 1,973.393 ms | 1,868.292 ms | 1.056x | 5.3% |
+
+Board 2 pools six samples per configuration. Its reversed-order repeat measured
+**1,006.986 ms reference vs 1,022.038 ms candidate**, so the candidate was slightly
+slower in that repeat. Small gains should not be treated as robust, particularly
+on a shared workstation.
+
+The experiment validated:
+
+- 17 passing isolated runs and 51 timed samples.
+- 1,845 exported candidate scores; maximum absolute score difference approximately
+  **8.4e-8**, below the 1e-5 tolerance.
+- Unchanged selected moves and prediction counts.
+- A separate 32-test performance/diagnostics/two-ply regression run passed.
+
+**Decision: retain production defaults.** The measured gains were modest and
+inconsistent. These are CPU, single-request latency experiments, not GPU results,
+concurrent-request throughput tests, or evidence for another deployment's optimum.
+
+## Batch 4: deduplicating terminal positions before cloning
+
+On **2026-10-27**, the unique-generation path was changed to check terminal
+positions against retained snapshots **before allocating a move sequence or deep
+board/history clone**. The first occurrence is still cloned and retained; duplicate
+occurrences are not.
+
+The implementation reuses `HashSet<IBoardModel>` and the existing board equality,
+including home bars, bear-off counts, pins and cube state. It does not introduce
+a hash-only shortcut or a second definition of position identity. The mutable
+working board is used for lookup only; stored snapshots are never subsequently
+modified. The raw traversal and its order remain unchanged, and the same dice
+filter is still applied after deduplication. Non-unique move APIs keep their
+original behavior.
+
+### Allocation result
+
+Fresh before/after runs used Release, CPU, 16 intra-op/native threads, 16 inter-op
+threads, maximum batch size 32, one warm-up and three timed iterations. Each
+board also ran in a separate test process to export every root candidate score.
+These settings did not enable the marginal CPU tuning candidate from Batch 3.
+
+The separate per-board process measurements produced:
+
+| Board | Two-ply allocations before | After | Reduction | Terminal clones before | After |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2.458 GB | 1.329 GB | 45.9% | 674,385 | 104,422 |
+| 2 | 0.591 GB | 0.341 GB | 42.3% | 174,635 | 28,061 |
+| 3 | 1.344 GB | 0.768 GB | 42.8% | 353,862 | 61,813 |
+
+Allocations are cumulative managed bytes per evaluation, not resident memory.
+Clone counts come from the stage profile and include root and opponent generation.
+They fell by **82.5-84.5%**, while raw terminal-path and prediction counts stayed
+unchanged. For Board 1 this avoids **569,963** full board/history snapshots per
+two-ply evaluation.
+
+The fresh engine-only baseline also showed managed allocation reductions of
+**67.1% / 38.1% / 66.3%** for Boards 1 / 2 / 3.
+
+### Timing caveat
+
+The per-board process measurements were:
+
+| Board | Two-ply median before | After |
+| --- | ---: | ---: |
+| 1 | 5,272 ms | 5,307 ms |
+| 2 | 1,615 ms | 1,407 ms |
+| 3 | 3,631 ms | 3,260 ms |
+
+These are sequential before/after measurements on a shared workstation, not
+randomized repetitions. A separate combined run had mixed timing changes,
+including slower results on Boards 1 and 2. **The verified improvement is the
+allocation reduction; a consistent end-to-end latency speedup has not been
+established.** Root generation got faster in the combined run, but inference,
+batch scheduling and machine load still influence total evaluation latency.
+
+### Correctness and metric semantics
+
+- An independent copy-per-branch reference traversal retains every terminal
+  position and then performs the old post-traversal deduplication and dice filter.
+  [UniqueMoveSequenceTests](../../GammonX.Engine.Tests/UniqueMoveSequenceTests.cs)
+  compares exact first representatives, order, dice used, unique end positions
+  and restored board/history state for all five variants, both perspectives,
+  all 21 dice outcomes on starting and reached positions, plus targeted edge cases.
+- All **582 engine regression tests** passed, including 17 new equivalence cases.
+  The existing 32 performance/diagnostic/two-ply cases also passed.
+- All **280 root candidate scores** matched the pre-change results within a maximum
+  absolute difference of **7.5e-8**, below the existing 1e-5 tolerance. Selected
+  moves, root counts and prediction counts were unchanged.
+- A focused metric regression also covers a board with 100 prior roll events:
+  duplicate terminals must not trigger deep clones, and input history must remain
+  unchanged.
+- `PROFILE_SEARCH.RawSequences` still counts **all terminal paths visited**,
+  not snapshots allocated. `GenerationClone.Calls` now counts **only first-seen
+  terminal snapshots before dice filtering**. For the three performance fixtures,
+  all retained sequences use the full roll, so clone counts equal their reported
+  retained-sequence counts.
+
+### Remaining work
+
+At the end of Batch 4, full board/history copies still existed for each first-seen
+terminal position, and opponent reply clones were unchanged. Batch 5 below removes
+history from the deduplication snapshots only. All legal paths are still traversed.
+Further reductions would need careful treatment of lighter state representations
+or search-state reuse without duplicating variant equality or changing dice
+legality.
+
+## Batch 5: history-free position snapshots
+
+On **2026-10-27**, built-in boards gained an internal equality-only snapshot with
+independent position arrays and an empty, independent history. The unique-generation
+path now uses this snapshot for first-seen terminal positions.
+
+[BoardBaseImpl](../../GammonX.Engine/Models/impls/BoardBaseImpl.cs) shares the
+variant-state copy factory between full clones and position snapshots:
+
+- Ordinary `ICloneable.Clone()` / `DeepClone()` still deep-copy the entire history.
+- Equality-only snapshots copy fields, bear-off counts, home bars, pins and cube
+  state, but do not clone any history events.
+- The snapshot retains the concrete variant type and uses the existing equality
+  and hash implementations. It is not a new hash-only key.
+- Only built-in **unique-generation deduplication** uses the history-free path.
+  Non-unique generation and other board implementations retain their full-clone
+  behavior.
+- **Opponent reply clones remain full deep clones.** Inference consumes
+  history-derived features such as roll/turn count; dropping history there would
+  change evaluation inputs. Position snapshots must not be used as evaluation
+  boards.
+
+### Allocation result
+
+Fresh before/after runs used the same Release, CPU, 16 intra-op/native threads,
+16 inter-op threads and maximum batch size 32. Each per-board process performed
+one full warm-up and three timed iterations. The "before" already includes the
+Batch 4 early-deduplication optimization.
+
+| Board | Two-ply allocations before | After | Additional reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 1.330 GB | 1.216 GB | 8.5% |
+| 2 | 0.340 GB | 0.319 GB | 6.4% |
+| 3 | 0.768 GB | 0.703 GB | 8.6% |
+
+These are cumulative managed allocations per evaluation, not resident memory.
+Board 1 saves approximately **113 MB more per two-ply evaluation** in this batch.
+The combined engine-only baseline also showed allocation reductions of
+**11.3% / 19.4% / 10.7%** for Boards 1 / 2 / 3.
+
+The instrumented post-change snapshot stage measured:
+
+| Board | Position snapshots | Snapshot-stage managed bytes |
+| --- | ---: | ---: |
+| 1 | 104,422 | 59,311,696 |
+| 2 | 28,061 | 15,938,648 |
+| 3 | 61,813 | 35,109,784 |
+
+This is **568 bytes per Backgammon snapshot** for these measurements, independent
+of copied history because no history events are copied. It still includes a full
+board object, copied fields, delegates and empty history objects; this is not a
+packed or minimal position key. Snapshot counts, raw path counts and prediction
+counts did not change.
+
+### Timing caveat
+
+The separate per-board process measurements were:
+
+| Board | Two-ply median before | After |
+| --- | ---: | ---: |
+| 1 | 3,786 ms | 4,018 ms |
+| 2 | 1,696 ms | 1,474 ms |
+| 3 | 2,880 ms | 2,498 ms |
+
+As in Batch 4, before/after measurements were sequential on a shared workstation,
+not randomized repetitions. The separate combined run was slower after the change
+on all three boards. **This establishes another allocation reduction, not a
+consistent end-to-end latency speedup.** No production thread or batch defaults
+were changed.
+
+### Correctness
+
+- **597 engine regression tests passed**, including the previous independent
+  traversal-equivalence tests and **15 new snapshot tests** across all five variants.
+- [BoardPositionSnapshotTests](../../GammonX.Engine.Tests/BoardPositionSnapshotTests.cs)
+  verifies symmetric equality and matching hashes, copied variant state,
+  independent arrays/history and preserved full-clone behavior. A deliberately
+  non-cloneable history event proves unique generation never tries to clone it,
+  while ordinary deep cloning still does.
+- The snapshot allocation test compares repeated snapshots before and after
+  adding 100 roll events; allocated bytes must be identical.
+- All **33 performance/diagnostic/two-ply tests passed**.
+- All **280 root candidate scores** matched the pre-change values within a
+  maximum absolute difference of **5.4e-8**, below the existing 1e-5 tolerance.
+  Selected moves, root candidates, raw terminal paths and NN request counts
+  remained unchanged.
+
+At the end of Batch 5, remaining costs included visiting every legal path,
+constructing full position objects for first-seen terminals, full opponent reply
+clones, feature extraction, task/channel scheduling and inference. Batch 6 below
+avoids revisiting equivalent doubles subtrees. Any attempt to reuse mutable reply
+boards must still respect asynchronous evaluation lifetimes and retain
+history-dependent features.
+
+## Batch 6: reusing equivalent intermediate doubles states
+
+On **2026-10-27**, unique-generation traversal gained per-call sets of previously
+expanded intermediate positions for built-in boards with **more than two identical
+dice** (normally a four-move double).
+
+For identical dice, the remaining dice count identifies the remaining roll
+multiset. At a fixed player perspective and die value, an equal position with the
+same number of dice left therefore has the same legal continuation subtree.
+The first depth-first visit fully expands that subtree; later visits skip it.
+This is **exact state deduplication**, not selective search or a candidate limit.
+
+Important boundaries:
+
+- The sets are partitioned by remaining dice count, so states with different dice
+  still to play are never merged. They are local to one generation call, not a
+  cross-request or cross-roll cache.
+- Position identity uses the existing full equality and hash implementations.
+  Only independent, history-free position snapshots are stored; the mutable
+  working board is used for lookup only.
+- Built-in variant legality was checked to depend on position state rather than
+  the preceding move history. The first path is retained, preserving exact move
+  representatives, order and dice usage.
+- Mixed-roll searches, non-unique APIs and other board implementations keep
+  their previous traversal. The eligibility check does not allocate a capturing
+  delegate; Board 2's non-double root-generation allocations remained exactly
+  unchanged in the fresh comparison.
+- This optimization is active for eligible production searches without a metrics
+  subscriber. Its diagnostic measurements remain opt-in.
+- Neural evaluation and opponent reply histories are unchanged. Board 2 still
+  benefits during Expert evaluation because opponent dice outcomes include doubles,
+  even though its root roll is not a double.
+
+### Traversal work
+
+The fresh instrumented before/after comparison measured:
+
+| Board | Terminal visits before | After | Reduction | Repeated intermediate states skipped |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 674,385 | 247,078 | 63.4% | 40,657 |
+| 2 | 174,635 | 67,030 | 61.6% | 12,462 |
+| 3 | 353,862 | 141,543 | 60.0% | 23,584 |
+
+These are totals across root and opponent generation for one full two-ply
+evaluation. A skipped intermediate state can avoid many terminal visits, so the
+last column is not the number of avoided terminals. The retained unique sequences
+were unchanged at **104,422 / 28,061 / 61,813**, including root sequences.
+
+Cache bookkeeping has a real cost. It created **43,715 / 13,121 / 26,879**
+intermediate snapshots, with approximately **27.5 / 8.2 / 16.9 MB** attributed
+to the snapshot-and-cache-insertion stage, including hash-set growth. The net
+generation allocation totals, already including this cost, fell from:
+
+- Board 1: **429.3 MB to 268.7 MB**.
+- Board 2: **115.7 MB to 75.5 MB**.
+- Board 3: **238.1 MB to 159.6 MB**.
+
+Instrumented cumulative move-generation time decreased from **254 to 191 ms**,
+**85 to 70 ms**, and **150 to 111 ms**, respectively. These stage measurements
+are not exclusive request-latency partitions.
+
+### Total allocations and latency
+
+Fresh per-board processes used Release, CPU, 16 intra-op/native threads, 16 inter-op
+threads and maximum batch size 32, with one full warm-up and three timed iterations.
+The "before" already includes all previous batches.
+
+| Board | Two-ply allocations before | After | Additional reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 1.216 GB | 1.056 GB | 13.2% |
+| 2 | 0.318 GB | 0.278 GB | 12.6% |
+| 3 | 0.703 GB | 0.624 GB | 11.2% |
+
+Allocations are cumulative managed bytes, not resident memory. Board 1 saves
+approximately **160 MB more per two-ply evaluation** in this batch.
+
+The combined root-generation baseline showed approximately **45% fewer allocated
+bytes** for both doubles fixtures, with medians of **0.383 to 0.219 ms** on Board 1
+and **0.290 to 0.173 ms** on Board 3. Board 2's non-double root allocation stayed
+at **98,544 bytes**.
+
+Per-board process two-ply medians were:
+
+| Board | Before | After |
+| --- | ---: | ---: |
+| 1 | 4,097 ms | 3,728 ms |
+| 2 | 1,384 ms | 1,062 ms |
+| 3 | 2,503 ms | 2,336 ms |
+
+Those per-board runs improved, but the separate combined run was slightly slower
+on Boards 1 and 3. The before/after runs were sequential on a shared workstation,
+not randomized repetitions. **Reduced traversal work and allocations are verified;
+a consistent end-to-end latency speedup is still not established.** Production
+thread and batch-size defaults remain unchanged.
+
+### Correctness and metric changes
+
+- **597 engine regression tests passed**, including the independent full-traversal
+  reference across all five variants, both perspectives and all 21 dice outcomes
+  on starting and reached positions, plus dice-rule and restoration edge cases.
+- All **34 performance/diagnostic/two-ply tests passed**. A new focused test checks
+  that the state reuse occurs for unique doubles generation, but not mixed rolls
+  or non-unique generation.
+- All **280 root candidate scores** matched before/after within a maximum absolute
+  difference of **6.8e-8**, below the existing 1e-5 tolerance. Selected moves,
+  representatives and NN request counts stayed unchanged.
+- `GenerationClone` still measures first-seen terminal position snapshots.
+  The new `TraversalSnapshot` stage measures intermediate snapshots and their
+  insertion into the local state sets. **Both are nested inside `MoveGeneration`**;
+  do not sum them with their parent.
+- The new counter `gammonx.evaluation.traversal.reused` counts skipped repeated
+  intermediate states. `PROFILE_SEARCH` now appends a `reused_states` column:
+  `board,workload,iteration,generation_calls,raw_sequences,unique_sequences,reused_states`.
+- `raw_sequences` now counts terminal paths actually visited after subtree reuse,
+  not the terminal count that a full enumeration would have produced. A decrease
+  is expected and must not be interpreted as missing unique candidates.
+
+The largest remaining inference workload is unchanged: all unique reply positions
+are still scored. Further work should distinguish inference/task scheduling costs
+from generation costs rather than infer end-to-end speed from allocation reductions.
+
+## Batch 7: explicit bounded neural inference groups
+
+On **2026-10-28**, the two-ply evaluator gained explicit prediction groups through
+an optional internal batch capability. At that time, other implementations kept
+their single-position path; the current contract unifies these operations in
+[INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs).
+The following tables describe that historical A/B experiment, not a currently
+selectable legacy mode. Its library worker default was 32, while the server then
+overrode the worker limit to 64; the current server setting is 32.
+
+### Execution and lifetime rules
+
+For each opponent dice outcome, replies are handled in original order in chunks
+of at most **32**, or the service's configured batch limit if smaller:
+
+1. Make full reply-board clones, apply the moves and retain the complete histories.
+2. Score terminal positions directly; calculate the normal features for the
+   remaining positions and extract independent feature arrays.
+3. Submit the feature arrays as one bounded FIFO queue item with one completion
+   source for the group, rather than one per position.
+4. The **same single inference worker** combines whole queue items that fit within
+   the worker's row limit. It does not split a group or exceed that limit. Result rows are
+   mapped back to their original inputs; scalar outputs retain the existing
+   five-element normalization.
+5. After scoring finishes, restore the reply boards in `finally`. The evaluator
+   awaits one chunk before submitting the next, retaining at most one chunk of
+   reply clones at a time and allowing other queued callers between chunks.
+
+The worker does not make parallel model calls or introduce queue delays.
+History-dependent features, dice probabilities, terminal equity, candidate sets
+and perspective conversion are unchanged. No mutable board is shared with the
+worker; it receives feature arrays that remain unchanged until completion.
+
+Forward errors fault the affected requests rather than returning defaults.
+Shutdown and linked worker cancellation finish pending requests with failure or
+cancellation, including callers waiting for channel capacity. Work submitted
+before startup or after shutdown is rejected explicitly. This does not add
+per-prediction cancellation to the existing public API.
+
+The queue remains bounded by **queue items**, not feature rows. Explicit items
+can contain up to 32 rows at the default setting, so the worst-case queued feature
+storage under many callers is larger than when every item held one row.
+The evaluator's one-outstanding-chunk-per-request rule limits prefetching, but
+deployment-scale concurrency and native/peak memory still merit separate testing.
+
+### Alternating comparison method
+
+Both paths were built into the same binaries. Three rounds alternated baseline
+and candidate order by round and board, using a fresh test process for every
+configuration. Each run performed a full warm-up and three timed iterations.
+This yielded **18 configuration runs and 54 timed evaluations**: nine timed
+samples per path per board.
+
+Settings: Release, CPU, `OMP_NUM_THREADS=MKL_NUM_THREADS=16`, 16 inter-op threads
+and maximum batch size 32. Neither timed path had a stage-metrics subscriber.
+Every run exported all candidate scores, checked its worker thread settings during
+warm-up, and was compared against a reference for that board. Model and application
+fingerprints stayed fixed throughout the paired experiment.
+
+### Latency, CPU and allocation results
+
+The medians below pool the nine individual samples for each path, rather than
+taking the median of run medians:
+
+| Board | Single-request delivery | Explicit groups | Speedup | Latency reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 4,727.750 ms | 2,773.901 ms | 1.704x | 41.3% |
+| 2 | 1,410.334 ms | 731.375 ms | 1.928x | 48.1% |
+| 3 | 2,654.000 ms | 1,743.542 ms | 1.522x | 34.3% |
+
+The explicit path had a lower median in **every board/round pair**, unlike the
+previous smaller latency changes. There was still substantial spread on the
+shared workstation; for example, Board 1 ranged from 3,017 to 5,923 ms on the
+legacy path and 2,409 to 4,247 ms with explicit groups. These observations support
+enablement on this workload, not a universal deployment guarantee.
+
+| Board | Managed allocations, single delivery | Explicit groups | Reduction | Median process CPU reduction |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 1,054,155,544 bytes | 947,309,240 bytes | 10.1% | 44.4% |
+| 2 | 278,008,160 bytes | 248,568,240 bytes | 10.6% | 51.6% |
+| 3 | 623,237,064 bytes | 559,059,840 bytes | 10.3% | 35.2% |
+
+Allocations remain cumulative managed bytes, not peak memory or native Torch
+allocation totals. The reduction reflects fewer per-position tasks, completion
+sources and queue operations; board generation and the number of neural positions
+scored are unchanged.
+
+### Separate instrumented batching evidence
+
+Three stage-profile iterations per board/path were collected separately from
+the latency comparison:
+
+| Board | Queue items before -> after | Median forward passes before -> after | Average actual batch before -> after |
+| --- | ---: | ---: | ---: |
+| 1 | 104,291 -> 4,376 | 6,616 -> 4,376 | 15.71 -> 23.83 |
+| 2 | 28,008 -> 1,423 | 2,359 -> 1,423 | 11.74 -> 19.68 |
+| 3 | 61,717 -> 2,684 | 4,504 -> 2,684 | 13.88 -> 22.99 |
+
+Queue-item counts are per evaluation. Actual batch averages pool the three
+instrumented iterations; full batches increased from **22.9% to 39.2%** on Board 1,
+**10.9% to 21.8%** on Board 2 and **14.1% to 24.9%** on Board 3. Partial chunks at
+roll boundaries remain, so average batches are not expected to reach 32.
+
+Batch preparation still allocates nearly the same total flat feature storage,
+because it processes the same number of feature values. This batch does **not**
+establish a benefit from pooling or reusing those buffers.
+
+The new counter `gammonx.evaluation.inference.requests` records successfully
+queued items, distinct from predicted positions. `PROFILE_INFERENCE` adds a
+separate report line with columns:
+
+```text
+board,workload,iteration,queue_requests,predictions,forward_passes,average_batch_size
+```
+
+`PROFILE_BATCH` still reports row counts, and queue-wait measurements still count
+each predicted row even when several share one queue item. Search-report columns
+and traversal semantics are unchanged.
+
+### Shared-worker fairness and mixed-load latency
+
+Three fresh processes per path ran **two simultaneous full Board 1 Expert
+evaluations**, plus up to 100 serial single-prediction probes with a 5 ms delay
+between probes. Probes started only while evaluation work was active; all three
+runs completed 100 probes per path. There were no stage subscribers in these runs.
+
+| Metric | Single-request delivery | Explicit groups |
+| --- | ---: | ---: |
+| Median time for both evaluations | 7,346.953 ms | 5,409.180 ms |
+| Pooled single-probe median | 3.1285 ms | 1.9171 ms |
+| Pooled single-probe p95, nearest rank | 37.7175 ms | 13.1412 ms |
+| Worst probe | 904.4044 ms | 33.1296 ms |
+
+Pooled probe percentiles use 300 samples per path. One paired round had a worse
+single-probe p95 with explicit groups (**19.34 vs 8.52 ms**); the other two favored
+groups. Therefore the result is an overall improvement for this tested load,
+not proof that no individual request or deployment load can regress.
+
+A deterministic worker test additionally holds one group in flight, enqueues a
+single, then releases the group. It verifies that the queued single is served
+before the large caller's next chunk, independently of timing measurements.
+
+### Historical 64-row hosted-worker configuration
+
+The server then configured a 64-row worker limit, rather than relying on the
+library's 32-row default. An initial prototype also allowed **64 rows per explicit
+caller group**. Although it reduced evaluation latency, its pooled mixed-load
+single-probe p95 regressed from **5.7440 to 9.0089 ms**. That version was rejected
+for default enablement.
+
+The accepted implementation caps **each caller group at 32 rows**, independently
+of the worker limit. The worker can still combine whole items into up to 64 rows,
+but a caller cannot prefill the queue with a whole roll or monopolize it with
+64-row reply groups.
+
+Another three alternating rounds tested the final cap with the existing 64-row
+worker limit: **18 fresh configuration processes, 54 timed evaluations and six
+mixed-load processes**. These measurements are separate from the 32-row-worker
+table, not a direct comparison between worker limits.
+
+| Board | Legacy median, worker 64 | Explicit median, caller cap 32 | Speedup |
+| --- | ---: | ---: | ---: |
+| 1 | 3,785.719 ms | 3,401.213 ms | 1.113x |
+| 2 | 1,408.111 ms | 818.598 ms | 1.720x |
+| 3 | 2,840.946 ms | 1,734.423 ms | 1.638x |
+
+Every board/round pair had a lower explicit-path median. Managed allocations
+remained about 10% lower. Pooled mixed-load single-probe median/p95 were
+**2.0253 / 5.1417 ms legacy** versus **1.4591 / 3.5612 ms explicit**, with 300
+probes per path. Median time for both simultaneous evaluations fell from
+**5,713.917 to 4,364.474 ms**.
+
+The maximum probe was slightly worse (**18.7964 vs 14.6464 ms**), and one round's
+p95 was slightly worse (**4.2119 vs 3.9298 ms**). The decision is based on repeated
+evaluation gains and improved pooled tail latency, not a claim that every request
+improves. Larger production concurrency and native/peak memory remain unmeasured.
+Correctness comparisons with actual model weights cover all five variants at
+both worker limits, and a regression asserts that reply groups remain capped at
+32 when the service advertises 64.
+
+### Correctness and enablement decision
+
+- **74 focused evaluation/performance/diagnostics tests passed**, including real
+  model comparisons for all five game variants, terminal and pass replies,
+  history-feature equivalence, awaited board lifetimes and restoration on errors.
+- Single-output `[N]` and `[N,1]` and five-output `[N,5]` mappings are covered,
+  including mixed single/group callers and partial groups. Invalid input groups
+  and invalid output shapes fail explicitly.
+- Forward failures, worker recovery, FIFO chunk fairness, shutdown and cancellation
+  of queued/backpressured single and group requests are tested.
+- All **597 engine regression tests passed**.
+- The alternating runs checked every candidate set and score: 280 candidates
+  across the three boards, with maximum absolute cross-run score difference
+  **8.0e-8**, below the existing 1e-5 tolerance. Selected moves and the
+  **104,291 / 28,008 / 61,717** predictions per evaluation stayed unchanged.
+
+**Decision: enable explicit bounded groups by default for batch-capable services.**
+The repeated latency/CPU gains, lower allocations and mixed-load evidence justify
+this change, while retaining the legacy path for other implementations and paired
+tests. The 32-row caller cap is part of this decision. Thread settings, worker
+batch-size defaults and the server's existing 64-row worker configuration are
+not changed.
+
+### Measuring the current batch-only path
+
+The historical switch and A/B runner are obsolete. To record a current
+configuration with candidate scores, from the repository root in PowerShell:
+
+```powershell
+dotnet build .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore
+
+$env:OMP_NUM_THREADS = '16'
+$env:MKL_NUM_THREADS = '16'
+$env:GAMMONX_PERF_THREADS = '16'
+$env:GAMMONX_PERF_BATCH_SIZE = '32'
+$env:GAMMONX_PERF_BOARD = '1'
+$env:GAMMONX_PERF_PHASE = 'ConfirmDefault'
+
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-build --no-restore `
+    --filter "FullyQualifiedName=GammonX.Mars.NN.Tests.Performance.PerformanceTests.MeasureCpuThreadAndBatchTuning" `
+    --logger "trx;LogFileName=inference.trx" `
+    --results-directory ".\TestResults\inference-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+if ($LASTEXITCODE -ne 0) { throw "Inference measurement failed" }
+```
+
+Run this in a fresh PowerShell process or restore any pre-existing environment
+values afterward. This is a measurement of one configuration, not a legacy/batch
+comparison. Use new result directories for repeat runs.
+Use `MeasureSharedWorkerInference` as the test-name filter for mixed-load output,
+and `ProfileTwoPlyPerformance` for separate instrumented batch statistics.
+Set `GAMMONX_PERF_BATCH_SIZE=64` to test an alternative worker limit;
+reply groups remain capped at 32. The mixed-load benchmark reads this
+setting too, while the general stage-profile cases use their fixed 32-row worker.
+
+## Batch 8: reusable worker-owned CPU input storage
+
+On **2026-10-29**, the hosted batch worker gained a reusable Float32 CPU tensor
+for input staging. This targets allocation and GC overhead, without changing
+features, reply chunks, queue ordering, model concurrency or prediction count.
+The change is retained for **CPU inference only**.
+
+### Ownership and exact active shape
+
+The version-matched TorchSharp 0.106.0 source confirms that the
+`tensor(float[], dimensions)` factory clones its managed input array before
+pinning/wrapping it. Previously, every forward therefore allocated both the
+flattened packing array and its cloned tensor backing array. Reusing only the
+packing array would leave the latter allocation in place.
+
+The new path in
+[BatchedNeuralEvalService](../../GammonX.Mars.NN/Services/BatchedNeuralEvalService.cs):
+
+1. Lazily allocates one contiguous native Float32 CPU tensor with capacity
+   `[MaxBatchSize, FeatureCount]` on the first batch.
+2. Detaches it from TorchSharp's ambient dispose scopes. The worker explicitly
+   owns and disposes it on exit, including cancellation or forward failures.
+3. Copies feature rows through a synchronous, bounds-checked float span over the
+   tensor's CPU storage. No caller-owned feature array is pinned, retained as
+   backing memory or modified.
+4. Passes a `narrow(0, 0, rowCount)` view to the model, with the **actual active
+   row count**, not a padded maximum-size input. Stale rows beyond that view are
+   inaccessible to the forward pass.
+5. Materializes output rows and disposes per-forward views before reusing storage.
+   The one worker does not overwrite input during a forward pass.
+
+Non-CPU devices keep the previous array/tensor construction path. No accelerator
+allocation, transfer, synchronization or zero-copy optimization is claimed.
+The public batch contract and 32-row reply fairness cap are unchanged.
+
+The independent storage/view behavior was checked against the installed package
+as well as the upstream source:
+
+- [Tensor factories, v0.106.0](https://github.com/dotnet/TorchSharp/blob/v0.106.0/src/TorchSharp/Tensor/Factories/Tensor.Factories.cs)
+  documents the clone-and-pin implementation.
+- [Tensor storage and narrow views, v0.106.0](https://github.com/dotnet/TorchSharp/blob/v0.106.0/src/TorchSharp/Tensor/Tensor.cs)
+  exposes contiguous CPU bytes, exact-sized views and explicit scope detachment.
+
+### Fresh baseline and repeated comparison
+
+The fresh batch-only baseline still attributed **181.3 / 48.7 / 107.3 MB** of
+managed allocations to preparation on Boards 1 / 2 / 3. Thus the original
+allocation target remained present after the interface refactoring.
+
+Three alternating rounds then compared the same compiled implementation with
+reuse disabled/enabled, in fresh processes for every board/path. Each run used
+one full warm-up and three timed iterations without stage collection:
+**18 runs and 54 timed evaluations**, or nine samples per strategy per board.
+CPU/native intra-op threads stayed at 16, inter-op at 16, worker limit at 32 and
+reply cap at 32. Runtime/model fingerprints remained fixed during the experiment.
+
+| Board | Managed allocations before | Reuse | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 947,294,192 bytes | 766,239,152 bytes | 19.1% |
+| 2 | 248,562,304 bytes | 199,890,216 bytes | 19.6% |
+| 3 | 559,049,088 bytes | 451,886,784 bytes | 19.2% |
+
+These are pooled medians of cumulative managed allocations per evaluation, not
+peak memory. Board 1 saves approximately **181 MB per two-ply evaluation**.
+Gen-0 collection totals across the nine samples fell from **680 to 550**,
+**178 to 143**, and **402 to 324**, respectively.
+
+Separate instrumented profiles measured:
+
+| Board | Preparation bytes before | Reuse | Forward passes, unchanged |
+| --- | ---: | ---: | ---: |
+| 1 | 181,265,088 | 210,048 | 4,376 |
+| 2 | 48,739,344 | 68,304 | 1,423 |
+| 3 | 107,291,136 | 128,832 | 2,684 |
+
+Preparation allocations fell by **more than 99.8%**. The residual is the
+per-forward tensor-view wrapper, not another full input copy. One-time capacity
+allocation occurs during first inference, outside steady-state warm measurements.
+Preparation stage medians fell from **38.17 to 20.04 ms**, **12.25 to 5.33 ms**
+and **25.84 to 12.14 ms**; these are cumulative stage times, not an exclusive
+request-latency partition.
+
+### Latency and mixed-load decision
+
+Pooled latency medians from the nine measured samples per strategy:
+
+| Board | Before | Reuse |
+| --- | ---: | ---: |
+| 1 | 1,879.111 ms | 1,790.734 ms |
+| 2 | 590.480 ms | 595.558 ms |
+| 3 | 1,135.401 ms | 1,094.563 ms |
+
+Latency improvements were **small and inconsistent**. For example, one Board 3
+round was substantially slower with reuse, while two others were faster. The
+before/reuse sample ranges overlap. The result is not evidence of a consistent
+end-to-end speedup.
+
+The mixed-load experiment used two simultaneous full Board 1 evaluations and
+100 serial single-prediction probes with 5 ms spacing while evaluation was active.
+The initial three pairs had pooled p95 of **1.1410 vs 1.2452 ms**, a roughly
+0.1 ms worsening with reuse. Rather than ignore that observation, three more
+alternating pairs were run without changing the implementation.
+
+Across all **six processes per strategy and 600 probes per strategy**:
+
+| Metric | Before | Reuse |
+| --- | ---: | ---: |
+| Median time for both evaluations | 3,018.216 ms | 3,002.980 ms |
+| Pooled single-probe median | 0.6572 ms | 0.6174 ms |
+| Pooled single-probe p95, nearest rank | 1.2213 ms | 1.2123 ms |
+| Worst probe | 107.2180 ms | 75.8980 ms |
+
+These mixed-load results are effectively neutral, not a guarantee against
+individual regressions. **Decision: retain CPU reuse for its approximately 19%
+managed allocation and GC reduction**, with no material pooled p95 regression
+in the repeated workload. Do not extrapolate a large latency improvement.
+
+### Managed versus native/process memory
+
+Reuse moves this input backing storage from repeatedly allocated managed arrays
+to **one bounded native buffer per CPU worker**:
+
+- At 32 rows: **27,648 bytes** for the 216-feature models, **34,048 bytes** for
+  the 266-feature Plakoto model.
+- At 64 rows: **55,296 / 68,096 bytes**, respectively.
+
+Those are calculated input payload capacities, not total LibTorch/allocator
+overhead. The buffer remains while the worker is idle and is released on worker
+exit. Model parameters, activations, feature arrays and returned predictions
+retain their previous ownership.
+
+`MEMORY` output records process private bytes, working set, peak working set,
+estimated live managed bytes (`GC.GetTotalMemory(false)`) and live Torch tensor
+handles after warm-up, measurements and worker stop. These observations are
+outside timed regions and do not force GC.
+
+Process memory includes the runtime, managed heaps, native allocators, model and
+thread state; **subtracting live managed bytes does not produce a reliable native
+allocation measurement**. Fewer collections can leave more unreachable managed
+objects awaiting collection even when cumulative allocations are lower. No
+attributable peak/native-memory saving is claimed. Native-storage lifetime is
+instead covered by dedicated handle-balance tests.
+
+### Correctness and reproduction
+
+- **388 NN/performance tests passed**, excluding long-running self-play tests.
+  Coverage includes all real game-variant models, scalar/five-head outputs,
+  failure recovery, shutdown and mixed callers.
+- New tests prove direct CPU writes and narrow-view ownership, alternate full and
+  partial batches at feature widths **216 and 266**, and verify tensor handles
+  are released after normal stop and after a forward failure. These lifecycle
+  tests drain earlier finalizers before checking handle balance; the benchmarks
+  do not force GC.
+- All **280 candidate scores matched exactly** throughout the repeated comparison.
+  Selected moves and the **104,291 / 28,008 / 61,717** predictions per evaluation
+  stayed unchanged. Forward counts and stage accounting also reconciled.
+- Accelerator execution and high-client-count native/peak memory were not
+  validated; non-CPU code retains its previous implementation.
+
+The test-only `GAMMONX_PERF_REUSE_INPUT` selects input preparation:
+
+- Unset or `1`: reusable CPU storage (the default).
+- `0`: fresh arrays/tensor per forward, for comparison.
+- Other values: test-configuration error.
+
+This variable is read only by performance tests, **not by production**.
+Production CPU workers use reuse by default. It is unrelated to the removed
+`GAMMONX_PERF_EXPLICIT_BATCH` flag; both preparation strategies use batch-only
+scoring and the same FIFO worker.
+
+To compare preparation profiles from the repository root in a fresh PowerShell
+process, use unique result directories and keep other settings fixed:
+
+```powershell
+$env:OMP_NUM_THREADS = '16'
+$env:MKL_NUM_THREADS = '16'
+foreach ($reuse in '0', '1') {
+    $env:GAMMONX_PERF_REUSE_INPUT = $reuse
+    dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+        -c Release --no-restore `
+        --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
+        --logger "trx;LogFileName=profile.trx" `
+        --results-directory ".\TestResults\input-$reuse-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    if ($LASTEXITCODE -ne 0) { throw "Input profile failed for reuse=$reuse" }
+}
+```
+
+For timing rather than instrumented stage attribution, use
+`MeasureCpuThreadAndBatchTuning` or `MeasureSharedWorkerInference` and the same
+reuse flag. Alternate order over multiple fresh processes; a single pair is only
+a smoke check. Restore any prior environment settings afterward.
+
+## Batch 9: identical neural inputs within a root search
+
+On **2026-10-29**, exact inference reuse was measured and prototyped across the
+21 opponent dice outcomes of each root candidate. The aim was to avoid repeated
+neural work **without pruning candidates or changing search strength**.
+
+**Decision: do not retain the production cache.** It was correct, but the
+duplicate rate was too small to pay for lookup and bookkeeping reliably. The
+prototype and its runtime comparison switch were removed after measurement.
+The existing input-buffer reuse and all previous accepted optimizations remain.
+
+### Measuring the opportunity
+
+[MeasureIdenticalInputs](./PerformanceTests.InputReuse.cs) observes the actual
+full inference inputs and resets its identity table for every root candidate.
+Every float bit participates in equality, including signed zero and NaN payloads;
+dictionary lookup uses full equality after hashing, not a hash-only identity.
+This includes normalized features, raw board encodings and history-derived
+features. Board equality alone is not used as an inference key.
+
+The diagnostic also enumerates expected reply-group boundaries for the three
+fixed, nonterminal performance fixtures. It checks every observed group's row
+count and attributes repeats to the original opponent dice outcome. That extra
+enumeration and the identity tables are **test-only diagnostic work**, outside
+all latency measurements.
+
+Measured over all root candidates:
+
+| Board | Logical neural rows | Distinct inputs, summed per root | Repeated rows | Duplicate rate |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 104,291 | 96,948 | 7,343 | 7.04% |
+| 2 | 28,008 | 25,044 | 2,964 | 10.58% |
+| 3 | 61,717 | 56,925 | 4,792 | 7.76% |
+
+All measured duplicates were **across opponent dice outcomes**. There were no
+within-batch duplicates or same-roll cross-batch duplicates in these fixtures.
+These are per-root identities, not globally unique positions across the whole
+evaluation. Reuse across different root candidates was not measured.
+
+Most batches still contained at least one new input. Avoiding repeated rows would
+therefore remove only **1 / 0 / 1 entire groups**, respectively. Smaller batches
+do not remove kernel/forward-call overhead in proportion to row-count savings.
+
+### The bounded prototype
+
+The experiment used a cache local to one root candidate's two-ply search, tied
+to that model instance, variant and fixed opponent perspective:
+
+- Retained at most **2,048 input/score entries**, stopping retention when full
+  while continuing to infer every miss.
+- Retained independently extracted feature arrays as immutable owned keys and
+  the derived position score as its value.
+- Coalesced exact duplicates within a batch and reused successful earlier
+  batch scores. Terminal positions bypassed inference as before.
+- Did not retain failed, wrong-sized or nonfinite scoring results.
+- Discarded the cache after that root search, including on failure. Concurrent
+  root searches had independent caches; there was no global cache or model
+  invalidation scheme.
+
+Largest measured unique-root sets were **1,088 / 679 / 827 entries**. Their raw
+feature-key payloads were **940,032 / 586,656 / 714,528 bytes**, excluding array,
+dictionary and other object overhead. None reached the prototype's limit.
+At 2,048 entries, the raw payload bound would be about 1.77 MB for 216 features
+or 2.18 MB for 266 features, **per concurrent root search**, plus overhead.
+
+### Latency and allocation comparison
+
+Three alternating rounds used fresh processes per board and cache-off/on
+configuration, one full warm-up and three timed evaluations per process.
+Settings stayed at Release, CPU, 16 OMP/MKL/inter-op threads, worker limit 32,
+reply cap 32 and input-storage reuse enabled.
+
+There were **18 configuration runs and 54 timed evaluations**, with no stage
+subscriber in timed iterations. Both strategies used the same compiled prototype
+and model; fingerprints stayed fixed throughout the experiment. Cache-off numbers
+below are the experimental comparison path, not a new post-removal production
+baseline.
+
+| Board | Uncached median | Cached median | Change with cache |
+| --- | ---: | ---: | ---: |
+| 1 | 1,781.910 ms | 1,886.202 ms | 5.9% slower |
+| 2 | 570.362 ms | 563.021 ms | 1.3% faster |
+| 3 | 1,078.975 ms | 1,117.802 ms | 3.6% slower |
+
+The sample ranges overlap and individual rounds varied; there is no consistent
+latency win. Managed allocation medians **increased**, rather than decreased:
+
+| Board | Uncached | Cached | Increase |
+| --- | ---: | ---: | ---: |
+| 1 | 768,458,704 bytes | 782,377,600 bytes | 1.8% |
+| 2 | 200,566,312 bytes | 203,514,072 bytes | 1.5% |
+| 3 | 453,232,520 bytes | 461,383,128 bytes | 1.8% |
+
+A separate instrumented profile attributed **54.3 / 13.8 / 31.2 ms** to synchronous
+lookup/insertion work. That stage allocated approximately **14.4 / 3.7 / 8.7 MB**
+across a whole evaluation, largely from bookkeeping. It did not include every
+allocation made by the cache helper, so use total allocation measurements for
+overall impact.
+
+The physical row counts decreased as expected, but median forward counts barely
+changed:
+
+| Board | Forward passes before -> cached | Average batch rows before -> cached |
+| --- | ---: | ---: |
+| 1 | 4,376 -> 4,375 | 23.83 -> 22.16 |
+| 2 | 1,423 -> 1,423 | 19.68 -> 17.60 |
+| 3 | 2,684 -> 2,683 | 22.99 -> 21.22 |
+
+This explains why fewer predicted rows did not translate into a reliable latency
+gain: feature calculation and full logical traversal remained, most forwards
+still ran, and caching added work and memory retention.
+
+### Mixed load and correctness
+
+Three fresh mixed-load processes per strategy ran two simultaneous full Board 1
+evaluations plus 100 serial single-prediction probes with 5 ms spacing:
+
+| Metric | Uncached | Cached |
+| --- | ---: | ---: |
+| Median time for both evaluations | 2,991.850 ms | 2,894.713 ms |
+| Pooled single-probe median | 0.6444 ms | 0.6666 ms |
+| Pooled single-probe p95, nearest rank | 1.0920 ms | 1.4296 ms |
+| Worst probe | 1.8036 ms | 2.7535 ms |
+
+Pooled percentiles use **300 probes per strategy**. Although the two-evaluation
+median improved in this small load test, interactive p95 worsened. Combined with
+the single-evaluation results and extra allocation, this did not justify
+production enablement.
+
+The tested prototype passed 55 focused cases covering forced hash collisions,
+bitwise equality, capacity exhaustion, failure handling, concurrent scope,
+history/perspective features, terminal/pass scoring and actual model comparisons.
+All **280 candidate sets/scores** were checked across repeated runs; maximum
+absolute score difference was **2.93e-8**, below the existing 1e-5 tolerance.
+Selected moves and **logical** coverage stayed unchanged; only physical neural
+rows were reused.
+
+Experimental `PROFILE_CACHE`, `InputReuse` stage counters,
+`GAMMONX_PERF_REUSE_PREDICTIONS` and the production cache helper were removed with
+the rejected path. They are not current supported runtime or benchmark options.
+The archived experiment evidence distinguishes logical from physical work;
+current production again has no prediction-cache hits.
+
+### Retained diagnostic and future use
+
+The retained diagnostic performs the full ordinary uncached search. Run it from
+the repository root in PowerShell:
+
+```powershell
+dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+    -c Release --no-restore `
+    --filter "FullyQualifiedName~PerformanceTests.MeasureIdenticalInputs" `
+    --logger "trx;LogFileName=duplicate-inputs.trx" `
+    --results-directory ".\TestResults\duplicates-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+`DUPLICATES` emits one row per root with columns:
+
+```text
+board,root,logical_rows,unique_rows,within_batch_duplicates,cross_batch_duplicates,groups,groups_with_new_rows,unique_payload_bytes,cross_roll_duplicates
+```
+
+The first two duplicate counters partition repeated rows; `cross_roll_duplicates`
+is an additional attribution, not another count to add to that partition.
+`unique_payload_bytes` is raw retained feature data, not peak process memory.
+The diagnostic uses the three known nonterminal fixtures and validates their
+expected group boundaries; adapting it to terminal-heavy corpora would require
+matching the scorer's terminal filtering.
+
+[NeuralInputComparerTests](./NeuralInputComparerTests.cs) protects the diagnostic's
+bitwise identity and collision handling. The comparer itself is test-only.
+There is **no production lookup or cache overhead from this rejected experiment**.
+After removing the prototype, **394 NN/performance tests passed**, excluding
+long-running self-play tests. The retained diagnostic rechecked all 280 roots and
+the cross-roll attribution against the restored ordinary inference path.
+
+Reconsider exact caching only if a broader corpus, a different cache scope, or
+different inference hardware shows a substantially better duplicate/forward
+avoidance opportunity. Do not extrapolate these three CPU fixtures to a GPU.
+
+## Batch 10: bounded cross-candidate pipelining
+
+**Completed 2026-10-30. Decision: retain sequential production execution.**
+Windows 2 and 4 reduced standalone medians on every board, but both materially
+worsened interactive p95 and worst-probe latency on the shared FIFO worker.
+Neither passed the acceptance gates; fuller batches are not sufficient success.
+
+### Implementation and ownership
+
+[GetCandidatesByEvalAsync](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs)
+has an **internal, test-only** `CandidateWindow` selector accepting 1, 2 or 4.
+There is no production environment switch or new public cancellation API.
+Window 1 preserves sequential apply/undo on the original board; one-ply and linear
+evaluation remain sequential regardless of the experimental selector.
+
+Windows 2 and 4 run that many bounded asynchronous producers, without `Task.Run`,
+eager whole-search tasks, or retaining the whole search's features. Each producer
+finishes and restores its owned candidate before admitting a replacement.
+Candidate boards use the existing full `DeepClone`, not equality-only snapshots
+or new boards around shared contract arrays. Fields, history events and values,
+pins, home bars, bear-off counts and cube state remain independent.
+
+Results are stored at the original candidate index, then stably sorted by score.
+On failure, admission stops and `Task.WhenAll` observes all started producers;
+root and reply restoration remains in `finally`. All 21 weighted opponent rolls,
+perspective conversion, terminal filtering, passes and neural rows are unchanged.
+Shared feature objects, extractors and board services have no mutable per-call
+fields; their search state and buffers are local to the call/owned board.
+
+The existing single FIFO worker, 32-row worker limit, 32-row caller cap and reusable
+CPU input storage are unchanged. Whole queue items are still indivisible: two
+20-row requests cannot share one 32-row forward. Splitting/repacking requests,
+extra workers, queue delays, selective search, caching and GPU work were not added.
+
+### Predeclared gates and measurement protocol
+
+The [runner](./scripts/run-candidate-windows.py) writes its thresholds before comparisons:
+
+- At least **5%** pooled median improvement on **each** board, also achieved in
+  at least **2 of 3** paired rounds. Choose the smallest passing window.
+- Managed allocation at most **110%** of reference on each board; median observed
+  private memory at most **120% + 32 MiB** of reference. Root/reply/feature counts
+  must respect the explicit window and reply cap.
+- Pooled interactive p95 may increase by at most **max(10%, 0.10 ms)** of reference;
+  worst probe by at most **max(25%, 0.50 ms)**. Mixed aggregate throughput must
+  remain at least **97%** of reference.
+- All candidate scores must match within **1e-5**, with unchanged candidate sets,
+  selected moves and prediction counts.
+
+The final comparison used **45 fresh Release test processes**: 27 timing,
+9 diagnostic and 9 mixed-load processes. Timing has three rounds, three boards,
+three windows and three measured evaluations per process: **81 raw samples**,
+or nine per board/window. Window order was 1/2/4, then 4/2/1, then 1/2/4.
+Every process runs a full sequential correctness reference followed by a full
+configuration warm-up. No forced GC was used.
+
+Torch intra-op and inter-op counts were **16/16** throughout, with CPU storage
+reuse enabled and the 32-row limits fixed. Application assemblies, dependency
+manifest, model and metadata were SHA-256 checked before and after each process.
+The [raw results](./batch10-results.json) retain fingerprints, all samples, GC/CPU/
+allocation/memory observations, candidate scores, cross-process checks, complete
+diagnostic batch distributions and every interactive probe. The supplied runner
+also retains individual TRX/log files in its ignored output directory.
+
+Timing and mixed-load processes have **no metrics subscriber**. Separate
+diagnostics subscribe only to batch/ownership/queue metrics, not synchronous stage
+timings. Worker idle is measured directly around incomplete `WaitToReadAsync`
+operations, including continuation dispatch until the worker resumes; it is not
+inferred by subtracting overlapping stages. Only completed waits in the observed
+interval are included. Queued rows include pending channel admission and exclude
+rows already taken by the worker.
+
+### Standalone latency
+
+Median and min/max milliseconds across all nine samples, without dropping outliers:
+
+| Board | Window 1 median (range) | Window 2 median (range) | Window 4 median (range) |
+| --- | ---: | ---: | ---: |
+| 1 | 2,011.135 (1,803.829-3,001.449) | 1,550.658 (1,357.895-1,592.511) | 1,389.225 (1,282.700-2,070.080) |
+| 2 | 629.776 (581.309-703.447) | 484.621 (431.725-521.518) | 386.264 (353.712-495.009) |
+| 3 | 1,247.369 (1,191.249-1,286.513) | 917.609 (853.078-1,473.602) | 850.617 (695.575-1,300.179) |
+
+Window 2 improved pooled medians by **22.9%, 23.0%, 26.4%**; window 4 by
+**30.9%, 38.7%, 31.8%**. Each won all three rounds on each board. Tails were noisy:
+Board 3's maximum was worse for both windows. With nine samples, nearest-rank p95
+is the maximum, not a well-estimated production tail.
+
+Process CPU and managed allocation medians per evaluation:
+
+| Board | CPU ms, windows 1 / 2 / 4 | Managed MB, windows 1 / 2 / 4 |
+| --- | ---: | ---: |
+| 1 | 18,953 / 15,344 / 15,516 | 766.358 / 766.076 / 765.303 |
+| 2 | 6,203 / 4,531 / 4,297 | 199.938 / 199.850 / 199.363 |
+| 3 | 11,891 / 8,969 / 9,328 | 451.971 / 451.812 / 451.398 |
+
+MB above is decimal; these are process-wide managed counters, **not native Torch
+allocation**. Gen0/1/2 collection totals across the nine samples were Board 1:
+551/2/2, 550/0/0, 552/1/1 for windows 1/2/4; Board 2: 144/0/0 for each;
+Board 3: 324/0/0 for each. Private-memory medians ranged from **157.0 to 177.2 MB**
+across timing configurations; the largest timing-process peak working set was
+**196.4 MB**. Neither allocation nor observed memory failed its gate. These
+process-memory observations include runtime/native memory but are not native
+allocation or exhaustive live-object profiling.
+
+### Worker availability, occupancy and bounded retention
+
+One separate diagnostic evaluation per configuration:
+
+| Board | Rows | Forwards, windows 1 / 2 / 4 | Completed empty-queue wait ms, windows 1 / 2 / 4 |
+| --- | ---: | ---: | ---: |
+| 1 | 104,291 | 4,376 / 4,376 / 3,970 | 489.665 / 7.624 / 1.028 |
+| 2 | 28,008 | 1,423 / 1,423 / 1,158 | 130.057 / 2.243 / 1.348 |
+| 3 | 61,717 | 2,684 / 2,684 / 2,459 | 357.295 / 3.881 / 0.516 |
+
+Window 2 mostly improved availability, not packing: forward counts were unchanged
+in these profiles. Window 4 reduced forwards by **9.3%, 18.6%, 8.4%**. Board 1's
+theoretical 3,260-forward perfect-packing bound was not reached. Distribution and
+queue interleaving are scheduling-dependent; these diagnostic counts are not
+timing-run forward counts.
+
+Peak active roots were exactly **1/2/4**, and owned reply boards and pending neural
+feature rows exactly **32/64/128**. At 216 floats per row this bounds the latter
+payload to **27/54/108 KiB**, excluding arrays, other features and worker storage.
+Peak queued rows by board were 32/64/96, 32/44/96 and 32/45/102. All tracked
+ownership/queue counts returned to zero. Counts describe active root/reply and
+inference-feature ownership, not move-generation temporaries or all GC-live
+objects. No whole-search feature retention was introduced.
+
+### Mixed load and acceptance decision
+
+Three fresh processes per window ran two simultaneous full Board 1 evaluations
+plus **100 serial single-row probes**, spaced by 5 ms, with every probe overlapping
+at least one search. Each simultaneous request used its own deserialized board
+contract: `CreateBoard(contract)` owns the contract's mutable fields array.
+An initial harness attempt accidentally shared this array between requests;
+that attempt was aborted, corrected, and **all final comparisons rerun on fixed
+binaries**. None of its measurements are included in the raw results.
+
+| Metric | Window 1 | Window 2 | Window 4 |
+| --- | ---: | ---: | ---: |
+| Median time for both evaluations | 3,479.253 ms | 3,189.294 ms | 3,217.177 ms |
+| Aggregate evaluations/second | 0.575 | 0.627 | 0.622 |
+| Pooled probe median | 0.8049 ms | 1.5026 ms | 2.8512 ms |
+| Pooled probe p95, nearest rank | 1.5479 ms | 4.1688 ms | 4.4306 ms |
+| Worst probe | 3.1541 ms | 21.9113 ms | 12.8593 ms |
+
+Percentiles pool **300 probes per window**. Throughput improved by 9.1% and 8.1%,
+but the predetermined p95 limit was **1.7027 ms** and worst-probe limit
+**3.9426 ms**. Both windows failed both fairness gates by a substantial margin.
+The FIFO worker cannot prioritize interactive work ahead of already queued search
+items; more available producers increase that competing work. Do not enable either
+window just because standalone requests or batch occupancy improve.
+
+**Window 1 remains the production default.** The experimental selector is internal
+and disabled by default; no server or runtime configuration was changed. A future
+fairness/repacking experiment would need a separate design, measured thresholds
+and renewed FIFO/error/completion tests, not an unmeasured scheduling change here.
+
+### Correctness and reproduction
+
+[CandidateWindowTests](../Services/CandidateWindowTests.cs) covers out-of-order
+completion, stable ties, bounded admission, independent boards/history/cube state,
+draining on failure/cancellation, real worker shutdown, terminal candidates and
+exact feature-multiset/score comparisons for both perspectives of all five
+variants. Existing batch, traversal and clone tests retain pass, weighted-roll,
+terminal-reply, pins/home bars, lifetime and restoration coverage.
+
+Every configured warm-up and measured result was compared candidate-by-candidate
+to its process's sequential reference. All **280 roots** across the three boards
+retained their sets, selected moves and neural-row counts. Maximum absolute
+within-process score difference was **3.46e-8**; cross-process configured warm-up
+difference was **2.76e-8**, both below 1e-5. Final focused Release validation passed
+**92 NN/inference/diagnostic cases** and **23 engine clone/history/snapshot cases**;
+the Mars server Release build passed with no warnings or errors. The 45 final
+performance-process tests also passed. Long-running self-play was not rerun.
+
+From the repository root in PowerShell, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-candidate-windows.py `
+    --threads 16 `
+    --output-dir "$env:TEMP\gammonx-windows-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+The runner builds Release without restore, discovers the configured artifact path,
+rejects nonempty output directories, passes environment settings only to child processes,
+checks fingerprints and writes `thresholds.json`, incremental `runs.json` and the
+final `results.json` with the smallest passing window (1 when neither passes).
+It does not change production defaults. Manual single-process selectors are
+`GAMMONX_PERF_WINDOW=1|2|4`, `GAMMONX_PERF_BOARD=1|2|3` and
+`GAMMONX_PERF_WINDOW_MODE=Timing|Diagnostic|Mixed`, used only by
+[MeasureCandidateWindows](./PerformanceTests.CandidateWindows.cs).
+
+## Follow-up step 1: direct checker-array updates (2026-11-01)
+
+Removed 22 redundant `Array.SetValue` calls from
+[BoardBaseServiceImpl](../../GammonX.Engine/Services/boards/BoardBaseServiceImpl.cs)
+and [PlakotoBoardService](../../GammonX.Engine/Services/boards/PlakotoBoardService.cs).
+Each call already updated the same `int[]` element through its argument, for
+example `Fields.SetValue(Fields[from] += 1, from)`. Keeping only `Fields[from] += 1`
+removes the boxed integer and second write. This covers movement, hitting,
+bear-off, pinning and their undo paths; move/history logic is unchanged.
+
+The earlier review profile and the post-change profile each used Release, CPU,
+16 OMP/MKL threads, a 32-row worker, sequential candidates, reusable CPU input,
+one full warm-up and three instrumented evaluations per board. Median cumulative
+managed allocations per two-ply evaluation were:
+
+| Board | Review baseline | Direct updates | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 766,520,224 bytes | 698,138,752 bytes | 68,381,472 bytes (8.9%) |
+| 2 | 200,073,048 bytes | 182,278,904 bytes | 17,794,144 bytes (8.9%) |
+| 3 | 451,970,992 bytes | 412,635,848 bytes | 39,335,144 bytes (8.7%) |
+
+These are sequential instrumented observations, not alternating uninstrumented
+latency comparisons. They demonstrate lower allocations; **no repeatable
+end-to-end latency improvement is claimed**. Prediction counts remained
+104,291 / 28,008 / 61,717 and forward counts 4,376 / 1,423 / 2,684. Each measured
+evaluation selected the same move as its own warm-up.
+
+Validation passed **597 engine tests** and **28 NN batch-evaluation/profile
+cases**, including all three stage profiles. Local TRX evidence is under the
+repository-root `TestResults/latency-step1-20261101/`; the earlier review profile
+is under this folder's `TestResults/latency-review-20261101/`. These result
+directories are ignored by Git. Later optimization steps are not included in
+this change.
+
+## Follow-up step 2: score-only equity calculation (2026-11-01)
+
+[GameEquityModel.CalculateEquity](../../GammonX.Mars.NN/Models/GameEquityModel.cs)
+now provides an internal score-only path for neural move/position evaluation.
+It avoids allocating outcome/equity models, constraint reports, projection
+objects and temporary diagnostic arrays for each predicted reply. Backgammon,
+Portes and Tavla use it; the scalar Plakoto/Fevga path remains unchanged.
+Cube evaluation and other callers that need full diagnostic models retain them.
+
+Both scoring paths share the probability projection rules and the six-outcome
+equity arithmetic. The fast path preserves double precision, operation order,
+NaN/infinity sanitization, clamping and hierarchy bounds. It also preserves the
+old input contract: reject null/fewer than five heads and ignore extra heads.
+No inference, feature, queue or search scheduling changes are included.
+
+Fresh-process measurements compared the step-1 code with this change on all
+three boards, with one process per board/configuration, one full warm-up and
+three timed evaluations: **six processes and 18 timed samples**. These used
+Release, CPU, 16 OMP/MKL and inter-op threads, a 32-row worker, sequential
+candidates and reusable CPU input. Worker thread counts were verified during
+warm-up; timed samples had no metrics listener. Median managed allocations were:
+
+| Board | Step 1 baseline | Score-only equity | Reduction |
+| --- | ---: | ---: | ---: |
+| 1 | 697,972,008 bytes | 632,894,424 bytes | 65,077,584 bytes (9.3%) |
+| 2 | 182,132,976 bytes | 164,655,312 bytes | 17,477,664 bytes (9.6%) |
+| 3 | 412,548,016 bytes | 374,036,608 bytes | 38,511,408 bytes (9.3%) |
+
+All **280 candidate scores** matched the pre-change binary with maximum absolute
+difference **0**. Candidate sets, selected moves, model hash and prediction counts
+were unchanged; warm-up batch counts were unchanged too.
+
+Wall-time medians were **1,808.732 -> 1,909.417 ms**, **647.991 -> 740.581 ms**
+and **1,087.415 -> 1,139.457 ms**. These sequential before/after observations were
+slower after the change and **do not establish an end-to-end latency benefit**.
+A separate isolated probe alternated diagnostic/scalar scoring for six rounds
+of 104,291 calls each: scalar scoring was faster in every round and allocated
+zero bytes. JIT tiering affected the probe timings; these synthetic measurements
+do not explain the end-to-end timing variation or replace repeated alternating
+search benchmarks. The demonstrated production-workload benefit is lower
+managed allocation.
+
+Validation passed **136 focused tests**, including 22 new scoring cases, plus
+the six benchmark processes. Coverage includes exact bitwise score agreement
+on 10,000 deterministic input vectors, fixed expected outcomes, nonfinite and
+invalid probabilities, input immutability/contracts, zero scoring allocations,
+cube/match equity and existing real-model batch/search tests across all variants.
+Local evidence is in repository-root `TestResults/latency-step2-20261101/`:
+`before-board*.trx`, `after-board*.trx`, `correctness-final.trx`,
+`comparison.json` and `scoring-probe/results.txt`. These files are ignored by Git.
+
+## Follow-up step 3: cross-roll reply packing (2026-11-01)
+
+Implemented bounded cross-roll packing in
+[TwoPlySearchEvaluator](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.cs),
+then **rejected it for automatic default enablement** after the repeated comparison.
+At the step-3 checkpoint, `BatchAcrossRolls` defaulted to false. The owner then
+explicitly chose to enable it for now before starting step 4, so the feature
+service now passes true by default. This is a deliberate override of the
+benchmark recommendation, not a change to its results. The internal comparison
+selector remains available to tests; there is no server/runtime setting.
+
+The prototype fills one group across adjacent opponent rolls, attaching a roll
+index to each reply or pass. Scores are reduced to the best reply for each of
+the 21 rolls before applying the original weights and perspective conversion.
+It preserves row order, terminal filtering and one pass row per blocked roll.
+Each group is awaited before admitting more work; candidates remain sequential
+and the production caller cap remains `min(MaxBatchSize, 32)`. Reply boards still
+use full deep clones. Pending replies are restored after scoring and on failure,
+including a failure while preparing a later roll in a partial group.
+
+The comparison uses **the same compiled implementation**, with a per-roll flush
+as the reference and cross-roll packing as the candidate. It isolates the flush
+strategy, not the total effect of the evaluator refactor against the old binary.
+Both modes reuse one bounded buffer within an evaluation.
+
+The [runner](./run-roll-batching.py) recorded thresholds before launching **30
+fresh Release processes**: 18 timing processes (three paired rounds on each of
+three boards, three samples per process), six diagnostic processes and six
+mixed-load processes. Pair order alternated by round. All used CPU, 16 OMP/MKL
+and inter-op threads, reusable CPU input, window 1 and a 32-row worker. Every
+warm-up worker batch verified its Torch thread count; timing and mixed-load
+samples had no metrics listener. Binary/model fingerprints stayed fixed.
+
+The predeclared gates required at least 5% median improvement on every board and
+in at least two of three paired rounds per board, allocations at most 110%,
+private bytes at most 120% plus 32 MiB, mixed throughput at least 97%, and the
+same interactive p95/worst limits as Batch 10.
+
+| Board | Per-roll median | Cross-roll median | Improvement | Rounds with >=5% gain | Forwards per-roll -> cross-roll |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,357.367 ms | 2,006.363 ms | 14.9% | 2/3 | 4,376 -> 3,305 |
+| 2 | 592.679 ms | 554.035 ms | 6.5% | **1/3** | 1,423 -> 904 |
+| 3 | 1,164.156 ms | 1,034.708 ms | 11.1% | 2/3 | 2,684 -> 1,981 |
+
+Medians pool nine timed samples per board/configuration. Board 2's overall
+median passed, but its paired rounds did not establish the required repeatable
+gain. Allocations fell by 0.4%, 0.8% and 0.5%; all memory gates passed. The
+diagnostic runs retained exactly 104,291 / 28,008 / 61,717 neural rows, and peak
+reply boards, feature rows and queued rows remained at most 32. Ownership
+counters drained to zero.
+
+Mixed-load runs used two simultaneous Board 1 searches plus 100 serial
+interactive predictions, spaced 5 ms apart, in each process. All probes
+overlapped search; the percentiles below pool 300 probes per configuration.
+
+| Metric | Per-roll | Cross-roll | Allowed cross-roll limit |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 3,080.041 ms | 2,809.475 ms | Throughput >=97% of reference |
+| Interactive p95, nearest rank | 1.3856 ms | **1.9792 ms** | 1.5242 ms |
+| Worst interactive probe | 3.8949 ms | **16.2919 ms** | 4.8686 ms |
+
+Mixed throughput improved by 9.6%, but both interactive latency gates failed.
+Fewer forwards and fuller batches therefore do not justify default enablement.
+This experiment does not establish the exact cause of the latency spikes.
+
+All 280 candidate scores retained their candidate sets and selected moves;
+maximum absolute score difference within and across processes was **4.90e-8**,
+below 1e-5. Final Release validation passed **96 focused tests**, covering
+both flush strategies, all five variants and perspectives, real-model scores,
+weighted maxima, passes, mixed terminal/nonterminal groups, history features,
+bounded admission, cancellation/errors and board restoration. The 30 comparison
+processes also passed their correctness checks. Long-running self-play was not
+rerun.
+
+From the repository root, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --threads 16 `
+    --output-dir "$env:TEMP\gammonx-rolls-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+`GAMMONX_PERF_CROSS_ROLL_BATCHING=0|1` is a **test-only** selector used by the
+comparison harness, general search profiles and shared-worker measurements.
+The runner checks scores, row counts, worker configuration and fingerprints,
+and writes incremental evidence without changing defaults. A successful runner
+exit means the comparison completed; inspect `Comparison.Accepted` and `Reasons`
+in `results.json` for the enablement decision.
+
+Local evidence is under repository-root
+`TestResults/latency-step3-20261101/`: `validation-final.trx` and
+`comparison/{thresholds,runs,results}.json`, plus each process's log and TRX.
+These files are ignored by Git. Steps 4 and 5 are recorded below.
+
+## Follow-up step 4: prepare replies with one working board (2026-11-01)
+
+Implemented [prepared reply evaluation](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.Prepared.cs)
+and its terminal/neural scoring adapter in
+[BaseFeatureEvalServiceImpl](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs).
+At the step-4 checkpoint, `ReuseReplyBoard` was left **false by default** because
+the comparison failed its latency gates. The owner subsequently enabled it
+explicitly before step 5. Both `ReuseReplyBoard` and `BatchAcrossRolls` now
+default to true; the measurements and recommendation below are unchanged.
+
+The prepared path lazily deep-clones one working board per root candidate.
+For each legal reply it applies the moves, synchronously extracts an independent
+feature vector (or terminal score), and undoes the moves in a `finally` block.
+Restoration happens **before** asynchronous scoring. Only prepared rows cross
+the await; no mutable board is retained by the inference request. The working
+board is private to that root search. An all-pass search needs no working clone.
+
+Passes, row order, terminal filtering, dice weights, opponent maxima and the
+32-row group limit are preserved. Pending feature references and ownership
+counters are released on success, preparation/generation/scoring errors and
+cancellation. Feature arrays are still independently allocated; this step does
+not introduce feature-buffer pooling or change legal-move generation.
+
+The runner compared **clone-per-reply versus one working board with cross-roll
+batching enabled on both sides**. Both paths used the same binary/model, CPU,
+16 OMP/MKL and inter-op threads, reusable CPU tensor input, sequential candidates
+and a 32-row worker. It ran 30 fresh processes using the step-3 protocol and
+unchanged predeclared thresholds: 18 timing processes with three samples each,
+six diagnostic processes and six mixed-load processes. Pair order alternated
+across three rounds. Warm-up verified worker threads, and timed samples had no
+metrics listeners. Binary/model fingerprints remained fixed during comparison.
+
+| Board | Clone-per-reply allocations | Working-board allocations | Reduction | Reply clones before -> after |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 628,450,480 bytes | 490,181,056 bytes | 22.0% | 104,291 -> 131 |
+| 2 | 162,788,368 bytes | 133,107,664 bytes | 18.2% | 28,008 -> 53 |
+| 3 | 371,140,664 bytes | 289,628,920 bytes | 22.0% | 61,717 -> 96 |
+
+These are medians over nine uninstrumented samples per board/configuration.
+The diagnostic runs confirmed peak retained reply boards fell from **32 to 1**.
+Feature and queued-row peaks remained at most 32 and ownership counters drained
+to zero. Forward counts stayed **3,305 / 904 / 1,981**, and neural rows stayed
+**104,291 / 28,008 / 61,717**. Both allocation and private-memory gates passed.
+
+| Board | Clone-per-reply median | Working-board median | Improvement | Rounds with >=5% gain |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 1,800.420 ms | 1,676.642 ms | 6.9% | 2/3 |
+| 2 | 493.273 ms | 477.401 ms | 3.2% | **1/3** |
+| 3 | 1,154.513 ms | 1,110.076 ms | 3.8% | **1/3** |
+
+Boards 2 and 3 failed both the median-gain and repeatability requirements.
+Lower allocation alone did not establish a reliable latency benefit.
+
+Mixed load used two simultaneous Board 1 searches and 100 serial interactive
+predictions spaced 5 ms apart in each process. All probes overlapped search;
+percentiles pool 300 probes per configuration.
+
+| Metric | Clone per reply | Working board | Allowed working-board limit |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 2,955.384 ms | 3,317.973 ms | Throughput >=97% of reference |
+| Interactive p95, nearest rank | 2.3845 ms | **5.4376 ms** | 2.6230 ms |
+| Worst interactive probe | 25.1650 ms | **39.4832 ms** | 31.4563 ms |
+
+Mixed throughput fell **10.9%**, and both interactive-latency gates failed.
+The benchmark therefore rejects automatic default enablement. It does not
+identify the exact cause of these regressions or establish comparisons against
+earlier experiments run at different times.
+
+All **280 configured candidate scores matched exactly** between clone-per-reply
+and working-board runs (maximum absolute difference **0**), with identical
+candidate sets, selected moves and row counts. The separate per-roll reference
+in each process differed by at most **4.90e-8**, within the existing 1e-5 tolerance.
+
+Final Release validation passed **119 focused tests**. Coverage includes exact
+feature equality for both perspectives of all five variants, real neural models,
+hits, home-bar entry, bear-off, Plakoto pins, history/cube state, terminal/pass
+groups, a single working clone, bounded admission, independent rows across await,
+failure/cancellation restoration and candidate concurrency. The 30 benchmark
+processes also passed their correctness checks. No engine movement code changed;
+long-running self-play was not rerun.
+
+Reproduce from the repository root, with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization reply-board --threads 16 `
+    --output-dir "$env:TEMP\gammonx-reply-board-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+This mode fixes cross-roll batching to true and varies the test-only
+`GAMMONX_PERF_REUSE_REPLY_BOARD=0|1` selector. The default `--optimization
+roll-batching` instead fixes board reuse to false and varies cross-roll packing,
+so the two changes are not conflated. Neither runner changes production defaults.
+
+Local evidence is in repository-root `TestResults/latency-step4-20261101/`:
+`validation-final.trx` records the prepared-path profiles;
+`validation-defaults.trx` checks the final defaults and both scoring paths;
+`comparison/{thresholds,runs,results}.json` and per-process logs/TRX contain the
+comparison evidence. These files are ignored by Git. Step 5 follows below.
+
+## Follow-up step 5: reuse feature rows within a root search (2026-11-01 to 2026-11-02)
+
+Added caller-owned destination overloads to
+[IFeatureVectorExtractor](../../GammonX.Mars.NN/Services/IFeatureVectorExtractor.cs)
+and [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs).
+The built-in extractors write every element of an exactly sized destination;
+the original allocating overloads remain supported. Fevga and Plakoto now write
+directly into the destination instead of building a temporary list; their board
+clone/inversion behavior and feature ordering are preserved. Compatibility
+fallbacks support existing implementations, including validation of extractor
+output width before copying.
+
+When `ReuseFeatureBuffers` and `ReuseReplyBoard` are enabled, each root search
+owns at most `min(MaxBatchSize, 32)` independently allocated feature arrays.
+Arrays are filled again only after the preceding group completes successfully.
+Terminal rows consume group slots without requiring feature storage. A failed
+or cancelled root abandons its arrays; no arrays return to a shared pool or
+escape into another root's reusable storage. Inference input arrays remain
+unchanged until completion. The prepared-row diagnostic counts active groups;
+reserved buffer slots between groups are not an additional metric.
+
+**`ReuseFeatureBuffers` initially defaulted to false.** Cross-roll batching and working-board
+reuse were enabled by the owner's explicit choice. Feature-buffer reuse is
+currently implemented only for the prepared working-board path; disabling
+`ReuseReplyBoard` selects the existing allocating clone-per-reply path.
+
+To respect the requested remaining usage budget, validation used a **10-process
+screening comparison**, not the full repeatability experiment: one paired timing
+round per board (three samples per process), one diagnostic pair on Board 1 and
+one mixed-load pair. Both configurations enabled cross-roll batching and board
+reuse, with CPU, 16 OMP/MKL/inter-op threads, a 32-row worker and sequential
+candidates. Worker-thread checks, model/binary fingerprints and candidate-score
+validation remained enabled. Timed samples had no metrics listeners.
+
+| Board | Fresh-row median allocation | Reused-row median allocation | Reduction | Fresh -> reused median latency |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 490,556,456 bytes | 401,705,224 bytes | 18.1% | 1,908.717 -> 1,469.083 ms |
+| 2 | 133,212,080 bytes | 109,860,816 bytes | 17.5% | 474.798 -> 527.461 ms |
+| 3 | 289,854,632 bytes | 237,804,752 bytes | 18.0% | 953.188 -> 1,093.929 ms |
+
+Board 1 was faster, while Boards 2 and 3 were slower. These single paired
+observations **do not establish a repeatable latency improvement**. The A/B
+comparison isolates row-array reuse in the same binary; it does not measure the
+extractor refactor against the previous binary.
+
+Mixed load used two simultaneous Board 1 searches and 100 overlapping serial
+interactive predictions per configuration, spaced 5 ms apart:
+
+| Metric | Fresh rows | Reused rows |
+| --- | ---: | ---: |
+| Time for both searches | 2,446.858 ms | 2,338.356 ms |
+| Interactive p95, nearest rank | 1.1810 ms | 1.1898 ms |
+| Worst interactive probe | 2.2417 ms | 2.8309 ms |
+
+This is one mixed-load pair, not a fairness acceptance result. `--quick` always
+reports acceptance as false because repeatability was not evaluated. The full
+thresholds remain unchanged for a future complete comparison.
+
+All **280 configured candidate scores matched exactly** across the fresh/reused
+processes, with identical candidate sets, selected moves and neural-row counts.
+The separate per-roll reference differed by at most 4.90e-8, below 1e-5.
+Board 1 diagnostics retained 104,291 neural rows, 3,305 forwards and 131 reply
+clones, with one retained working board and at most 32 active/queued feature
+rows. Ownership counters drained to zero in both modes.
+
+Final Release validation passed **156 tests**, including poisoned destinations,
+wrong-width rejection, legacy fallback validation, all variants/perspectives,
+real hosted and non-hosted models, overlapping searches on the same service,
+buffer lifetime across awaits, failure/cancellation isolation, terminal/pass
+mapping and existing search/restoration checks. The 10 benchmark processes also
+passed correctness checks. Long-running self-play and the full 30-process
+repeatability comparison were not rerun. The final fallback validation fix and
+test additions do not change the built-in hosted path measured by the benchmark.
+
+Reproduce the screening run from the repository root:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization feature-buffers --quick --threads 16 `
+    --output-dir "$env:TEMP\gammonx-feature-buffers-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+Omit `--quick` for the full 30-process comparison. This mode fixes both earlier
+optimizations to true and varies the test-only
+`GAMMONX_PERF_REUSE_FEATURE_BUFFERS=0|1` selector. The other optimization modes
+fix feature-buffer reuse to false so comparisons remain isolated.
+
+Local evidence remains in repository-root `TestResults/latency-step5-20261101/`:
+`validation-complete.trx` and `comparison/{thresholds,runs,results}.json`, together
+with each process's logs/TRX. The directory retains its original start date;
+these files are ignored by Git.
+
+## Per-roll reuse experiment (2026-11-02)
+
+Tested whether board and feature-buffer reuse provide a latency benefit with
+**`BatchAcrossRolls = false` throughout**. The current production defaults remain
+unchanged: all three options are enabled by the owner. Since the original step-5
+screening run, the owner also removed default interface implementations; test
+doubles were adapted before this experiment. The earlier fallback descriptions
+and validation counts above describe that historical implementation.
+
+The new `--optimization per-roll-reuse` runner mode compares:
+
+| Configuration | ReuseReplyBoard | ReuseFeatureBuffers |
+| --- | --- | --- |
+| baseline | false | false |
+| board | true | false |
+| both | true | true |
+
+The full run used **45 fresh Release test processes**: 27 timing processes with
+three samples each, nine diagnostic processes and nine mixed-load processes.
+Each board/configuration has nine uninstrumented timing samples. Configuration
+order rotated across three rounds: baseline/board/both, both/baseline/board,
+board/both/baseline. Each configuration therefore occupied each position once.
+All runs used CPU, 16 OMP/MKL and inter-op threads, a 32-row worker, reusable
+tensor input and sequential candidates. Worker-thread checks and model/binary
+fingerprints passed. Protocol and unchanged acceptance thresholds were written
+before measurements. The Release build completed with zero errors or warnings.
+
+| Board | Baseline median | Board reuse median | Both reuse median | Board gain | Both gain |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,028.502 ms | 1,941.618 ms | 1,831.875 ms | 4.3% | 9.7% |
+| 2 | 591.536 ms | 583.627 ms | 572.808 ms | 1.3% | 3.2% |
+| 3 | 1,231.480 ms | 1,117.690 ms | 1,355.500 ms | 9.2% | **-10.1%** |
+
+Positive gain means faster. The required >=5% gain occurred in **1/3, 0/3, 2/3**
+rounds for board reuse, and **3/3, 1/3, 1/3** for both options, respectively.
+Neither configuration passed the existing requirement of >=5% median gain on
+every board with at least two winning rounds per board. Adding feature reuse to
+board reuse alone improved Board 1 by 5.7% and Board 2 by 1.9%, but slowed Board 3
+by 21.3%; this incremental comparison also failed acceptance.
+
+Variability remained substantial without cross-roll batching. For example, the
+Board 3 round medians were **1,205.521 / 1,231.480 / 1,315.676 ms** for baseline
+and **1,017.617 / 1,355.500 / 1,779.453 ms** for both reuse options. Board 2's
+third-round medians were **620.997 / 790.399 / 795.262 ms** for baseline/board/both.
+These reversals prevent treating the pooled medians as a stable universal gain.
+
+| Board | Baseline allocated bytes | Board reuse allocated bytes | Both allocated bytes | Board reduction | Both reduction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 631,244,272 | 493,453,064 | 404,601,520 | 21.8% | 35.9% |
+| 2 | 164,140,560 | 134,614,408 | 111,264,192 | 18.0% | 32.2% |
+| 3 | 372,975,624 | 291,757,080 | 239,706,888 | 21.8% | 35.7% |
+
+Allocation savings were consistent. Median Gen-0 collections per search fell
+from **50 / 13 / 30** to **39 / 11 / 23** with board reuse and **32 / 9 / 19**
+with both options. All allocation and private-memory gates passed.
+
+Mixed load used two simultaneous Board 1 searches and 100 serial interactive
+predictions spaced 5 ms apart per process; all probes overlapped search. The
+percentiles below pool 300 probes per configuration.
+
+| Metric | Baseline | Board reuse | Both reuse |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 3,367.100 ms | 3,086.690 ms | 4,219.084 ms |
+| Throughput relative to baseline | 100% | 109.1% | **79.8%** |
+| Interactive p95, nearest rank | 2.5340 ms | 1.7424 ms | **6.2621 ms** |
+| Worst interactive probe | 36.0964 ms | 12.6307 ms | **118.3102 ms** |
+
+Board reuse alone passed all mixed-load gates. Both options failed throughput,
+p95 and worst-probe gates against both baseline and board reuse. The 118.3102 ms
+probe occurred in round 2; both-options search time was also slower than baseline
+in each of the three mixed-load rounds, so the throughput result is not solely
+that one probe. These measurements do not establish the cause of the variability.
+
+All **280 candidate scores matched exactly across configurations/processes**,
+with identical candidate sets, selected moves and row counts. The separate
+per-process reference check differed by at most **9.01e-9**, below 1e-5. All 45
+benchmark tests passed. Diagnostics confirmed **4,376 / 1,423 / 2,684** forwards
+and **104,291 / 28,008 / 61,717** neural rows in every configuration, with identical
+batch-size distributions. Reply clones fell from those row counts to
+**131 / 53 / 96** with either reuse configuration. Peak retained reply boards
+fell from 32 to 1; active feature/queued-row peaks stayed at most 32 and ownership
+counters drained to zero.
+
+The result supports a clear allocation benefit from both options, but **does not
+establish a repeatable net latency benefit** with cross-roll batching disabled.
+Board reuse alone is the more promising latency configuration in this run.
+Because this experiment keeps cross-roll batching off, it cannot quantify how
+much enabling it contributes to variance; that requires a same-session on/off
+comparison. Historical runs are not a controlled substitute. No production
+defaults were changed, and no additional optimization was implemented.
+
+Reproduce from the repository root with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization per-roll-reuse --threads 16 `
+    --output-dir TestResults/per-roll-reuse-repeat
+```
+
+The output directory must be new or empty. Local evidence is in repository-root
+`TestResults/per-roll-reuse-20261102/`: `protocol.json`, `thresholds.json`,
+`runs.json`, `results.json`, the build log and all 45 process logs/TRX files.
+The starting commit was `7bb04080ec9b27e40c92e4e57cffc8a28d424cb8`; the runner
+extension was the only source change before measurement. Evidence files are
+ignored by Git. `results.json` records all three pairwise acceptance decisions.
+
+## Further optimization constraints
+
+Any further implementation must preserve board restoration, legal dice usage,
+all unique end states and evaluation results rather than prune candidates
+implicitly.
+
+Other constraints already identified:
+
+- Duplicate adjacent dice values are already skipped in the recursion. Batch 6
+  additionally avoids re-expanding equal intermediate states for unique doubles
+  searches; mixed-roll traversal keeps its previous behavior.
+- `maxCandidates` currently limits the **first generated candidates**, not the
+  best one-ply candidates. Lowering it changes search behavior.
+- Selective two-ply search already has prior art in
+  [SelfPlayRunner](../../GammonX.Mars.Training/Generator/SelfPlayRunner.cs), but
+  pruning candidates is a deliberate strength/behavior tradeoff, not a transparent
+  performance optimization.
+- Baseline and stage collection established likely targets; they do not replace
+  native-capable CPU/allocation profiling if a finer breakdown inside LibTorch
+  or cloning is needed.

@@ -7,6 +7,8 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal abstract class MatchmakingServiceBaseImpl : IMatchmakingService
 	{
+		// TODO: extract the different queue dictionaries into dynamo db to make game server stateless
+
 		protected readonly PlayerConnectionRepository _playerConnectionRepository;
 
 		/// <summary>

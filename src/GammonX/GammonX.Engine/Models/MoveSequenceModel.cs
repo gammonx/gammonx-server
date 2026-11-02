@@ -88,7 +88,7 @@ namespace GammonX.Engine.Models
 	/// </summary>
 	[DataContract]
 	[DebuggerDisplay("{From}/{To}")]
-	public class MoveModel : IEquatable<MoveModel>
+	public class MoveModel : IEquatable<MoveModel>, ICloneable
 	{
 		/// <summary>
 		/// Gets the from index.
@@ -141,6 +141,12 @@ namespace GammonX.Engine.Models
 			hash.Add(From);
 			hash.Add(To);
             return hash.ToHashCode();
+        }
+
+		// <inheritdoc />
+        public object Clone()
+        {
+            return new MoveModel(From, To);
         }
     }
 }

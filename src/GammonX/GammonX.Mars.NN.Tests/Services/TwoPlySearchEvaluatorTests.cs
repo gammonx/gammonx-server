@@ -10,7 +10,7 @@ using Moq;
 
 namespace GammonX.Mars.NN.Tests.Services
 {
-    public class TwoPlySearchEvaluatorTests
+    public partial class TwoPlySearchEvaluatorTests
     {
         [Fact]
         public async Task UsesBackgammonDiceProbabilities()
@@ -60,32 +60,27 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
-        public async Task StartsOpponentLeafEvaluationsBeforeAwaitingThem()
+        public async Task ScoresEveryReplyInTheBatchBeforeRestoringItsBoard()
         {
             var harness = CreateHarness(_ => [CreateSequence(1), CreateSequence(2)]);
-            var release = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var scoreCallCount = 0;
-
-            async Task<double> ScoreAsync()
-            {
-                var callIndex = Interlocked.Increment(ref scoreCallCount);
-                if (callIndex <= 2)
+            var batchSizes = new List<int>();
+            var scoredBoards = new List<IBoardModel>();
+            var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
+                async (boards, _) =>
                 {
-                    if (callIndex == 2)
-                        release.TrySetResult(true);
-
-                    await release.Task.WaitAsync(TimeSpan.FromSeconds(1));
-                }
-
-                return 0d;
-            }
-
-            var evaluator = CreateEvaluator(harness, (_, _) => ScoreAsync());
+                    await Task.Yield();
+                    Assert.Equal(Enumerable.Range(0, boards.Count).Select(index => index % 2 + 1),
+                        boards.Select(board => board.Fields[0]));
+                    batchSizes.Add(boards.Count);
+                    scoredBoards.AddRange(boards);
+                    return boards.Select(board => (double)board.Fields[0]).ToArray();
+                }, board => CloneBoard(board), batchAcrossRolls: true);
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
-            Assert.Equal(0d, score);
-            Assert.Equal(42, scoreCallCount);
+            Assert.Equal(-2d, score, 10);
+            Assert.Equal(new[] { 32, 10 }, batchSizes);
+            Assert.All(scoredBoards, board => Assert.Equal(0, board.Fields[0]));
             Assert.Equal(0, harness.Fields[0]);
         }
 
@@ -146,6 +141,16 @@ namespace GammonX.Mars.NN.Tests.Services
         }
 
         [Fact]
+        public async Task RejectsMissingPassScoreInsteadOfReturningInfinity()
+        {
+            var harness = CreateHarness(_ => []);
+            var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
+                (_, _) => Task.FromResult(Array.Empty<double>()));
+
+            await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(harness.Board.Object, true));
+        }
+
+        [Fact]
         public async Task UndoesOpponentMovesInReverseOrder()
         {
             var harness = CreateHarness(_ => [CreateSequence(1, 2)]);
@@ -202,8 +207,15 @@ namespace GammonX.Mars.NN.Tests.Services
         {
             return new TwoPlySearchEvaluator(
                 harness.BoardService.Object,
-                scorePosition,
-                _ => harness.Board.Object);
+                (boards, isWhite) => Task.WhenAll(boards.Select(board => scorePosition(board, isWhite))),
+                CloneBoard);
+        }
+
+        private static IBoardModel CloneBoard(IBoardModel board)
+        {
+            var clone = new Mock<IBoardModel>();
+            clone.SetupGet(model => model.Fields).Returns(board.Fields.ToArray());
+            return clone.Object;
         }
 
         private static Harness CreateHarness(
@@ -217,12 +229,12 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var boardService = new Mock<IBoardService>();
             var requestedRolls = new List<int[]>();
-            var undoStack = new Stack<int>();
+            var undoStacks = new Dictionary<IBoardModel, Stack<int>>();
             var undoneMoves = new List<MoveModel>();
 
             boardService
                 .Setup(service => service.GetUniqueLegalMoveSequences(
-                    board.Object,
+                    It.IsAny<IBoardModel>(),
                     It.IsAny<bool>(),
                     It.IsAny<int[]>()))
                 .Returns((IBoardModel _, bool _, int[] rolls) =>
@@ -233,25 +245,30 @@ namespace GammonX.Mars.NN.Tests.Services
 
             boardService
                 .Setup(service => service.MoveCheckerTo(
-                    board.Object,
+                    It.IsAny<IBoardModel>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<bool>()))
-                .Callback<IBoardModel, int, int, bool>((_, _, to, _) =>
+                .Callback<IBoardModel, int, int, bool>((position, _, to, _) =>
                 {
-                    undoStack.Push(fields[0]);
-                    fields[0] = to;
+                    if (!undoStacks.TryGetValue(position, out var stack))
+                    {
+                        stack = new Stack<int>();
+                        undoStacks.Add(position, stack);
+                    }
+                    stack.Push(position.Fields[0]);
+                    position.Fields[0] = to;
                 });
 
             boardService
                 .Setup(service => service.UndoMove(
-                    board.Object,
+                    It.IsAny<IBoardModel>(),
                     It.IsAny<MoveModel>(),
                     It.IsAny<bool>()))
-                .Callback<IBoardModel, MoveModel, bool>((_, move, _) =>
+                .Callback<IBoardModel, MoveModel, bool>((position, move, _) =>
                 {
                     undoneMoves.Add(move);
-                    fields[0] = undoStack.Pop();
+                    position.Fields[0] = undoStacks[position].Pop();
                 });
 
 
@@ -289,7 +306,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var expectedBearOffWhite = board.BearOffCountWhite;
             var expectedBearOffBlack = board.BearOffCountBlack;
 
-            var evaluator = new TwoPlySearchEvaluator(boardService, (_, _) => Task.FromResult(0d));
+            var evaluator = new TwoPlySearchEvaluator(boardService, (boards, _) => Task.FromResult(new double[boards.Count]));
             await evaluator.EvaluateAsync(board, true);
 
             Assert.Equal(expectedFields, board.Fields);

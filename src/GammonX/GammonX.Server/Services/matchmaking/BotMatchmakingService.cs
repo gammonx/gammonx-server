@@ -21,6 +21,11 @@ namespace GammonX.Server.Services
 				throw new InvalidOperationException("match modus must be of type normal in order to join this queue");
 			}
 
+			if (queueKey.BotLevel == BotLevel.Unknown || !Enum.IsDefined(queueKey.BotLevel))
+			{
+				throw new InvalidOperationException("bot level must be specified in order to join this queue");
+			}
+
 			var queueEntry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 0);
 			var matchId = Guid.NewGuid();
 			var playerConnection = _playerConnectionRepository.GetOrCreate(playerId);

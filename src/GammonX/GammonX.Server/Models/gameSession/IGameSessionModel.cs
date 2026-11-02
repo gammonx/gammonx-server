@@ -34,7 +34,7 @@ namespace GammonX.Server.Models
 		/// The game phase is always different for each player and indicates which player is currently active and what he is allowed to do.
 		/// </remarks>
 		public GamePhase Phase { get; }
-
+		
 		/// <summary>
 		/// Gets the information on how the game ended (e.g. single win, loss, backgammon etc.)
 		/// </summary>

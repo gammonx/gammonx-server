@@ -746,6 +746,25 @@ namespace GammonX.Mars.NN.Tests.Services
 
         private sealed class PipAdvantageNeuralEvalService : INeuralEvalService
         {
+            public int MaxBatchSize => 32;
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+                ExtractFeatures(model, board, isWhite, null);
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+            {
+                destination ??= new float[1];
+                Assert.Single(destination);
+                destination[0] = isWhite ? board.PipCountBlack - board.PipCountWhite : board.PipCountWhite - board.PipCountBlack;
+                return destination;
+            }
+
+            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+                Task.FromResult(features.Select(row => new[]
+                {
+                    Math.Clamp(0.5f + row[0] / 200f, 0.01f, 0.99f), 0f, 0f, 0f, 0f
+                }).ToArray());
+
             public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
             {
                 var advantage = isWhite
@@ -758,6 +777,22 @@ namespace GammonX.Mars.NN.Tests.Services
 
         private sealed class FixedPerspectiveNeuralEvalService : INeuralEvalService
         {
+            public int MaxBatchSize => 32;
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+                ExtractFeatures(model, board, isWhite, null);
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+            {
+                destination ??= new float[1];
+                Assert.Single(destination);
+                destination[0] = isWhite ? 0.75f : 0.25f;
+                return destination;
+            }
+
+            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+                Task.FromResult(features.Select(row => new[] { row[0], 0f, 0f, 0f, 0f }).ToArray());
+
             public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
             {
                 var winProbability = isWhite ? 0.75f : 0.25f;

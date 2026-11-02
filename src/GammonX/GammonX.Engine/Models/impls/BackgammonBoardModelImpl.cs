@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Engine.History;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -6,7 +7,7 @@ using GammonX.Models.Enums;
 namespace GammonX.Engine.Models
 {
 	/// <summary>
-	/// Classic BackGammon implementation.
+	/// Classic Backgammon implementation.
 	/// <seealso href="https://www.bkgm.com/rules.html"/>
 	/// </summary>
 	internal sealed class BackgammonBoardModelImpl : BoardBaseImpl, IHomeBarModel, IDoublingCubeModel, IHitModel
@@ -178,18 +179,19 @@ namespace GammonX.Engine.Models
 		}
 
 		// <inheritdoc />
-		public override object Clone()
+		protected override BoardBaseImpl CloneWithHistory(IBoardHistory history)
 		{
 			return new BackgammonBoardModelImpl()
 			{
-				BearOffCountWhite = BearOffCountWhite,
-				BearOffCountBlack = BearOffCountBlack,
-				HomeBarCountWhite = HomeBarCountWhite,
-				HomeBarCountBlack = HomeBarCountBlack,
-				DoublingCubeOwner = DoublingCubeOwner,
-				DoublingCubeValue = DoublingCubeValue,
+				BearOffCountWhite = this.BearOffCountWhite,
+				BearOffCountBlack = this.BearOffCountBlack,
+				HomeBarCountWhite = this.HomeBarCountWhite,
+				HomeBarCountBlack = this.HomeBarCountBlack,
+				DoublingCubeOwner = this.DoublingCubeOwner,
+				DoublingCubeValue = this.DoublingCubeValue,
 				// clone is okay for primitive types
-				Fields = (int[])Fields.Clone(),
+				Fields = (int[])this.Fields.Clone(),
+				History = history
 			};
 		}
 

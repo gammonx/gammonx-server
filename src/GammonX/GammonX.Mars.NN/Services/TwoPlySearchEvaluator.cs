@@ -1,84 +1,186 @@
+using GammonX.Engine.Diagnostics;
 using GammonX.Engine.Models;
 
 using GammonX.Engine.Services;
 
 namespace GammonX.Mars.NN.Services
 {
-    internal sealed class TwoPlySearchEvaluator
+    internal sealed partial class TwoPlySearchEvaluator
     {
         private readonly IBoardService _boardService;
-        private readonly Func<IBoardModel, bool, Task<double>> _evalPositionAsync;
         private readonly Func<IBoardModel, IBoardModel> _cloneBoard;
+        private readonly Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> _evalPositionsAsync;
+        private readonly int _maxBatchSize;
+        // if set to true, each inference batch is filled and may contain replies from multiple rolls; if false, each batch is flushed after each roll.
+        private readonly bool _batchAcrossRolls;
 
         public TwoPlySearchEvaluator(
             IBoardService boardService,
-            Func<IBoardModel, bool, Task<double>> scorePosition,
-            Func<IBoardModel, IBoardModel>? cloneBoard = null)
+            Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> scorePositions,
+            Func<IBoardModel, IBoardModel>? cloneBoard = null,
+            int maxBatchSize = 32,
+            bool batchAcrossRolls = false)
         {
             _boardService = boardService ?? throw new ArgumentNullException(nameof(boardService));
-            _evalPositionAsync = scorePosition ?? throw new ArgumentNullException(nameof(scorePosition));
+            _evalPositionsAsync = scorePositions ?? throw new ArgumentNullException(nameof(scorePositions));
             _cloneBoard = cloneBoard ?? (board => board.DeepClone());
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBatchSize);
+            _maxBatchSize = maxBatchSize;
+            _batchAcrossRolls = batchAcrossRolls;
         }
 
         public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite)
         {
+            var opponentIsWhite = !isWhite;
+            var bestByRoll = new double[21];
+
+            Array.Fill(bestByRoll, double.NegativeInfinity);
+            var boards = new List<IBoardModel>(_maxBatchSize);
+            var pending = new PendingReply[_maxBatchSize];
+            var rollIndex = 0;
+
+            try
+            {
+                // we fill up the batch (pending scoring) and as soon as it is full
+                // we restore the pending queue and prepare the next batch
+                for (var die1 = 1; die1 <= 6; die1++)
+                {
+                    for (var die2 = die1; die2 <= 6; die2++, rollIndex++)
+                    {
+                        // we account for pasch rolls
+                        int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
+
+                        // we get all legal move sequences for the current roll, and apply them to clones of the original board
+                        var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
+                        if (sequences.Length == 0)
+                        {
+                            // A pass contributes one row for this roll, even when adjacent rolls also pass.
+                            // Generation restores the root before scoring, and never runs during an await.
+                            pending[boards.Count] = new PendingReply { RollIndex = rollIndex };
+                            boards.Add(board);
+
+                            if (boards.Count == _maxBatchSize)
+                            {
+                                await ScorePendingAsync();
+                            }
+                        }
+                        else
+                        {
+                            foreach (var sequence in sequences)
+                            {
+                                IBoardModel reply;
+                                using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
+                                {
+                                    reply = _cloneBoard(board);
+                                }
+
+                                var index = boards.Count;
+                                pending[index] = new PendingReply { RollIndex = rollIndex, Sequence = sequence };
+                                boards.Add(reply);
+                                EvaluationMetrics.RecordReplyBoards(1);
+
+                                foreach (var move in sequence.Moves)
+                                {
+                                    _boardService.MoveCheckerTo(reply, move.From, move.To, opponentIsWhite);
+                                    pending[index].AppliedMoves++;
+                                }
+
+                                // One bounded group is awaited before admitting any more replies.
+                                if (boards.Count == _maxBatchSize)
+                                {
+                                    await ScorePendingAsync();
+                                }
+                            }
+                        }
+
+                        // if disabled we score the pending board now
+                        // if enable we will fill the boards array until the max batch size is reached
+                        if (!_batchAcrossRolls)
+                        {
+                            await ScorePendingAsync();
+                        }
+                    }
+                }
+
+                await ScorePendingAsync();
+            }
+            finally
+            {
+                // Also restores a partial group if generation, cloning, moving or scoring fails.
+                RestorePending();
+            }
+
+            // we preserve the original roll order and arithmetic when converting opponent perspective.
             var activePlayerExpectedScore = 0d;
-            // we iterate over all dice rolls (36 combinations)
+            rollIndex = 0;
             for (var die1 = 1; die1 <= 6; die1++)
             {
                 for (var die2 = die1; die2 <= 6; die2++)
                 {
-                    // we consider possible double rolls
-                    int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
-                    // we apply the proper probability weight to the roll
-                    var rollWeight = die1 == die2 ? 1d : 2d;
-                    var opponentBestScore = await CalculateBestOpponentResponseAsync(board, isWhite, rolls);
-                    // opponentBestScore is from the opponent's perspective; convert it to the active player's perspective
-                    activePlayerExpectedScore -= rollWeight * opponentBestScore / 36d;
+                    activePlayerExpectedScore -= (die1 == die2 ? 1d : 2d) * bestByRoll[rollIndex++] / 36d;
                 }
             }
 
-            // higher values are better for the active player and are sorted first by the caller
             return activePlayerExpectedScore;
-        }
 
-        private async Task<double> CalculateBestOpponentResponseAsync(IBoardModel board, bool isWhite, int[] rolls)
-        {
-            // score each reply from the opponents perspective
-            var opponentIsWhite = !isWhite;
-            var opponentMoveSequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
-            if (opponentMoveSequences.Length == 0)
+            async Task ScorePendingAsync()
             {
-                return await _evalPositionAsync(board, opponentIsWhite);
+                if (boards.Count == 0)
+                {
+                    return;
+                }
+
+                var scores = await _evalPositionsAsync(boards, opponentIsWhite);
+
+                if (scores.Length != boards.Count)
+                {
+                    throw new InvalidDataException("Batch scoring must return one score per reply or pass.");
+                }
+
+                for (var index = 0; index < scores.Length; index++)
+                {
+                    var roll = pending[index].RollIndex;
+                    bestByRoll[roll] = Math.Max(bestByRoll[roll], scores[index]);
+                }
+
+                RestorePending();
             }
 
-            var scoreTasks = new List<Task<double>>(opponentMoveSequences.Length);
-            foreach (var opponentMoveSequence in opponentMoveSequences)
+            void RestorePending()
             {
-                var boardCopy = _cloneBoard(board);
-                var appliedMoves = 0;
+                var retained = 0;
+                for (var index = 0; index < boards.Count; index++)
+                {
+                    if (pending[index].Sequence != null)
+                    {
+                        retained++;
+                    }
+                }
+
                 try
                 {
-                    foreach (var move in opponentMoveSequence.Moves)
+                    for (var index = 0; index < boards.Count; index++)
                     {
-                        _boardService.MoveCheckerTo(boardCopy, move.From, move.To, opponentIsWhite);
-                        appliedMoves++;
+                        for (var moveIndex = pending[index].AppliedMoves - 1; moveIndex >= 0; moveIndex--)
+                        {
+                            _boardService.UndoMove(boards[index], pending[index].Sequence!.Moves[moveIndex], opponentIsWhite);
+                        }
                     }
-
-                    scoreTasks.Add(_evalPositionAsync(boardCopy, opponentIsWhite));
                 }
                 finally
                 {
-                    for (var moveIndex = appliedMoves - 1; moveIndex >= 0; moveIndex--)
-                    {
-                        _boardService.UndoMove(boardCopy, opponentMoveSequence.Moves[moveIndex], opponentIsWhite);
-                    }
+                    Array.Clear(pending, 0, boards.Count);
+                    boards.Clear();
+                    EvaluationMetrics.RecordReplyBoards(-retained);
                 }
             }
+        }
 
-            var opponentScores = await Task.WhenAll(scoreTasks);
-            // scores are from the opponents perspective, so the opponent maximizes them
-            return opponentScores.Max();
+        private struct PendingReply
+        {
+            public MoveSequenceModel? Sequence;
+            public int RollIndex;
+            public int AppliedMoves;
         }
     }
 }

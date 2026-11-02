@@ -20,6 +20,176 @@ namespace GammonX.Server.Tests.Match
 		private static readonly MatchSessionFactory _matchSessionFactory = new(_gameSessionFactory);
 
 		[Theory]
+		[InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
+		[InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavli, MatchType.SevenPointGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.CashGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.FivePointGame)]
+		[InlineData(MatchVariant.Tavla, MatchType.SevenPointGame)]
+		public void MatchSessionClonePreservesUnstartedRounds(MatchVariant variant, MatchType matchType)
+		{
+			var queueKey = new QueueKey(variant, MatchModus.Bot, matchType, BotLevel.Expert);
+			var session = _matchSessionFactory.Create(Guid.NewGuid(), queueKey);
+
+			var clone = Assert.IsAssignableFrom<IMatchSessionModel>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.NotSame(session, clone);
+			Assert.Equal(session.GetType(), clone.GetType());
+			Assert.Equal(session.Id, clone.Id);
+			Assert.Equal(session.Variant, clone.Variant);
+			Assert.Equal(session.Modus, clone.Modus);
+			Assert.Equal(session.Type, clone.Type);
+			Assert.Equal(session.BotLevel, clone.BotLevel);
+			Assert.Equal(session.GameRound, clone.GameRound);
+			Assert.Equal(session.GetGameModus(), clone.GetGameModus());
+			Assert.Null(clone.StartedAt);
+			Assert.Null(clone.EndedAt);
+			Assert.Equal(0, clone.Duration);
+			Assert.NotSame(session.GetGameSessions(), clone.GetGameSessions());
+			Assert.Equal(session.GetGameSessions().Length, clone.GetGameSessions().Length);
+			Assert.All(clone.GetGameSessions(), game => Assert.Null(game));
+			clone.JoinSession(SessionUtils.CreatePlayerConnection());
+			Assert.NotEqual(Guid.Empty, clone.Player1.Id);
+			Assert.Equal(Guid.Empty, session.Player1.Id);
+		}
+
+		[Theory]
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionClonePreservesCompletedState(MatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, MatchType.CashGame, _matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.StartMatch(session.Player1.Id);
+			session.ResignMatch(session.Player2.Id);
+			Assert.True(session.IsMatchOver());
+
+			var clone = Assert.IsAssignableFrom<IMatchSessionModel>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.Equal(session.GetType(), clone.GetType());
+			Assert.Equal(session.Id, clone.Id);
+			Assert.Equal(session.GameRound, clone.GameRound);
+			Assert.Equal(session.StartedAt, clone.StartedAt);
+			Assert.Equal(session.EndedAt, clone.EndedAt);
+			Assert.Equal(session.Duration, clone.Duration);
+			Assert.True(clone.IsMatchOver());
+			Assert.Equal(session.Player1.Points, clone.Player1.Points);
+			Assert.Equal(session.Player2.Points, clone.Player2.Points);
+			Assert.NotSame(session.GetGameSessions(), clone.GetGameSessions());
+			Assert.Equal(session.GetGameSessions().Length, clone.GetGameSessions().Length);
+			for (var round = 1; round <= session.GetGameSessions().Length; round++)
+			{
+				var originalGame = session.GetGameSession(round);
+				var clonedGame = clone.GetGameSession(round);
+				Assert.NotNull(originalGame);
+				Assert.NotNull(clonedGame);
+				Assert.NotSame(originalGame, clonedGame);
+				Assert.Equal(originalGame.Id, clonedGame.Id);
+				Assert.Equal(originalGame.Modus, clonedGame.Modus);
+				Assert.Equal(originalGame.Phase, clonedGame.Phase);
+				Assert.Equal(originalGame.Result, clonedGame.Result);
+				Assert.Equal(originalGame.EndedAt, clonedGame.EndedAt);
+			}
+			var originalPayload = session.ToPayload(session.Player1.Id);
+			var clonedPayload = clone.ToPayload(clone.Player1.Id);
+			Assert.Equal(originalPayload.Winner, clonedPayload.Winner);
+			Assert.Equal(originalPayload.Loser, clonedPayload.Loser);
+			Assert.Equal(originalPayload.WinnerPoints, clonedPayload.WinnerPoints);
+			Assert.Equal(originalPayload.LoserPoints, clonedPayload.LoserPoints);
+			Assert.Empty(clonedPayload.AllowedCommands);
+		}
+
+		[Theory]
+		[InlineData(MatchVariant.Backgammon)]
+		[InlineData(MatchVariant.Tavli)]
+		[InlineData(MatchVariant.Tavla)]
+		public void MatchSessionCloneCopiesPlayersIndependently(MatchVariant variant)
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(variant, MatchType.CashGame, _matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			session.Player1.SetStartDiceRoll(6);
+			session.Player2.SetStartDiceRoll(1);
+			session.StartMatch(session.Player1.Id);
+			session.ResignMatch(session.Player2.Id);
+
+			var clone = Assert.IsAssignableFrom<IMatchSessionModel>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.NotSame(session.Player1, clone.Player1);
+			Assert.NotSame(session.Player2, clone.Player2);
+			Assert.Equal(session.Player1.Id, clone.Player1.Id);
+			Assert.Equal(session.Player2.Id, clone.Player2.Id);
+			Assert.Equal(session.Player1.ConnectionId, clone.Player1.ConnectionId);
+			Assert.Equal(session.Player2.ConnectionId, clone.Player2.ConnectionId);
+			Assert.Equal(session.Player1.LastSeenUtc, clone.Player1.LastSeenUtc);
+			Assert.Equal(session.Player2.LastSeenUtc, clone.Player2.LastSeenUtc);
+			Assert.Equal(session.Player1.Points, clone.Player1.Points);
+			Assert.Equal(session.Player2.Points, clone.Player2.Points);
+			Assert.Equal(session.Player1.StartDiceRoll, clone.Player1.StartDiceRoll);
+			Assert.Equal(session.Player2.StartDiceRoll, clone.Player2.StartDiceRoll);
+			Assert.Equal(session.Player1.NextGameAccepted, clone.Player1.NextGameAccepted);
+			Assert.Equal(session.Player2.NextGameAccepted, clone.Player2.NextGameAccepted);
+			clone.Player1.AcceptNextGame();
+			clone.Player2.AcceptNextGame();
+			clone.Player1.SetStartDiceRoll(2);
+			clone.Player2.SetStartDiceRoll(5);
+			Assert.False(session.Player1.NextGameAccepted);
+			Assert.False(session.Player2.NextGameAccepted);
+			Assert.Equal(6, session.Player1.StartDiceRoll);
+			Assert.Equal(1, session.Player2.StartDiceRoll);
+		}
+
+		[Theory]
+		[InlineData(false, null)]
+		[InlineData(true, 6)]
+		public void MatchPlayerCloneCopiesStateAndSharesLiveConnection(bool nextGameAccepted, int? startDiceRoll)
+		{
+			var connection = SessionUtils.CreatePlayerConnection();
+			var player = new MatchPlayerModel(connection) { Points = 4 };
+			player.SetStartDiceRoll(startDiceRoll);
+			if (nextGameAccepted)
+			{
+				player.AcceptNextGame();
+			}
+
+			var clone = Assert.IsType<MatchPlayerModel>(((ICloneable)player).Clone());
+
+			Assert.NotSame(player, clone);
+			Assert.Equal(player.Id, clone.Id);
+			Assert.Equal(player.ConnectionId, clone.ConnectionId);
+			Assert.Equal(player.LastSeenUtc, clone.LastSeenUtc);
+			Assert.Equal(player.Claimed, clone.Claimed);
+			Assert.Equal(player.IsBot, clone.IsBot);
+			Assert.Equal(player.Points, clone.Points);
+			Assert.Equal(player.StartDiceRoll, clone.StartDiceRoll);
+			Assert.Equal(player.NextGameAccepted, clone.NextGameAccepted);
+			clone.Points = 5;
+			clone.SetStartDiceRoll(2);
+			clone.AcceptNextGame();
+			Assert.Equal(4, player.Points);
+			Assert.Equal(startDiceRoll, player.StartDiceRoll);
+			Assert.Equal(nextGameAccepted, player.NextGameAccepted);
+			clone.ActiveGameOver();
+			player.AcceptNextGame();
+			Assert.False(clone.NextGameAccepted);
+
+			var lastSeen = connection.LastSeenUtc.AddSeconds(1);
+			connection.SetConnectionId(Guid.Empty.ToString());
+			connection.LastSeenUtc = lastSeen;
+			Assert.Equal(Guid.Empty.ToString(), player.ConnectionId);
+			Assert.Equal(player.ConnectionId, clone.ConnectionId);
+			Assert.Equal(lastSeen, player.LastSeenUtc);
+			Assert.Equal(lastSeen, clone.LastSeenUtc);
+			Assert.True(player.IsBot);
+			Assert.True(clone.IsBot);
+		}
+
+		[Theory]
 		[InlineData(MatchVariant.Backgammon, GameModus.Backgammon)]
 		[InlineData(MatchVariant.Tavli, GameModus.Portes)]
 		[InlineData(MatchVariant.Tavla, GameModus.Tavla)]

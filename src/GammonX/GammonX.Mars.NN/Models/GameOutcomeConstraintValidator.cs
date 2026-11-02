@@ -178,19 +178,8 @@ public static class GameOutcomeConstraintValidator
     {
         ValidateInput(predictions, DefaultTolerance);
 
-        // We normalize invalid numeric values and clamp finite values before applying hierarchy rules.
-        var rawWin = SanitizeProbability(predictions[0]);
-        var rawWinGammon = SanitizeProbability(predictions[1]);
-        var rawWinBackgammon = SanitizeProbability(predictions[2]);
-        var rawLoseGammon = SanitizeProbability(predictions[3]);
-        var rawLoseBackgammon = SanitizeProbability(predictions[4]);
-
-        // We use successive upper bounds so every specific outcome remains a subset of its parent.
-        var win = rawWin;
-        var winGammon = Math.Min(rawWinGammon, win);
-        var winBackgammon = Math.Min(rawWinBackgammon, winGammon);
-        var loseGammon = Math.Min(rawLoseGammon, 1d - win);
-        var loseBackgammon = Math.Min(rawLoseBackgammon, loseGammon);
+        var (win, winGammon, winBackgammon, loseGammon, loseBackgammon) = ProjectProbabilities(
+            predictions[0], predictions[1], predictions[2], predictions[3], predictions[4]);
 
         var correctionMagnitude = Distance(predictions[0], win)
             + Distance(predictions[1], winGammon)
@@ -216,6 +205,27 @@ public static class GameOutcomeConstraintValidator
     {
         ArgumentNullException.ThrowIfNull(outcome);
         return Project(ToPredictions(outcome));
+    }
+
+    /// <summary>
+    /// Shares probability projection with score-only callers without allocating a diagnostic result.
+    /// </summary>
+    internal static (double Win, double WinGammon, double WinBackgammon, double LoseGammon, double LoseBackgammon)
+        ProjectProbabilities(double win, double winGammon, double winBackgammon, double loseGammon, double loseBackgammon)
+    {
+        // Normalize invalid numeric values and clamp finite values before applying hierarchy rules.
+        win = SanitizeProbability(win);
+        winGammon = SanitizeProbability(winGammon);
+        winBackgammon = SanitizeProbability(winBackgammon);
+        loseGammon = SanitizeProbability(loseGammon);
+        loseBackgammon = SanitizeProbability(loseBackgammon);
+
+        // Every specific outcome remains a subset of its parent.
+        winGammon = Math.Min(winGammon, win);
+        winBackgammon = Math.Min(winBackgammon, winGammon);
+        loseGammon = Math.Min(loseGammon, 1d - win);
+        loseBackgammon = Math.Min(loseBackgammon, loseGammon);
+        return (win, winGammon, winBackgammon, loseGammon, loseBackgammon);
     }
 
     private static double[] ToPredictions(GameOutcomeModel outcome)

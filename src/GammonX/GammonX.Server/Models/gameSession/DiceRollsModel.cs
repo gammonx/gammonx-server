@@ -3,13 +3,20 @@
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+
 using Serilog;
 
 namespace GammonX.Server.Models
 {	
-	public class DiceRollsModel : List<DiceRollContract>
+	public class DiceRollsModel : List<DiceRollContract>, ICloneable
 	{
 		public bool HasUnused => this.Any(dr => !dr.Used);
+
+
+		public DiceRollsModel(IEnumerable<DiceRollContract> diceRolls)
+		{
+			this.AddRange(diceRolls);
+		}
 
 		public DiceRollsModel() 
 		{
@@ -58,6 +65,17 @@ namespace GammonX.Server.Models
 		public int[] GetRemainingRolls()
 		{
 			return this.Where(dr => !dr.Used).Select(dr => dr.Roll).ToArray();
+		}
+		
+		// <inheritdoc />
+		public object Clone()
+		{
+			var clone = new DiceRollsModel();
+			foreach (var dice in this)
+			{
+				clone.Add((DiceRollContract)dice.Clone());
+			}
+			return clone;
 		}
 
 		#region Private Members

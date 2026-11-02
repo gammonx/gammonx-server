@@ -12,8 +12,8 @@ namespace GammonX.Server.Models
     /// <param name="MatchVariant">Match queue to join.</param>
     /// <param name="MatchModus">Match modus to join.</param>
     /// <param name="MatchType">Match type to play.</param>
-    /// <param name="BotLevel">Bot level to play against. Only relevant for bot queues, ignored otherwise.</param>
-    public record JoinRequest(Guid PlayerId, MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType, BotLevel BotLevel = BotLevel.Unknown);
+    /// <param name="BotLevel">Bot level to play against. Only relevant for bot queues, null and ignored otherwise.</param>
+    public record JoinRequest(Guid PlayerId, MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType, BotLevel? BotLevel = null);
 
 	/// <summary>
 	/// REST Status match lobby request.

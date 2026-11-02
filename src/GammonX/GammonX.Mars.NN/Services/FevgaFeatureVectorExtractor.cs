@@ -15,42 +15,53 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
+            var features = new float[FeatureCount];
+            Extract(model, board, isWhite, features);
+            return features;
+        }
+
+        // <inheritdoc />
+        public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
+        {
+            if (features.Length != FeatureCount)
+            {
+                throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
+            }
+            
             // we always extract the feature from the perspective of the white player, so we invert the board if the active player is black
             var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
 
             var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
 
-            List<float> features =
-            [
-                // self-crafted structural features
-                (float)model.MaxPrimeLengthPlayer,
-                (float)model.MaxPrimeLengthOpp,
-                (float)model.HomebarCountPlayer,
-                (float)model.HomebarCountOpp,
-                (float)model.BlotCount,
-                (float)model.BlotCountOpp,
-                (float)model.AnchorCountInFrontPlayer,
-                (float)model.AnchorCountInFrontOpp,
-                (float)model.AverageStackHeightPlayer,
-                (float)model.AverageStackHeightOpp,
-                (float)model.AverageDistanceToBearOffPlayer,
-                (float)model.AverageDistanceToBearOffOpp,
-                (float)model.AverageGapSizePlayer,
-                (float)model.AverageGapSizeOpp,
-                (float)model.CheckersInPrimeZonePlayer,
-                (float)model.CheckersInPrimeZoneOpp,
-                // race features
-                (float)model.PipToBearOff,
-                (float)model.PipToBearOffOpp,
-                (float)model.PipDifference,
-                // race feature flag
-                model.Race ? 1f : 0f,
-                // raw board feature tensors
-                0f,
-                boardClone.BearOffCountWhite / 15f,
-                boardClone.BearOffCountBlack / 15f,
-                turnNumber / 100f,
-            ];
+            var featureIndex = 0;
+            // self-crafted structural features
+            features[featureIndex++] = (float)model.MaxPrimeLengthPlayer;
+            features[featureIndex++] = (float)model.MaxPrimeLengthOpp;
+            features[featureIndex++] = (float)model.HomebarCountPlayer;
+            features[featureIndex++] = (float)model.HomebarCountOpp;
+            features[featureIndex++] = (float)model.BlotCount;
+            features[featureIndex++] = (float)model.BlotCountOpp;
+            features[featureIndex++] = (float)model.AnchorCountInFrontPlayer;
+            features[featureIndex++] = (float)model.AnchorCountInFrontOpp;
+            features[featureIndex++] = (float)model.AverageStackHeightPlayer;
+            features[featureIndex++] = (float)model.AverageStackHeightOpp;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffPlayer;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffOpp;
+            features[featureIndex++] = (float)model.AverageGapSizePlayer;
+            features[featureIndex++] = (float)model.AverageGapSizeOpp;
+            features[featureIndex++] = (float)model.CheckersInPrimeZonePlayer;
+            features[featureIndex++] = (float)model.CheckersInPrimeZoneOpp;
+            // race features
+            features[featureIndex++] = (float)model.PipToBearOff;
+            features[featureIndex++] = (float)model.PipToBearOffOpp;
+            features[featureIndex++] = (float)model.PipDifference;
+            // race feature flag
+            features[featureIndex++] = model.Race ? 1f : 0f;
+            // raw board feature tensors
+            features[featureIndex++] = 0f;
+            features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
+            features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
+            features[featureIndex++] = turnNumber / 100f;
 
             // we add the raw board as input
             var fields = boardClone.Fields;
@@ -58,17 +69,17 @@ namespace GammonX.Mars.NN.Services
             {
                 // white player view: own = positive, opponent = negative
                 var v = fields[i];
-                features.Add(v >= 1 ? 1f : 0f);  // own blot
-                features.Add(v >= 2 ? 1f : 0f);  // own anchor
-                features.Add(v >= 3 ? 1f : 0f);  // own 3+
-                features.Add(v >= 4 ? 1f : 0f);  // own 4+
-                features.Add(v <= -1 ? 1f : 0f); // opp blot
-                features.Add(v <= -2 ? 1f : 0f); // opp anchor
-                features.Add(v <= -3 ? 1f : 0f); // opp 3+
-                features.Add(v <= -4 ? 1f : 0f); // opp 4+
+                features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
+                features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor
+                features[featureIndex++] = v >= 3 ? 1f : 0f;  // own 3+
+                features[featureIndex++] = v >= 4 ? 1f : 0f;  // own 4+
+                features[featureIndex++] = v <= -1 ? 1f : 0f; // opp blot
+                features[featureIndex++] = v <= -2 ? 1f : 0f; // opp anchor
+                features[featureIndex++] = v <= -3 ? 1f : 0f; // opp 3+
+                features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
             }
 
-            return features.ToArray();
+
         }
     }
 }

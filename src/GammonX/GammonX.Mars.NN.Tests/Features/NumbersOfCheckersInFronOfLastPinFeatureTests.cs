@@ -18,7 +18,7 @@ namespace GammonX.Mars.NN.Tests.Features
             Assert.NotNull(boardContract);
             var board = boardService.CreateBoard(boardContract);
 
-            var feature = new NumbersOfCheckersInFronOfLastPinFeature();
+            var feature = new NumbersOfCheckersInFrontOfLastPinFeature();
             var whiteResult = feature.Eval(board, true);
             Assert.Equal(12, whiteResult);
             var blackResult = feature.Eval(board, false);

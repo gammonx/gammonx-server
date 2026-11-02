@@ -10,5 +10,11 @@
 		/// </summary>
 		/// <returns>Returns the value.</returns>
 		object GetValue();
+
+		/// <summary>
+		/// Creates a deep copy of the history event value.
+		/// </summary>
+		/// <returns>Returns a deep copy of the history event value.</returns>
+		object Clone();
 	}
 }

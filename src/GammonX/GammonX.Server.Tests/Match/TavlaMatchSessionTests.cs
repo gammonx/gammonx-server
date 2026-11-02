@@ -18,6 +18,37 @@ namespace GammonX.Server.Tests.Match
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
 		[Fact]
+		public void TavlaMatchSessionCloneCanResignWithoutChangingOriginal()
+		{
+			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);
+			session.Player1.AcceptNextGame();
+			session.Player2.AcceptNextGame();
+			var gameSession = session.StartMatch(session.Player1.Id);
+			var mock = new Mock<IDiceService>();
+			mock.Setup(dice => dice.Roll(2, 6)).Returns([2, 3]);
+			gameSession.InjectDiceServiceMock(mock.Object);
+			session.RollDices(session.Player1.Id);
+			var originalCommands = session.GetGameState(session.Player1.Id).AllowedCommands;
+
+			var clone = Assert.IsType<TavlaMatchSession>(Assert.IsAssignableFrom<ICloneable>(session).Clone());
+
+			Assert.Equal(originalCommands, clone.GetGameState(clone.Player1.Id).AllowedCommands);
+			clone.ResignGame(clone.Player1.Id);
+			Assert.True(clone.IsMatchOver());
+			Assert.Equal(2, clone.Player2.Points);
+			Assert.False(clone.Player1.NextGameAccepted);
+			Assert.False(clone.Player2.NextGameAccepted);
+			Assert.False(session.IsMatchOver());
+			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
+			Assert.Equal(0, session.Player1.Points);
+			Assert.Equal(0, session.Player2.Points);
+			Assert.True(session.Player1.NextGameAccepted);
+			Assert.True(session.Player2.NextGameAccepted);
+			Assert.Null(session.EndedAt);
+			Assert.Equal(originalCommands, session.GetGameState(session.Player1.Id).AllowedCommands);
+		}
+
+		[Fact]
 		public void TavlaSingleGameScoreIsCalculatedWhite()
 		{
 			var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Tavla, MatchType.CashGame, _matchSessionFactory);

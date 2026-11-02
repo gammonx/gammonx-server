@@ -69,7 +69,7 @@ yardstick for `BotServiceTests.MarsCanPlayAgainstWildBg`.
 ##### GAME_COMPLETED
 - run `docker compose up lambda-game-completed --build`
 - GET `http://localhost:9001/2015-03-31/functions/function/invocations` with [Payload](src/GammonX/GammonX.Lambda.Tests/Data/sqs/GameCompletedPayload.json)
-##### MATCH_COMPELTED
+##### MATCH_COMPLETED
 - run `docker compose up lambda-match-completed --build`
 - GET `http://localhost:9002/2015-03-31/functions/function/invocations` with [Payload](src/GammonX/GammonX.Lambda.Tests/Data/sqs/MatchCompletedPayload.json)
 ##### PLAYER_CREATED

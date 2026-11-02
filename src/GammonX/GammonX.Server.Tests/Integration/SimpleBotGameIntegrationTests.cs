@@ -65,7 +65,8 @@ namespace GammonX.Server.Tests.Integration
 			var client = _factory.CreateClient();
 			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
 
-			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame);
+			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame, BotLevel.Hard);
+			
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
 			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
@@ -84,29 +85,29 @@ namespace GammonX.Server.Tests.Integration
 			{
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, MatchModus.Bot);
 			}
-			while (result1?.Status == QueueEntryStatus.WaitingForOpponent);
+			while (result1.Status == QueueEntryStatus.WaitingForOpponent);
 
 			Assert.NotNull(result1);
 			var matchId = result1.MatchId;
 
-			player1Connection.On<object>(ServerEventTypes.ErrorEvent, response =>
+			player1Connection.On<object>(ServerEventTypes.ErrorEvent, _ =>
 			{
 				Assert.Fail();
 			});
 
-			player1Connection.On<object>(ServerEventTypes.MatchLobbyWaitingEvent, response =>
+			player1Connection.On<object>(ServerEventTypes.MatchLobbyWaitingEvent, _ =>
 			{
                 // we must not wait if opponent is a bot
                 Assert.Fail();
 			});
 
-			player1Connection.On<object>(ServerEventTypes.GameWaitingEvent, response =>
+			player1Connection.On<object>(ServerEventTypes.GameWaitingEvent, _ =>
 			{
 				// we must not wait if opponent is a bot
 				Assert.Fail();
 			});
 
-            player1Connection.On<object>(ServerEventTypes.MatchWaitingEvent, response =>
+            player1Connection.On<object>(ServerEventTypes.MatchWaitingEvent, _ =>
             {
                 // we must not wait if opponent is a bot
                 Assert.Fail();
@@ -191,7 +192,7 @@ namespace GammonX.Server.Tests.Integration
 				var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
 				if (contract?.Payload is EventGameStatePayload payload)
 				{
-					nextMove = payload.MoveSequences.SelectMany(ms => ms.Moves)?.FirstOrDefault();
+					nextMove = payload.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
 					Assert.Equal(matchId, payload.MatchId);
 					if (payload.Phase == GamePhase.WaitingForOpponent)
 					{

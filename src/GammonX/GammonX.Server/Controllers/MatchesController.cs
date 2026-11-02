@@ -33,7 +33,7 @@ namespace GammonX.Server.Controllers
         {
             try
             {
-                var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, req.BotLevel);
+                var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, req.BotLevel ?? BotLevel.Unknown);
                 var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(queueKey.MatchModus);
                 var queueEntry = await matchMakingService.JoinQueueAsync(req.PlayerId, queueKey);
                 var payload = queueEntry.ToPayload();

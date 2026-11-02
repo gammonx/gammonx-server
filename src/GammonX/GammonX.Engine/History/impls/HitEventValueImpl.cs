@@ -41,5 +41,11 @@ namespace GammonX.Engine.History
             }
             return $"{position}";
         }
+
+        // <inheritdoc />
+        public object Clone()
+        {
+            return new HitEventValueImpl(_from, _to == BoardPositions.HomeBarWhite);
+        }
     }
 }

@@ -9,6 +9,136 @@ namespace GammonX.Engine.Tests
 	public class BoardHistoryTests
 	{
 		[Theory]
+		[InlineData(1, 2)]
+		[InlineData(6, 6)]
+		public void RollEventValueCloneCopiesRollArray(int firstRoll, int secondRoll)
+		{
+			var value = new RollEventValueImpl(firstRoll, secondRoll);
+
+			var clone = Assert.IsType<RollEventValueImpl>(value.Clone());
+
+			Assert.NotSame(value, clone);
+			var originalRolls = Assert.IsType<int[]>(value.GetValue());
+			var clonedRolls = Assert.IsType<int[]>(clone.GetValue());
+			Assert.Equal(originalRolls, clonedRolls);
+			Assert.NotSame(originalRolls, clonedRolls);
+			clonedRolls[0] = 99;
+			Assert.Equal(firstRoll, originalRolls[0]);
+			originalRolls[1] = 98;
+			Assert.Equal(secondRoll, clonedRolls[1]);
+		}
+
+		[Fact]
+		public void MoveEventValueCloneCopiesMoveArray()
+		{
+			var value = new MoveEventValueImpl(Tuple.Create(0, 2), Tuple.Create(2, 5));
+
+			var clone = Assert.IsType<MoveEventValueImpl>(value.Clone());
+
+			Assert.NotSame(value, clone);
+			var originalMoves = Assert.IsType<Tuple<int, int>[]>(value.GetValue());
+			var clonedMoves = Assert.IsType<Tuple<int, int>[]>(clone.GetValue());
+			Assert.Equal(originalMoves, clonedMoves);
+			Assert.NotSame(originalMoves, clonedMoves);
+			clonedMoves[0] = Tuple.Create(10, 12);
+			Assert.Equal(Tuple.Create(0, 2), originalMoves[0]);
+			originalMoves[1] = Tuple.Create(12, 15);
+			Assert.Equal(Tuple.Create(2, 5), clonedMoves[1]);
+		}
+
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
+		public void HitEventValueClonePreservesBar(bool isWhite)
+		{
+			var value = new HitEventValueImpl(5, isWhite);
+
+			var clone = Assert.IsType<HitEventValueImpl>(value.Clone());
+
+			Assert.NotSame(value, clone);
+			Assert.Equal(value.GetValue(), clone.GetValue());
+			var hit = Assert.IsType<Tuple<int, int>>(clone.GetValue());
+			Assert.Equal(5, hit.Item1);
+			Assert.Equal(isWhite ? BoardPositions.HomeBarWhite : BoardPositions.HomeBarBlack, hit.Item2);
+			Assert.Equal(value.ToString(), clone.ToString());
+		}
+
+		[Theory]
+		[InlineData(CubeAction.Offer)]
+		[InlineData(CubeAction.Take)]
+		[InlineData(CubeAction.Pass)]
+		public void CubeEventValueClonePreservesAction(CubeAction action)
+		{
+			var value = new CubeEventValueImpl(action);
+
+			var clone = Assert.IsType<CubeEventValueImpl>(value.Clone());
+
+			Assert.NotSame(value, clone);
+			Assert.Equal(action, Assert.IsType<CubeAction>(clone.GetValue()));
+			Assert.Equal(value.ToString(), clone.ToString());
+		}
+
+		[Theory]
+		[InlineData(true)]
+		[InlineData(false)]
+		public void BoardHistoryClonePreservesOrderAndCopiesEvents(bool isWhite)
+		{
+			var history = new BoardHistoryImpl();
+			history.Add(HistoryEventFactory.CreateRollEvent(isWhite, 2, 3));
+			history.Add(HistoryEventFactory.CreateMoveEvent(isWhite, [new MoveModel(0, 2)]));
+			history.Add(HistoryEventFactory.CreateHitEvent(isWhite, 2));
+			history.Add(HistoryEventFactory.CreateCubeEvent(isWhite, CubeAction.Offer));
+
+			var clone = Assert.IsType<BoardHistoryImpl>(history.Clone());
+
+			Assert.NotSame(history, clone);
+			Assert.NotSame(history.Events, clone.Events);
+			var originalEvents = history.Events.ToArray();
+			var clonedEvents = clone.Events.ToArray();
+			Assert.Equal(4, clonedEvents.Length);
+			Assert.Equal(
+				new[] { HistoryEventType.Cube, HistoryEventType.Hit, HistoryEventType.Move, HistoryEventType.Roll },
+				clonedEvents.Select(historyEvent => historyEvent.Type));
+			for (var eventIndex = 0; eventIndex < originalEvents.Length; eventIndex++)
+			{
+				var originalEvent = originalEvents[eventIndex];
+				var clonedEvent = clonedEvents[eventIndex];
+				Assert.NotSame(originalEvent, clonedEvent);
+				Assert.Equal(originalEvent.GetType(), clonedEvent.GetType());
+				Assert.Equal(originalEvent.Type, clonedEvent.Type);
+				Assert.Equal(originalEvent.IsWhite, clonedEvent.IsWhite);
+				Assert.NotSame(originalEvent.Value, clonedEvent.Value);
+				Assert.Equal(originalEvent.Value.GetType(), clonedEvent.Value.GetType());
+				Assert.Equal(originalEvent.ToString(), clonedEvent.ToString());
+			}
+			var clonedRolls = Assert.IsType<int[]>(clonedEvents[^1].Value.GetValue());
+			clonedRolls[0] = 99;
+			Assert.Equal(new[] { 2, 3 }, Assert.IsType<int[]>(originalEvents[^1].Value.GetValue()));
+			Assert.True(clone.TryRemoveLast());
+			Assert.True(clone.TryPeekLast(out var lastEvent));
+			Assert.NotNull(lastEvent);
+			Assert.Equal(HistoryEventType.Hit, lastEvent.Type);
+			Assert.Equal(4, history.Events.Count);
+			history.Add(HistoryEventFactory.CreateRollEvent(!isWhite, 4, 5));
+			Assert.Equal(3, clone.Events.Count);
+		}
+
+		[Fact]
+		public void BoardHistoryCloneOfEmptyHistoryIsIndependent()
+		{
+			var history = new BoardHistoryImpl();
+
+			var clone = Assert.IsType<BoardHistoryImpl>(history.Clone());
+
+			Assert.Empty(clone.Events);
+			Assert.NotSame(history.Events, clone.Events);
+			Assert.False(clone.TryRemoveLast());
+			clone.Add(HistoryEventFactory.CreateRollEvent(true, 1, 2));
+			Assert.Single(clone.Events);
+			Assert.Empty(history.Events);
+		}
+
+		[Theory]
 		[InlineData(GameModus.Backgammon, true)]
 		[InlineData(GameModus.Tavla, true)]
 		[InlineData(GameModus.Portes, true)]

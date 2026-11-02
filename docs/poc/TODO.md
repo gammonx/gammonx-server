@@ -2,20 +2,20 @@
 - see changelog 
 
 ## Active
-- mars client
-    - retry/timeouts
-    - env variables
-    - health check
-
-## TODO
-- clientside resilience patterns when error occurred
-    - get game/match state so allowed commands reset
-    - maybe also serverside?
+- beta bug fixes
 - expert (2ply) mode optimizations
     - performance > enable selective 2-ply search?
     - max candidates based on 1-ply search?
     - consider 10s timeout for mars move eval requests
     - add resilience patterns for mars requests (retry/timeouts)
+
+## TODO
+- update nn arch of plakoto/fevga to > 5
+    - create proper training pipeline/architecture similalr to default model
+    - train models for both variants
+- clientside resilience patterns when error occurred
+    - get game/match state so allowed commands reset
+    - maybe also serverside?
 - stateless game service matchmaking?
     - atm in-memory per node
 - make game service stateless
@@ -28,9 +28,6 @@
         - client connects with routing hint
         - load balancer routes based on hint
         - direct task routing ECS Service Discovery (AWS Cloud Map)
-- update nn arch of plakoto/fevga to > 5
-    - create proper training pipeline/architecture similalr to default model
-    - train models for both variants
 - async game/match/rating stat processing by client
     - prepare api gateway
     - client side workflow

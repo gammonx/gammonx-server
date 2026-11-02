@@ -25,7 +25,7 @@
     <AmazonLambdaTestUtilitiesVersion>4.1.0</AmazonLambdaTestUtilitiesVersion>
     <!-- Microsoft -->
     <MicrosoftAspNetCoreAuthenticationJwtBearerVersion>8.0.25</MicrosoftAspNetCoreAuthenticationJwtBearerVersion>
-    <MicrosoftAspNetCoreSignalRClientVersion>9.0.8</MicrosoftAspNetCoreSignalRClientVersion>
+    <MicrosoftAspNetCoreSignalRClientVersion>9.0.21</MicrosoftAspNetCoreSignalRClientVersion>
     <MicrosoftAspNetCoreMvcTestingVersion>10.0.8</MicrosoftAspNetCoreMvcTestingVersion>
     <MicrosoftBclMemoryVersion>9.0.15</MicrosoftBclMemoryVersion>
     <MicrosoftExtensionsDependencyInjectionVersion>9.0.8</MicrosoftExtensionsDependencyInjectionVersion>

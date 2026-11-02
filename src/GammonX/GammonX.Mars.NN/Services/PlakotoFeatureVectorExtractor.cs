@@ -16,46 +16,57 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
+            var features = new float[FeatureCount];
+            Extract(model, board, isWhite, features);
+            return features;
+        }
+
+        // <inheritdoc />
+        public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
+        {
+            if (features.Length != FeatureCount)
+            {
+                throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
+            }
+            
             // we always extract the feature from the perspective of the white player, so we invert the board if the active player is black
             var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
 
             var pinModel = (IPinModel)boardClone;
             var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
 
-            List<float> features =
-            [
-                // self-crafted pin features
-                (float)model.PinCountOpp,
-                (float)model.PinCountPlayer,
-                (float)model.OppMotherPinned,
-                (float)model.PlayerMotherPinned,
-                (float)model.MotherDistancePlayer,
-                (float)model.MotherDistanceOpp,
-                (float)model.NumChFrontLastPin,
-                (float)model.NumChFrontLastPinOpp,
-                // self-crafted structural features
-                (float)model.BlotCount,
-                (float)model.BlotCountOpp,
-                (float)model.BlotInStartRangeCount,
-                (float)model.BlotInStartRangeCountOpp,
-                (float)model.AnchorCount,
-                (float)model.AnchorCountOpp,
-                (float)model.AverageStackHeightPlayer,
-                (float)model.AverageStackHeightOpp,
-                (float)model.AverageDistanceToBearOffPlayer,
-                (float)model.AverageDistanceToBearOffOpp,
-                // race features
-                (float)model.PipDifference,
-                (float)model.PipToBearOff,
-                (float)model.PipToBearOffOpp,
-                // race feature flag
-                model.Race ? 1f : 0f,
-                // raw board feature tensors
-                0f,
-                boardClone.BearOffCountWhite / 15f,
-                boardClone.BearOffCountBlack / 15f,
-                turnNumber / 100f,
-            ];
+            var featureIndex = 0;
+            // self-crafted pin features
+            features[featureIndex++] = (float)model.PinCountOpp;
+            features[featureIndex++] = (float)model.PinCountPlayer;
+            features[featureIndex++] = (float)model.OppMotherPinned;
+            features[featureIndex++] = (float)model.PlayerMotherPinned;
+            features[featureIndex++] = (float)model.MotherDistancePlayer;
+            features[featureIndex++] = (float)model.MotherDistanceOpp;
+            features[featureIndex++] = (float)model.NumChFrontLastPin;
+            features[featureIndex++] = (float)model.NumChFrontLastPinOpp;
+            // self-crafted structural features
+            features[featureIndex++] = (float)model.BlotCount;
+            features[featureIndex++] = (float)model.BlotCountOpp;
+            features[featureIndex++] = (float)model.BlotInStartRangeCount;
+            features[featureIndex++] = (float)model.BlotInStartRangeCountOpp;
+            features[featureIndex++] = (float)model.AnchorCount;
+            features[featureIndex++] = (float)model.AnchorCountOpp;
+            features[featureIndex++] = (float)model.AverageStackHeightPlayer;
+            features[featureIndex++] = (float)model.AverageStackHeightOpp;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffPlayer;
+            features[featureIndex++] = (float)model.AverageDistanceToBearOffOpp;
+            // race features
+            features[featureIndex++] = (float)model.PipDifference;
+            features[featureIndex++] = (float)model.PipToBearOff;
+            features[featureIndex++] = (float)model.PipToBearOffOpp;
+            // race feature flag
+            features[featureIndex++] = model.Race ? 1f : 0f;
+            // raw board feature tensors
+            features[featureIndex++] = 0f;
+            features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
+            features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
+            features[featureIndex++] = turnNumber / 100f;
 
             // we add the raw board as input
             var fields = boardClone.Fields;
@@ -63,14 +74,14 @@ namespace GammonX.Mars.NN.Services
             {
                 // white player view: own = positive, opponent = negative
                 var v = fields[index];
-                features.Add(v >= 1 ? 1f : 0f);  // own blot
-                features.Add(v >= 2 ? 1f : 0f);  // own anchor
-                features.Add(v >= 3 ? 1f : 0f);  // own 3+
-                features.Add(v >= 4 ? 1f : 0f);  // own 4+
-                features.Add(v <= -1 ? 1f : 0f); // opp blot
-                features.Add(v <= -2 ? 1f : 0f); // opp anchor
-                features.Add(v <= -3 ? 1f : 0f); // opp 3+
-                features.Add(v <= -4 ? 1f : 0f); // opp 4+
+                features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
+                features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor
+                features[featureIndex++] = v >= 3 ? 1f : 0f;  // own 3+
+                features[featureIndex++] = v >= 4 ? 1f : 0f;  // own 4+
+                features[featureIndex++] = v <= -1 ? 1f : 0f; // opp blot
+                features[featureIndex++] = v <= -2 ? 1f : 0f; // opp anchor
+                features[featureIndex++] = v <= -3 ? 1f : 0f; // opp 3+
+                features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
             }
             // we add the raw pinned fields as input
             var pinnedFields = pinModel.PinnedFields;
@@ -78,11 +89,11 @@ namespace GammonX.Mars.NN.Services
             {
                 // white player view: own = positive, opponent = negative
                 var v = pinnedFields[index];
-                features.Add(v >= 1 ? 1f : 0f);  // black pinned
-                features.Add(v <= -1 ? 1f : 0f); // white pinned
+                features[featureIndex++] = v >= 1 ? 1f : 0f;  // black pinned
+                features[featureIndex++] = v <= -1 ? 1f : 0f; // white pinned
             }
 
-            return features.ToArray();
+
         }
     }
 }
