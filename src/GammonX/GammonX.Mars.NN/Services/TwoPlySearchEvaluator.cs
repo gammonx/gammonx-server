@@ -93,7 +93,8 @@ namespace GammonX.Mars.NN.Services
                             }
                         }
 
-                        // The default retains per-roll flush boundaries; cross-roll packing is experimental.
+                        // if disabled we score the pending board now
+                        // if enable we will fill the boards array until the max batch size is reached
                         if (!_batchAcrossRolls)
                         {
                             await ScorePendingAsync();

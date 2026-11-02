@@ -18,6 +18,9 @@ namespace GammonX.Mars.NN.Services
         /// <summary>
         /// Gets or sets the number of concurrent candidates to evaluate in parallel. Default is 1.
         /// </summary>
+        /// <remarks>
+        /// Although the throughput gains were significant, the fairness gate and the latency gains were not fully verified for parallel evaluation, so we keep the default at 1 for now.
+        /// </remarks>
         internal int ParallelCandidateCount { get; set; } = 1;
 
         /// <summary>
@@ -392,8 +395,7 @@ namespace GammonX.Mars.NN.Services
             return evaluator.EvaluateAsync(board, isWhite);
         }
 
-        private PreparedPosition PreparePosition(IBoardModel board, bool isWhite, INeuralEvalService neural,
-            float[][]? buffers, int bufferIndex)
+        private PreparedPosition PreparePosition(IBoardModel board, bool isWhite, INeuralEvalService neural, float[][]? buffers, int bufferIndex)
         {
             if (TryGetTerminalScore(board, isWhite, out var score))
             {
@@ -402,6 +404,8 @@ namespace GammonX.Mars.NN.Services
 
             var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
             var normalizedEval = NormalizedEvalResultModel.From(eval);
+
+            // we extract the feature vectors into the buffer if available, otherwise we allocate a new array
             var featureVectors = buffers == null
                 ? neural.ExtractFeatures(normalizedEval, board, isWhite)
                 : buffers[bufferIndex] = neural.ExtractFeatures(normalizedEval, board, isWhite, buffers[bufferIndex]);

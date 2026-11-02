@@ -1822,8 +1822,8 @@ escape into another root's reusable storage. Inference input arrays remain
 unchanged until completion. The prepared-row diagnostic counts active groups;
 reserved buffer slots between groups are not an additional metric.
 
-**`ReuseFeatureBuffers` defaults to false.** Cross-roll batching and working-board
-reuse remain enabled by the owner's explicit choice. Feature-buffer reuse is
+**`ReuseFeatureBuffers` initially defaulted to false.** Cross-roll batching and working-board
+reuse were enabled by the owner's explicit choice. Feature-buffer reuse is
 currently implemented only for the prepared working-board path; disabling
 `ReuseReplyBoard` selects the existing allocating clone-per-reply path.
 
@@ -1892,6 +1892,112 @@ Local evidence remains in repository-root `TestResults/latency-step5-20261101/`:
 `validation-complete.trx` and `comparison/{thresholds,runs,results}.json`, together
 with each process's logs/TRX. The directory retains its original start date;
 these files are ignored by Git.
+
+## Per-roll reuse experiment (2026-11-02)
+
+Tested whether board and feature-buffer reuse provide a latency benefit with
+**`BatchAcrossRolls = false` throughout**. The current production defaults remain
+unchanged: all three options are enabled by the owner. Since the original step-5
+screening run, the owner also removed default interface implementations; test
+doubles were adapted before this experiment. The earlier fallback descriptions
+and validation counts above describe that historical implementation.
+
+The new `--optimization per-roll-reuse` runner mode compares:
+
+| Configuration | ReuseReplyBoard | ReuseFeatureBuffers |
+| --- | --- | --- |
+| baseline | false | false |
+| board | true | false |
+| both | true | true |
+
+The full run used **45 fresh Release test processes**: 27 timing processes with
+three samples each, nine diagnostic processes and nine mixed-load processes.
+Each board/configuration has nine uninstrumented timing samples. Configuration
+order rotated across three rounds: baseline/board/both, both/baseline/board,
+board/both/baseline. Each configuration therefore occupied each position once.
+All runs used CPU, 16 OMP/MKL and inter-op threads, a 32-row worker, reusable
+tensor input and sequential candidates. Worker-thread checks and model/binary
+fingerprints passed. Protocol and unchanged acceptance thresholds were written
+before measurements. The Release build completed with zero errors or warnings.
+
+| Board | Baseline median | Board reuse median | Both reuse median | Board gain | Both gain |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 2,028.502 ms | 1,941.618 ms | 1,831.875 ms | 4.3% | 9.7% |
+| 2 | 591.536 ms | 583.627 ms | 572.808 ms | 1.3% | 3.2% |
+| 3 | 1,231.480 ms | 1,117.690 ms | 1,355.500 ms | 9.2% | **-10.1%** |
+
+Positive gain means faster. The required >=5% gain occurred in **1/3, 0/3, 2/3**
+rounds for board reuse, and **3/3, 1/3, 1/3** for both options, respectively.
+Neither configuration passed the existing requirement of >=5% median gain on
+every board with at least two winning rounds per board. Adding feature reuse to
+board reuse alone improved Board 1 by 5.7% and Board 2 by 1.9%, but slowed Board 3
+by 21.3%; this incremental comparison also failed acceptance.
+
+Variability remained substantial without cross-roll batching. For example, the
+Board 3 round medians were **1,205.521 / 1,231.480 / 1,315.676 ms** for baseline
+and **1,017.617 / 1,355.500 / 1,779.453 ms** for both reuse options. Board 2's
+third-round medians were **620.997 / 790.399 / 795.262 ms** for baseline/board/both.
+These reversals prevent treating the pooled medians as a stable universal gain.
+
+| Board | Baseline allocated bytes | Board reuse allocated bytes | Both allocated bytes | Board reduction | Both reduction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 631,244,272 | 493,453,064 | 404,601,520 | 21.8% | 35.9% |
+| 2 | 164,140,560 | 134,614,408 | 111,264,192 | 18.0% | 32.2% |
+| 3 | 372,975,624 | 291,757,080 | 239,706,888 | 21.8% | 35.7% |
+
+Allocation savings were consistent. Median Gen-0 collections per search fell
+from **50 / 13 / 30** to **39 / 11 / 23** with board reuse and **32 / 9 / 19**
+with both options. All allocation and private-memory gates passed.
+
+Mixed load used two simultaneous Board 1 searches and 100 serial interactive
+predictions spaced 5 ms apart per process; all probes overlapped search. The
+percentiles below pool 300 probes per configuration.
+
+| Metric | Baseline | Board reuse | Both reuse |
+| --- | ---: | ---: | ---: |
+| Median time for both searches | 3,367.100 ms | 3,086.690 ms | 4,219.084 ms |
+| Throughput relative to baseline | 100% | 109.1% | **79.8%** |
+| Interactive p95, nearest rank | 2.5340 ms | 1.7424 ms | **6.2621 ms** |
+| Worst interactive probe | 36.0964 ms | 12.6307 ms | **118.3102 ms** |
+
+Board reuse alone passed all mixed-load gates. Both options failed throughput,
+p95 and worst-probe gates against both baseline and board reuse. The 118.3102 ms
+probe occurred in round 2; both-options search time was also slower than baseline
+in each of the three mixed-load rounds, so the throughput result is not solely
+that one probe. These measurements do not establish the cause of the variability.
+
+All **280 candidate scores matched exactly across configurations/processes**,
+with identical candidate sets, selected moves and row counts. The separate
+per-process reference check differed by at most **9.01e-9**, below 1e-5. All 45
+benchmark tests passed. Diagnostics confirmed **4,376 / 1,423 / 2,684** forwards
+and **104,291 / 28,008 / 61,717** neural rows in every configuration, with identical
+batch-size distributions. Reply clones fell from those row counts to
+**131 / 53 / 96** with either reuse configuration. Peak retained reply boards
+fell from 32 to 1; active feature/queued-row peaks stayed at most 32 and ownership
+counters drained to zero.
+
+The result supports a clear allocation benefit from both options, but **does not
+establish a repeatable net latency benefit** with cross-roll batching disabled.
+Board reuse alone is the more promising latency configuration in this run.
+Because this experiment keeps cross-roll batching off, it cannot quantify how
+much enabling it contributes to variance; that requires a same-session on/off
+comparison. Historical runs are not a controlled substitute. No production
+defaults were changed, and no additional optimization was implemented.
+
+Reproduce from the repository root with restored packages and a quiet machine:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization per-roll-reuse --threads 16 `
+    --output-dir TestResults/per-roll-reuse-repeat
+```
+
+The output directory must be new or empty. Local evidence is in repository-root
+`TestResults/per-roll-reuse-20261102/`: `protocol.json`, `thresholds.json`,
+`runs.json`, `results.json`, the build log and all 45 process logs/TRX files.
+The starting commit was `7bb04080ec9b27e40c92e4e57cffc8a28d424cb8`; the runner
+extension was the only source change before measurement. Evidence files are
+ignored by Git. `results.json` records all three pairwise acceptance decisions.
 
 ## Further optimization constraints
 
