@@ -122,6 +122,9 @@ public partial class PerformanceTests
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
             inner.ExtractFeatures(model, board, isWhite);
 
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination) =>
+            inner.ExtractFeatures(model, board, isWhite, destination);
+
         public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
             inner.PredictAsync(model, board, isWhite);
 
@@ -146,7 +149,8 @@ public partial class PerformanceTests
                 }
                 if (!_seen.TryGetValue(row, out var firstRoll))
                 {
-                    _seen.Add(row, roll);
+                    // Keep stable keys after the caller reuses its feature buffers.
+                    _seen.Add(row.ToArray(), roll);
                     misses++;
                     PayloadBytes += row.Length * sizeof(float);
                 }

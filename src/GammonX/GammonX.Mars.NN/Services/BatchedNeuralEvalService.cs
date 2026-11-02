@@ -182,6 +182,22 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+        {
+            if (destination == null)
+            {
+                return ExtractFeatures(model, board, isWhite);
+            }
+
+            using (EvaluationMetrics.Measure(EvaluationMetrics.FeatureVector))
+            {
+                _extractor.Extract(model, board, isWhite, destination);
+            }
+
+            return destination;
+        }
+
+        // <inheritdoc />
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             using (EvaluationMetrics.Measure(EvaluationMetrics.FeatureVector))

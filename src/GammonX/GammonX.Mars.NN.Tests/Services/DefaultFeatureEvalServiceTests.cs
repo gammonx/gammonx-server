@@ -749,7 +749,15 @@ namespace GammonX.Mars.NN.Tests.Services
             public int MaxBatchSize => 32;
 
             public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
-                [isWhite ? board.PipCountBlack - board.PipCountWhite : board.PipCountWhite - board.PipCountBlack];
+                ExtractFeatures(model, board, isWhite, null);
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+            {
+                destination ??= new float[1];
+                Assert.Single(destination);
+                destination[0] = isWhite ? board.PipCountBlack - board.PipCountWhite : board.PipCountWhite - board.PipCountBlack;
+                return destination;
+            }
 
             public Task<float[][]> PredictBatchAsync(float[][] features) =>
                 Task.FromResult(features.Select(row => new[]
@@ -772,7 +780,15 @@ namespace GammonX.Mars.NN.Tests.Services
             public int MaxBatchSize => 32;
 
             public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
-                [isWhite ? 0.75f : 0.25f];
+                ExtractFeatures(model, board, isWhite, null);
+
+            public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+            {
+                destination ??= new float[1];
+                Assert.Single(destination);
+                destination[0] = isWhite ? 0.75f : 0.25f;
+                return destination;
+            }
 
             public Task<float[][]> PredictBatchAsync(float[][] features) =>
                 Task.FromResult(features.Select(row => new[] { row[0], 0f, 0f, 0f, 0f }).ToArray());

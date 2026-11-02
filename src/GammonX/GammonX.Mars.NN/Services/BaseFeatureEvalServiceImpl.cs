@@ -37,7 +37,16 @@ namespace GammonX.Mars.NN.Services
         /// </remarks>
         internal bool ReuseReplyBoard { get; set; } = true;
 
+        /// <summary>
+        /// If set to true, the feature vector buffers belong to one root search and are reused only after successful inference completion.
+        /// </summary>
+        /// <remarks>
+        /// Although the latency gains were not fully verified, we do want to activate the option for now.
+        /// </remarks>
+        internal bool ReuseFeatureBuffers { get; set; } = true;
+
         protected abstract IBoardService BoardService { get; }
+        
 
         protected BaseFeatureEvalServiceImpl(INeuralEvalService? neuralEvalService)
         {
@@ -361,17 +370,30 @@ namespace GammonX.Mars.NN.Services
 
             if (ReuseReplyBoard)
             {
+                var buffers = ReuseFeatureBuffers ? new float[Math.Min(_neuralEvalService.MaxBatchSize, 32)][] : null;
+                var nextBuffer = 0;
                 // we reuse the same board instance for each inference reply, applying and undoing the moves before inference.
                 return evaluator.EvaluatePreparedAsync(board, isWhite,
-                    (position, perspective) => PreparePosition(position, perspective, _neuralEvalService),
-                    positions => ScorePreparedPositionsAsync(positions, board.Modus, _neuralEvalService));
+                    (position, perspective) =>
+                    {
+                        var prepared = PreparePosition(position, perspective, _neuralEvalService,
+                            buffers, nextBuffer);
+                        nextBuffer++;
+                        return prepared;
+                    }, async positions =>
+                    {
+                        var scores = await ScorePreparedPositionsAsync(positions, board.Modus, _neuralEvalService);
+                        nextBuffer = 0;
+                        return scores;
+                    });
             }
 
             // we create board deep clones for each board inference
             return evaluator.EvaluateAsync(board, isWhite);
         }
 
-        private PreparedPosition PreparePosition(IBoardModel board, bool isWhite, INeuralEvalService neural)
+        private PreparedPosition PreparePosition(IBoardModel board, bool isWhite, INeuralEvalService neural,
+            float[][]? buffers, int bufferIndex)
         {
             if (TryGetTerminalScore(board, isWhite, out var score))
             {
@@ -380,7 +402,9 @@ namespace GammonX.Mars.NN.Services
 
             var eval = CalculateEvalModelWithDiagnostics(board, isWhite);
             var normalizedEval = NormalizedEvalResultModel.From(eval);
-            var featureVectors = neural.ExtractFeatures(normalizedEval, board, isWhite);
+            var featureVectors = buffers == null
+                ? neural.ExtractFeatures(normalizedEval, board, isWhite)
+                : buffers[bufferIndex] = neural.ExtractFeatures(normalizedEval, board, isWhite, buffers[bufferIndex]);
 
             return new PreparedPosition(featureVectors);
         }

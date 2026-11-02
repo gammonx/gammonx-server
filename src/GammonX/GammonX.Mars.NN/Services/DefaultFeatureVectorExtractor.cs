@@ -20,6 +20,19 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
+            var features = new float[FeatureCount];
+            Extract(model, board, isWhite, features);
+            return features;
+        }
+
+        // <inheritdoc />
+        public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
+        {
+            if (features.Length != FeatureCount)
+            {
+                throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
+            }
+
             var turnNumber = 0;
             foreach (var historyEvent in board.History.Events)
             {
@@ -28,7 +41,7 @@ namespace GammonX.Mars.NN.Services
                     turnNumber++;
                 }
             }
-            var features = new float[FeatureCount];
+            
             var featureIndex = 0;
 
             // we always extract the feature vectors from active players perspective
@@ -75,7 +88,7 @@ namespace GammonX.Mars.NN.Services
                 features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
             }
 
-            return features;
+
         }
     }
 }

@@ -160,7 +160,8 @@ public partial class PerformanceTests
             output.WriteLine("WINDOW_JSON," + JsonConvert.SerializeObject(new
             {
                 Board = boardNumber, Window = window, Mode = mode, CrossRollBatching = service.BatchAcrossRolls,
-                ReuseReplyBoard = service.ReuseReplyBoard, Threads = get_num_threads(),
+                service.ReuseReplyBoard,
+                service.ReuseFeatureBuffers, Threads = get_num_threads(),
                 InteropThreads = get_num_interop_threads(), Rows = expectedRows, Candidates = reference.Count,
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,

@@ -318,7 +318,16 @@ public sealed class SelfPlayRunnerTests
 
         public int MaxBatchSize => 32;
 
-        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => [_pWin];
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+            ExtractFeatures(model, board, isWhite, null);
+
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+        {
+            destination ??= new float[1];
+            Assert.Single(destination);
+            destination[0] = _pWin;
+            return destination;
+        }
 
         public Task<float[][]> PredictBatchAsync(float[][] features)
         {

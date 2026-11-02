@@ -254,15 +254,21 @@ public class CandidateWindowTests
                 _gates[key].TrySetException(new InvalidDataException("Controlled inference failure."));
         }
 
-        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
+            ExtractFeatures(model, board, isWhite, null);
+
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
         {
+            destination ??= new float[1];
+            Assert.Single(destination);
             Assert.False(isWhite);
             Assert.Equal(2, board.History.Events.Count);
             Assert.Equal(2, ((IDoublingCubeModel)board).DoublingCubeValue);
             var key = Enumerable.Range(1, 4).FirstOrDefault(index => board.Fields[index] == -1, 5);
             if (Boards.TryAdd(key, board))
                 Started.Writer.TryWrite(key);
-            return [key];
+            destination[0] = key;
+            return destination;
         }
 
         public async Task<float[][]> PredictBatchAsync(float[][] features)
@@ -298,16 +304,24 @@ public class CandidateWindowTests
 
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => _extractor.Extract(model, board, isWhite);
 
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+        {
+            destination ??= new float[_extractor.FeatureCount];
+            _extractor.Extract(model, board, isWhite, destination);
+            return destination;
+        }
+
         public async Task<float[][]> PredictBatchAsync(float[][] features)
         {
             await Task.Yield();
             return features.Select(row =>
             {
-                Rows.Add(row);
+                Rows.Add(row.ToArray());
                 return new[] { (float)(0.5 + Math.Tanh(row.Sum(value => (double)value) / 100) / 4), 0f, 0f, 0f, 0f };
             }).ToArray();
         }
 
         public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => throw new InvalidOperationException("Two-ply must use batches.");
+        
     }
 }

@@ -5,7 +5,7 @@ move-sequence evaluation investigation begun on **2026-10-26**. The numbers belo
 historical measurements on one workstation, not performance guarantees or CI
 thresholds. See the current implementation notes before reproducing an older batch.
 
-## Current batch-only implementation (2026-11-01)
+## Current batch-only implementation (2026-11-02)
 
 - [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs) now owns
   `MaxBatchSize`, `ExtractFeatures` and `PredictBatchAsync`. The optional batch
@@ -44,8 +44,12 @@ thresholds. See the current implementation notes before reproducing an older bat
   feature service; the measured fairness regression remains documented below.
 - Follow-up step 4 prepares feature rows using one apply/undo working board.
   It reduced managed allocation by 18-22% but failed latency and mixed-load
-  gates. **`ReuseReplyBoard` remains false by default**; the implementation is
-  retained for controlled comparisons. Cross-roll batching remains enabled.
+  gates. **The owner explicitly enabled `ReuseReplyBoard` before step 5.**
+  It and cross-roll batching are currently enabled despite the benchmark
+  recommendations recorded below.
+- Follow-up step 5 adds feature buffers owned by each root search. A shortened
+  comparison reduced allocation by 17.5-18.1% but showed mixed latency results.
+  **`ReuseFeatureBuffers` remains false by default** pending stronger evidence.
 - `UseExplicitBatching` and `GAMMONX_PERF_EXPLICIT_BATCH` are removed. Setting the
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
@@ -1695,16 +1699,17 @@ in `results.json` for the enablement decision.
 Local evidence is under repository-root
 `TestResults/latency-step3-20261101/`: `validation-final.trx` and
 `comparison/{thresholds,runs,results}.json`, plus each process's log and TRX.
-These files are ignored by Git. Step 4 is recorded below; step 5 is not implemented.
+These files are ignored by Git. Steps 4 and 5 are recorded below.
 
 ## Follow-up step 4: prepare replies with one working board (2026-11-01)
 
 Implemented [prepared reply evaluation](../../GammonX.Mars.NN/Services/TwoPlySearchEvaluator.Prepared.cs)
 and its terminal/neural scoring adapter in
 [BaseFeatureEvalServiceImpl](../../GammonX.Mars.NN/Services/BaseFeatureEvalServiceImpl.cs).
-The internal `ReuseReplyBoard` selector remains **false by default** because the
-comparison failed its latency gates. The owner's step-3 choice is preserved:
-`BatchAcrossRolls` remains true, independently of this selector.
+At the step-4 checkpoint, `ReuseReplyBoard` was left **false by default** because
+the comparison failed its latency gates. The owner subsequently enabled it
+explicitly before step 5. Both `ReuseReplyBoard` and `BatchAcrossRolls` now
+default to true; the measurements and recommendation below are unchanged.
 
 The prepared path lazily deep-clones one working board per root candidate.
 For each legal reply it applies the moves, synchronously extracts an independent
@@ -1794,8 +1799,99 @@ Local evidence is in repository-root `TestResults/latency-step4-20261101/`:
 `validation-final.trx` records the prepared-path profiles;
 `validation-defaults.trx` checks the final defaults and both scoring paths;
 `comparison/{thresholds,runs,results}.json` and per-process logs/TRX contain the
-comparison evidence. These files are ignored by Git. Step 5 remains pending
-manual approval.
+comparison evidence. These files are ignored by Git. Step 5 follows below.
+
+## Follow-up step 5: reuse feature rows within a root search (2026-11-01 to 2026-11-02)
+
+Added caller-owned destination overloads to
+[IFeatureVectorExtractor](../../GammonX.Mars.NN/Services/IFeatureVectorExtractor.cs)
+and [INeuralEvalService](../../GammonX.Mars.NN/Services/INeuralEvalService.cs).
+The built-in extractors write every element of an exactly sized destination;
+the original allocating overloads remain supported. Fevga and Plakoto now write
+directly into the destination instead of building a temporary list; their board
+clone/inversion behavior and feature ordering are preserved. Compatibility
+fallbacks support existing implementations, including validation of extractor
+output width before copying.
+
+When `ReuseFeatureBuffers` and `ReuseReplyBoard` are enabled, each root search
+owns at most `min(MaxBatchSize, 32)` independently allocated feature arrays.
+Arrays are filled again only after the preceding group completes successfully.
+Terminal rows consume group slots without requiring feature storage. A failed
+or cancelled root abandons its arrays; no arrays return to a shared pool or
+escape into another root's reusable storage. Inference input arrays remain
+unchanged until completion. The prepared-row diagnostic counts active groups;
+reserved buffer slots between groups are not an additional metric.
+
+**`ReuseFeatureBuffers` defaults to false.** Cross-roll batching and working-board
+reuse remain enabled by the owner's explicit choice. Feature-buffer reuse is
+currently implemented only for the prepared working-board path; disabling
+`ReuseReplyBoard` selects the existing allocating clone-per-reply path.
+
+To respect the requested remaining usage budget, validation used a **10-process
+screening comparison**, not the full repeatability experiment: one paired timing
+round per board (three samples per process), one diagnostic pair on Board 1 and
+one mixed-load pair. Both configurations enabled cross-roll batching and board
+reuse, with CPU, 16 OMP/MKL/inter-op threads, a 32-row worker and sequential
+candidates. Worker-thread checks, model/binary fingerprints and candidate-score
+validation remained enabled. Timed samples had no metrics listeners.
+
+| Board | Fresh-row median allocation | Reused-row median allocation | Reduction | Fresh -> reused median latency |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 490,556,456 bytes | 401,705,224 bytes | 18.1% | 1,908.717 -> 1,469.083 ms |
+| 2 | 133,212,080 bytes | 109,860,816 bytes | 17.5% | 474.798 -> 527.461 ms |
+| 3 | 289,854,632 bytes | 237,804,752 bytes | 18.0% | 953.188 -> 1,093.929 ms |
+
+Board 1 was faster, while Boards 2 and 3 were slower. These single paired
+observations **do not establish a repeatable latency improvement**. The A/B
+comparison isolates row-array reuse in the same binary; it does not measure the
+extractor refactor against the previous binary.
+
+Mixed load used two simultaneous Board 1 searches and 100 overlapping serial
+interactive predictions per configuration, spaced 5 ms apart:
+
+| Metric | Fresh rows | Reused rows |
+| --- | ---: | ---: |
+| Time for both searches | 2,446.858 ms | 2,338.356 ms |
+| Interactive p95, nearest rank | 1.1810 ms | 1.1898 ms |
+| Worst interactive probe | 2.2417 ms | 2.8309 ms |
+
+This is one mixed-load pair, not a fairness acceptance result. `--quick` always
+reports acceptance as false because repeatability was not evaluated. The full
+thresholds remain unchanged for a future complete comparison.
+
+All **280 configured candidate scores matched exactly** across the fresh/reused
+processes, with identical candidate sets, selected moves and neural-row counts.
+The separate per-roll reference differed by at most 4.90e-8, below 1e-5.
+Board 1 diagnostics retained 104,291 neural rows, 3,305 forwards and 131 reply
+clones, with one retained working board and at most 32 active/queued feature
+rows. Ownership counters drained to zero in both modes.
+
+Final Release validation passed **156 tests**, including poisoned destinations,
+wrong-width rejection, legacy fallback validation, all variants/perspectives,
+real hosted and non-hosted models, overlapping searches on the same service,
+buffer lifetime across awaits, failure/cancellation isolation, terminal/pass
+mapping and existing search/restoration checks. The 10 benchmark processes also
+passed correctness checks. Long-running self-play and the full 30-process
+repeatability comparison were not rerun. The final fallback validation fix and
+test additions do not change the built-in hosted path measured by the benchmark.
+
+Reproduce the screening run from the repository root:
+
+```powershell
+python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+    --optimization feature-buffers --quick --threads 16 `
+    --output-dir "$env:TEMP\gammonx-feature-buffers-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+```
+
+Omit `--quick` for the full 30-process comparison. This mode fixes both earlier
+optimizations to true and varies the test-only
+`GAMMONX_PERF_REUSE_FEATURE_BUFFERS=0|1` selector. The other optimization modes
+fix feature-buffer reuse to false so comparisons remain isolated.
+
+Local evidence remains in repository-root `TestResults/latency-step5-20261101/`:
+`validation-complete.trx` and `comparison/{thresholds,runs,results}.json`, together
+with each process's logs/TRX. The directory retains its original start date;
+these files are ignored by Git.
 
 ## Further optimization constraints
 

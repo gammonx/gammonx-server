@@ -24,6 +24,13 @@ public partial class PerformanceTests
             configured.ReuseReplyBoard = reuse == "1";
         }
         output.WriteLine($"ReuseReplyBoard={configured.ReuseReplyBoard}");
+        var buffers = Environment.GetEnvironmentVariable("GAMMONX_PERF_REUSE_FEATURE_BUFFERS");
+        if (buffers != null)
+        {
+            Assert.Contains(buffers, new[] { "0", "1" });
+            configured.ReuseFeatureBuffers = buffers == "1";
+        }
+        output.WriteLine($"ReuseFeatureBuffers={configured.ReuseFeatureBuffers}");
     }
 
     private sealed class WorkerThreadVerifier : IDisposable

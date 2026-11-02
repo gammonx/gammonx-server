@@ -92,7 +92,9 @@ def run_experiment(args):
     fingerprints = windows.fingerprints(target.parent)
     commit = windows.execute(["git", "rev-parse", "HEAD"], repo)
     runs = []
-    field = "ReuseReplyBoard" if args.optimization == "reply-board" else "CrossRollBatching"
+    field = {"reply-board": "ReuseReplyBoard", "feature-buffers": "ReuseFeatureBuffers",
+             "roll-batching": "CrossRollBatching"}[args.optimization]
+    rounds = 1 if args.quick else THRESHOLDS["Rounds"]
 
     def run(round_number, board, cross_roll, mode):
         name = f"{mode}-r{round_number}-b{board}-{field}{int(cross_roll)}"
@@ -101,15 +103,19 @@ def run_experiment(args):
         env.update(OMP_NUM_THREADS=str(args.threads), MKL_NUM_THREADS=str(args.threads),
                    GAMMONX_PERF_THREADS=str(args.threads), GAMMONX_PERF_WINDOW="1",
                    GAMMONX_PERF_BOARD=str(board), GAMMONX_PERF_WINDOW_MODE=mode,
-                   GAMMONX_PERF_CROSS_ROLL_BATCHING="1" if field == "ReuseReplyBoard" else str(int(cross_roll)),
-                   GAMMONX_PERF_REUSE_REPLY_BOARD=str(int(cross_roll)) if field == "ReuseReplyBoard" else "0")
+                   GAMMONX_PERF_CROSS_ROLL_BATCHING=str(int(cross_roll)) if field == "CrossRollBatching" else "1",
+                   GAMMONX_PERF_REUSE_REPLY_BOARD="1" if field == "ReuseFeatureBuffers" else str(int(cross_roll)) if field == "ReuseReplyBoard" else "0",
+                   GAMMONX_PERF_REUSE_FEATURE_BUFFERS=str(int(cross_roll)) if field == "ReuseFeatureBuffers" else "0")
         if windows.fingerprints(target.parent) != fingerprints:
             raise windows.BenchmarkError("Artifacts changed before " + name)
         windows.execute(["dotnet", "test", project, "-c", "Release", "--no-build", "--no-restore",
                          "--filter", windows.TEST_FILTER, "--logger", f"trx;LogFileName={name}.trx",
                          "--results-directory", str(output)], repo, log=output / f"{name}.log", env=env)
         result = windows.read_result(output / f"{name}.trx", args.threads, board, 1, mode)
-        if result[field] != cross_roll or (field == "ReuseReplyBoard" and not result["CrossRollBatching"]) or (field == "CrossRollBatching" and result["ReuseReplyBoard"]):
+        expected = {"CrossRollBatching": env["GAMMONX_PERF_CROSS_ROLL_BATCHING"] == "1",
+                    "ReuseReplyBoard": env["GAMMONX_PERF_REUSE_REPLY_BOARD"] == "1",
+                    "ReuseFeatureBuffers": env["GAMMONX_PERF_REUSE_FEATURE_BUFFERS"] == "1"}
+        if any(result[key] != value for key, value in expected.items()):
             raise windows.BenchmarkError("Wrong batching configuration: " + name)
         if mode == "Mixed" and len(result["Probes"]) != 100:
             raise windows.BenchmarkError("Expected 100 overlapping probes: " + name)
@@ -121,21 +127,21 @@ def run_experiment(args):
         runs.append(result)
         windows.save_json(output / "runs.json", runs)
 
-    for round_number in range(1, THRESHOLDS["Rounds"] + 1):
+    for round_number in range(1, rounds + 1):
         for board in (1, 2, 3):
             for cross_roll in ((False, True) if round_number % 2 else (True, False)):
                 run(round_number, board, cross_roll, "Timing")
-    for board in (1, 2, 3):
+    for board in ((1,) if args.quick else (1, 2, 3)):
         for cross_roll in (False, True):
             run(1, board, cross_roll, "Diagnostic")
-    for round_number in range(1, THRESHOLDS["Rounds"] + 1):
+    for round_number in range(1, rounds + 1):
         for cross_roll in ((False, True) if round_number % 2 else (True, False)):
             run(round_number, 1, cross_roll, "Mixed")
 
     score_checks = windows.check_scores(runs)
-    comparison = compare(runs, field)
+    comparison = {"Accepted": False, "Reasons": ["Quick comparison cannot establish repeatability; full acceptance not evaluated."]} if args.quick else compare(runs, field)
     windows.save_json(output / "results.json", {
-        "StartedFromCommit": commit, "Optimization": args.optimization, "RecordedAt": datetime.now().astimezone().isoformat(),
+        "StartedFromCommit": commit, "Optimization": args.optimization, "Quick": args.quick, "RecordedAt": datetime.now().astimezone().isoformat(),
         "Fingerprints": fingerprints, "Thresholds": THRESHOLDS, "Comparison": comparison,
         "ScoreChecks": score_checks, "Runs": runs,
     })
@@ -146,7 +152,8 @@ def run_experiment(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--threads", type=windows.positive_int, default=16)
-    parser.add_argument("--optimization", choices=("roll-batching", "reply-board"), default="roll-batching")
+    parser.add_argument("--optimization", choices=("roll-batching", "reply-board", "feature-buffers"), default="roll-batching")
+    parser.add_argument("--quick", action="store_true", help="10-process screening run; never establishes acceptance.")
     parser.add_argument("--output-dir", type=Path, default=Path(__file__).resolve().parent / "TestResults"
                         / datetime.now().strftime("roll-batching-%Y%m%d-%H%M%S-%f"))
     args = parser.parse_args()

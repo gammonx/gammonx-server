@@ -434,6 +434,9 @@ public partial class PerformanceTests(ITestOutputHelper output)
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
             _batch.ExtractFeatures(model, board, isWhite);
 
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination) =>
+            _batch.ExtractFeatures(model, board, isWhite, destination);
+
         public Task<float[][]> PredictBatchAsync(float[][] features)
         {
             Interlocked.Add(ref _predictionCount, features.Length);

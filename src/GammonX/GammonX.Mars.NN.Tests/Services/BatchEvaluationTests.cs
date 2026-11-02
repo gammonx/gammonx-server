@@ -39,6 +39,9 @@ public class BatchEvaluationTests
                 boardService.AddRollEventToHistory(board, true, [2, 3]);
             var model = eval.EvalPositionForTraining(board.ToContract(false), true);
             rows.Add(neural.ExtractFeatures(model, board, true));
+            var destination = Enumerable.Repeat(float.NaN, rows[^1].Length).ToArray();
+            Assert.Same(destination, neural.ExtractFeatures(model, board, true, destination));
+            Assert.Equal(rows[^1], destination);
             expected.Add(await neural.PredictAsync(model, board, true));
         }
 
@@ -98,6 +101,7 @@ public class BatchEvaluationTests
                 FeatureEvalServiceFactory.Create(modus, neural));
             service.BatchAcrossRolls = true;
             service.ReuseReplyBoard = true;
+            service.ReuseFeatureBuffers = true;
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var request = new EvalBoardRequestContract
@@ -291,12 +295,19 @@ public class BatchEvaluationTests
         neural.SetupGet(service => service.MaxBatchSize).Returns(4);
         neural.Setup(service => service.ExtractFeatures(
                 It.IsAny<NormalizedEvalResultModel>(), It.IsAny<IBoardModel>(), It.IsAny<bool>()))
-            .Returns((NormalizedEvalResultModel _, IBoardModel board, bool isWhite) =>
-            {
-                Assert.False(isWhite);
-                Assert.Equal(14, board.BearOffCountBlack);
-                return new float[] { 0 };
-            });
+            .Returns((NormalizedEvalResultModel _, IBoardModel board, bool isWhite) => Extract(board, isWhite, null));
+        neural.Setup(service => service.ExtractFeatures(
+                It.IsAny<NormalizedEvalResultModel>(), It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<float[]?>()))
+            .Returns((NormalizedEvalResultModel _, IBoardModel board, bool isWhite, float[]? destination) => Extract(board, isWhite, destination));
+        static float[] Extract(IBoardModel board, bool isWhite, float[]? destination)
+        {
+            Assert.False(isWhite);
+            Assert.Equal(14, board.BearOffCountBlack);
+            destination ??= new float[1];
+            Assert.Single(destination);
+            destination[0] = 0;
+            return destination;
+        }
         neural.Setup(service => service.PredictBatchAsync(It.IsAny<float[][]>()))
             .Returns(async (float[][] rows) =>
             {
@@ -434,6 +445,13 @@ public class BatchEvaluationTests
         public int MaxBatchSize => maxBatchSize;
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
             _extractor.Extract(model, board, isWhite);
+
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+        {
+            destination ??= new float[_extractor.FeatureCount];
+            _extractor.Extract(model, board, isWhite, destination);
+            return destination;
+        }
 
         public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {

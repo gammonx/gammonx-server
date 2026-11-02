@@ -25,6 +25,15 @@ namespace GammonX.Mars.NN.Services
         /// <param name="isWhite">Player indicator.</param>
         /// <returns>A normalized feature vector as a float array.</returns>
         float[] Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
+
+        /// <summary>
+        /// Writes every feature into caller-owned storage of exactly FeatureCount elements.
+        /// </summary>
+        /// <param name="model">Computed model values from the perspective of the active player.</param>
+        /// <param name="board">Target board state from the perspective of the white player (not inverted).</param>
+        /// <param name="isWhite">Player indicator.</param>
+        /// <param name="destination">Caller-owned storage for the features. Must have exactly FeatureCount elements.</param>
+        void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> destination);
     }
 
     public static class FeatureVectorExtractorFactory

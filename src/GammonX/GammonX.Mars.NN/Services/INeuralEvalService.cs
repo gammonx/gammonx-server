@@ -24,6 +24,16 @@ namespace GammonX.Mars.NN.Services
         float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
 
         /// <summary>
+        /// Extracts the feature vector for the given model and board state and allocates them into <paramref name="destination"/>.
+        /// </summary>
+        /// <param name="model">The normalized evaluation result model to extract the features from.</param>
+        /// <param name="board">The board state to extract the features from.</param>
+        /// <param name="isWhite">Indicates whether the player is white.</param>
+        /// <param name="destination">The array to allocate the features into. If null, a new array is allocated.</param>
+        /// <returns>An independent feature array, including history-derived inputs.</returns>
+        float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination);
+
+        /// <summary>
         /// Predicts the output for a batch of feature vectors.
         /// </summary>
         /// <remarks>

@@ -23,6 +23,9 @@ namespace GammonX.Mars.NN.Services
         private readonly IFeatureVectorExtractor _extractor;
         private readonly Device _device;
 
+        // <inheritdoc />
+        public int MaxBatchSize => 32;
+
         private NeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, Device device)
         {
             _netModel = netModel;
@@ -89,14 +92,28 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public int MaxBatchSize => 32;
+        public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination)
+        {
+            if (destination == null)
+            {
+                // we fall back to the version without a pre-allocated destination array
+                return ExtractFeatures(model, board, isWhite);
+            }
+
+            _extractor.Extract(model, board, isWhite, destination);
+            return destination;
+        }
 
         // <inheritdoc />
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
         {
             var features = _extractor.Extract(model, board, isWhite);
+
             if (features.Length != _extractor.FeatureCount)
+            {
                 throw new InvalidDataException($"The feature extractor must return {_extractor.FeatureCount} values.");
+            }
+
             return features;
         }
 
