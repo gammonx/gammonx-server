@@ -55,9 +55,13 @@ const int maxInferenceBatchSize = 32;
 // NEURAL EVAL SERVICE SETUP
 // TorchSharp configuration
 // - maxBatchSize: the maximum number of positions to process in a single batch
-// - OMP_NUM_THREADS: the number of threads to use for parallel processing
-// - MKL_NUM_THREADS: the number of threads to use for MKL parallel processing
+// - OMP_NUM_THREADS: intra-op threads (defaults to 1)
+// - MKL_NUM_THREADS: overrides OMP_NUM_THREADS when set
+// - TORCH_INTEROP_THREADS: inter-op threads (defaults to 1)
+// Thread settings are read once before loading any models; changes require a restart.
 // -------------------------------------------------------------------------------
+var inferenceThreads = TorchSharpRuntime.Initialize();
+
 var plakotoInference = BatchedNeuralEvalService.LoadEmbedded(typeof(Program).Assembly, GameModus.Plakoto, maxInferenceBatchSize);
 if (plakotoInference != null)
 {
@@ -116,6 +120,11 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 var app = builder.Build();
+
+app.Logger.LogInformation(
+    "Mars inference configured with {IntraOpThreads} intra-op thread(s) and {InterOpThreads} inter-op thread(s).",
+    inferenceThreads.IntraOp, inferenceThreads.InterOp);
+
 // -------------------------------------------------------------------------------
 // ROUTING SETUP
 // -------------------------------------------------------------------------------

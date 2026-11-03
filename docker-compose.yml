@@ -74,6 +74,8 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
       - SERVICE__BASEPATH=/bot/mars
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
       # We match the Dockerfile EXPOSE/HEALTHCHECK and the ECS containerPort
       - ASPNETCORE_HTTP_PORTS=8083
     networks:

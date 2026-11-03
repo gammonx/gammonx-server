@@ -1,5 +1,10 @@
 # Changelog
 
+## 03.11.2026
+### Fixes
+- Mars Container
+	- set TorchSharp `OMP_NUM_THREADS` and `MKL_NUM_THREADS` env variables to 1
+
 ## 29.10.2026
 ### Fixes
 - made JoinRequest validation for bot queue more robust
