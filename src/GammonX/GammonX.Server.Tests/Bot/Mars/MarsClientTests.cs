@@ -65,6 +65,38 @@ namespace GammonX.Server.Tests.Bot.Mars
             Assert.Equal(0, handler.RequestCount);
         }
 
+        [Fact]
+        public async Task DoesNotRetryTimeoutByDefault()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromException<HttpResponseMessage>(new TaskCanceledException("Mars timed out")),
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, MarsStubs.MoveResponse)));
+            using var client = MarsStubs.CreateClient(handler);
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                client.GetMoveEvalAsync(MarsStubs.CreateMoveRequest(), CancellationToken.None));
+
+            Assert.Equal(1, handler.RequestCount);
+        }
+
+        [Theory]
+        [InlineData(408)]
+        [InlineData(429)]
+        [InlineData(503)]
+        public async Task DoesNotRetryTransientStatusCodesByDefault(int statusCode)
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse((HttpStatusCode)statusCode, "temporary")),
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, MarsStubs.MoveResponse)));
+            using var client = MarsStubs.CreateClient(handler);
+
+            var exception = await Assert.ThrowsAsync<BadHttpRequestException>(() =>
+                client.GetMoveEvalAsync(MarsStubs.CreateMoveRequest(), CancellationToken.None));
+
+            Assert.Contains("temporary", exception.Message);
+            Assert.Equal(1, handler.RequestCount);
+        }
+
         [Theory]
         [InlineData(408)]
         [InlineData(429)]

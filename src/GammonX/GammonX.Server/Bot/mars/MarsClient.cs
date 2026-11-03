@@ -13,7 +13,7 @@ namespace GammonX.Server.Bot
     public class MarsClient : ResilientHttpClient
     {
         public MarsClient(int? maxAttempts, int? retryBaseDelayMs, HttpMessageHandler? handler = null)
-            : base(maxAttempts, retryBaseDelayMs, handler)
+            : base(maxAttempts ?? 1, retryBaseDelayMs, handler)
         {
             // pass
         }
