@@ -23,7 +23,7 @@ public partial class TwoPlySearchEvaluatorTests
                 var scores = boards.Select(board => (double)board.Fields[0]).ToArray();
                 referenceRows.AddRange(scores);
                 return Task.FromResult(scores);
-            }, CloneBoard, cap, crossRoll).EvaluateAsync(harness.Board.Object, true);
+            }, CloneBoard, cap, crossRoll).EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
         var clones = new List<IBoardModel>();
         var rows = new List<double>();
         var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
@@ -43,7 +43,7 @@ public partial class TwoPlySearchEvaluatorTests
                 var values = positions.Select(row => (double)row.Features![0]).ToArray();
                 rows.AddRange(values);
                 return values;
-            });
+            }, TestContext.Current.CancellationToken);
 
         Assert.Equal(referenceRows, rows);
         Assert.Equal(BitConverter.DoubleToInt64Bits(reference), BitConverter.DoubleToInt64Bits(score));
@@ -69,7 +69,7 @@ public partial class TwoPlySearchEvaluatorTests
                 var values = rows.Select(row => (double)row.Features![0]).ToArray();
                 Assert.Equal(Enumerable.Range(0, rows.Count).Select(index => (double)(index % 2 + 1)), values);
                 return values;
-            });
+            }, TestContext.Current.CancellationToken);
         try
         {
             Assert.False(evaluation.IsCompleted);
@@ -116,7 +116,7 @@ public partial class TwoPlySearchEvaluatorTests
                 if (failure == "scorer") throw new InvalidDataException("scorer");
                 if (failure == "cancel") throw new OperationCanceledException(new CancellationToken(true));
                 return [];
-            }));
+            }, TestContext.Current.CancellationToken));
         Assert.NotNull(error);
         if (failure == "cancel") Assert.IsAssignableFrom<OperationCanceledException>(error);
         else Assert.IsType<InvalidDataException>(error);

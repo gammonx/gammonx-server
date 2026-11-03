@@ -42,10 +42,10 @@ public class BatchEvaluationTests
             var destination = Enumerable.Repeat(float.NaN, rows[^1].Length).ToArray();
             Assert.Same(destination, neural.ExtractFeatures(model, board, true, destination));
             Assert.Equal(rows[^1], destination);
-            expected.Add(await neural.PredictAsync(model, board, true));
+            expected.Add(await neural.PredictAsync(model, board, true, TestContext.Current.CancellationToken));
         }
 
-        var predictions = await neural.PredictBatchAsync(rows.ToArray());
+        var predictions = await neural.PredictBatchAsync(rows.ToArray(), TestContext.Current.CancellationToken);
 
         Assert.Equal(expected.Count, predictions.Length);
         for (var row = 0; row < predictions.Length; row++)
@@ -54,9 +54,9 @@ public class BatchEvaluationTests
             for (var head = 0; head < 5; head++)
                 Assert.InRange(Math.Abs(predictions[row][head] - expected[row][head]), 0f, 1e-5f);
         }
-        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync([]));
-        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync(new float[neural.MaxBatchSize + 1][]));
-        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync([[]]));
+        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync([], TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync(new float[neural.MaxBatchSize + 1][], TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => neural.PredictBatchAsync([[]], TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class BatchEvaluationTests
             IsWhite = false,
             Modus = GameModus.Backgammon,
             BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
         Assert.Equal(32, neural.LargestBatch);
     }
 
@@ -115,12 +115,12 @@ public class BatchEvaluationTests
                 async (positions, isWhite) =>
                 {
                     var predictions = await neural.PredictAsync(
-                        service.EvalPositionForTraining(positions[0].ToContract(false), isWhite), positions[0], isWhite);
+                        service.EvalPositionForTraining(positions[0].ToContract(false), isWhite), positions[0], isWhite, TestContext.Current.CancellationToken);
                     return new[] { modus is GameModus.Fevga or GameModus.Plakoto
                         ? predictions[0]
                         : new GameEquityModel(new GameOutcomeModel(predictions)).Equity };
-                }, maxBatchSize: 1).EvaluateAsync(board, true);
-            var batched = await service.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights);
+                }, maxBatchSize: 1).EvaluateAsync(board, true, TestContext.Current.CancellationToken);
+            var batched = await service.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
             Assert.True(double.IsFinite(reference));
             Assert.InRange(Math.Abs(reference - batched), 0d, 1e-5);
         }
@@ -170,7 +170,7 @@ public class BatchEvaluationTests
         }
         var legacy = await new TwoPlySearchEvaluator(boardService,
             (positions, isWhite) => Task.WhenAll(positions.Select(position => Single(position, isWhite))),
-            maxBatchSize: 1, batchAcrossRolls: false).EvaluateAsync(board, rootIsWhite);
+            maxBatchSize: 1, batchAcrossRolls: false).EvaluateAsync(board, rootIsWhite, TestContext.Current.CancellationToken);
         var batchFeatures = new List<float[]>();
         async Task<double[]> Batch(IReadOnlyList<IBoardModel> positions, bool isWhite)
         {
@@ -183,7 +183,7 @@ public class BatchEvaluationTests
                 return features.Sum(value => (double)value);
             }).ToArray();
         }
-        var batched = await new TwoPlySearchEvaluator(boardService, Batch, maxBatchSize: 4, batchAcrossRolls: true).EvaluateAsync(board, rootIsWhite);
+        var batched = await new TwoPlySearchEvaluator(boardService, Batch, maxBatchSize: 4, batchAcrossRolls: true).EvaluateAsync(board, rootIsWhite, TestContext.Current.CancellationToken);
         Assert.Equal(legacy, batched, 10);
         Assert.Equal(legacyFeatures.Count, batchFeatures.Count);
         for (var row = 0; row < legacyFeatures.Count; row++)
@@ -208,13 +208,13 @@ public class BatchEvaluationTests
                 Assert.True(working.Equals(board));
                 Assert.Equal(JsonConvert.SerializeObject(board.History), JsonConvert.SerializeObject(working.History));
                 return positions.Select(position => position.Features!.Sum(value => (double)value)).ToArray();
-            });
+            }, TestContext.Current.CancellationToken);
         Assert.Equal(BitConverter.DoubleToInt64Bits(legacy), BitConverter.DoubleToInt64Bits(preparedScore));
         Assert.Equal(legacyFeatures.Count, preparedFeatures.Count);
         for (var row = 0; row < legacyFeatures.Count; row++)
             Assert.Equal(legacyFeatures[row], preparedFeatures[row]);
 
-        var score = await eval.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights);
+        var score = await eval.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
         Assert.True(double.IsFinite(score));
         Assert.True(neural.Predictions > 0);
         Assert.True(neural.Batches > 0);
@@ -243,7 +243,7 @@ public class BatchEvaluationTests
             IsWhite = true,
             Modus = GameModus.Backgammon,
             BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
         Assert.Equal(-1d, score, 10);
         Assert.Equal(0, neural.Predictions);
     }
@@ -273,7 +273,7 @@ public class BatchEvaluationTests
             IsWhite = false,
             Modus = GameModus.Backgammon,
             BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
 
         Assert.True(double.IsFinite(score));
         Assert.Equal(21, neural.Predictions);
@@ -308,8 +308,8 @@ public class BatchEvaluationTests
             destination[0] = 0;
             return destination;
         }
-        neural.Setup(service => service.PredictBatchAsync(It.IsAny<float[][]>()))
-            .Returns(async (float[][] rows) =>
+        neural.Setup(service => service.PredictBatchAsync(It.IsAny<float[][]>(), It.IsAny<CancellationToken>()))
+            .Returns(async (float[][] rows, CancellationToken _) =>
             {
                 sizes.Add(rows.Length);
                 await Task.Yield();
@@ -327,7 +327,7 @@ public class BatchEvaluationTests
                 Fields = fields, BearOffCountWhite = 14, BearOffCountBlack = 14
             },
             IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
 
         // Only 11, 12, 13, 14 and 23 fail to bear off: nine of 36 equally likely rolls.
         // Their neural equity is zero; all other rolls win a single for the opponent.
@@ -351,7 +351,7 @@ public class BatchEvaluationTests
                 throw new InvalidDataException("Expected scorer failure.");
             }, maxBatchSize: 4);
 
-        await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(board, true));
+        await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(board, true, TestContext.Current.CancellationToken));
 
         Assert.Equal(4, replies.Count);
         Assert.All(replies, reply =>
@@ -371,7 +371,7 @@ public class BatchEvaluationTests
         var original = board.DeepClone();
         var evaluator = new TwoPlySearchEvaluator(boardService,
             (_, _) => Task.FromResult(Array.Empty<double>()));
-        await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(board, true));
+        await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(board, true, TestContext.Current.CancellationToken));
         Assert.True(board.Equals(original));
     }
 
@@ -411,7 +411,7 @@ public class BatchEvaluationTests
             expected.AddRange(positions.Select(Snapshot));
             return Task.FromResult(new double[positions.Count]);
         }, maxBatchSize: 4, batchAcrossRolls: true);
-        await evaluator.EvaluateAsync(board, rootIsWhite);
+        await evaluator.EvaluateAsync(board, rootIsWhite, TestContext.Current.CancellationToken);
         var actual = new List<string>();
         IBoardModel? working = null;
         evaluator = new TwoPlySearchEvaluator(boards, (_, _) => throw new Exception(),
@@ -425,7 +425,7 @@ public class BatchEvaluationTests
             await Task.Yield();
             Assert.Equal(original, Snapshot(working!));
             return new double[positions.Count];
-        });
+        }, TestContext.Current.CancellationToken);
         Assert.NotEmpty(expected);
         Assert.Equal(expected, actual);
         Assert.Equal(original, Snapshot(board));
@@ -453,13 +453,13 @@ public class BatchEvaluationTests
             return destination;
         }
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
             Predictions++;
             return Task.FromResult(Predict(ExtractFeatures(model, board, isWhite)));
         }
 
-        public async Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             Assert.InRange(features.Length, 1, MaxBatchSize);
             LargestBatch = Math.Max(LargestBatch, features.Length);

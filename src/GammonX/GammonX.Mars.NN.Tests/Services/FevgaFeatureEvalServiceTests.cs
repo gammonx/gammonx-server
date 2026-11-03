@@ -58,7 +58,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -69,7 +69,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -103,7 +103,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -114,7 +114,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -146,7 +146,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -157,7 +157,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
         }
 
@@ -186,7 +186,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                     BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -208,7 +208,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Fevga,
                 IsWhite = false
             };
-            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.FevgaContactWeights);
+            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -216,7 +216,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Fevga,
                 IsWhite = true
             };
-            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.FevgaContactWeights);
+            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.FevgaContactWeights, TestContext.Current.CancellationToken);
 
             Assert.True(resultBlack > 0.0);
             Assert.True(resultWhite < -0.0);
@@ -241,7 +241,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request, TestContext.Current.CancellationToken));
         }
     }
 }

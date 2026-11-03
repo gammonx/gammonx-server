@@ -2,9 +2,10 @@
 
 ## 03.11.2026
 ### Fixes
-- Mars Container
+- Mars Bot
 	- set TorchSharp `OMP_NUM_THREADS` and `MKL_NUM_THREADS` env variables to 1
-- default Mars requests to one attempt so timed-out evaluations are not automatically retried before the Expert-to-Hard fallback
+	- default Mars requests to one attempt so timed-out evaluations are not automatically retried before the Expert-to-Hard fallback
+	- propagate Mars request cancellation through move generation, search and inference while preserving board restoration and feature-buffer ownership
 
 ## 29.10.2026
 ### Fixes

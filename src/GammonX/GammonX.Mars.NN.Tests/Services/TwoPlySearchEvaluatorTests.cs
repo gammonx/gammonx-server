@@ -23,7 +23,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 });
             var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(-600d / 36d, score, 10);
             Assert.Equal(21, harness.RequestedRolls.Count);
@@ -43,7 +43,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 });
             var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             var expected = 0d;
             for (var die1 = 1; die1 <= 6; die1++)
@@ -76,7 +76,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     return boards.Select(board => (double)board.Fields[0]).ToArray();
                 }, board => CloneBoard(board), batchAcrossRolls: true);
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(-2d, score, 10);
             Assert.Equal(new[] { 32, 10 }, batchSizes);
@@ -90,7 +90,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var harness = CreateHarness(_ => [CreateSequence(-8), CreateSequence(-2)]);
             var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(2d, score, 10);
         }
@@ -108,7 +108,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var harness = CreateHarness(_ => [CreateSequence(1)]);
             var evaluator = CreateEvaluator(harness, (_, _) => Task.FromResult(opponentEquity));
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(expectedActivePlayerEquity, score, 10);
             Assert.InRange(score, -3.0, 3.0);
@@ -131,7 +131,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     return Task.FromResult((double)board.Fields[0]);
                 });
 
-            var score = await evaluator.EvaluateAsync(harness.Board.Object, rootIsWhite);
+            var score = await evaluator.EvaluateAsync(harness.Board.Object, rootIsWhite, TestContext.Current.CancellationToken);
 
             Assert.Equal(-7d, score, 10);
             Assert.Equal(21, perspectives.Count);
@@ -147,7 +147,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
                 (_, _) => Task.FromResult(Array.Empty<double>()));
 
-            await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(harness.Board.Object, true));
+            await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -156,7 +156,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var harness = CreateHarness(_ => [CreateSequence(1, 2)]);
             var evaluator = CreateEvaluator(harness, (board, _) => Task.FromResult((double)board.Fields[0]));
 
-            await evaluator.EvaluateAsync(harness.Board.Object, true);
+            await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(0, harness.Fields[0]);
             Assert.Equal(42, harness.UndoneMoves.Count);
@@ -236,8 +236,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 .Setup(service => service.GetUniqueLegalMoveSequences(
                     It.IsAny<IBoardModel>(),
                     It.IsAny<bool>(),
-                    It.IsAny<int[]>()))
-                .Returns((IBoardModel _, bool _, int[] rolls) =>
+                    It.IsAny<int[]>(), It.IsAny<CancellationToken>()))
+                .Returns((IBoardModel _, bool _, int[] rolls, CancellationToken _) =>
                 {
                     requestedRolls.Add(rolls.ToArray());
                     return getResponses(rolls);
@@ -307,7 +307,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var expectedBearOffBlack = board.BearOffCountBlack;
 
             var evaluator = new TwoPlySearchEvaluator(boardService, (boards, _) => Task.FromResult(new double[boards.Count]));
-            await evaluator.EvaluateAsync(board, true);
+            await evaluator.EvaluateAsync(board, true, TestContext.Current.CancellationToken);
 
             Assert.Equal(expectedFields, board.Fields);
             Assert.Equal(expectedBearOffWhite, board.BearOffCountWhite);

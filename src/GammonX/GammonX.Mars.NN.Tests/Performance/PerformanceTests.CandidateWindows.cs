@@ -86,7 +86,7 @@ public partial class PerformanceTests
             {
                 var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard(contract);
                 var model = service.EvalPositionForTraining(contract, false);
-                var expected = await neural.PredictAsync(model, board, false);
+                var expected = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
                 var latencies = new List<double>();
                 using var process = Process.GetCurrentProcess();
                 var cpu = process.TotalProcessorTime;
@@ -104,7 +104,7 @@ public partial class PerformanceTests
                     {
                         Assert.False(first.IsCompleted && second.IsCompleted, "Probes must overlap search.");
                         var probeStart = Stopwatch.GetTimestamp();
-                        var actual = await neural.PredictAsync(model, board, false);
+                        var actual = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
                         latencies.Add(Stopwatch.GetElapsedTime(probeStart).TotalMilliseconds);
                         for (var head = 0; head < expected.Length; head++)
                             Assert.InRange(Math.Abs(actual[head] - expected[head]), 0, 1e-5);
@@ -180,7 +180,7 @@ public partial class PerformanceTests
                 {
                     Board = input, IsWhite = false, Modus = GameModus.Backgammon,
                     BotLevel = BotLevel.Expert, Rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]
-                }, EvalWeights.DefaultContactWeights);
+                }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
             }
 
             void Validate(FinalEvalResultModels actual)

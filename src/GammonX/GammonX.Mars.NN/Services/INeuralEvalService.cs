@@ -4,8 +4,7 @@ using GammonX.Mars.NN.Models;
 namespace GammonX.Mars.NN.Services
 {
     /// <summary>
-    /// Evaluates a normalized board position and returns win probabilities in [0, 1].
-    /// Abstracts the neural network so GammonX.Mars.Server has no TorchSharp dependency.
+    /// Extracts board features and evaluates neural models without exposing tensor operations to callers.
     /// </summary>
     public interface INeuralEvalService
     {
@@ -24,13 +23,13 @@ namespace GammonX.Mars.NN.Services
         float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
 
         /// <summary>
-        /// Extracts the feature vector for the given model and board state and allocates them into <paramref name="destination"/>.
+        /// Extracts features into <paramref name="destination"/>, allocating a new buffer when it is null.
         /// </summary>
         /// <param name="model">The normalized evaluation result model to extract the features from.</param>
         /// <param name="board">The board state to extract the features from.</param>
         /// <param name="isWhite">Indicates whether the player is white.</param>
-        /// <param name="destination">The array to allocate the features into. If null, a new array is allocated.</param>
-        /// <returns>An independent feature array, including history-derived inputs.</returns>
+        /// <param name="destination">The buffer to fill. If null, a new array is allocated.</param>
+        /// <returns>The supplied or newly allocated feature buffer, including history-derived inputs.</returns>
         float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination);
 
         /// <summary>
@@ -38,29 +37,36 @@ namespace GammonX.Mars.NN.Services
         /// </summary>
         /// <remarks>
         /// A batch must contain between one and <see cref="MaxBatchSize"/> rows of
-        /// the extractor's feature width. Inputs must not be mutated until completion.
+        /// the extractor's feature width. Inputs must not be mutated until completion,
+        /// including cancellation completion. Queued work is cancelled by the worker;
+        /// an executing native forward pass finishes before cancellation is acknowledged.
         /// Each result uses the same five-value format as <see cref="PredictAsync"/>.
         /// Scalar models are normalized to [prediction, 0, 0, 0, 0].
         /// </remarks>
         /// <param name="features">The batch of feature vectors to predict.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
         /// <returns>The predicted outputs for the batch, in the same order as the input rows.</returns>
-        Task<float[][]> PredictBatchAsync(float[][] features);
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
+        Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Returns the predicted win probabilities for the active player given the board features.
+        /// Returns the neural prediction for the active player given the board features.
         /// </summary>
         /// <remarks>
-        /// We predict 5 output probabilities:
+        /// Outcome models predict five probabilities:
         /// [0] P(win)
         /// [1] P(gammon win)
         /// [2] P(backgammon win)
         /// [3] P(gammon loss)
         /// [4] P(backgammon loss)
+        /// Scalar models return their evaluation in the first slot and zero in the other four slots.
         /// </remarks>
         /// <param name="model">Computed model values.</param>
         /// <param name="board">Target board state.</param>
         /// <param name="isWhite">Player indicator.</param>
-        /// <returns>An array of values between 0 (lost) and 1 (won) for each output.</returns>
-        Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite);
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
+        /// <returns>Five prediction values in the documented order.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
+        Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken);
     }
 }

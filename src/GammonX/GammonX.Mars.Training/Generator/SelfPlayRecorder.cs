@@ -56,7 +56,7 @@ namespace GammonX.Mars.Training.Generator
             float[] netPred = [0.5f, 0.0f, 0.0f, 0.0f, 0.0f];
             if (_neuralEvalService != null)
             {
-                netPred = await _neuralEvalService.PredictAsync(model, board, isWhite);
+                netPred = await _neuralEvalService.PredictAsync(model, board, isWhite, CancellationToken.None);
                 if (netPred.Length == GameOutcomeConstraintValidator.FullHeadCount)
                 {
                     (_constraintMetrics ??= new ConstraintMetricsAccumulator()).AddRow(netPred);
