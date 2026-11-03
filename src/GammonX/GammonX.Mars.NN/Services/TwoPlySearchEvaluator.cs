@@ -29,8 +29,18 @@ namespace GammonX.Mars.NN.Services
             _batchAcrossRolls = batchAcrossRolls;
         }
 
-        public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite)
+        /// <summary>
+        /// Scores every opponent roll, restoring reply boards before completion or cancellation.
+        /// </summary>
+        /// <param name="board">The position after the active player's candidate move.</param>
+        /// <param name="isWhite">The active player's perspective.</param>
+        /// <param name="cancellationToken">Cancels traversal and scoring without returning an incomplete expected score.</param>
+        /// <returns>The expected score from the active player's perspective.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
+        public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var opponentIsWhite = !isWhite;
             var bestByRoll = new double[21];
 
@@ -51,7 +61,7 @@ namespace GammonX.Mars.NN.Services
                         int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
 
                         // we get all legal move sequences for the current roll, and apply them to clones of the original board
-                        var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
+                        var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls, cancellationToken);
                         if (sequences.Length == 0)
                         {
                             // A pass contributes one row for this roll, even when adjacent rolls also pass.
@@ -68,6 +78,8 @@ namespace GammonX.Mars.NN.Services
                         {
                             foreach (var sequence in sequences)
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
+
                                 IBoardModel reply;
                                 using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
                                 {
@@ -121,6 +133,8 @@ namespace GammonX.Mars.NN.Services
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             return activePlayerExpectedScore;
 
             async Task ScorePendingAsync()
@@ -130,7 +144,11 @@ namespace GammonX.Mars.NN.Services
                     return;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var scores = await _evalPositionsAsync(boards, opponentIsWhite);
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (scores.Length != boards.Count)
                 {

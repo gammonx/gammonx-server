@@ -33,7 +33,7 @@ public sealed class SelfPlayRunnerTests
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 3),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.Expert))
+                BotLevel.Expert, It.IsAny<CancellationToken>()))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
@@ -103,7 +103,7 @@ public sealed class SelfPlayRunnerTests
                 It.IsAny<bool>(),
                 It.IsAny<IReadOnlyList<MoveSequenceModel>>(),
                 It.IsAny<ContactWeightModel>(),
-                It.IsAny<BotLevel>()),
+                It.IsAny<BotLevel>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -126,7 +126,7 @@ public sealed class SelfPlayRunnerTests
                 true,
                 It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 5),
                 It.IsAny<ContactWeightModel>(),
-                BotLevel.Expert))
+                BotLevel.Expert, It.IsAny<CancellationToken>()))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
@@ -169,7 +169,7 @@ public sealed class SelfPlayRunnerTests
             board,
             true,
             rolls);
-        var uniqueMoves = boardService.GetUniqueLegalMoveSequences(board, true, rolls);
+        var uniqueMoves = boardService.GetUniqueLegalMoveSequences(board, true, rolls, TestContext.Current.CancellationToken);
 
         Assert.True(rawMoves.Length > uniqueMoves.Length);
         Assert.Equal(uniqueMoves, explorationMoves);
@@ -329,13 +329,13 @@ public sealed class SelfPlayRunnerTests
             return destination;
         }
 
-        public Task<float[][]> PredictBatchAsync(float[][] features)
+        public Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             PredictionCount += features.Length;
             return Task.FromResult(features.Select(row => new[] { row[0], 0.1f, 0.05f, 0.1f, 0.05f }).ToArray());
         }
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
             PredictionCount++;
             return Task.FromResult(new [] { _pWin, 0.1f, 0.05f, 0.1f, 0.05f });

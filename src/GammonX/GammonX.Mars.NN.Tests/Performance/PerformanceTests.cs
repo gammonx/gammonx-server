@@ -92,14 +92,14 @@ public partial class PerformanceTests(ITestOutputHelper output)
 
         WriteEnvironment(rolls);
 
-        var warmup = boardService.GetUniqueLegalMoveSequences(board, false, rolls);
+        var warmup = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
         Assert.NotEmpty(warmup);
 
         await MeasureAsync(
             boardName,
             "Engine",
             warmup.Length,
-            () => ValueTask.FromResult(boardService.GetUniqueLegalMoveSequences(board, false, rolls)),
+            () => ValueTask.FromResult(boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken)),
             result =>
             {
                 Assert.Equal(warmup.Length, result.Length);
@@ -123,7 +123,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
         var board = boardService.CreateBoard(boardContract);
         var rolls = CreateRolls(roll1, roll2);
 
-        var legalMoves = boardService.GetUniqueLegalMoveSequences(board, false, rolls);
+        var legalMoves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
         Assert.NotEmpty(legalMoves);
 
         WriteEnvironment(rolls);
@@ -188,7 +188,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 }
 
                 var firstInference = Stopwatch.StartNew();
-                var prediction = await countingService.PredictAsync(features, board, false);
+                var prediction = await countingService.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
                 firstInference.Stop();
                 Assert.NotEmpty(prediction);
                 Assert.All(prediction, value => Assert.True(float.IsFinite(value)));
@@ -196,7 +196,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 var warmupStart = Stopwatch.GetTimestamp();
                 if (tuning != null)
                 {
-                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(request, EvalWeights.DefaultContactWeights);
+                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
                     Assert.Equal(legalMoves.Length, candidateScores.Count);
                     Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Score)));
                     warmup = candidateScores.Select(botLevel);
@@ -207,7 +207,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 }
                 else
                 {
-                    warmup = await evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights);
+                    warmup = await evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
                 }
                 output.WriteLine(FormattableString.Invariant(
                     $"FullEvaluationWarmupMs={Stopwatch.GetElapsedTime(warmupStart).TotalMilliseconds:F3}"));
@@ -220,7 +220,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 botLevel == BotLevel.Expert ? "TwoPly" : "OnePly",
                 legalMoves.Length,
                 () => new ValueTask<MoveSequenceModel>(
-                    evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights)),
+                    evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken)),
                 result =>
                 {
                     Validate(result);
@@ -437,16 +437,16 @@ public partial class PerformanceTests(ITestOutputHelper output)
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination) =>
             _batch.ExtractFeatures(model, board, isWhite, destination);
 
-        public Task<float[][]> PredictBatchAsync(float[][] features)
+        public Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             Interlocked.Add(ref _predictionCount, features.Length);
-            return _batch.PredictBatchAsync(features);
+            return _batch.PredictBatchAsync(features, cancellationToken);
         }
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _predictionCount);
-            return inner.PredictAsync(model, board, isWhite);
+            return inner.PredictAsync(model, board, isWhite, cancellationToken);
         }
     }
 }

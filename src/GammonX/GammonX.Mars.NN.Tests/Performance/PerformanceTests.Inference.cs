@@ -30,8 +30,8 @@ public partial class PerformanceTests
 
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard(contract);
             var features = service.EvalPositionForTraining(contract, false);
-            var expected = await neural.PredictAsync(features, board, false);
-            await service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
+            var expected = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
+            await service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
 
             WriteProcessMemory("AfterWarmup");
             var singleLatencies = new List<double>();
@@ -39,8 +39,8 @@ public partial class PerformanceTests
             var cpuStart = process.TotalProcessorTime;
             var start = Stopwatch.GetTimestamp();
 
-            var first = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
-            var second = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
+            var first = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+            var second = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
 
             for (var index = 0; index < 100; index++)
             {
@@ -48,7 +48,7 @@ public partial class PerformanceTests
                     break;
 
                 var singleStart = Stopwatch.GetTimestamp();
-                var actual = await neural.PredictAsync(features, board, false);
+                var actual = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
                 singleLatencies.Add(Stopwatch.GetElapsedTime(singleStart).TotalMilliseconds);
 
                 for (var head = 0; head < expected.Length; head++)

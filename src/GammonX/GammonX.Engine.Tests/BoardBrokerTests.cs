@@ -593,9 +593,9 @@ namespace GammonX.Engine.Tests
             Assert.Equal(6, moves.Length);
 
             // we expect no duplicated end boards
-            moves = service.GetUniqueLegalMoveSequences(board, true, 2, 2, 2, 2);
+            moves = service.GetUniqueLegalMoveSequences(board, true, [2, 2, 2, 2], TestContext.Current.CancellationToken);
             Assert.Equal(3, moves.Length);
-            moves = service.GetUniqueLegalMoveSequences(board, false, 2, 2, 2, 2);
+            moves = service.GetUniqueLegalMoveSequences(board, false, [2, 2, 2, 2], TestContext.Current.CancellationToken);
             Assert.Equal(3, moves.Length);
         }
 

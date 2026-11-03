@@ -116,7 +116,7 @@ namespace GammonX.Mars.Training.Generator
                     BotLevel = botLevel
                 };
                 
-                var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
+                var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights, CancellationToken.None);
 
                 if (moveSequences.Count != 0)
                 {
@@ -257,7 +257,7 @@ namespace GammonX.Mars.Training.Generator
                     // wildbg turn
                     nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId, CancellationToken.None);
                     var boardContract = board.ToContract(false);
-                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, botLevel, contactWeights);
+                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, botLevel, contactWeights, CancellationToken.None);
                 }
                 else
                 {
@@ -271,7 +271,7 @@ namespace GammonX.Mars.Training.Generator
                         Rolls = rolls,
                         BotLevel = botLevel
                     };
-                    var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
+                    var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights, CancellationToken.None);
 
                     if (result.Count != 0)
                     {
@@ -482,7 +482,7 @@ namespace GammonX.Mars.Training.Generator
                 {
                     var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
                     // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, botLevel, contactWeights);
+                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, botLevel, contactWeights, CancellationToken.None);
                     selectedRank = null;
                 }
             }
@@ -561,7 +561,7 @@ namespace GammonX.Mars.Training.Generator
                     isWhite,
                     candidates,
                     contactWeights,
-                    BotLevel.Expert);
+                    BotLevel.Expert, CancellationToken.None);
 
                 if (evaluatedResults.Count != candidates.Length)
                     throw new InvalidOperationException("Candidate evaluation must return one result per requested move sequence.");
@@ -610,7 +610,7 @@ namespace GammonX.Mars.Training.Generator
             bool isWhite,
             int[] rolls)
         {
-            return boardService.GetUniqueLegalMoveSequences(board, isWhite, rolls);
+            return boardService.GetUniqueLegalMoveSequences(board, isWhite, rolls, CancellationToken.None);
         }
 
         private static MatchVariant From(GameModus modus)

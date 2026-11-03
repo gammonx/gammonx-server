@@ -30,7 +30,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("cube")]
-        public async Task<IActionResult> Cube([FromBody] EvalCubeRequestContract request)
+        public async Task<IActionResult> Cube([FromBody] EvalCubeRequestContract request, CancellationToken cancellationToken)
         {
             try
             {
@@ -49,10 +49,14 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(request);
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(request, cancellationToken);
                 var payload = new CubeEvalPayload { ShouldOffer = shouldOffer, ShouldTake = shouldTake };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex) 
             {
@@ -63,17 +67,21 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("board")]
-        public async Task<IActionResult> Board([FromBody] EvalBoardRequestContract request)
+        public async Task<IActionResult> Board([FromBody] EvalBoardRequestContract request, CancellationToken cancellationToken)
         {
             try
             {
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
                 contactWeights.Validate();
-                var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights);
+                var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights, cancellationToken);
                 var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -84,7 +92,7 @@ namespace GammonX.Mars.Server.Controllers
         }
 
         [HttpPost("move")]
-        public async Task<IActionResult> Move([FromBody] EvalMoveRequestContract request)
+        public async Task<IActionResult> Move([FromBody] EvalMoveRequestContract request, CancellationToken cancellationToken)
         {
             try
             {
@@ -99,7 +107,7 @@ namespace GammonX.Mars.Server.Controllers
 
                 contactWeights.Validate();
 
-                var bestMove = await evalService.EvalMoveSequencesAsync(request, contactWeights);
+                var bestMove = await evalService.EvalMoveSequencesAsync(request, contactWeights, cancellationToken: cancellationToken);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };
@@ -112,6 +120,10 @@ namespace GammonX.Mars.Server.Controllers
                     var response = new ResponseContract<MoveEvalPayload>("OK", payload);
                     return Ok(response);
                 }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {

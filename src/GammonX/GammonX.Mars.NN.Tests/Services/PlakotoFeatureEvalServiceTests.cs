@@ -57,7 +57,7 @@ namespace GammonX.Mars.NN.Tests.Services
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService(null);
-            var result = await evalService.EvalMoveSequencesAsync(request, EvalWeights.PlakotoContactWeights, 20);
+            var result = await evalService.EvalMoveSequencesAsync(request, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
 
             Assert.NotNull(result);
         }
@@ -105,7 +105,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -116,7 +116,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.PlakotoContactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -144,7 +144,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -174,7 +174,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
         }
 
@@ -196,7 +196,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = false
             };
-            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.PlakotoContactWeights);
+            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -204,7 +204,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 Modus = GameModus.Plakoto,
                 IsWhite = true
             };
-            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.PlakotoContactWeights);
+            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken);
 
             Assert.True(resultBlack > 0.0);
             Assert.True(resultWhite < -0.0);
@@ -229,7 +229,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request, TestContext.Current.CancellationToken));
         }
     }
 }

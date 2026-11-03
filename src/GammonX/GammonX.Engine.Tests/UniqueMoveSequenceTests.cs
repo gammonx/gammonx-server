@@ -62,7 +62,7 @@ public class UniqueMoveSequenceTests
             PinnedFields = new int[24]
         });
         AssertEquivalent(service, bothDice, true, [4, 5]);
-        Assert.All(service.GetUniqueLegalMoveSequences(bothDice, true, 4, 5),
+        Assert.All(service.GetUniqueLegalMoveSequences(bothDice, true, [4, 5], TestContext.Current.CancellationToken),
             sequence => Assert.Equal(2, sequence.UsedDices.Count));
 
         var higherDie = service.CreateBoard(new BoardModelContract
@@ -71,7 +71,7 @@ public class UniqueMoveSequenceTests
             PinnedFields = new int[24]
         });
         AssertEquivalent(service, higherDie, true, [3, 5]);
-        var sequence = Assert.Single(service.GetUniqueLegalMoveSequences(higherDie, true, 3, 5));
+        var sequence = Assert.Single(service.GetUniqueLegalMoveSequences(higherDie, true, [3, 5], TestContext.Current.CancellationToken));
         Assert.Equal([5], sequence.UsedDices);
     }
 
@@ -151,7 +151,7 @@ public class UniqueMoveSequenceTests
         var history = board.History.Events.ToArray();
         var expected = ReferenceSequences(service, board, isWhite, rolls);
 
-        var actual = service.GetUniqueLegalMoveSequences(board, isWhite, rolls);
+        var actual = service.GetUniqueLegalMoveSequences(board, isWhite, rolls, TestContext.Current.CancellationToken);
 
         Assert.True(board.Equals(original), "Unique generation changed the input position.");
         Assert.Equal(history, board.History.Events.ToArray());

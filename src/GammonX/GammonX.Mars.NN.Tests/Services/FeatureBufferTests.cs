@@ -53,7 +53,7 @@ public class FeatureBufferTests
             {
                 Board = BoardServiceFactory.Create(modus).CreateBoard().ToContract(false),
                 IsWhite = white, Modus = modus, BotLevel = BotLevel.Expert
-            }, EvalWeights.DefaultContactWeights);
+            }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -88,7 +88,7 @@ public class FeatureBufferTests
             {
                 Board = board, IsWhite = scenario != "pass",
                 Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-            }, EvalWeights.DefaultContactWeights);
+            }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
             Assert.Equal(expectedRows, probe.Rows);
             if (reuse) Assert.InRange(probe.Buffers.Count, 0, 4);
             return score;
@@ -107,7 +107,7 @@ public class FeatureBufferTests
         {
             Board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard().ToContract(false),
             IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
         Assert.NotNull(await Record.ExceptionAsync(Evaluate));
         var failedRows = probe.Buffers.Select(row => (Row: row, Copy: row.ToArray())).ToArray();
         probe.Failure = null;
@@ -158,7 +158,7 @@ public class FeatureBufferTests
             _extractor.Extract(model, board, white, destination);
             return destination;
         }
-        public async Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             var copies = features.Select(row => row.ToArray()).ToArray();
             Assert.Equal(features.Length, features.Distinct(ReferenceEqualityComparer.Instance).Count());
@@ -169,6 +169,6 @@ public class FeatureBufferTests
             Interlocked.Add(ref Rows, features.Length);
             return features.Select(row => new[] { (float)(0.5 + Math.Tanh(row.Sum(value => (double)value) / 100) / 4), 0f, 0f, 0f, 0f }).ToArray();
         }
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool white) => throw new NotSupportedException();
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool white, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

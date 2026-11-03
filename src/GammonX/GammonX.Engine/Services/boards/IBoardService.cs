@@ -131,13 +131,16 @@ namespace GammonX.Engine.Services
         /// Calculates all legal moves for the given player based on the current board state and the given dice rolls.
         /// </summary>
         /// <remarks>
-        /// Only returns move sequences which results in a unique end board state.
+        /// Only returns move sequences which result in a unique end board state.
+        /// Restores the board and its history before returning or propagating cancellation.
         /// </remarks>
         /// <param name="model">Board model to operate on.</param>
         /// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>
-        /// <param name="rolls">1:n Dice roll values</param>
+        /// <param name="rolls">Dice roll values.</param>
+        /// <param name="cancellationToken">Cancels traversal without returning partial move sequences.</param>
         /// <returns>An array of move sequences.</returns>
-        MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls);
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
+        MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, CancellationToken cancellationToken);
         
 		/// <summary>
 		/// Explores legal move sequences and invokes the <paramref name="callback"/> for each one.

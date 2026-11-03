@@ -52,6 +52,7 @@ namespace GammonX.Mars.NN.Tests
                 var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
+                    TestContext.Current.CancellationToken,
                     150);
 
                 if (result.Moves.Count != 0)
@@ -114,6 +115,7 @@ namespace GammonX.Mars.NN.Tests
                 var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
+                    TestContext.Current.CancellationToken,
                     150);
 
                 if (result.Moves.Count != 0)
@@ -178,6 +180,7 @@ namespace GammonX.Mars.NN.Tests
                 var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
+                    TestContext.Current.CancellationToken,
                     150);
 
                 if (result.Moves.Count != 0)
@@ -243,6 +246,7 @@ namespace GammonX.Mars.NN.Tests
                 var result = await evalService.EvalMoveSequencesAsync(
                     evalRequest,
                     EvalWeights.GetContactWeights(modus),
+                    TestContext.Current.CancellationToken,
                     150);
 
                 if (result.Moves.Count != 0)
@@ -300,7 +304,7 @@ namespace GammonX.Mars.NN.Tests
                     PointsAwayOpp = isWhite ? 1 : 5
                 };
 
-                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubePlayerReq);
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubePlayerReq, TestContext.Current.CancellationToken);
                 Assert.NotEqual(CubeAction.Unknown, shouldOffer);
                 Assert.NotEqual(CubeAction.Unknown, shouldTake);
 
@@ -320,7 +324,7 @@ namespace GammonX.Mars.NN.Tests
                         PointsAwayOpp = isWhite ? 1 : 5
                     };
 
-                    var (shouldOfferOpp, shouldTakeOpp) = await evalService.EvalCubeAsync(evalCubeOppReq);
+                    var (shouldOfferOpp, shouldTakeOpp) = await evalService.EvalCubeAsync(evalCubeOppReq, TestContext.Current.CancellationToken);
                     Assert.NotEqual(CubeAction.Unknown, shouldOfferOpp);
                     Assert.NotEqual(CubeAction.Unknown, shouldTakeOpp);
 
@@ -360,6 +364,7 @@ namespace GammonX.Mars.NN.Tests
                 var result = await evalService.EvalMoveSequencesAsync(
                     evalMoveReq,
                     EvalWeights.GetContactWeights(modus),
+                    TestContext.Current.CancellationToken,
                     150);
 
                 if (result.Moves.Count != 0)
@@ -429,8 +434,8 @@ namespace GammonX.Mars.NN.Tests
                     BotLevel = blackBotLevel
                 };
 
-                var twoPlyResult = await evalService.EvalMoveSequencesAsync(twoPlyRequest, EvalWeights.GetContactWeights(modus));
-                var onePlyResult = await evalService.EvalMoveSequencesAsync(onePlyRequest, EvalWeights.GetContactWeights(modus));
+                var twoPlyResult = await evalService.EvalMoveSequencesAsync(twoPlyRequest, EvalWeights.GetContactWeights(modus), TestContext.Current.CancellationToken);
+                var onePlyResult = await evalService.EvalMoveSequencesAsync(onePlyRequest, EvalWeights.GetContactWeights(modus), TestContext.Current.CancellationToken);
                 if (!twoPlyResult.Equals(onePlyResult))
                 {
                     differentSelectionCount++;

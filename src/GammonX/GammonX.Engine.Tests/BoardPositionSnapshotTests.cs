@@ -88,7 +88,7 @@ public class BoardPositionSnapshotTests
         Assert.IsAssignableFrom<IEditableBoardHistory>(board.History).Add(historyEvent.Object);
 
         var snapshot = board.CreatePositionSnapshot();
-        var sequences = service.GetUniqueLegalMoveSequences(board, false, 2, 2, 2, 2);
+        var sequences = service.GetUniqueLegalMoveSequences(board, false, [2, 2, 2, 2], TestContext.Current.CancellationToken);
 
         Assert.NotEmpty(sequences);
         Assert.Empty(snapshot.History.Events);

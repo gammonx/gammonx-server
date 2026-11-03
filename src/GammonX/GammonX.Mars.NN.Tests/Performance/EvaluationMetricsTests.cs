@@ -19,7 +19,7 @@ public class EvaluationMetricsTests
         var history = board.History.Events.ToArray();
         using var collector = new EvaluationMetricsCollector();
 
-        var sequences = service.GetUniqueLegalMoveSequences(board, false, 2, 2, 2, 2);
+        var sequences = service.GetUniqueLegalMoveSequences(board, false, [2, 2, 2, 2], TestContext.Current.CancellationToken);
 
         var profile = collector.Snapshot();
         Assert.NotEmpty(sequences);
@@ -38,14 +38,14 @@ public class EvaluationMetricsTests
 
         using (var collector = new EvaluationMetricsCollector())
         {
-            Assert.NotEmpty(service.GetUniqueLegalMoveSequences(board, false, 2, 2, 2, 2));
+            Assert.NotEmpty(service.GetUniqueLegalMoveSequences(board, false, [2, 2, 2, 2], TestContext.Current.CancellationToken));
             var profile = collector.Snapshot();
             Assert.True(profile.ReusedStates > 0);
             Assert.True(profile.GetStage(EvaluationMetrics.TraversalSnapshot).Calls > 0);
         }
         using (var collector = new EvaluationMetricsCollector())
         {
-            Assert.NotEmpty(service.GetUniqueLegalMoveSequences(board, false, 3, 2));
+            Assert.NotEmpty(service.GetUniqueLegalMoveSequences(board, false, [3, 2], TestContext.Current.CancellationToken));
             Assert.NotEmpty(service.GetLegalMoveSequences(board, false, 2, 2, 2, 2));
             Assert.Equal(0, collector.Snapshot().ReusedStates);
             Assert.DoesNotContain(collector.Snapshot().Stages, stage => stage.Stage == EvaluationMetrics.TraversalSnapshot);

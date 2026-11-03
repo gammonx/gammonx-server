@@ -68,7 +68,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Expert
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             await cancellationTokenSource.CancelAsync();
@@ -121,7 +121,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -132,7 +132,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -188,7 +188,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -199,7 +199,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -255,7 +255,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
@@ -266,7 +266,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, TestContext.Current.CancellationToken, 20);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -296,7 +296,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await evalService.EvalCubeAsync(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await evalService.EvalCubeAsync(request, TestContext.Current.CancellationToken));
         }
 
         [Theory]
@@ -311,7 +311,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestMustOfferDouble);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq, TestContext.Current.CancellationToken);
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -327,7 +327,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestOnePlayerIsBehindBig);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq, TestContext.Current.CancellationToken);
             Assert.Equal(CubeAction.Double, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -343,7 +343,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvaleRequestBotOffersEarlyDouble);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq, TestContext.Current.CancellationToken);
             // we expect the bot to not double this early on
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             // but we expect the bot to take the double in early stages
@@ -361,7 +361,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestBotMustTakeInstantDoubleIfOppBehindBig);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq, TestContext.Current.CancellationToken);
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -374,7 +374,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.10f, // win
@@ -387,7 +387,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
             var (shouldOffer, shouldTake) = await service.EvalCubeAsync(
-                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1));
+                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1), TestContext.Current.CancellationToken);
 
             Assert.Equal(CubeAction.Pass, shouldTake);
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
@@ -403,7 +403,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.10f, // win
@@ -419,7 +419,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 pointsAwayPlayer: 1,
                 pointsAwayOpp: 4,
                 isWhite: isWhite,
-                cubeValue: 1));
+                cubeValue: 1), TestContext.Current.CancellationToken);
 
             Assert.Equal(CubeAction.Pass, shouldTake);
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
@@ -435,7 +435,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.40f, // win
@@ -451,7 +451,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 isWhite: true,
                 pointsAwayPlayer: pointsAwayPlayer,
                 pointsAwayOpp: pointsAwayOpp,
-                cubeValue: cubeValue));
+                cubeValue: cubeValue), TestContext.Current.CancellationToken);
 
             Assert.Equal(CubeAction.Take, shouldTake);
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
@@ -465,7 +465,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.75f, // win
@@ -478,7 +478,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
             var (shouldOffer, shouldTake) = await service.EvalCubeAsync(
-                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1));
+                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1), TestContext.Current.CancellationToken);
 
             // Opponent would pass, and the pass equity exceeds no-double equity.
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
@@ -493,7 +493,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.99f, // win
@@ -506,7 +506,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
 
             var (shouldOffer, shouldTake) = await service.EvalCubeAsync(
-                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1));
+                CreateRequest(isWhite: true, pointsAwayPlayer: 1, pointsAwayOpp: 4, cubeValue: 1), TestContext.Current.CancellationToken);
 
             // Opponent would pass, but playing on for gammon/backgammon is even better.
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
@@ -521,7 +521,7 @@ namespace GammonX.Mars.NN.Tests.Services
             neural.Setup(x => x.PredictAsync(
                     It.IsAny<NormalizedEvalResultModel>(),
                     It.IsAny<IBoardModel>(),
-                    It.IsAny<bool>()))
+                    It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(new[]
                 {
                     0.99f, // win
@@ -550,7 +550,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            var (shouldOffer, shouldTake) = await service.EvalCubeAsync(request);
+            var (shouldOffer, shouldTake) = await service.EvalCubeAsync(request, TestContext.Current.CancellationToken);
 
             // At double match point (1-away, 1-away): doubleTake = noDouble = WinP
             // Doubling has no equity benefit since any win wins the match regardless of cube
@@ -591,13 +591,13 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await service.EvalBoardStateAsync(
                 request,
-                EvalWeights.GetContactWeights(GameModus.Backgammon));
+                EvalWeights.GetContactWeights(GameModus.Backgammon), TestContext.Current.CancellationToken);
 
             Assert.Equal(expectedScore, score);
             neural.Verify(neuralService => neuralService.PredictAsync(
                 It.IsAny<NormalizedEvalResultModel>(),
                 It.IsAny<IBoardModel>(),
-                It.IsAny<bool>()), Times.Never);
+                It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Theory]
@@ -622,13 +622,13 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await service.EvalBoardStateAsync(
                 request,
-                EvalWeights.GetContactWeights(GameModus.Backgammon));
+                EvalWeights.GetContactWeights(GameModus.Backgammon), TestContext.Current.CancellationToken);
 
             Assert.Equal(3.0, score);
             neural.Verify(neuralService => neuralService.PredictAsync(
                 It.IsAny<NormalizedEvalResultModel>(),
                 It.IsAny<IBoardModel>(),
-                It.IsAny<bool>()), Times.Never);
+                It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -650,7 +650,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     BotLevel = BotLevel.Hard,
                     Board = board
                 },
-                contactWeights);
+                contactWeights, TestContext.Current.CancellationToken);
             var twoPlyScore = await service.EvalBoardStateAsync(
                 new EvalBoardRequestContract
                 {
@@ -659,7 +659,7 @@ namespace GammonX.Mars.NN.Tests.Services
                     BotLevel = BotLevel.Expert,
                     Board = board
                 },
-                contactWeights);
+                contactWeights, TestContext.Current.CancellationToken);
 
             Assert.Equal(0.5, onePlyScore, 6);
             Assert.Equal(onePlyScore, twoPlyScore, 6);
@@ -677,7 +677,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BearOffCountWhite = 0,
                 BearOffCountBlack = 0
             });
-            var moveSequence = boardService.GetUniqueLegalMoveSequences(board, true, [1, 2]).First();
+            var moveSequence = boardService.GetUniqueLegalMoveSequences(board, true, [1, 2], TestContext.Current.CancellationToken).First();
             var originalContract = board.ToContract(false);
             var immediateBoard = boardService.CreateBoard(new BoardModelContract
             {
@@ -704,12 +704,12 @@ namespace GammonX.Mars.NN.Tests.Services
                     Board = immediateBoard.ToContract(false),
                     BotLevel = BotLevel.Hard
                 },
-                contactWeights);
+                contactWeights, TestContext.Current.CancellationToken);
 
-            var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights))
+            var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights, TestContext.Current.CancellationToken))
                 .Score;
 
-            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.Expert))
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.Expert, TestContext.Current.CancellationToken))
                 [0].Score;
 
             Assert.Equal(immediateScore, onePlyScore);
@@ -759,13 +759,13 @@ namespace GammonX.Mars.NN.Tests.Services
                 return destination;
             }
 
-            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+            public Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken) =>
                 Task.FromResult(features.Select(row => new[]
                 {
                     Math.Clamp(0.5f + row[0] / 200f, 0.01f, 0.99f), 0f, 0f, 0f, 0f
                 }).ToArray());
 
-            public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+            public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
             {
                 var advantage = isWhite
                     ? board.PipCountBlack - board.PipCountWhite
@@ -790,10 +790,10 @@ namespace GammonX.Mars.NN.Tests.Services
                 return destination;
             }
 
-            public Task<float[][]> PredictBatchAsync(float[][] features) =>
+            public Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken) =>
                 Task.FromResult(features.Select(row => new[] { row[0], 0f, 0f, 0f, 0f }).ToArray());
 
-            public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+            public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
             {
                 var winProbability = isWhite ? 0.75f : 0.25f;
                 return Task.FromResult(new[] { winProbability, 0f, 0f, 0f, 0f });

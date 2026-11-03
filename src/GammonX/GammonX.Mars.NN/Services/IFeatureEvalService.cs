@@ -15,9 +15,11 @@ namespace GammonX.Mars.NN.Services
         /// <summary>
         /// Evaluates the cube decision for the match state in <paramref name="contract"/>.
         /// </summary>
-        /// <param name="contract">Match state to evaluate</param>
+        /// <param name="contract">Match state to evaluate.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
         /// <returns>Cube actions to take based on the evaluation.</returns>
-        Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(EvalCubeRequestContract contract);
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
+        Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(EvalCubeRequestContract contract, CancellationToken cancellationToken);
 
         /// <summary>
         /// Calculates a rating for the board state in <paramref name="contract"/> based on weights in <paramref name="contactWeights"/>.
@@ -25,43 +27,51 @@ namespace GammonX.Mars.NN.Services
         /// <remarks>
         /// Linear contact weights are ignored if a neural net service is injected.
         /// </remarks>
-        /// <param name="contract">Contains board state .</param>
+        /// <param name="contract">Contains the board state.</param>
         /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
         /// <returns>Score rating of the given board for a given player.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
         Task<double> EvalBoardStateAsync(
             EvalBoardRequestContract contract,
-            ContactWeightModel contactWeights);
+            ContactWeightModel contactWeights,
+            CancellationToken cancellationToken);
 
         /// <summary>
-        /// Calculates the best rated move sequence for the board and roll in <paramref name="contract"/> based on
-        /// weights in <paramref name="contactWeights"/>.
+        /// Evaluates legal moves and selects a sequence according to the bot level in <paramref name="contract"/>.
         /// </summary>
         /// <remarks>
         /// Linear contact weights are ignored if a neural net service is injected.
         /// </remarks>
         /// <param name="contract">Contains board state and rolls.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
-        /// <returns>Best rated move sequence.</returns>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
+        /// <param name="maxCandidates">Maximum number of generated candidates to evaluate, in generation order. Null evaluates all candidates.</param>
+        /// <returns>The move selected for the requested bot level.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
         Task<MoveSequenceModel> EvalMoveSequencesAsync(
             EvalMoveRequestContract contract,
             ContactWeightModel contactWeights,
+            CancellationToken cancellationToken,
             int? maxCandidates = null);
 
         /// <summary>
-        /// Evaluates all legal move sequences without the cheap pre-filter.
-        /// Intended for self-play training data collection only, slower but unbiased.
+        /// Evaluates legal move sequences without a preliminary score filter.
+        /// Returns candidate scores for training or move selection.
         /// </summary>
         /// <remarks>
         /// Linear contact weights are ignored if a neural net service is injected.
         /// </remarks>
         /// <param name="contract">Contains board state and rolls.</param>
         /// <param name="contactWeights">Contact position weights.</param>
-        /// <param name="maxCandidates">Maximum number of candidates to fully evaluate. If null, full sample is evaluated.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
+        /// <param name="maxCandidates">Maximum number of generated candidates to evaluate, in generation order. Null evaluates all candidates.</param>
         /// <returns>All rated moves sorted descending by their eval score.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
         Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(
             EvalMoveRequestContract contract,
             ContactWeightModel contactWeights,
+            CancellationToken cancellationToken,
             int? maxCandidates = null);
 
         /// <summary>
@@ -72,13 +82,16 @@ namespace GammonX.Mars.NN.Services
         /// <param name="candidates">The move candidates to evaluate.</param>
         /// <param name="contactWeights">Contact position weights.</param>
         /// <param name="searchLevel">The search level to use for every candidate.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
         /// <returns>The evaluated candidates sorted descending by score.</returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
         Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(
             BoardModelContract contract,
             bool isWhite,
             IReadOnlyList<MoveSequenceModel> candidates,
             ContactWeightModel contactWeights,
-            BotLevel searchLevel);
+            BotLevel searchLevel,
+            CancellationToken cancellationToken);
 
         /// <summary>
         /// Calculates the normalized position values for a turn without requiring a legal move.
@@ -87,7 +100,7 @@ namespace GammonX.Mars.NN.Services
         NormalizedEvalResultModel EvalPositionForTraining(BoardModelContract board, bool isWhite);
 
         /// <summary>
-        /// Evaluates the given <param name="contract"></param> with a predefined <param name="moveSequence"></param> and
+        /// Evaluates the given <paramref name="contract"/> with a predefined <paramref name="moveSequence"/> and
         /// calculates the eval result for the final board state after applying the move sequence.
         /// </summary>
         /// <remarks>
@@ -98,12 +111,15 @@ namespace GammonX.Mars.NN.Services
         /// <param name="moveSequence">The sequence of moves to evaluate.</param>
         /// <param name="botLevel">The search level to use for the evaluation.</param>
         /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>
         /// <returns>The final eval result for the given <paramref name="moveSequence"/></returns>
+        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
         Task<FinalEvalResultModel> EvalMoveSequenceAsync(
             BoardModelContract contract,
             bool isWhite,
             MoveSequenceModel moveSequence,
             BotLevel botLevel,
-            ContactWeightModel contactWeights);
+            ContactWeightModel contactWeights,
+            CancellationToken cancellationToken);
     }
 }

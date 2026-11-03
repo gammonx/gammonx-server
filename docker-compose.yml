@@ -17,7 +17,7 @@ services:
       - GAME_SERVICE__BASEPATH=/game
       - BOT_SERVICE__MARS=http://mars-service:8083/bot/mars/
       - BOT_SERVICE__TIMEOUT_SECONDS=5
-      - BOT_SERVICE__MAX_RETRY_ATTEMPTS=3
+      - BOT_SERVICE__MAX_RETRY_ATTEMPTS=1
       - BOT_SERVICE__RETRY_BASE_DELAY_MILLISECONDS=1000
       - LOG_LEVEL__DEFAULT=Debug
       - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
@@ -74,6 +74,8 @@ services:
       - DOTNET_ENVIRONMENT=Development
       - DOTNET_RUNNING_IN_CONTAINER=true
       - SERVICE__BASEPATH=/bot/mars
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
       # We match the Dockerfile EXPOSE/HEALTHCHECK and the ECS containerPort
       - ASPNETCORE_HTTP_PORTS=8083
     networks:
