@@ -113,30 +113,14 @@ namespace GammonX.Engine.Extensions
 
         private static bool LoserHasCheckersInWinnersHomeBoard(IBoardModel model, bool isWhite)
         {
-            if (isWhite)
-            {
-                var blackHasCheckersThere = model.Fields
-                    .Take(model.HomeRangeWhite)
-                    .Any(v => v > 0);
-                return blackHasCheckersThere;
-            }
-            else
-            {
-                if (model.HomeRangeBlack.Start.Value > model.HomeRangeBlack.End.Value)
-                {
-                    var whiteHasCheckersThere = model.Fields
-                        .Take(new Range(model.HomeRangeBlack.End.Value, model.HomeRangeBlack.Start.Value))
-                        .Any(v => v < 0);
-                    return whiteHasCheckersThere;
-                }
-                else
-                {
-                    var whiteHasCheckersThere = model.Fields
-                        .Take(model.HomeRangeBlack)
-                        .Any(v => v < 0);
-                    return whiteHasCheckersThere;
-                }
-            }
+            var range = isWhite ? model.HomeRangeWhite : model.HomeRangeBlack;
+            var first = Math.Min(range.Start.Value, range.End.Value);
+            var last = Math.Max(range.Start.Value, range.End.Value);
+
+            return model.Fields
+                .Skip(first)
+                .Take(last - first + 1) // take is exclusive
+                .Any(v => isWhite ? v > 0 : v < 0);
         }
     }
 }
