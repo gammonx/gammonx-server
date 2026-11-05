@@ -1,5 +1,4 @@
-﻿using GammonX.Engine.History;
-using GammonX.Engine.Models;
+﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
@@ -29,9 +28,8 @@ namespace GammonX.Mars.NN.Services
             }
             
             // we always extract the feature from the perspective of the white player, so we invert the board if the active player is black
+            // TODO: not sure if we have to clone or invert the board here
             var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
-
-            var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
 
             var featureIndex = 0;
             // self-crafted structural features
@@ -61,7 +59,7 @@ namespace GammonX.Mars.NN.Services
             features[featureIndex++] = 0f;
             features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
             features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
-            features[featureIndex++] = turnNumber / 100f;
+            features[featureIndex++] = (float)model.TurnNumber;
 
             // we add the raw board as input
             var fields = boardClone.Fields;

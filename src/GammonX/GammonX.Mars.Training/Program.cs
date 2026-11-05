@@ -101,6 +101,7 @@ static void RunTrainModel()
     var batchSize = PromptInt("Batch size", 16384);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
+    var learningRate = PromptFloat("Learning rate", 1e-4f);
 
     NetArchitecture netArchitecture;
     GameOutcomeOutputMode outputMode;
@@ -125,6 +126,7 @@ static void RunTrainModel()
         outputModelPath: outputModelPath,
         batchSize: batchSize,
         producerCount: producerCount,
+        learningRate: learningRate,
         queueCapacity: queueCapacity,
         outputMode: outputMode,
         architecture: netArchitecture);

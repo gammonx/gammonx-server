@@ -96,6 +96,7 @@ public static class NetTrainer
 
         var epochsWithoutImprovement = 0;
         var bestValLoss = float.MaxValue;
+        var bestTrainLoss = float.MaxValue;
         var bestEpoch = 0;
 
         if (!string.IsNullOrEmpty(inputModelPath))
@@ -155,6 +156,7 @@ public static class NetTrainer
             if (valMetrics.Loss < bestValLoss - minimumDelta)
             {
                 bestValLoss = valMetrics.Loss;
+                bestTrainLoss = trainMetrics.Loss;
                 bestEpoch = epoch;
                 epochsWithoutImprovement = 0;
                 model.Save(outputModelPath);
@@ -178,7 +180,7 @@ public static class NetTrainer
 
             if (epochsWithoutImprovement >= earlyStoppingPatience)
             {
-                Console.WriteLine($"Early stopping — best val_loss={bestValLoss:F5} at epoch {bestEpoch}");
+                Console.WriteLine($"Early stopping — best val_loss={bestValLoss:F5} train_loss={bestTrainLoss:F5} val_gap={bestValLoss-bestTrainLoss:F5} at epoch {bestEpoch}");
                 break;
             }
         }
@@ -201,6 +203,7 @@ public static class NetTrainer
         using var metrics = new EpochMetricsAccumulator(
             outputCount,
             collectConstraintMetrics: outputCount == GameOutcomeConstraintValidator.FullHeadCount);
+        
         foreach (var (xBatch, yBatch) in batches)
         {
             using (xBatch)

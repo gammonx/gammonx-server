@@ -116,7 +116,12 @@ namespace GammonX.Mars.Training.Generator
                     BotLevel = botLevel
                 };
                 
-                var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
+                var moveSequences = await activeEvalService.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
+                {
+                    EvalMoveRequest = evalRequest,
+                    ContactWeights = contactWeights,
+                    TurnNumber = turnCount,
+                });
 
                 if (moveSequences.Count != 0)
                 {
@@ -144,7 +149,12 @@ namespace GammonX.Mars.Training.Generator
                 }
                 else
                 {
-                    var passEval = activeEvalService.EvalPositionForTraining(board.ToContract(false), isWhite);
+                    var passEval = activeEvalService.EvalPositionForTraining(new FeatureEvalOptions
+                    {
+                        BoardContract = board.ToContract(false),
+                        IsWhite = isWhite,
+                        TurnNumber = turnCount,
+                    });
                     await _recorder.RecordPositionAsync(passEval, board, isWhite);
                 }
 
@@ -257,7 +267,15 @@ namespace GammonX.Mars.Training.Generator
                     // wildbg turn
                     nextMoves = await wildBgService.GetNextMovesAsync(matchSession, activePlayerId, CancellationToken.None);
                     var boardContract = board.ToContract(false);
-                    evalResultModel = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, nextMoves, botLevel, contactWeights);
+                    evalResultModel = await evalService.EvalMoveSequenceAsync(new FeatureEvalOptions
+                    {
+                        BoardContract = boardContract,
+                        IsWhite = isWhite,
+                        Candidate = nextMoves,
+                        BotLevel = botLevel,
+                        ContactWeights = contactWeights,
+                        TurnNumber = turnCount,
+                    });
                 }
                 else
                 {
@@ -271,7 +289,12 @@ namespace GammonX.Mars.Training.Generator
                         Rolls = rolls,
                         BotLevel = botLevel
                     };
-                    var result = await evalService.EvalMoveSequencesForTrainingAsync(evalRequest, contactWeights);
+                    var result = await evalService.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = evalRequest,
+                        ContactWeights = contactWeights,
+                        TurnNumber = turnCount,
+                    });
 
                     if (result.Count != 0)
                     {
@@ -292,7 +315,12 @@ namespace GammonX.Mars.Training.Generator
                     }
                     else
                     {
-                        var passEval = evalService.EvalPositionForTraining(board.ToContract(false), isWhite);
+                        var passEval = evalService.EvalPositionForTraining(new FeatureEvalOptions
+                        {
+                            BoardContract = board.ToContract(false),
+                            IsWhite = isWhite,
+                            TurnNumber = turnCount,
+                        });
                         evalResultModel = new FinalEvalResultModel(0, new MoveSequenceModel(), passEval);
                         nextMoves = new MoveSequenceModel();
                     }
@@ -482,7 +510,15 @@ namespace GammonX.Mars.Training.Generator
                 {
                     var selectedMove = legalMoves[Random.Shared.Next(legalMoves.Length)];
                     // Re-evaluate rare random moves so the recorded value belongs to the move we actually play.
-                    selectedResult = await evalService.EvalMoveSequenceAsync(boardContract, isWhite, selectedMove, botLevel, contactWeights);
+                    selectedResult = await evalService.EvalMoveSequenceAsync(new FeatureEvalOptions
+                    {
+                        BoardContract = boardContract,
+                        IsWhite = isWhite,
+                        Candidate = selectedMove,
+                        BotLevel = botLevel,
+                        ContactWeights = contactWeights,
+                        TurnNumber = turnCount,
+                    });
                     selectedRank = null;
                 }
             }
@@ -556,12 +592,15 @@ namespace GammonX.Mars.Training.Generator
                     .Select(result => result.MoveSequence)
                     .ToArray();
                 // We execute a full 2-ply search for the given top candidates
-                var evaluatedResults = await evalService.EvalMoveSequenceCandidatesAsync(
-                    boardContract,
-                    isWhite,
-                    candidates,
-                    contactWeights,
-                    BotLevel.Expert);
+                var evaluatedResults = await evalService.EvalMoveSequenceCandidatesAsync(new FeatureEvalOptions
+                {
+                    BoardContract = boardContract,
+                    IsWhite = isWhite,
+                    Candidates = candidates,
+                    ContactWeights = contactWeights,
+                    BotLevel = BotLevel.Expert,
+                    TurnNumber = turnIndex,
+                });
 
                 if (evaluatedResults.Count != candidates.Length)
                     throw new InvalidOperationException("Candidate evaluation must return one result per requested move sequence.");

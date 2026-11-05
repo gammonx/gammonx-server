@@ -29,6 +29,9 @@ namespace GammonX.Engine.Services
         /// <summary>
         /// Creates a board based on the given <paramref name="contract"/>.
         /// </summary>
+        /// <remarks>
+        /// Creating a board from a contract does not provide any history information.
+        /// </remarks>
         /// <param name="contract">Contract to parse from.</param>
         /// <returns>An instance of <see cref="IBoardModel"/>.s</returns>
         IBoardModel CreateBoard(BoardModelContract contract);

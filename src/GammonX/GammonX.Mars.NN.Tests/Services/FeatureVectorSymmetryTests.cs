@@ -47,7 +47,7 @@ public sealed class FeatureVectorSymmetryTests
     [InlineData(GameModus.Portes)]
     [InlineData(GameModus.Fevga)]
     [InlineData(GameModus.Plakoto)]
-    public void TurnAndBearOffFeaturesUseTheCanonicalBoard(GameModus modus)
+    public void TurnFeatureUsesTheModelAndBearOffFeaturesUseTheCanonicalBoard(GameModus modus)
     {
         var boardService = BoardServiceFactory.Create(modus);
         var board = boardService.CreateBoard();
@@ -56,12 +56,13 @@ public sealed class FeatureVectorSymmetryTests
         board.BearOffChecker(false, 5);
 
         var extractor = FeatureVectorExtractorFactory.Create(modus);
-        var features = extractor.Extract(CreateAsymmetricModel(), board, false);
+        var model = NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 17 });
+        var features = extractor.Extract(model, board, false);
         var metadataOffset = modus == GameModus.Plakoto ? 2 : 0;
 
         Assert.Equal(5f / 15f, features[21 + metadataOffset]);
         Assert.Equal(3f / 15f, features[22 + metadataOffset]);
-        Assert.Equal(3f / 100f, features[23 + metadataOffset]);
+        Assert.Equal(17f / 100f, features[23 + metadataOffset]);
         Assert.Equal(0f, features[20 + metadataOffset]);
     }
 

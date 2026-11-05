@@ -51,6 +51,7 @@ namespace GammonX.Server.Bot
                     Rolls = rolls,
                     IsWhite = isWhite,
                     BotLevel = matchSession.BotLevel,
+                    TurnNumber = gameSession.TurnNumber,
                 };
 
                 try
@@ -112,6 +113,7 @@ namespace GammonX.Server.Bot
                     PointsAwayPlayer = matchSession.PointsAway(playerId),
                     PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId)),
                     BotLevel = matchSession.BotLevel,
+                    TurnNumber = gameSession.TurnNumber,
                 };
 
                 try
@@ -161,6 +163,7 @@ namespace GammonX.Server.Bot
                     PointsAwayPlayer = matchSession.PointsAway(playerId),
                     PointsAwayOpp = matchSession.PointsAway(GetOtherPlayerId(matchSession, playerId)),
                     BotLevel = matchSession.BotLevel,
+                    TurnNumber = gameSession.TurnNumber,
                 };
 
                 try

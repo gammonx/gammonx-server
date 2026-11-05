@@ -117,6 +117,7 @@ namespace GammonX.Mars.NN.Nets
         public override Tensor forward(Tensor x)
         {
             using var h1 = _fc1.forward(x);
+            // TODO: relu blocks values < 0, is my encoding okay?
             using var r1 = functional.relu(h1);
             using var d1 = _drop.forward(r1);
             using var h2 = _fc2.forward(d1);

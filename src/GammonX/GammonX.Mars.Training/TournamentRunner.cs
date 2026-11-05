@@ -233,7 +233,12 @@ namespace GammonX.Mars.Training
                     BotLevel = botLevel
                 };
 
-                var result = await activeService.EvalMoveSequencesAsync(evalRequest, contactWeights);
+                var result = await activeService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                {
+                    EvalMoveRequest = evalRequest,
+                    ContactWeights = contactWeights,
+                    TurnNumber = turnCount,
+                });
 
                 foreach (var move in result.Moves)
                 {
@@ -328,7 +333,12 @@ namespace GammonX.Mars.Training
                         Rolls = rolls,
                         BotLevel = modelA.Level
                     };
-                    nextMoves = await evalService.EvalMoveSequencesAsync(evalRequest, contactWeights);
+                    nextMoves = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = evalRequest,
+                        ContactWeights = contactWeights,
+                        TurnNumber = turnCount,
+                    });
                 }
 
                 var hasWon = false;

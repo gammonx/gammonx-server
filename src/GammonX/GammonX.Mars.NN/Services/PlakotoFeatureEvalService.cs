@@ -33,7 +33,7 @@ namespace GammonX.Mars.NN.Services
             BoardService = BoardServiceFactory.Create(GameModus.Plakoto);
         }
 
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, int turnNumber, bool isWhite)
         {
             var pinEval = _pinEvalFeature.Eval(board, isWhite);
 
@@ -61,6 +61,7 @@ namespace GammonX.Mars.NN.Services
                 AverageStackHeightOpp = _averageStackHeightFeature.Eval(board, !isWhite),
                 AverageDistanceToBearOffPlayer = _averageDistancePositionFeature.Eval(board, isWhite),
                 AverageDistanceToBearOffOpp = _averageDistancePositionFeature.Eval(board, !isWhite),
+                TurnNumber = turnNumber
             };
 
             return eval;

@@ -11,6 +11,9 @@ namespace GammonX.Engine.Extensions
         /// <summary>
         /// Constructs a board state contract from the given model.
         /// </summary>
+        /// <remarks>
+        /// The return board model contract does not contain any history information.
+        /// </remarks>
         /// <param name="model">Model to construct from.</param>
         /// <param name="inverted">Boolean indicating if some of the board values has to be inverted.</param>
         /// <returns>A board state contract.</returns>

@@ -35,7 +35,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, int turnNumber, bool isWhite)
         {
             EvalResultModel eval = new EvalResultModel
             {
@@ -60,6 +60,7 @@ namespace GammonX.Mars.NN.Services
                 AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
                 CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
                 CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
+                TurnNumber = turnNumber
             };
 
             return eval;

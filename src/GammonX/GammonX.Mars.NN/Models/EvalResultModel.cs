@@ -142,6 +142,11 @@
         /// </summary>
         public double MotherDistanceOpp { get; init; } = 0;
 
+        /// <summary>
+        /// Gets the turn number of the game.
+        /// </summary>
+        public int TurnNumber { get; init; } = 0;
+
         #region Fevga Features
 
         /// <summary>

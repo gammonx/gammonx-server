@@ -49,7 +49,14 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(request);
+                var options = new FeatureEvalOptions
+                {
+                    EvalCubeRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                };
+
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(options);
                 var payload = new CubeEvalPayload { ShouldOffer = shouldOffer, ShouldTake = shouldTake };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
@@ -70,7 +77,16 @@ namespace GammonX.Mars.Server.Controllers
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
                 contactWeights.Validate();
-                var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights);
+
+                var options = new FeatureEvalOptions
+                {
+                    EvalBoardRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                    ContactWeights = contactWeights,
+                };
+
+                var boardScore = await evalService.EvalBoardStateAsync(options);
                 var payload = new BoardEvalPayload { EvalScore = boardScore };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
@@ -99,7 +115,15 @@ namespace GammonX.Mars.Server.Controllers
 
                 contactWeights.Validate();
 
-                var bestMove = await evalService.EvalMoveSequencesAsync(request, contactWeights);
+                var options = new FeatureEvalOptions
+                {
+                    EvalMoveRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                    ContactWeights = contactWeights,
+                };
+
+                var bestMove = await evalService.EvalMoveSequencesAsync(options);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };

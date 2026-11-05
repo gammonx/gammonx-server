@@ -47,8 +47,15 @@ public partial class PerformanceTests
             for (var index = 0; index < moves.Length; index++)
             {
                 observer.Reset(ExpectedReplyGroups(boardService, board, moves[index], service.BatchAcrossRolls));
-                var result = await service.EvalMoveSequenceAsync(
-                    contract, false, moves[index], BotLevel.Expert, EvalWeights.DefaultContactWeights);
+                var result = await service.EvalMoveSequenceAsync(new FeatureEvalOptions
+                {
+                    BoardContract = contract,
+                    IsWhite = false,
+                    Candidate = moves[index],
+                    BotLevel = BotLevel.Expert,
+                    ContactWeights = EvalWeights.DefaultContactWeights,
+                    TurnNumber = 0,
+                });
                 Assert.True(double.IsFinite(result.Score));
                 Assert.Equal(observer.Rows, observer.Unique + observer.WithinBatchDuplicates + observer.CrossBatchDuplicates);
                 Assert.Equal(0, observer.RemainingGroups);

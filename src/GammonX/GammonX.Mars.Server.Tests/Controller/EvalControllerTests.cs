@@ -38,6 +38,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite
@@ -69,6 +70,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -105,6 +107,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite
@@ -144,6 +147,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -178,6 +182,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -208,6 +213,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -241,6 +247,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var cubeRequest = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -279,6 +286,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var cubeRequest = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,

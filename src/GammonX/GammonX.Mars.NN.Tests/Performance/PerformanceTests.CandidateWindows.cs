@@ -85,7 +85,12 @@ public partial class PerformanceTests
             if (mode == "Mixed")
             {
                 var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard(contract);
-                var model = service.EvalPositionForTraining(contract, false);
+                var model = service.EvalPositionForTraining(new FeatureEvalOptions
+                {
+                    BoardContract = contract,
+                    IsWhite = false,
+                    TurnNumber = 0,
+                });
                 var expected = await neural.PredictAsync(model, board, false);
                 var latencies = new List<double>();
                 using var process = Process.GetCurrentProcess();
@@ -176,11 +181,17 @@ public partial class PerformanceTests
                 // Board construction owns the contract's array, so simultaneous requests need distinct contracts.
                 var input = JsonConvert.DeserializeObject<BoardModelContract>(json);
                 Assert.NotNull(input);
-                return service.EvalMoveSequencesForTrainingAsync(new EvalMoveRequestContract
+                return service.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
                 {
-                    Board = input, IsWhite = false, Modus = GameModus.Backgammon,
-                    BotLevel = BotLevel.Expert, Rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]
-                }, EvalWeights.DefaultContactWeights);
+                    EvalMoveRequest = new EvalMoveRequestContract
+                    {
+                        TurnNumber = 0,
+                        Board = input, IsWhite = false, Modus = GameModus.Backgammon,
+                        BotLevel = BotLevel.Expert, Rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]
+                    },
+                    ContactWeights = EvalWeights.DefaultContactWeights,
+                    TurnNumber = 0,
+                });
             }
 
             void Validate(FinalEvalResultModels actual)

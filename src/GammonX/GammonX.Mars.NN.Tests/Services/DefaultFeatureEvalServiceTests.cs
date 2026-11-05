@@ -62,13 +62,19 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var requestWhite = new EvalMoveRequestContract
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Expert
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = contactWeights,
+                TurnNumber = requestWhite.TurnNumber,
+            });
             Assert.NotNull(resultWhite);
 
             await cancellationTokenSource.CancelAsync();
@@ -115,24 +121,38 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalService = new DefaultFeatureEvalService(neuralService: null!, modus);
             var requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            });
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestBlack,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestBlack.TurnNumber,
+            });
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -182,24 +202,38 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalService = new DefaultFeatureEvalService(neuralService: null!, modus);
             var requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            });
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestBlack,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestBlack.TurnNumber,
+            });
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -249,24 +283,38 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalService = new DefaultFeatureEvalService(neuralService: null!, modus);
             var requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, contactWeights, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            });
             Assert.NotNull(resultWhite);
 
             var requestBlack = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 Rolls = [roll1, roll2],
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, contactWeights, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestBlack,
+                ContactWeights = contactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestBlack.TurnNumber,
+            });
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(modus));
@@ -287,6 +335,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalCubeRequestContract request = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = false,
@@ -296,7 +345,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await evalService.EvalCubeAsync(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = request,
+                IsWhite = request.IsWhite,
+                TurnNumber = request.TurnNumber,
+            }));
         }
 
         [Theory]
@@ -311,7 +365,12 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestMustOfferDouble);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = evalCubeReq,
+                IsWhite = evalCubeReq.IsWhite,
+                TurnNumber = evalCubeReq.TurnNumber,
+            });
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -327,7 +386,12 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestOnePlayerIsBehindBig);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = evalCubeReq,
+                IsWhite = evalCubeReq.IsWhite,
+                TurnNumber = evalCubeReq.TurnNumber,
+            });
             Assert.Equal(CubeAction.Double, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -343,7 +407,12 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvaleRequestBotOffersEarlyDouble);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = evalCubeReq,
+                IsWhite = evalCubeReq.IsWhite,
+                TurnNumber = evalCubeReq.TurnNumber,
+            });
             // we expect the bot to not double this early on
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             // but we expect the bot to take the double in early stages
@@ -361,7 +430,12 @@ namespace GammonX.Mars.NN.Tests.Services
             var evalCubeReq = JsonConvert.DeserializeObject<EvalCubeRequestContract>(MockRequests.CubeEvalRequestBotMustTakeInstantDoubleIfOppBehindBig);
             Assert.NotNull(evalCubeReq);
 
-            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(evalCubeReq);
+            var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = evalCubeReq,
+                IsWhite = evalCubeReq.IsWhite,
+                TurnNumber = evalCubeReq.TurnNumber,
+            });
             Assert.Equal(CubeAction.NoDouble, shouldOffer);
             Assert.Equal(CubeAction.Take, shouldTake);
         }
@@ -537,6 +611,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var request = new EvalCubeRequestContract
             {
+                TurnNumber = 0,
                 Modus = GameModus.Backgammon,
                 IsWhite = true,
                 MatchLength = 3,
@@ -550,7 +625,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            var (shouldOffer, shouldTake) = await service.EvalCubeAsync(request);
+            var (shouldOffer, shouldTake) = await service.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = request,
+                IsWhite = request.IsWhite,
+                TurnNumber = request.TurnNumber,
+            });
 
             // At double match point (1-away, 1-away): doubleTake = noDouble = WinP
             // Doubling has no equity benefit since any win wins the match regardless of cube
@@ -577,6 +657,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
             var request = new EvalBoardRequestContract
             {
+                TurnNumber = 0,
                 Modus = GameModus.Backgammon,
                 IsWhite = isWhite,
                 Board = new BoardModelContract
@@ -589,9 +670,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 }
             };
 
-            var score = await service.EvalBoardStateAsync(
-                request,
-                EvalWeights.GetContactWeights(GameModus.Backgammon));
+            var score = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = request,
+                ContactWeights = EvalWeights.GetContactWeights(GameModus.Backgammon),
+                TurnNumber = request.TurnNumber,
+            });
 
             Assert.Equal(expectedScore, score);
             neural.Verify(neuralService => neuralService.PredictAsync(
@@ -609,6 +693,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural.Object, GameModus.Backgammon);
             var request = new EvalBoardRequestContract
             {
+                TurnNumber = 0,
                 Modus = GameModus.Backgammon,
                 IsWhite = true,
                 BotLevel = botLevel,
@@ -620,9 +705,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 }
             };
 
-            var score = await service.EvalBoardStateAsync(
-                request,
-                EvalWeights.GetContactWeights(GameModus.Backgammon));
+            var score = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = request,
+                ContactWeights = EvalWeights.GetContactWeights(GameModus.Backgammon),
+                TurnNumber = request.TurnNumber,
+            });
 
             Assert.Equal(3.0, score);
             neural.Verify(neuralService => neuralService.PredictAsync(
@@ -642,24 +730,32 @@ namespace GammonX.Mars.NN.Tests.Services
                 Fields = CreateRaceFields()
             };
 
-            var onePlyScore = await service.EvalBoardStateAsync(
-                new EvalBoardRequestContract
-                {
-                    Modus = modus,
-                    IsWhite = true,
-                    BotLevel = BotLevel.Hard,
-                    Board = board
-                },
-                contactWeights);
-            var twoPlyScore = await service.EvalBoardStateAsync(
-                new EvalBoardRequestContract
-                {
-                    Modus = modus,
-                    IsWhite = true,
-                    BotLevel = BotLevel.Expert,
-                    Board = board
-                },
-                contactWeights);
+            var onePlyScore = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = new EvalBoardRequestContract
+                    {
+                    TurnNumber = 0,
+                        Modus = modus,
+                        IsWhite = true,
+                        BotLevel = BotLevel.Hard,
+                        Board = board
+                    },
+                ContactWeights = contactWeights,
+                TurnNumber = 0,
+            });
+            var twoPlyScore = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = new EvalBoardRequestContract
+                    {
+                    TurnNumber = 0,
+                        Modus = modus,
+                        IsWhite = true,
+                        BotLevel = BotLevel.Expert,
+                        Board = board
+                    },
+                ContactWeights = contactWeights,
+                TurnNumber = 0,
+            });
 
             Assert.Equal(0.5, onePlyScore, 6);
             Assert.Equal(onePlyScore, twoPlyScore, 6);
@@ -696,20 +792,40 @@ namespace GammonX.Mars.NN.Tests.Services
             var service = new DefaultFeatureEvalService(neural, modus);
             var contactWeights = EvalWeights.GetContactWeights(modus);
 
-            var immediateScore = await service.EvalBoardStateAsync(
-                new EvalBoardRequestContract
-                {
-                    Modus = modus,
-                    IsWhite = true,
-                    Board = immediateBoard.ToContract(false),
-                    BotLevel = BotLevel.Hard
-                },
-                contactWeights);
+            var immediateScore = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = new EvalBoardRequestContract
+                    {
+                    TurnNumber = 0,
+                        Modus = modus,
+                        IsWhite = true,
+                        Board = immediateBoard.ToContract(false),
+                        BotLevel = BotLevel.Hard
+                    },
+                ContactWeights = contactWeights,
+                TurnNumber = 0,
+            });
 
-            var onePlyScore = (await service.EvalMoveSequenceAsync(originalContract, true, moveSequence, BotLevel.Hard, contactWeights))
+            var onePlyScore = (await service.EvalMoveSequenceAsync(new FeatureEvalOptions
+            {
+                BoardContract = originalContract,
+                IsWhite = true,
+                Candidate = moveSequence,
+                BotLevel = BotLevel.Hard,
+                ContactWeights = contactWeights,
+                TurnNumber = 0,
+            }))
                 .Score;
 
-            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(originalContract, true, [moveSequence], contactWeights, BotLevel.Expert))
+            var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(new FeatureEvalOptions
+            {
+                BoardContract = originalContract,
+                IsWhite = true,
+                Candidates = [moveSequence],
+                ContactWeights = contactWeights,
+                BotLevel = BotLevel.Expert,
+                TurnNumber = 0,
+            }))
                 [0].Score;
 
             Assert.Equal(immediateScore, onePlyScore);
@@ -719,10 +835,11 @@ namespace GammonX.Mars.NN.Tests.Services
             Assert.Equal(0, board.BearOffCountBlack);
         }
 
-        private static EvalCubeRequestContract CreateRequest(bool isWhite, int pointsAwayPlayer, int pointsAwayOpp, int cubeValue)
+        private static FeatureEvalOptions CreateRequest(bool isWhite, int pointsAwayPlayer, int pointsAwayOpp, int cubeValue)
         {
-            return new EvalCubeRequestContract
+            var request = new EvalCubeRequestContract
             {
+                TurnNumber = 0,
                 Modus = GameModus.Backgammon,
                 IsWhite = isWhite,
                 MatchLength = 7,
@@ -733,6 +850,12 @@ namespace GammonX.Mars.NN.Tests.Services
                     Fields = new int[24],
                     DoublingCubeValue = cubeValue
                 },
+            };
+            return new FeatureEvalOptions
+            {
+                EvalCubeRequest = request,
+                IsWhite = isWhite,
+                TurnNumber = request.TurnNumber,
             };
         }
 

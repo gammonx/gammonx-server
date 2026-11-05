@@ -145,9 +145,15 @@ public partial class PerformanceTests(ITestOutputHelper output)
             var countingService = new CountingNeuralEvalService(neuralService);
             var evalService = FeatureEvalServiceFactory.Create(GameModus.Backgammon, countingService);
             ConfigureRollBatching(evalService);
-            var features = evalService.EvalPositionForTraining(boardContract, false);
+            var features = evalService.EvalPositionForTraining(new FeatureEvalOptions
+            {
+                BoardContract = boardContract,
+                IsWhite = false,
+                TurnNumber = 0,
+            });
             var request = new EvalMoveRequestContract
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 BotLevel = botLevel,
                 IsWhite = false,
@@ -196,7 +202,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 var warmupStart = Stopwatch.GetTimestamp();
                 if (tuning != null)
                 {
-                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(request, EvalWeights.DefaultContactWeights);
+                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    });
                     Assert.Equal(legalMoves.Length, candidateScores.Count);
                     Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Score)));
                     warmup = candidateScores.Select(botLevel);
@@ -207,7 +218,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 }
                 else
                 {
-                    warmup = await evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights);
+                    warmup = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    });
                 }
                 output.WriteLine(FormattableString.Invariant(
                     $"FullEvaluationWarmupMs={Stopwatch.GetElapsedTime(warmupStart).TotalMilliseconds:F3}"));
@@ -220,7 +236,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 botLevel == BotLevel.Expert ? "TwoPly" : "OnePly",
                 legalMoves.Length,
                 () => new ValueTask<MoveSequenceModel>(
-                    evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights)),
+                    evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    })),
                 result =>
                 {
                     Validate(result);

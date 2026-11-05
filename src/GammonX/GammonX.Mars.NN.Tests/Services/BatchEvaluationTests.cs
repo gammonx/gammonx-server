@@ -37,7 +37,12 @@ public class BatchEvaluationTests
             var board = boardService.CreateBoard();
             for (var history = 0; history < turn; history++)
                 boardService.AddRollEventToHistory(board, true, [2, 3]);
-            var model = eval.EvalPositionForTraining(board.ToContract(false), true);
+            var model = eval.EvalPositionForTraining(new FeatureEvalOptions
+            {
+                BoardContract = board.ToContract(false),
+                IsWhite = true,
+                TurnNumber = turn,
+            });
             rows.Add(neural.ExtractFeatures(model, board, true));
             var destination = Enumerable.Repeat(float.NaN, rows[^1].Length).ToArray();
             Assert.Same(destination, neural.ExtractFeatures(model, board, true, destination));
@@ -68,13 +73,19 @@ public class BatchEvaluationTests
         service.ReuseReplyBoard = true;
         var board = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.PerformanceBoard1);
         Assert.NotNull(board);
-        await service.EvalBoardStateAsync(new EvalBoardRequestContract
+        await service.EvalBoardStateAsync(new FeatureEvalOptions
         {
-            Board = board,
-            IsWhite = false,
-            Modus = GameModus.Backgammon,
-            BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+            EvalBoardRequest = new EvalBoardRequestContract
+            {
+                TurnNumber = 0,
+                Board = board,
+                IsWhite = false,
+                Modus = GameModus.Backgammon,
+                BotLevel = BotLevel.Expert
+            },
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = 0,
+        });
         Assert.Equal(32, neural.LargestBatch);
     }
 
@@ -106,6 +117,7 @@ public class BatchEvaluationTests
             var board = boardService.CreateBoard();
             var request = new EvalBoardRequestContract
             {
+                TurnNumber = 0,
                 Board = board.ToContract(false),
                 IsWhite = true,
                 Modus = modus,
@@ -115,12 +127,22 @@ public class BatchEvaluationTests
                 async (positions, isWhite) =>
                 {
                     var predictions = await neural.PredictAsync(
-                        service.EvalPositionForTraining(positions[0].ToContract(false), isWhite), positions[0], isWhite);
+                        service.EvalPositionForTraining(new FeatureEvalOptions
+                        {
+                            BoardContract = positions[0].ToContract(false),
+                            IsWhite = isWhite,
+                            TurnNumber = 0,
+                        }), positions[0], isWhite);
                     return new[] { modus is GameModus.Fevga or GameModus.Plakoto
                         ? predictions[0]
                         : new GameEquityModel(new GameOutcomeModel(predictions)).Equity };
                 }, maxBatchSize: 1).EvaluateAsync(board, true);
-            var batched = await service.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights);
+            var batched = await service.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = request,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = request.TurnNumber,
+            });
             Assert.True(double.IsFinite(reference));
             Assert.InRange(Math.Abs(reference - batched), 0d, 1e-5);
         }
@@ -153,6 +175,7 @@ public class BatchEvaluationTests
         eval.ReuseReplyBoard = true;
         var request = new EvalBoardRequestContract
         {
+            TurnNumber = 0,
             Board = board.ToContract(false),
             IsWhite = rootIsWhite,
             Modus = modus,
@@ -163,7 +186,12 @@ public class BatchEvaluationTests
         async Task<double> Single(IBoardModel position, bool isWhite)
         {
             var features = FeatureVectorExtractorFactory.Create(modus).Extract(
-                eval.EvalPositionForTraining(position.ToContract(false), isWhite), position, isWhite);
+                eval.EvalPositionForTraining(new FeatureEvalOptions
+                {
+                    BoardContract = position.ToContract(false),
+                    IsWhite = isWhite,
+                    TurnNumber = 0,
+                }), position, isWhite);
             legacyFeatures.Add(features);
             await Task.Yield();
             return features.Sum(value => (double)value);
@@ -178,7 +206,12 @@ public class BatchEvaluationTests
             return positions.Select(position =>
             {
                 var features = FeatureVectorExtractorFactory.Create(modus).Extract(
-                    eval.EvalPositionForTraining(position.ToContract(false), isWhite), position, isWhite);
+                    eval.EvalPositionForTraining(new FeatureEvalOptions
+                    {
+                        BoardContract = position.ToContract(false),
+                        IsWhite = isWhite,
+                        TurnNumber = 0,
+                    }), position, isWhite);
                 batchFeatures.Add(features);
                 return features.Sum(value => (double)value);
             }).ToArray();
@@ -198,7 +231,12 @@ public class BatchEvaluationTests
             (position, white) =>
             {
                 var features = FeatureVectorExtractorFactory.Create(modus).Extract(
-                    eval.EvalPositionForTraining(position.ToContract(false), white), position, white);
+                    eval.EvalPositionForTraining(new FeatureEvalOptions
+                    {
+                        BoardContract = position.ToContract(false),
+                        IsWhite = white,
+                        TurnNumber = 0,
+                    }), position, white);
                 preparedFeatures.Add(features);
                 return new PreparedPosition(features);
             }, async positions =>
@@ -214,7 +252,12 @@ public class BatchEvaluationTests
         for (var row = 0; row < legacyFeatures.Count; row++)
             Assert.Equal(legacyFeatures[row], preparedFeatures[row]);
 
-        var score = await eval.EvalBoardStateAsync(request, EvalWeights.DefaultContactWeights);
+        var score = await eval.EvalBoardStateAsync(new FeatureEvalOptions
+        {
+            EvalBoardRequest = request,
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = request.TurnNumber,
+        });
         Assert.True(double.IsFinite(score));
         Assert.True(neural.Predictions > 0);
         Assert.True(neural.Batches > 0);
@@ -232,18 +275,24 @@ public class BatchEvaluationTests
         var eval = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
             FeatureEvalServiceFactory.Create(GameModus.Backgammon, neural));
         eval.ReuseReplyBoard = reuseReplyBoard;
-        var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
+        var score = await eval.EvalBoardStateAsync(new FeatureEvalOptions
         {
-            Board = new BoardModelContract
+            EvalBoardRequest = new EvalBoardRequestContract
             {
-                Fields = fields,
-                BearOffCountWhite = 14,
-                BearOffCountBlack = 14
+                TurnNumber = 0,
+                Board = new BoardModelContract
+                {
+                    Fields = fields,
+                    BearOffCountWhite = 14,
+                    BearOffCountBlack = 14
+                },
+                IsWhite = true,
+                Modus = GameModus.Backgammon,
+                BotLevel = BotLevel.Expert
             },
-            IsWhite = true,
-            Modus = GameModus.Backgammon,
-            BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = 0,
+        });
         Assert.Equal(-1d, score, 10);
         Assert.Equal(0, neural.Predictions);
     }
@@ -263,17 +312,23 @@ public class BatchEvaluationTests
         eval.BatchAcrossRolls = batchAcrossRolls;
         eval.ReuseReplyBoard = reuseReplyBoard;
 
-        var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
+        var score = await eval.EvalBoardStateAsync(new FeatureEvalOptions
         {
-            Board = new BoardModelContract
+            EvalBoardRequest = new EvalBoardRequestContract
             {
-                Fields = fields,
-                HomeBarCountWhite = 1
+                TurnNumber = 0,
+                Board = new BoardModelContract
+                {
+                    Fields = fields,
+                    HomeBarCountWhite = 1
+                },
+                IsWhite = false,
+                Modus = GameModus.Backgammon,
+                BotLevel = BotLevel.Expert
             },
-            IsWhite = false,
-            Modus = GameModus.Backgammon,
-            BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = 0,
+        });
 
         Assert.True(double.IsFinite(score));
         Assert.Equal(21, neural.Predictions);
@@ -320,14 +375,20 @@ public class BatchEvaluationTests
         eval.BatchAcrossRolls = batchAcrossRolls;
         eval.ReuseReplyBoard = reuseReplyBoard;
 
-        var score = await eval.EvalBoardStateAsync(new EvalBoardRequestContract
+        var score = await eval.EvalBoardStateAsync(new FeatureEvalOptions
         {
-            Board = new BoardModelContract
+            EvalBoardRequest = new EvalBoardRequestContract
             {
-                Fields = fields, BearOffCountWhite = 14, BearOffCountBlack = 14
+                TurnNumber = 0,
+                Board = new BoardModelContract
+                {
+                    Fields = fields, BearOffCountWhite = 14, BearOffCountBlack = 14
+                },
+                IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
             },
-            IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights);
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = 0,
+        });
 
         // Only 11, 12, 13, 14 and 23 fail to bear off: nine of 36 equally likely rolls.
         // Their neural equity is zero; all other rolls win a single for the opponent.

@@ -29,11 +29,13 @@ public sealed class SelfPlayRunnerTests
         var evalService = new Mock<IFeatureEvalService>();
         evalService
             .Setup(service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<BoardModelContract>(),
-                true,
-                It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 3),
-                It.IsAny<ContactWeightModel>(),
-                BotLevel.Expert))
+                It.Is<FeatureEvalOptions>(options =>
+                    options.BoardContract != null &&
+                    options.IsWhite == true &&
+                    options.Candidates != null && options.Candidates.Count == 3 &&
+                    options.ContactWeights != null &&
+                    options.TurnNumber == 4 &&
+                    options.BotLevel == BotLevel.Expert)))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(
@@ -99,11 +101,7 @@ public sealed class SelfPlayRunnerTests
         Assert.Null(result.Decision.TwoPlyBestScore);
         evalService.Verify(
             service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<BoardModelContract>(),
-                It.IsAny<bool>(),
-                It.IsAny<IReadOnlyList<MoveSequenceModel>>(),
-                It.IsAny<ContactWeightModel>(),
-                It.IsAny<BotLevel>()),
+                It.IsAny<FeatureEvalOptions>()),
             Times.Never);
     }
 
@@ -122,11 +120,13 @@ public sealed class SelfPlayRunnerTests
         var evalService = new Mock<IFeatureEvalService>();
         evalService
             .Setup(service => service.EvalMoveSequenceCandidatesAsync(
-                It.IsAny<BoardModelContract>(),
-                true,
-                It.Is<IReadOnlyList<MoveSequenceModel>>(moves => moves.Count == 5),
-                It.IsAny<ContactWeightModel>(),
-                BotLevel.Expert))
+                It.Is<FeatureEvalOptions>(options =>
+                    options.BoardContract != null &&
+                    options.IsWhite == true &&
+                    options.Candidates != null && options.Candidates.Count == 5 &&
+                    options.ContactWeights != null &&
+                    options.TurnNumber == 4 &&
+                    options.BotLevel == BotLevel.Expert)))
             .ReturnsAsync(twoPlyResults);
 
         var result = await SelfPlayRunner.ApplySelectiveTwoPlyAsync(

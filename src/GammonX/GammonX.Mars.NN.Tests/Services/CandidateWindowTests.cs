@@ -25,7 +25,15 @@ public class CandidateWindowTests
         var (service, board, moves, neural) = Controlled(window);
         service.BatchAcrossRolls = batchAcrossRolls;
         var original = board.DeepClone();
-        var evaluation = service.GetCandidatesByEvalAsync(board, moves, true, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert);
+        var options = new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = true,
+                TurnNumber = 1,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                BotLevel = BotLevel.Expert,
+            };
+        var evaluation = service.GetCandidatesByEvalAsync(options, board);
         for (var index = 1; index <= window; index++)
         {
             Assert.Equal(index, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
@@ -66,7 +74,15 @@ public class CandidateWindowTests
     {
         var (service, board, moves, neural) = Controlled(2);
         var original = board.DeepClone();
-        var evaluation = service.GetCandidatesByEvalAsync(board, moves, true, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert);
+        var options = new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = true,
+                TurnNumber = 1,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                BotLevel = BotLevel.Expert,
+            };
+        var evaluation = service.GetCandidatesByEvalAsync(options, board);
 
         Assert.Equal(1, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
         Assert.Equal(2, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
@@ -97,7 +113,7 @@ public class CandidateWindowTests
 
     [Theory]
     [MemberData(nameof(Variants))]
-    public async Task MatchesSequentialScoresAndHistoryInputsForEveryVariant(GameModus modus, int window, bool white)
+    public async Task MatchesSequentialScoresAndHistoryInputsForEveryVariant(GameModus modus, int window, bool isWhite)
     {
         var boards = BoardServiceFactory.Create(modus);
         var board = boards.CreateBoard();
@@ -106,18 +122,26 @@ public class CandidateWindowTests
             boards.AddRollEventToHistory(board, turn % 2 == 0, [2, 3]);
         }
         var original = board.DeepClone();
-        var moves = boards.GetUniqueLegalMoveSequences(board, white, [2, 3]).Take(4).ToArray();
+        var moves = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3]).Take(4).ToArray();
         Assert.NotEmpty(moves);
 
         var neural = new FeatureScorer(modus);
         var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(modus, neural));
-        var reference = (await service.GetCandidatesByEvalAsync(board, moves, white, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert)).ToArray();
+        var options = new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = isWhite,
+                TurnNumber = 1,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                BotLevel = BotLevel.Expert,
+            };
+        var reference = (await service.GetCandidatesByEvalAsync(options, board)).ToArray();
         
         var rows = neural.Rows.ToArray();
         neural.Rows.Clear();
         service.ParallelCandidateCount = window;
         service.ReuseReplyBoard = true;
-        var actual = (await service.GetCandidatesByEvalAsync(board, moves, white, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert)).ToArray();
+        var actual = (await service.GetCandidatesByEvalAsync(options, board)).ToArray();
 
         Assert.Equal(reference.Select(row => row.MoveSequence), actual.Select(row => row.MoveSequence));
         for (var index = 0; index < reference.Length; index++)
@@ -157,7 +181,15 @@ public class CandidateWindowTests
         var moves = boards.GetUniqueLegalMoveSequences(board, true, [1]);
         var neural = new FeatureScorer(GameModus.Backgammon);
         var service = new DefaultFeatureEvalService(neural, GameModus.Backgammon) { ParallelCandidateCount = window };
-        var result = await service.GetCandidatesByEvalAsync(board, moves, true, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert);
+        var options = new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = true,
+                TurnNumber = 1,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                BotLevel = BotLevel.Expert,
+            };
+        var result = await service.GetCandidatesByEvalAsync(options, board);
         
         Assert.All(result, row => Assert.True(row.Score > 0));
         Assert.NotEmpty(result);
@@ -182,8 +214,15 @@ public class CandidateWindowTests
             var original = board.DeepClone();
             var moves = boards.GetUniqueLegalMoveSequences(board, true, [2, 3]);
             var service = new DefaultFeatureEvalService(neural, GameModus.Backgammon) { ParallelCandidateCount = 4 };
-            var evaluation = service.GetCandidatesByEvalAsync(
-                board, moves, true, EvalWeights.DefaultContactWeights, moves.Length, BotLevel.Expert);
+            var options = new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = true,
+                TurnNumber = 1,
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                BotLevel = BotLevel.Expert,
+            };
+            var evaluation = service.GetCandidatesByEvalAsync(options, board);
             await neural.StopAsync(CancellationToken.None);
             var error = await Record.ExceptionAsync(() => evaluation.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
             Assert.NotNull(error);
@@ -222,7 +261,8 @@ public class CandidateWindowTests
     private sealed class ControlledService(INeuralEvalService neural, IBoardService boards) : BaseFeatureEvalServiceImpl(neural)
     {
         protected override IBoardService BoardService => boards;
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite) => new();
+
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, int turnNumber, bool isWhite) => new();
     }
 
     private sealed class GatedScorer : INeuralEvalService

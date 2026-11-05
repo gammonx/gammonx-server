@@ -25,6 +25,7 @@ namespace GammonX.Server.Tests.Bot.Mars
         {
             return new EvalMoveRequestContract
             {
+                TurnNumber = 0,
                 Modus = GameModus.Backgammon,
                 IsWhite = true,
                 Rolls = [1, 2],

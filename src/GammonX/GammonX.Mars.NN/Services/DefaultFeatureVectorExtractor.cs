@@ -1,5 +1,4 @@
-﻿using GammonX.Engine.History;
-using GammonX.Engine.Models;
+﻿using GammonX.Engine.Models;
 
 using GammonX.Mars.NN.Models;
 
@@ -28,18 +27,10 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
         {
+            // TODO: we need scalar values between 0 and 1 for proper back propagation.
             if (features.Length != FeatureCount)
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
-            }
-
-            var turnNumber = 0;
-            foreach (var historyEvent in board.History.Events)
-            {
-                if (historyEvent.Type == HistoryEventType.Roll)
-                {
-                    turnNumber++;
-                }
             }
             
             var featureIndex = 0;
@@ -68,7 +59,7 @@ namespace GammonX.Mars.NN.Services
             features[featureIndex++] = 0f;
             features[featureIndex++] = (isWhite ? board.BearOffCountWhite : board.BearOffCountBlack) / 15f;
             features[featureIndex++] = (isWhite ? board.BearOffCountBlack : board.BearOffCountWhite) / 15f;
-            features[featureIndex++] = turnNumber / 100f;
+            features[featureIndex++] = (float)model.TurnNumber;
 
             // we add the raw board as input
             var fields = board.Fields;

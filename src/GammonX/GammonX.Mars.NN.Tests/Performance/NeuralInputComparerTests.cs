@@ -35,15 +35,17 @@ public class NeuralInputComparerTests
     }
 
     [Fact]
-    public void HistoryAndPerspectiveRemainPartOfTheInputIdentity()
+    public void TurnNumberAndPerspectiveRemainPartOfTheInputIdentity()
     {
         var service = BoardServiceFactory.Create(GameModus.Backgammon);
         var board = service.CreateBoard();
         var extractor = new DefaultFeatureVectorExtractor();
         var first = extractor.Extract(new NormalizedEvalResultModel(), board, true);
         service.AddRollEventToHistory(board, true, [2, 3]);
-        var withHistory = extractor.Extract(new NormalizedEvalResultModel(), board, true);
-        Assert.False(NeuralInputComparer.Instance.Equals(first, withHistory));
+        var sameTurn = extractor.Extract(new NormalizedEvalResultModel(), board, true);
+        Assert.True(NeuralInputComparer.Instance.Equals(first, sameTurn));
+        var nextTurn = extractor.Extract(NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 1 }), board, true);
+        Assert.False(NeuralInputComparer.Instance.Equals(first, nextTurn));
         board.Fields[0] = -1;
         var white = extractor.Extract(new NormalizedEvalResultModel(), board, true);
         var black = extractor.Extract(new NormalizedEvalResultModel(), board, false);

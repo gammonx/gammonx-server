@@ -167,6 +167,11 @@
         /// </summary>
         public double MotherDistanceOpp { get; init; } = 0;
 
+        /// <summary>
+        /// Gets the turn number of the game.
+        /// </summary>
+        public double TurnNumber { get; init; } = 0;
+
         #region Fevga Features
 
         /// <summary>
@@ -298,6 +303,7 @@
                 PlayerMotherPinned = eval.PlayerMotherPinned,
                 MotherDistancePlayer = eval.MotherDistancePlayer / 18.0,
                 MotherDistanceOpp = eval.MotherDistanceOpp / 18.0,
+                TurnNumber = eval.TurnNumber / 100.0,
                 // fevga features
                 MaxPrimeLengthPlayer = eval.MaxPrimeLengthPlayer / 6.0,
                 MaxPrimeLengthOpp = eval.MaxPrimeLengthOpp / 6.0,

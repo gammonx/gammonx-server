@@ -29,9 +29,19 @@ public partial class PerformanceTests
             Assert.NotNull(contract);
 
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard(contract);
-            var features = service.EvalPositionForTraining(contract, false);
+            var features = service.EvalPositionForTraining(new FeatureEvalOptions
+            {
+                BoardContract = contract,
+                IsWhite = false,
+                TurnNumber = 0,
+            });
             var expected = await neural.PredictAsync(features, board, false);
-            await service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
+            await service.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = Request(),
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = 0,
+            });
 
             WriteProcessMemory("AfterWarmup");
             var singleLatencies = new List<double>();
@@ -39,8 +49,18 @@ public partial class PerformanceTests
             var cpuStart = process.TotalProcessorTime;
             var start = Stopwatch.GetTimestamp();
 
-            var first = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
-            var second = service.EvalMoveSequencesAsync(Request(), EvalWeights.DefaultContactWeights);
+            var first = service.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = Request(),
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = 0,
+            });
+            var second = service.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = Request(),
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = 0,
+            });
 
             for (var index = 0; index < 100; index++)
             {
@@ -84,6 +104,7 @@ public partial class PerformanceTests
                 Assert.NotNull(position);
                 return new EvalMoveRequestContract
                 {
+                    TurnNumber = 0,
                     Board = position,
                     BotLevel = BotLevel.Expert,
                     IsWhite = false,

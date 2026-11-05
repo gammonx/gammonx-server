@@ -16,6 +16,7 @@ namespace GammonX.Mars.NN.Services
         /// <returns>A weighted score representing the relative quality of the position.</returns>
         public static double CalculateScore(EvalResultModel eval, ContactWeightModel contactWeights)
         {
+            // TODO: provide turnnumber
             var normalizedResult = NormalizedEvalResultModel.From(eval);
             var score = 0.0;
 
@@ -80,8 +81,11 @@ namespace GammonX.Mars.NN.Services
         /// <returns>A (cheap) weighted score representing the relative quality of the position.</returns>
         public static (NormalizedEvalResultModel, double) CalculateCheapScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
         {
+            // TODO: provide turnnumber
             var normalizedResult = NormalizedEvalResultModel.From(eval);
             var score = 0.0;
+
+            // we do not account for the turnnumber because it is kind of neutral
 
             // we exclude contact based features in race positions, as they are not relevant and can be misleading
             if (eval.Race)
