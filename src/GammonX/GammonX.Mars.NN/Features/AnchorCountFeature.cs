@@ -7,28 +7,15 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var count = 0;
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var whiteAnchors = board.Fields.Index().Where(i => i.Item <= -board.BlockAmount);
-                if (board is IPinModel pinModel)
+                if (FeatureBoardGeometry.IsMadePoint(board, isWhite, index))
                 {
-                    var potWhiteAnchors = board.Fields.Index().Where(i => i.Item == -(board.BlockAmount -1));
-                    potWhiteAnchors = potWhiteAnchors.Where(i => pinModel.PinnedFields[i.Index] == board.BlockAmount - 1);
-                    whiteAnchors = whiteAnchors.Concat(potWhiteAnchors);
+                    count++;
                 }
-                return whiteAnchors.Count();
             }
-            else
-            {
-                var blackAnchors = board.Fields.Index().Where(i => i.Item >= board.BlockAmount);
-                if (board is IPinModel pinModel)
-                {
-                    var potBlackAnchors = board.Fields.Index().Where(i => i.Item == board.BlockAmount - 1);
-                    potBlackAnchors = potBlackAnchors.Where(i => pinModel.PinnedFields[i.Index] == -(board.BlockAmount - 1));
-                    blackAnchors = blackAnchors.Concat(potBlackAnchors);
-                }
-                return blackAnchors.Count();
-            }
+            return count;
         }
     }
 }

@@ -166,13 +166,10 @@ namespace GammonX.Mars.NN.Features
             var fields = board.Fields;
             for (var index = 0; index < fields.Length; index++)
             {
-                if (isWhite && fields[index] < 0)
+                var count = FeatureBoardGeometry.OwnCount(fields[index], isWhite);
+                if (count > 0)
                 {
-                    counts[index] = Math.Abs(fields[index]);
-                }
-                else if (!isWhite && fields[index] > 0)
-                {
-                    counts[index] = Math.Abs(fields[index]);
+                    counts[index] = count;
                 }
             }
             return counts;

@@ -16,22 +16,15 @@ namespace GammonX.Mars.NN.Features
                 ? board.HomeRangeWhite.Start.Value
                 : board.HomeRangeBlack.Start.Value;
 
-            var checkers = board.Fields.Index().Where(i => isWhite ? i.Item < 0 : i.Item > 0).ToList();
-            if (board is IPinModel pinModel)
+            var distance = 0;
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var pinned = pinModel.PinnedFields.Index().Where(i => isWhite ? i.Item < 0 : i.Item > 0);
-                checkers = checkers.Concat(pinned).ToList();
+                if (FeatureBoardGeometry.RemainingCountAt(board, isWhite, index) > 0)
+                {
+                    distance = Math.Max(distance, board.RecoverRollOperator(isWhite, index, homeEntry));
+                }
             }
-
-            if (checkers.Count == 0)
-                return 0;
-
-            var furthest = checkers.MaxBy(bi => board.RecoverRollOperator(isWhite, bi.Index, homeEntry));
-            if (furthest == default)
-                return 0;
-
-            // clamp to 0 when the mother is already inside the home range
-            return Math.Max(0, board.RecoverRollOperator(isWhite, furthest.Index, homeEntry));
+            return distance;
         }
     }
 }

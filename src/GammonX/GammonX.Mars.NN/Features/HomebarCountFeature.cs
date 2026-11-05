@@ -8,20 +8,6 @@ namespace GammonX.Mars.NN.Features
     public class HomebarCountFeature : IFeature<int>
     {
         // <inheritdoc />
-        public int Eval(IBoardModel board, bool isWhite)
-        {
-            if (board is IHomeBarModel homebar)
-            {
-                if (isWhite)
-                {
-                    return homebar.HomeBarCountWhite;
-                }
-                else
-                {
-                    return homebar.HomeBarCountBlack;
-                }
-            }
-            return 0;
-        }
+        public int Eval(IBoardModel board, bool isWhite) => FeatureBoardGeometry.BarCount(board, isWhite);
     }
 }

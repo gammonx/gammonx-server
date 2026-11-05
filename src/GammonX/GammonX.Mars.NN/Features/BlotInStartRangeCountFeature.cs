@@ -10,24 +10,16 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var count = 0;
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var whiteBlots = board.Fields.Index().Where(i => i.Item == -1);
-                if (board is IPinModel pinModel)
+                if (FeatureBoardGeometry.IsBlot(board, isWhite, index)
+                    && board.IsInStartOperator(isWhite, index))
                 {
-                    whiteBlots = whiteBlots.Where(wb => pinModel.PinnedFields[wb.Index] == 0);
+                    count++;
                 }
-                return whiteBlots.Count(wb => board.IsInStartOperator(isWhite, wb.Index));
             }
-            else
-            {
-                var blackBlots = board.Fields.Index().Where(i => i.Item == 1);
-                if (board is IPinModel pinModel)
-                {
-                    blackBlots = blackBlots.Where(wb => pinModel.PinnedFields[wb.Index] == 0);
-                }
-                return blackBlots.Count(wb => board.IsInStartOperator(isWhite, wb.Index));
-            }
+            return count;
         }
     }
 }

@@ -19,23 +19,9 @@ namespace GammonX.Mars.NN.Features
 
             for (var i = 0; i < pinModel.PinnedFields.Length; i++)
             {
-                var val = pinModel.PinnedFields[i];
-                if (val == 0) continue;
-
-                if (isWhite)
-                {
-                    // PinnedFields[i] > 0 = black (opponent) checker pinned by white (player)
-                    // PinnedFields[i] < 0 = white (player) checker pinned by black (opponent)
-                    if (val > 0) pinnedOppCount += val;
-                    else pinnedPlayerCount += Math.Abs(val);
-                }
-                else
-                {
-                    // PinnedFields[i] < 0 = white (opponent) checker pinned by black (player)
-                    // PinnedFields[i] > 0 = black (player) checker pinned by white (opponent)
-                    if (val < 0) pinnedOppCount += Math.Abs(val);
-                    else pinnedPlayerCount += val;
-                }
+                var field = pinModel.PinnedFields[i];
+                pinnedOppCount += FeatureBoardGeometry.OwnCount(field, !isWhite);
+                pinnedPlayerCount += FeatureBoardGeometry.OwnCount(field, isWhite);
             }
 
             int oppMotherIdx;
@@ -51,13 +37,9 @@ namespace GammonX.Mars.NN.Features
                 playerMotherIdx = board.StartRangeBlack.Start.Value;
             }
 
-            var oppMotherPinned = isWhite
-                ? (pinModel.PinnedFields[oppMotherIdx] > 0 ? 1 : 0)
-                : (pinModel.PinnedFields[oppMotherIdx] < 0 ? 1 : 0);
+            var oppMotherPinned = FeatureBoardGeometry.OwnCount(pinModel.PinnedFields[oppMotherIdx], !isWhite) > 0 ? 1 : 0;
 
-            var playerMotherPinned = isWhite
-                ? (pinModel.PinnedFields[playerMotherIdx] < 0 ? 1 : 0)
-                : (pinModel.PinnedFields[playerMotherIdx] > 0 ? 1 : 0);
+            var playerMotherPinned = FeatureBoardGeometry.OwnCount(pinModel.PinnedFields[playerMotherIdx], isWhite) > 0 ? 1 : 0;
 
             return new PinEvalResult(pinnedOppCount, pinnedPlayerCount, oppMotherPinned, playerMotherPinned);
         }

@@ -83,6 +83,18 @@ internal static class FeatureBoardGeometry
         : 0;
 
     /// <summary>
+    /// Determines whether the owner has a visible singleton that is not holding a pin.
+    /// Counts singleton points in Fevga too, where one checker also blocks a point.
+    /// </summary>
+    /// <param name="board">Board supplying visible fields and optional pin state.</param>
+    /// <param name="isWhite">The owner of the singleton.</param>
+    /// <param name="index">Physical board index in [0, 23].</param>
+    /// <returns>Whether the point contains exactly one own checker and no pinned checker.</returns>
+    public static bool IsBlot(IBoardModel board, bool isWhite, int index) =>
+        OwnCount(board.Fields[index], isWhite) == 1
+        && (board is not IPinModel pins || pins.PinnedFields[index] == 0);
+
+    /// <summary>
     /// Determines whether the owner blocks a point under the board's rules.
     /// A Plakoto singleton holding an opponent pin also makes the point.
     /// </summary>
