@@ -12,21 +12,10 @@ namespace GammonX.Mars.NN.Features
         {
             var longest = 0;
             var current = 0;
-            var pinModel = board as IPinModel;
-            for (var index = 0; index < board.Fields.Length; index++)
+            for (var position = 0; position < board.Fields.Length; position++)
             {
-                var field = board.Fields[index];
-                var isAnchor = isWhite
-                    ? field <= -board.BlockAmount
-                    : field >= board.BlockAmount;
-                if (!isAnchor && pinModel is not null)
-                {
-                    isAnchor = isWhite
-                        ? field == -(board.BlockAmount - 1) && pinModel.PinnedFields[index] == board.BlockAmount - 1
-                        : field == board.BlockAmount - 1 && pinModel.PinnedFields[index] == -(board.BlockAmount - 1);
-                }
-
-                if (isAnchor)
+                var index = FeatureBoardGeometry.BoardIndex(board, isWhite, position);
+                if (FeatureBoardGeometry.IsMadePoint(board, isWhite, index))
                 {
                     current++;
                     longest = Math.Max(longest, current);

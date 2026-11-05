@@ -263,10 +263,10 @@ namespace GammonX.Engine.Models
 			{
 				// assign white values to black
 				BearOffCountBlack = BearOffCountWhite,
-				HomeBarCountBlack = HomeBarCountBlack,
+				HomeBarCountBlack = HomeBarCountWhite,
 				// assign black values to white
 				BearOffCountWhite = BearOffCountBlack,
-				HomeBarCountWhite = HomeBarCountWhite,
+				HomeBarCountWhite = HomeBarCountBlack,
 				// inverted board fields
 				Fields = invertedFields,
 			};

@@ -1,42 +1,31 @@
-﻿using GammonX.Engine.Models;
+using GammonX.Engine.Models;
 
 namespace GammonX.Mars.NN.Features
 {
     /// <summary>
-    /// Calculates the amount of pipes needed for the given player until all of his checkers
-    /// are in the home range and can be borne off.
+    /// Calculates the geometric pips until all remaining checkers have entered home,
+    /// including pinned checkers and checkers on bar/reserve.
     /// </summary>
     public sealed class PipsToBearOffFeature : IFeature<int>
     {
         // <inheritdoc />
         public int Eval(IBoardModel board, bool isWhite)
         {
-            // iterate from just outside home (home start + 1) up to start range end
-            // and count pips each checker needs to travel to reach the home entry point
-            if (isWhite)
+            var home = isWhite ? board.HomeRangeWhite : board.HomeRangeBlack;
+            var homePointCount = Math.Abs(home.End.Value - home.Start.Value) + 1;
+            var pips = FeatureBoardGeometry.BarCount(board, isWhite) * (board.Fields.Length + 1 - homePointCount);
+
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                var pipsToBearOff = 0;
-                for (int i = board.HomeRangeWhite.Start.Value - 1; i >= board.StartRangeWhite.Start.Value; i--)
+                var count = FeatureBoardGeometry.RemainingCountAt(board, isWhite, index);
+                if (count > 0)
                 {
-                    if (board.Fields[i] < 0)
-                    {
-                        pipsToBearOff += board.RecoverRollOperator(isWhite, i, board.HomeRangeWhite.Start.Value) * Math.Abs(board.Fields[i]);
-                    }
+                    var pipsToBearOff = FeatureBoardGeometry.BearOffDistance(board, isWhite, index);
+                    pips += count * Math.Max(pipsToBearOff - homePointCount, 0);
                 }
-                return pipsToBearOff;
             }
-            else
-            {
-                var pipsToBearOff = 0;
-                for (int i = board.HomeRangeBlack.Start.Value + 1; i <= board.StartRangeBlack.Start.Value; i++)
-                {
-                    if (board.Fields[i] > 0)
-                    {
-                        pipsToBearOff += board.RecoverRollOperator(isWhite, i, board.HomeRangeBlack.Start.Value) * Math.Abs(board.Fields[i]);
-                    }
-                }
-                return pipsToBearOff;
-            }
+
+            return pips;
         }
     }
 }
