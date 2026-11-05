@@ -67,16 +67,18 @@ namespace GammonX.Mars.NN.Services
             {
                 // we invert the board, so that the perspective always reflects the active player
                 // white i=0 takes board.Fields[0] and black i=0 takes board.Fields[23]
-                // the active player checker count (v) is always negative, the opponent checker count (v) is always positive
+                // the active player's checkers are positive; the opponent's checkers are negative
                 var v = isWhite ? fields[i] : -fields[fields.Length - 1 - i];
-                features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
-                features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor
-                features[featureIndex++] = v >= 3 ? 1f : 0f;  // own 3+
-                features[featureIndex++] = v >= 4 ? 1f : 0f;  // own 4+
-                features[featureIndex++] = v <= -1 ? 1f : 0f; // opp blot
-                features[featureIndex++] = v <= -2 ? 1f : 0f; // opp anchor
-                features[featureIndex++] = v <= -3 ? 1f : 0f; // opp 3+
-                features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
+                features[featureIndex++] = v >= 1 ? 1f : 0f;                // own blot
+                features[featureIndex++] = v >= 2 ? 1f : 0f;                // own anchor
+                features[featureIndex++] = v >= 3 ? 1f : 0f;                // own 3+
+                // the count tail increases from 1/12 at four checkers to 1 at fifteen
+                features[featureIndex++] = v >= 4 ? (v - 3) / 12f : 0f;     // own 4+
+                features[featureIndex++] = v <= -1 ? 1f : 0f;               // opp blot
+                features[featureIndex++] = v <= -2 ? 1f : 0f;               // opp anchor
+                features[featureIndex++] = v <= -3 ? 1f : 0f;               // opp 3+
+                // the count tail increases from 1/12 at four checkers to 1 at fifteen
+                features[featureIndex++] = v <= -4 ? Math.Abs(v + 3) / 12f : 0f; // opp 4+
             }
 
 

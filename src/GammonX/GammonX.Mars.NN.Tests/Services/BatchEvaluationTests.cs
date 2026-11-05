@@ -90,17 +90,27 @@ public class BatchEvaluationTests
     }
 
     [Theory]
-    [InlineData(GameModus.Backgammon, 32)]
-    [InlineData(GameModus.Portes, 32)]
-    [InlineData(GameModus.Tavla, 32)]
-    [InlineData(GameModus.Fevga, 32)]
-    [InlineData(GameModus.Plakoto, 32)]
-    [InlineData(GameModus.Backgammon, 64)]
-    [InlineData(GameModus.Portes, 64)]
-    [InlineData(GameModus.Tavla, 64)]
-    [InlineData(GameModus.Fevga, 64)]
-    [InlineData(GameModus.Plakoto, 64)]
-    public async Task RealModelsMatchSingleRowReferenceScoring(GameModus modus, int maxBatchSize)
+    [InlineData(GameModus.Backgammon, 32, true)]
+    [InlineData(GameModus.Portes, 32, true)]
+    [InlineData(GameModus.Tavla, 32, true)]
+    [InlineData(GameModus.Fevga, 32, true)]
+    [InlineData(GameModus.Plakoto, 32, true)]
+    [InlineData(GameModus.Backgammon, 64, true)]
+    [InlineData(GameModus.Portes, 64, true)]
+    [InlineData(GameModus.Tavla, 64, true)]
+    [InlineData(GameModus.Fevga, 64, true)]
+    [InlineData(GameModus.Plakoto, 64, true)]
+    [InlineData(GameModus.Backgammon, 32, false)]
+    [InlineData(GameModus.Portes, 32, false)]
+    [InlineData(GameModus.Tavla, 32, false)]
+    [InlineData(GameModus.Fevga, 32, false)]
+    [InlineData(GameModus.Plakoto, 32, false)]
+    [InlineData(GameModus.Backgammon, 64, false)]
+    [InlineData(GameModus.Portes, 64, false)]
+    [InlineData(GameModus.Tavla, 64, false)]
+    [InlineData(GameModus.Fevga, 64, false)]
+    [InlineData(GameModus.Plakoto, 64, false)]
+    public async Task RealModelsMatchSingleRowReferenceScoring(GameModus modus, int maxBatchSize, bool reuseReplyBoard)
     {
         var path = Path.Combine("Data", "NeuralNets", modus.ToString(), "training_net.dat");
         using var neural = Assert.IsType<BatchedNeuralEvalService>(
@@ -111,13 +121,13 @@ public class BatchEvaluationTests
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(
                 FeatureEvalServiceFactory.Create(modus, neural));
             service.BatchAcrossRolls = true;
-            service.ReuseReplyBoard = true;
+            service.ReuseReplyBoard = reuseReplyBoard;
             service.ReuseFeatureBuffers = true;
             var boardService = BoardServiceFactory.Create(modus);
             var board = boardService.CreateBoard();
             var request = new EvalBoardRequestContract
             {
-                TurnNumber = 0,
+                TurnNumber = 37,
                 Board = board.ToContract(false),
                 IsWhite = true,
                 Modus = modus,
@@ -131,7 +141,8 @@ public class BatchEvaluationTests
                         {
                             BoardContract = positions[0].ToContract(false),
                             IsWhite = isWhite,
-                            TurnNumber = 0,
+                            // The scored reply belongs to the opponent's next turn.
+                            TurnNumber = request.TurnNumber + 1,
                         }), positions[0], isWhite);
                     return new[] { modus is GameModus.Fevga or GameModus.Plakoto
                         ? predictions[0]

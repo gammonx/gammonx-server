@@ -38,6 +38,8 @@ public static class NetTrainer
         // combination: batchSize=16384, learningRate=1e-4f (since default gen9-1)
         // result: 5.32M samples / 16,384 batch size ≈ 325 optimizer updates per epoch
 
+        // TODO: usual batch sizes of 32/64/128?
+
         // TODO: enable full GAME equity predictions for plakoto/fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
 
