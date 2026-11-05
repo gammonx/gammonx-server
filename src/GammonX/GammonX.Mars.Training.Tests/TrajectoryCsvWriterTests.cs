@@ -26,6 +26,7 @@ public sealed class TrajectoryCsvWriterTests
             var lines = File.ReadAllLines(path);
             Assert.Equal(WellKnownCsvHeaders.TrajectorySidecarHeader, lines[0]);
             var columns = lines[1].Split(',');
+            Assert.Equal(9, columns.Length);
             Assert.Equal(gameId.ToString("D"), columns[0]);
             Assert.Equal("2", columns[1]);
             Assert.Equal("0", columns[2]);

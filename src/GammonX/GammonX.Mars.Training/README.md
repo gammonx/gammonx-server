@@ -22,6 +22,14 @@ The console application provides tools for generating data, training models, and
 
 10. **Audit trajectory output constraints** – Checks whether recorded trajectory predictions satisfy the expected probability ranges and hierarchy rules. Optionally evaluates a current model on the same positions to compare source-model and current-model constraint violations.
 
+## Search-assisted TD
+
+Each recorded afterstate stores one outcome prediction: the played move's two-ply evaluation when searched, otherwise its one-ply evaluation. If no prediction is available, the recorder evaluates Model A directly. Model B supplies moves in dual-model games; Model A remains the teacher for those positions.
+
+All labels use ordinary TD(lambda), blending recorded future predictions with the final game result. Search improves those bootstrap estimates; the current position's prediction does not directly replace its label. With lambda = 1, labels depend only on terminal outcomes. Use lambda below one for searched predictions to affect labels.
+
+Trajectory sidecars store one prediction vector in the nine-column format. Older dual-prediction sidecars remain readable: their searched vector is used when present, otherwise their raw vector. Rebuilding applies TD(lambda) to that single recorded prediction. A raw-only comparison requires re-evaluating the teacher or generating one-ply data; no separate raw vector or search-assistance flag is retained. Prediction variance and constraint diagnostics describe the recorded evaluations.
+
 ## Validation Splits
 
 Training-data generation and shuffle mode assign complete games to training or validation with a stable hash of the game ID and validation seed. The default seed is `17`. Reusing the seed keeps an existing game's partition unchanged when files are reordered, merged, or extended with new games.

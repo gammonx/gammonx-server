@@ -72,9 +72,14 @@ namespace GammonX.Mars.NN.Models
     public class FinalEvalResultModel
     {
         /// <summary>
-        /// Gets the evaluation score of the move sequence.
+        /// Gets the evaluation equity of the move sequence.
         /// </summary>
-        public double Score { get; }
+        public double Equity { get; }
+
+        /// <summary>
+        /// Gets the outcome predictions, or null when evaluation provides only an equity score.
+        /// </summary>
+        public float[]? Prediction { get; }
 
         /// <summary>
         /// Gets the evaluated move sequence.
@@ -86,9 +91,14 @@ namespace GammonX.Mars.NN.Models
         /// </summary>
         public NormalizedEvalResultModel EvalResult { get; }
 
-        public FinalEvalResultModel(double score, MoveSequenceModel moveSequence, NormalizedEvalResultModel evalResult)
+        public FinalEvalResultModel(
+            double equity,
+            float[]? prediction,
+            MoveSequenceModel moveSequence,
+            NormalizedEvalResultModel evalResult)
         {
-            Score = score;
+            Equity = equity;
+            Prediction = prediction;
             MoveSequence = moveSequence;
             EvalResult = evalResult;
         }

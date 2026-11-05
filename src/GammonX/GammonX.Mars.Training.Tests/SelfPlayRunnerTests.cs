@@ -22,9 +22,9 @@ public sealed class SelfPlayRunnerTests
         var onePlyResults = CreateRankedResults(0.50d, 0.49d, 0.20d, 0.10d);
         var twoPlyResults = new FinalEvalResultModels
         {
-            new(0.60d, onePlyResults[1].MoveSequence, onePlyResults[1].EvalResult),
-            new(0.40d, onePlyResults[0].MoveSequence, onePlyResults[0].EvalResult),
-            new(0.30d, onePlyResults[2].MoveSequence, onePlyResults[2].EvalResult)
+            new(0.60d, null, onePlyResults[1].MoveSequence, onePlyResults[1].EvalResult),
+            new(0.40d, null, onePlyResults[0].MoveSequence, onePlyResults[0].EvalResult),
+            new(0.30d, null, onePlyResults[2].MoveSequence, onePlyResults[2].EvalResult)
         };
         var evalService = new Mock<IFeatureEvalService>();
         evalService
@@ -111,11 +111,11 @@ public sealed class SelfPlayRunnerTests
         var onePlyResults = CreateRankedResults(0.50d, 0.40d, 0.30d, 0.20d, 0.10d);
         var twoPlyResults = new FinalEvalResultModels
         {
-            new(0.80d, onePlyResults[3].MoveSequence, onePlyResults[3].EvalResult),
-            new(0.70d, onePlyResults[0].MoveSequence, onePlyResults[0].EvalResult),
-            new(0.60d, onePlyResults[1].MoveSequence, onePlyResults[1].EvalResult),
-            new(0.50d, onePlyResults[2].MoveSequence, onePlyResults[2].EvalResult),
-            new(0.40d, onePlyResults[4].MoveSequence, onePlyResults[4].EvalResult)
+            new(0.80d, null, onePlyResults[3].MoveSequence, onePlyResults[3].EvalResult),
+            new(0.70d, null, onePlyResults[0].MoveSequence, onePlyResults[0].EvalResult),
+            new(0.60d, null, onePlyResults[1].MoveSequence, onePlyResults[1].EvalResult),
+            new(0.50d, null, onePlyResults[2].MoveSequence, onePlyResults[2].EvalResult),
+            new(0.40d, null, onePlyResults[4].MoveSequence, onePlyResults[4].EvalResult)
         };
         var evalService = new Mock<IFeatureEvalService>();
         evalService
@@ -295,7 +295,7 @@ public sealed class SelfPlayRunnerTests
         Assert.NotEmpty(result.ExplorationDecisions!);
 
         Assert.All(
-            result.Trajectory.Positions,
+            result.Trajectory.Positions.Where(position => !position.IsTerminal),
             position => Assert.Equal(0.25f, position.Prediction[0]));
 
         Assert.All(
@@ -303,6 +303,55 @@ public sealed class SelfPlayRunnerTests
             decision => Assert.Equal(
                 modelAIsWhite,
                 result.Trajectory.Positions[decision.TurnIndex - 1].IsWhite));
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task SelectiveSearchPredictionsAssistTdForModelAMoves(bool dualModel, bool modelAIsWhite)
+    {
+        const GameModus modus = GameModus.Backgammon;
+        var modelA = new ConstantNeuralEvalService(0.25f);
+        var modelB = new ConstantNeuralEvalService(0.75f);
+        var recorder = new SelfPlayRecorder(FeatureVectorExtractorFactory.Create(modus), modelA, lambda: 0.7f);
+        var runner = new SelfPlayRunner(recorder, modus, new SelfPlayEntry(modelA, BotLevel.Hard),
+            dualModel ? new SelfPlayEntry(modelB, BotLevel.Hard) : null,
+            new ExplorationOptions
+            {
+                EarlyRankedExplorationProbability = 0f,
+                LateRankedExplorationProbability = 0f,
+                AllLegalExplorationProbability = 0f
+            }, new SelectiveTwoPlyOptions
+            {
+                Enabled = true, MaximumCandidates = 2, MaximumOnePlyGap = 10f,
+                FullSearchAuditProbability = 0f
+            });
+        var result = await runner.RunAsync(EvalWeights.GetContactWeights(modus), modelAIsWhite);
+        Assert.NotNull(result.Trajectory);
+        var positions = result.Trajectory.Positions;
+        var searched = positions.Where(position => Math.Abs(position.Prediction[0] - 0.25f) > 1e-5f && !position.IsTerminal).ToArray();
+        Assert.NotEmpty(searched);
+        if (dualModel)
+            Assert.All(searched, position => Assert.Equal(modelAIsWhite, position.IsWhite));
+        else
+            Assert.Equal(2, searched.Select(position => position.IsWhite).Distinct().Count());
+        var td = ForwardViewTdCalculator.Calculate(result.Trajectory, 0.7f);
+        if (dualModel)
+            Assert.All(positions.Where(position => position.IsWhite != modelAIsWhite),
+                position => Assert.Equal(0.25f, position.Prediction[0]));
+        var rawTrajectory = result.Trajectory with
+        {
+            Positions = positions.Select(position => position with
+            {
+                Prediction = [0.25f, 0.1f, 0.05f, 0.1f, 0.05f]
+            }).ToArray()
+        };
+        var control = ForwardViewTdCalculator.Calculate(rawTrajectory, 0.7f);
+        for (var index = 0; index < positions.Count; index++)
+            Assert.Equal(td[index], result.Samples[index].Label);
+        Assert.Contains(Enumerable.Range(0, positions.Count), index =>
+            Math.Abs(result.Samples[index].Label[0] - control[index][0]) > 1e-5f);
     }
 
     private sealed class ConstantNeuralEvalService : INeuralEvalService
@@ -348,7 +397,7 @@ public sealed class SelfPlayRunnerTests
         {
             var moveSequence = new MoveSequenceModel();
             moveSequence.Moves.Add(new MoveModel(index, index + 1));
-            return new FinalEvalResultModel(score, moveSequence, new NormalizedEvalResultModel());
+            return new FinalEvalResultModel(score, null, moveSequence, new NormalizedEvalResultModel());
         }));
     }
 }

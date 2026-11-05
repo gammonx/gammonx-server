@@ -56,7 +56,7 @@ public partial class PerformanceTests
                     ContactWeights = EvalWeights.DefaultContactWeights,
                     TurnNumber = 0,
                 });
-                Assert.True(double.IsFinite(result.Score));
+                Assert.True(double.IsFinite(result.Equity));
                 Assert.Equal(observer.Rows, observer.Unique + observer.WithinBatchDuplicates + observer.CrossBatchDuplicates);
                 Assert.Equal(0, observer.RemainingGroups);
                 output.WriteLine(FormattableString.Invariant(

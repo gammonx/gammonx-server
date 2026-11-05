@@ -209,7 +209,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                         TurnNumber = request.TurnNumber,
                     });
                     Assert.Equal(legalMoves.Length, candidateScores.Count);
-                    Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Score)));
+                    Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Equity)));
                     warmup = candidateScores.Select(botLevel);
                     Assert.True(workerBatches > 0);
                     Assert.True(mismatchedThreads == -1, $"Expected {tuning.Threads} Torch threads on every worker batch; observed {mismatchedThreads}.");

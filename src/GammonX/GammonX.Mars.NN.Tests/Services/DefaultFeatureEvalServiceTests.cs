@@ -677,7 +677,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 TurnNumber = request.TurnNumber,
             });
 
-            Assert.Equal(expectedScore, score);
+            Assert.Equal(expectedScore, score.Equity);
             neural.Verify(neuralService => neuralService.PredictAsync(
                 It.IsAny<NormalizedEvalResultModel>(),
                 It.IsAny<IBoardModel>(),
@@ -712,7 +712,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 TurnNumber = request.TurnNumber,
             });
 
-            Assert.Equal(3.0, score);
+            Assert.Equal(3.0, score.Equity);
             neural.Verify(neuralService => neuralService.PredictAsync(
                 It.IsAny<NormalizedEvalResultModel>(),
                 It.IsAny<IBoardModel>(),
@@ -757,9 +757,9 @@ namespace GammonX.Mars.NN.Tests.Services
                 TurnNumber = 0,
             });
 
-            Assert.Equal(0.5, onePlyScore, 6);
-            Assert.Equal(onePlyScore, twoPlyScore, 6);
-            Assert.InRange(twoPlyScore, -3.0, 3.0);
+            Assert.Equal(0.5, onePlyScore.Equity, 6);
+            Assert.Equal(onePlyScore.Equity, twoPlyScore.Equity, 6);
+            Assert.InRange(twoPlyScore.Equity, -3.0, 3.0);
         }
 
         [Fact]
@@ -815,7 +815,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = contactWeights,
                 TurnNumber = 0,
             }))
-                .Score;
+                .Equity;
 
             var twoPlyScore = (await service.EvalMoveSequenceCandidatesAsync(new FeatureEvalOptions
             {
@@ -826,10 +826,10 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Expert,
                 TurnNumber = 0,
             }))
-                [0].Score;
+                [0].Equity;
 
-            Assert.Equal(immediateScore, onePlyScore);
-            Assert.NotEqual(immediateScore, twoPlyScore);
+            Assert.Equal(immediateScore.Equity, onePlyScore);
+            Assert.NotEqual(immediateScore.Equity, twoPlyScore);
             Assert.Equal(CreateRaceFields(), board.Fields);
             Assert.Equal(0, board.BearOffCountWhite);
             Assert.Equal(0, board.BearOffCountBlack);

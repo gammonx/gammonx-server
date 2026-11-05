@@ -25,7 +25,7 @@ namespace GammonX.Mars.Training.Generator
     /// </summary>
     /// <param name="Samples">List of (features, label) pairs for each position encountered during the game.</param>
     /// <param name="TurnCount">The number of turns played in the game.</param>
-    /// <param name="PredictionVariance">The variance of the network's predictions during the game, if available.</param>
+    /// <param name="PredictionVariance">The variance of the recorded predictions during the game, if available.</param>
     /// <param name="Trajectory">The recorded game trajectory, if trajectory recording was enabled.</param>
     /// <param name="ExplorationDecisions">The exploration decisions made during the game, if diagnostics were enabled.</param>
     /// <param name="ConstraintMetrics">The aggregate prediction-constraint metrics, if collection was enabled.</param>
@@ -145,7 +145,15 @@ namespace GammonX.Mars.Training.Generator
                         boardService.MoveCheckerTo(board, move.From, move.To, isWhite);
                     }
 
-                    await _recorder.RecordPositionAsync(resultToPlay.EvalResult, board, isWhite);
+                    if (isModelATurn)
+                    {
+                        await _recorder.RecordPositionAsync(resultToPlay, board, isWhite);
+                    }
+                    else
+                    {
+                        // Model B chooses moves, but Model A remains the training teacher.
+                        await _recorder.RecordPositionAsync(resultToPlay.EvalResult, board, isWhite);
+                    }
                 }
                 else
                 {
@@ -321,7 +329,7 @@ namespace GammonX.Mars.Training.Generator
                             IsWhite = isWhite,
                             TurnNumber = turnCount,
                         });
-                        evalResultModel = new FinalEvalResultModel(0, new MoveSequenceModel(), passEval);
+                        evalResultModel = new FinalEvalResultModel(0, null, new MoveSequenceModel(), passEval);
                         nextMoves = new MoveSequenceModel();
                     }
                 }
@@ -335,7 +343,7 @@ namespace GammonX.Mars.Training.Generator
                 }
 
                 // we must record after the moves were made
-                await _recorder.RecordPositionAsync(evalResultModel.EvalResult, board, isWhite);
+                await _recorder.RecordPositionAsync(evalResultModel, board, isWhite);
 
                 if (!hasWon)
                 {
@@ -374,7 +382,7 @@ namespace GammonX.Mars.Training.Generator
         }
 
         /// <summary>
-        /// Calculates the population variance of the networks win predictions recorded during the game.
+        /// Calculates the population variance of the recorded win predictions during the game.
         /// </summary>
         /// <returns>
         /// The variance of the first prediction head when a neural evaluator produced more than one
@@ -389,7 +397,7 @@ namespace GammonX.Mars.Training.Generator
             float? predictionVariance = null;
             if (_entryA != null)
             {
-                var predictions = _recorder.NetPredictions;
+                var predictions = _recorder.Predictions;
                 if (predictions.Count > 1)
                 {
                     // The first output is the predicted probability of a win.
@@ -457,8 +465,8 @@ namespace GammonX.Mars.Training.Generator
                     _searchDecisions.Add(selectiveResult.Decision);
             }
 
-            var bestScore = rankedResults[0].Score;
-            double? secondBestScore = rankedResults.Count > 1 ? rankedResults[1].Score : null;
+            var bestScore = rankedResults[0].Equity;
+            double? secondBestScore = rankedResults.Count > 1 ? rankedResults[1].Equity : null;
             // A missing second candidate means that no meaningful score gap can be computed.
             double? scoreGap = secondBestScore.HasValue ? bestScore - secondBestScore.Value : null;
 
@@ -538,7 +546,7 @@ namespace GammonX.Mars.Training.Generator
                     scoreGap,
                     choice,
                     selectedRank,
-                    selectedResult.Score));
+                    selectedResult.Equity));
             }
 
             return selectedResult;
@@ -565,8 +573,8 @@ namespace GammonX.Mars.Training.Generator
             if (rankedResults.Count == 0)
                 throw new ArgumentException("At least one ranked result is required.", nameof(rankedResults));
 
-            var onePlyBestScore = rankedResults[0].Score;
-            double? onePlySecondBestScore = rankedResults.Count > 1 ? rankedResults[1].Score : null;
+            var onePlyBestScore = rankedResults[0].Equity;
+            double? onePlySecondBestScore = rankedResults.Count > 1 ? rankedResults[1].Equity : null;
             double? onePlyScoreGap = onePlySecondBestScore.HasValue
                 ? onePlyBestScore - onePlySecondBestScore.Value
                 : null;
@@ -611,8 +619,8 @@ namespace GammonX.Mars.Training.Generator
                     throw new InvalidOperationException("Candidate evaluation returned an unknown move sequence.");
 
                 twoPlyBestOnePlyRank = originalBestIndex + 1;
-                twoPlyBestScore = evaluatedResults[0].Score;
-                twoPlySecondBestScore = evaluatedResults.Count > 1 ? evaluatedResults[1].Score : null;
+                twoPlyBestScore = evaluatedResults[0].Equity;
+                twoPlySecondBestScore = evaluatedResults.Count > 1 ? evaluatedResults[1].Equity : null;
                 twoPlyScoreGap = twoPlySecondBestScore.HasValue ? twoPlyBestScore.Value - twoPlySecondBestScore.Value : null;
                 bestMoveChanged = originalBestIndex != 0;
 

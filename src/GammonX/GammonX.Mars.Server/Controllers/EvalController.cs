@@ -87,7 +87,7 @@ namespace GammonX.Mars.Server.Controllers
                 };
 
                 var boardScore = await evalService.EvalBoardStateAsync(options);
-                var payload = new BoardEvalPayload { EvalScore = boardScore };
+                var payload = new BoardEvalPayload { EvalScore = boardScore.Equity };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
             }

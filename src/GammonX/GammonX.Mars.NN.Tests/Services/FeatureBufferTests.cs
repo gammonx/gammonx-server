@@ -48,8 +48,8 @@ public class FeatureBufferTests
             service.ReuseFeatureBuffers = reuse;
             return service;
         }
-        Task<double> Evaluate(BaseFeatureEvalServiceImpl service) =>
-            service.EvalBoardStateAsync(new FeatureEvalOptions
+        async Task<double> Evaluate(BaseFeatureEvalServiceImpl service) =>
+            (await service.EvalBoardStateAsync(new FeatureEvalOptions
             {
                 EvalBoardRequest = new EvalBoardRequestContract
                 {
@@ -59,7 +59,7 @@ public class FeatureBufferTests
                 },
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            });
+            })).Equity;
     }
 
     [Theory]
@@ -103,7 +103,7 @@ public class FeatureBufferTests
             });
             Assert.Equal(expectedRows, probe.Rows);
             if (reuse) Assert.InRange(probe.Buffers.Count, 0, 4);
-            return score;
+            return score.Equity;
         }
     }
 
@@ -115,7 +115,7 @@ public class FeatureBufferTests
         var probe = new Probe(GameModus.Backgammon) { Failure = cancel ? new OperationCanceledException() : new InvalidDataException() };
         var service = (BaseFeatureEvalServiceImpl)FeatureEvalServiceFactory.Create(GameModus.Backgammon, probe);
         service.ReuseReplyBoard = service.ReuseFeatureBuffers = true;
-        Task<double> Evaluate() => service.EvalBoardStateAsync(new FeatureEvalOptions
+        Task<EvalResult> Evaluate() => service.EvalBoardStateAsync(new FeatureEvalOptions
         {
             EvalBoardRequest = new EvalBoardRequestContract
             {

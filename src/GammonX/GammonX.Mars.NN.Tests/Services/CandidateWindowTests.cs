@@ -146,7 +146,7 @@ public class CandidateWindowTests
         Assert.Equal(reference.Select(row => row.MoveSequence), actual.Select(row => row.MoveSequence));
         for (var index = 0; index < reference.Length; index++)
         {
-            Assert.InRange(Math.Abs(reference[index].Score - actual[index].Score), 0, 1e-5);
+            Assert.InRange(Math.Abs(reference[index].Equity - actual[index].Equity), 0, 1e-5);
         }
 
         var expectedInputs = rows.GroupBy(row => row, NeuralInputComparer.Instance)
@@ -191,7 +191,7 @@ public class CandidateWindowTests
             };
         var result = await service.GetCandidatesByEvalAsync(options, board);
         
-        Assert.All(result, row => Assert.True(row.Score > 0));
+        Assert.All(result, row => Assert.True(row.Equity > 0));
         Assert.NotEmpty(result);
         Assert.Empty(neural.Rows);
         Assert.Equal(-1, board.Fields[23]);

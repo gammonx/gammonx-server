@@ -53,7 +53,7 @@ public partial class PerformanceTests
 
         foreach (var candidate in scores)
         {
-            output.WriteLine(FormattableString.Invariant( $"TUNING_CANDIDATE,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(candidate.MoveSequence)},{candidate.Score:R}"));
+            output.WriteLine(FormattableString.Invariant( $"TUNING_CANDIDATE,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(candidate.MoveSequence)},{candidate.Equity:R}"));
         }
 
         output.WriteLine($"TUNING_SELECTION,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(result.SelectedMove)}");

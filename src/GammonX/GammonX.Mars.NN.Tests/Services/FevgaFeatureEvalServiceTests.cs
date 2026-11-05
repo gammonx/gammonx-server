@@ -279,8 +279,8 @@ namespace GammonX.Mars.NN.Tests.Services
                 TurnNumber = requestWhite.TurnNumber,
             });
 
-            Assert.True(resultBlack > 0.0);
-            Assert.True(resultWhite < -0.0);
+            Assert.True(resultBlack.Equity > 0.0);
+            Assert.True(resultWhite.Equity < -0.0);
         }
 
         [Fact]

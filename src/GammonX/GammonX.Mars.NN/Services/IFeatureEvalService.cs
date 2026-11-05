@@ -25,8 +25,8 @@ namespace GammonX.Mars.NN.Services
         /// Linear contact weights are ignored if a neural net service is injected.
         /// </remarks>
         /// <param name="options">Evaluation options.</param>
-        /// <returns>Score rating of the given board for a given player.</returns>
-        Task<double> EvalBoardStateAsync(FeatureEvalOptions options);
+        /// <returns>Equity and available outcome predictions for the given player.</returns>
+        Task<EvalResult> EvalBoardStateAsync(FeatureEvalOptions options);
 
         /// <summary>
         /// Calculates the best rated move sequence for the board and roll in <see cref="FeatureEvalOptions.EvalMoveRequest"/> based on

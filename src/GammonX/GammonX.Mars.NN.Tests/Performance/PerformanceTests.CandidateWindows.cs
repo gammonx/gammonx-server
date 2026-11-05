@@ -171,7 +171,7 @@ public partial class PerformanceTests
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,
                 PeakWorkingSet = memory.PeakWorkingSet64, ManagedLive = GC.GetTotalMemory(false),
-                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), row.Score }).ToArray(),
+                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), row.Equity }).ToArray(),
                 Selected = MoveKey(warmup.Select(BotLevel.Expert)),
                 MaximumScoreDifference = maximumScoreDifference
             }));
@@ -198,10 +198,10 @@ public partial class PerformanceTests
             {
                 Assert.Equal(reference.Count, actual.Count);
                 Assert.True(reference.Select(BotLevel.Expert).Equals(actual.Select(BotLevel.Expert)));
-                var scores = actual.ToDictionary(row => MoveKey(row.MoveSequence), row => row.Score);
+                var scores = actual.ToDictionary(row => MoveKey(row.MoveSequence), row => row.Equity);
                 foreach (var row in reference)
                 {
-                    var difference = Math.Abs(row.Score - scores[MoveKey(row.MoveSequence)]);
+                    var difference = Math.Abs(row.Equity - scores[MoveKey(row.MoveSequence)]);
                     maximumScoreDifference = Math.Max(maximumScoreDifference, difference);
                     Assert.InRange(difference, 0, 1e-5);
                 }

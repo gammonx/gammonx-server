@@ -49,7 +49,7 @@ namespace GammonX.Mars.NN.Services
         internal bool ReuseFeatureBuffers { get; set; } = true;
 
         protected abstract IBoardService BoardService { get; }
-        
+
 
         protected BaseFeatureEvalServiceImpl(INeuralEvalService? neuralEvalService)
         {
@@ -155,7 +155,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public async Task<double> EvalBoardStateAsync(FeatureEvalOptions options)
+        public async Task<EvalResult> EvalBoardStateAsync(FeatureEvalOptions options)
         {
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.EvalBoardRequest);
@@ -171,13 +171,13 @@ namespace GammonX.Mars.NN.Services
 
             if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
             {
-                // we calculate the score based on a two-ply evaluation of the resulting board state
-                var twoPlyScore = await CalculateTwoPlyScoreAsync(board, turnNumber, isWhite);
-                return twoPlyScore;
+                // we calculate the eval based on a two-ply evaluation of the resulting board state
+                var twoPlyEval = await CalculateTwoPlyEquityAsync(board, turnNumber, isWhite);
+                return twoPlyEval;
             }
 
             var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
-            return await CalculatePositionScoreAsync(board, isWhite, eval, options.ContactWeights);
+            return await EvalPositionAsync(board, isWhite, eval, options.ContactWeights);
         }
 
         // <inheritdoc />
@@ -334,8 +334,8 @@ namespace GammonX.Mars.NN.Services
                 }
             }
 
-            // Stable sorting preserves original candidate order for equal scores.
-            return evals.OrderByDescending(e => e.Score);
+            // Stable sorting preserves original candidate order for equal evals.
+            return evals.OrderByDescending(e => e.Equity);
 
             async Task EvaluateCandidateAsync(IBoardModel ownedBoard, int index)
             {
@@ -353,20 +353,24 @@ namespace GammonX.Mars.NN.Services
 
                     var eval = CalculateEvalModelWithDiagnostics(ownedBoard, turnNumber, isWhite);
                     var evalModel = NormalizedEvalResultModel.From(eval);
-                    var score = 0d;
+                    EvalResult evalResult;
 
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
-                        // we calculate the score based on a two-ply evaluation of the resulting board state
-                        score = await CalculateTwoPlyScoreAsync(ownedBoard, turnNumber, isWhite);
+                        // we calculate the equity based on a two-ply evaluation of the resulting board state
+                        evalResult = await CalculateTwoPlyEquityAsync(ownedBoard, turnNumber, isWhite);
                     }
                     else
                     {
-                        // we calculate the one-ply score for the active player and his move
-                        score = await CalculatePositionScoreAsync(ownedBoard, isWhite, eval, options.ContactWeights);
+                        // we calculate the one-ply equity for the active player and his move
+                        evalResult = await EvalPositionAsync(ownedBoard, isWhite, eval, options.ContactWeights);
                     }
 
-                    evals[index] = new FinalEvalResultModel(score, moveSeq, evalModel);
+                    evals[index] = new FinalEvalResultModel(
+                        evalResult.Equity,
+                        evalResult.Prediction,
+                        moveSeq,
+                        evalModel);
                 }
                 finally
                 {
@@ -383,22 +387,22 @@ namespace GammonX.Mars.NN.Services
             }
         }
 
-        private Task<double> CalculateTwoPlyScoreAsync(IBoardModel board, int turnNumber, bool isWhite)
+        private Task<EvalResult> CalculateTwoPlyEquityAsync(IBoardModel board, int turnNumber, bool isWhite)
         {
             if (_neuralEvalService == null)
             {
                 throw new InvalidOperationException("Neural evaluation service is not available for two-ply search.");
             }
 
-            // we check if the game has already ended and return the terminal score if so
-            if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+            // we check if the game has already ended and return the terminal equity if so
+            if (TryGetTerminal(board, isWhite, out var terminalEquity))
             {
-                return Task.FromResult(terminalScore);
+                return Task.FromResult(terminalEquity);
             }
 
             var evaluator = new TwoPlySearchEvaluator(
                 BoardService,
-                // we pass the position score calculation as a func
+                // we pass the position eval calculation as a func
                 (boards, perspectiveIsWhite) =>
                 {
                     // we increase the turn number for the next ply, since the opponent will have played a move
@@ -414,7 +418,7 @@ namespace GammonX.Mars.NN.Services
                 var buffers = ReuseFeatureBuffers ? new float[Math.Min(_neuralEvalService.MaxBatchSize, 32)][] : null;
                 var nextBuffer = 0;
                 // we reuse the same board instance for each inference reply, applying and undoing the moves before inference.
-                return evaluator.EvaluatePreparedAsync(board, isWhite,
+                return evaluator.EvalPreparedAsync(board, isWhite,
                     (position, isWhite) =>
                     {
                         // we increase the turn number for the next ply, since the opponent will have played a move
@@ -424,9 +428,9 @@ namespace GammonX.Mars.NN.Services
                         return prepared;
                     }, async positions =>
                     {
-                        var scores = await ScorePreparedPositionsAsync(positions, board.Modus, _neuralEvalService);
+                        var results = await EvalPreparedPositionsAsync(positions, board.Modus, _neuralEvalService);
                         nextBuffer = 0;
-                        return scores;
+                        return results;
                     });
             }
 
@@ -435,16 +439,16 @@ namespace GammonX.Mars.NN.Services
         }
 
         private PreparedPosition PreparePosition(
-            IBoardModel board, 
-            INeuralEvalService neural, 
-            float[][]? buffers, 
+            IBoardModel board,
+            INeuralEvalService neural,
+            float[][]? buffers,
             int bufferIndex,
             int turnNumber,
             bool isWhite)
         {
-            if (TryGetTerminalScore(board, isWhite, out var score))
+            if (TryGetTerminal(board, isWhite, out var terminal))
             {
-                return new PreparedPosition(null, score);
+                return new PreparedPosition(null, terminal);
             }
 
             var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
@@ -455,12 +459,12 @@ namespace GammonX.Mars.NN.Services
                 ? neural.ExtractFeatures(normalizedEval, board, isWhite)
                 : buffers[bufferIndex] = neural.ExtractFeatures(normalizedEval, board, isWhite, buffers[bufferIndex]);
 
-            return new PreparedPosition(featureVectors);
+            return new PreparedPosition(featureVectors, null);
         }
 
-        private static async Task<double[]> ScorePreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural)
+        private static async Task<EvalResult[]> EvalPreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural)
         {
-            var scores = new double[positions.Count];
+            var evalResults = new EvalResult[positions.Count];
             var features = new List<float[]>(positions.Count);
             var indices = new List<int>(positions.Count);
 
@@ -469,7 +473,7 @@ namespace GammonX.Mars.NN.Services
                 var position = positions[index];
                 if (position.Features == null)
                 {
-                    scores[index] = position.TerminalScore;
+                    evalResults[index] = position.Terminal ?? EvalResult.Inconclusive();
                 }
                 else
                 {
@@ -480,7 +484,7 @@ namespace GammonX.Mars.NN.Services
 
             if (features.Count == 0)
             {
-                return scores;
+                return evalResults;
             }
 
             var predictions = await neural.PredictBatchAsync(features.ToArray());
@@ -492,49 +496,51 @@ namespace GammonX.Mars.NN.Services
 
             for (var row = 0; row < indices.Count; row++)
             {
-                scores[indices[row]] = ScorePrediction(modus, predictions[row]);
+                evalResults[indices[row]] = ToEvalResult(modus, predictions[row]);
             }
 
-            return scores;
+            return evalResults;
         }
 
-        private async Task<double> CalculatePositionScoreAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
+        private async Task<EvalResult> EvalPositionAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
         {
-            // we check if the game has already ended and return the terminal score if so
-            if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+            // we check if the game has already ended and return the terminal eval if so
+            if (TryGetTerminal(board, isWhite, out var terminal))
             {
-                return terminalScore;
+                return terminal;
             }
 
             // we return score based on linear weights
             if (_neuralEvalService == null)
             {
-                return EvalScoreCalculator.CalculateScore(eval, contactWeights);
+                // we use a linear score as equity for non-inference evals
+                var score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
+                return new EvalResult(score, null);
             }
 
             var evalModel = NormalizedEvalResultModel.From(eval);
             // we calculate the nn model prediction
             var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite);
 
-            return ScorePrediction(board.Modus, predictions);
+            return ToEvalResult(board.Modus, predictions);
         }
 
-        private async Task<double[]> CalculatePositionBatchAsync(
-            IReadOnlyList<IBoardModel> boards, 
+        private async Task<EvalResult[]> CalculatePositionBatchAsync(
+            IReadOnlyList<IBoardModel> boards,
             INeuralEvalService neuralService,
             int turnNumber,
             bool isWhite)
         {
-            var scores = new double[boards.Count];
+            var evalResults = new EvalResult[boards.Count];
             var features = new List<float[]>(boards.Count);
             var indices = new List<int>(boards.Count);
             // we collect all feature vectors from all different board positions that are not terminal
             for (var index = 0; index < boards.Count; index++)
             {
                 var board = boards[index];
-                if (TryGetTerminalScore(board, isWhite, out var terminalScore))
+                if (TryGetTerminal(board, isWhite, out var terminal))
                 {
-                    scores[index] = terminalScore;
+                    evalResults[index] = terminal;
                     continue;
                 }
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
@@ -544,7 +550,7 @@ namespace GammonX.Mars.NN.Services
 
             if (features.Count == 0)
             {
-                return scores;
+                return evalResults;
             }
 
             float[][] predictions;
@@ -566,28 +572,31 @@ namespace GammonX.Mars.NN.Services
 
             for (var row = 0; row < indices.Count; row++)
             {
-                scores[indices[row]] = ScorePrediction(boards[indices[row]].Modus, predictions[row]);
+                evalResults[indices[row]] = ToEvalResult(boards[indices[row]].Modus, predictions[row]);
             }
 
-            return scores;
+            return evalResults;
         }
 
-        private static double ScorePrediction(GameModus modus, float[] predictions)
+        private static EvalResult ToEvalResult(GameModus modus, float[] predictions)
         {
             // TODO: support 5 head output for Plakoto and Fevga
             if (modus == GameModus.Plakoto || modus == GameModus.Fevga)
             {
-                return predictions[0];
+                // we currently have no proper way to calculate equity for plakoto or fevga
+                var falseEquity = predictions[0];
+                return new EvalResult(falseEquity, predictions);
             }
-            return GameEquityModel.CalculateEquity(predictions);
+            var equity = GameEquityModel.CalculateEquity(predictions);
+            return new EvalResult(equity, predictions);
         }
 
-        private static bool TryGetTerminalScore(IBoardModel board, bool isWhite, out double score)
+        private static bool TryGetTerminal(IBoardModel board, bool isWhite, out EvalResult terminal)
         {
             // some game modes allow a tie
             if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
             {
-                score = 0d;
+                terminal = EvalResult.Inconclusive();
                 return true;
             }
 
@@ -596,23 +605,23 @@ namespace GammonX.Mars.NN.Services
 
             if (!whiteWon && !blackWon)
             {
-                score = 0d;
+                terminal = EvalResult.Inconclusive();
                 return false;
             }
 
             var result = board.ToGameResult(Guid.Empty, whiteWon);
             var playerResult = isWhite == whiteWon ? result.WinnerResult : result.LoserResult;
-            score = playerResult switch
+            terminal = playerResult switch
             {
-                GameResult.Single => 1d,
-                GameResult.Gammon => 2d,
-                GameResult.Backgammon => 3d,
-                GameResult.LostSingle => -1d,
-                GameResult.LostGammon => -2d,
-                GameResult.LostBackgammon => -3d,
+                GameResult.Single => new EvalResult(1d, [1f, 0f, 0f, 0f, 0f]),
+                GameResult.Gammon => new EvalResult(2d, [1f, 1f, 0f, 0f, 0f]),
+                GameResult.Backgammon => new EvalResult(3d, [1f, 1f, 1f, 0f, 0f]),
+                GameResult.LostSingle => new EvalResult(-1d, [0f, 0f, 0f, 0f, 0f]),
+                GameResult.LostGammon => new EvalResult(-2d, [0f, 0f, 0f, 1f, 0f]),
+                GameResult.LostBackgammon => new EvalResult(-3d, [0f, 0f, 0f, 1f, 1f]),
                 // ReSharper disable once RedundantSwitchExpressionArms
-                GameResult.Draw => 0d,
-                _ => 0d
+                GameResult.Draw => EvalResult.Inconclusive(),
+                _ => EvalResult.Inconclusive()
             };
             return true;
         }
@@ -631,5 +640,23 @@ namespace GammonX.Mars.NN.Services
         /// <param name="turnNumber">The current turn number.</param>
         /// <returns>The evaluation result model.</returns>
         protected abstract EvalResultModel CalculateEvalModel(IBoardModel board, int turnNumber, bool isWhite);
+    }
+
+    public readonly struct EvalResult
+    {
+        public double Equity { get; }
+
+        public float[]? Prediction { get; }
+
+        public EvalResult(double equity, float[]? prediction)
+        {
+            Equity = equity;
+            Prediction = prediction;
+        }
+
+        public static EvalResult Inconclusive()
+        {
+            return new EvalResult(0d, null);
+        }
     }
 }

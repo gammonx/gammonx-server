@@ -25,7 +25,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
-            Assert.Equal(-600d / 36d, score, 10);
+            Assert.Equal(-600d / 36d, score.Equity, 10);
             Assert.Equal(21, harness.RequestedRolls.Count);
             Assert.Equal(36, harness.RequestedRolls.Sum(rolls => rolls.Length == 4 ? 1 : 2));
         }
@@ -56,7 +56,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 }
             }
 
-            Assert.Equal(expected, score, 10);
+            Assert.Equal(expected, score.Equity, 10);
         }
 
         [Fact]
@@ -73,12 +73,12 @@ namespace GammonX.Mars.NN.Tests.Services
                         boards.Select(board => board.Fields[0]));
                     batchSizes.Add(boards.Count);
                     scoredBoards.AddRange(boards);
-                    return boards.Select(board => (double)board.Fields[0]).ToArray();
+                    return boards.Select(board => new EvalResult(board.Fields[0], null)).ToArray();
                 }, board => CloneBoard(board), batchAcrossRolls: true);
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
-            Assert.Equal(-2d, score, 10);
+            Assert.Equal(-2d, score.Equity, 10);
             Assert.Equal(new[] { 32, 10 }, batchSizes);
             Assert.All(scoredBoards, board => Assert.Equal(0, board.Fields[0]));
             Assert.Equal(0, harness.Fields[0]);
@@ -92,7 +92,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
-            Assert.Equal(2d, score, 10);
+            Assert.Equal(2d, score.Equity, 10);
         }
 
         [Theory]
@@ -110,8 +110,8 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
-            Assert.Equal(expectedActivePlayerEquity, score, 10);
-            Assert.InRange(score, -3.0, 3.0);
+            Assert.Equal(expectedActivePlayerEquity, score.Equity, 10);
+            Assert.InRange(score.Equity, -3.0, 3.0);
         }
 
         [Theory]
@@ -133,7 +133,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             var score = await evaluator.EvaluateAsync(harness.Board.Object, rootIsWhite);
 
-            Assert.Equal(-7d, score, 10);
+            Assert.Equal(-7d, score.Equity, 10);
             Assert.Equal(21, perspectives.Count);
             Assert.All(perspectives, perspective => Assert.Equal(expectedOpponentIsWhite, perspective));
             Assert.Equal(7, harness.Fields[0]);
@@ -145,7 +145,7 @@ namespace GammonX.Mars.NN.Tests.Services
         {
             var harness = CreateHarness(_ => []);
             var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object,
-                (_, _) => Task.FromResult(Array.Empty<double>()));
+                (_, _) => Task.FromResult(Array.Empty<EvalResult>()));
 
             await Assert.ThrowsAsync<InvalidDataException>(() => evaluator.EvaluateAsync(harness.Board.Object, true));
         }
@@ -207,7 +207,7 @@ namespace GammonX.Mars.NN.Tests.Services
         {
             return new TwoPlySearchEvaluator(
                 harness.BoardService.Object,
-                (boards, isWhite) => Task.WhenAll(boards.Select(board => scorePosition(board, isWhite))),
+                (boards, isWhite) => Task.WhenAll(boards.Select(async board => new EvalResult(await scorePosition(board, isWhite), null))),
                 CloneBoard);
         }
 
@@ -306,7 +306,7 @@ namespace GammonX.Mars.NN.Tests.Services
             var expectedBearOffWhite = board.BearOffCountWhite;
             var expectedBearOffBlack = board.BearOffCountBlack;
 
-            var evaluator = new TwoPlySearchEvaluator(boardService, (boards, _) => Task.FromResult(new double[boards.Count]));
+            var evaluator = new TwoPlySearchEvaluator(boardService, (boards, _) => Task.FromResult(new EvalResult[boards.Count]));
             await evaluator.EvaluateAsync(board, true);
 
             Assert.Equal(expectedFields, board.Fields);

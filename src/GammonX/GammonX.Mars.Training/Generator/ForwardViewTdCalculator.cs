@@ -11,6 +11,7 @@ namespace GammonX.Mars.Training.Generator;
 /// Monte Carlo target. Values between 0 and 1 blend short and long returns.
 /// For example, lambda=0.7 gives weights of 0.3, 0.21, 0.147, and so on to
 /// successive returns, with the remaining weight on the final return.
+/// Recorded bootstrap predictions can come from one-ply evaluation or search.
 ///
 /// Gamma controls how much future values are discounted. Gamma=1 keeps the
 /// full game outcome value; lower values give less weight to distant outcomes.

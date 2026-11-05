@@ -40,13 +40,13 @@ public partial class TwoPlySearchEvaluatorTests
             await Task.Yield();
             sizes.Add(boards.Count);
             actualRows.AddRange(boards.Select(board => board.Fields[0]));
-            return boards.Select(board => (double)board.Fields[0]).ToArray();
+            return boards.Select(board => new EvalResult(board.Fields[0], null)).ToArray();
         }, CloneBoard, cap, batchAcrossRolls: true);
 
         var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
 
         Assert.Equal(expectedRows, actualRows);
-        Assert.Equal(BitConverter.DoubleToInt64Bits(expectedScore), BitConverter.DoubleToInt64Bits(score));
+        Assert.Equal(BitConverter.DoubleToInt64Bits(expectedScore), BitConverter.DoubleToInt64Bits(score.Equity));
         Assert.Equal((expectedRows.Count + cap - 1) / cap, sizes.Count);
         Assert.All(sizes.SkipLast(1), size => Assert.Equal(cap, size));
         Assert.InRange(sizes[^1], 1, cap);
@@ -70,7 +70,7 @@ public partial class TwoPlySearchEvaluatorTests
             calls++;
             await release.Task;
             Assert.All(boards, reply => Assert.Equal(1, reply.Fields[0]));
-            return Enumerable.Repeat(1d, boards.Count).ToArray();
+            return Enumerable.Repeat(new EvalResult(1d, null), boards.Count).ToArray();
         }, board => { var clone = CloneBoard(board); clones.Add(clone); return clone; }, maxBatchSize: 4, batchAcrossRolls: true);
 
         var evaluation = evaluator.EvaluateAsync(harness.Board.Object, true);
