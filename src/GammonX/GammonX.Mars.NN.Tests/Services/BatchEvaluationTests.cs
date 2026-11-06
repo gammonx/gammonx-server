@@ -336,7 +336,9 @@ public class BatchEvaluationTests
                 Board = new BoardModelContract
                 {
                     Fields = fields,
-                    HomeBarCountWhite = 1
+                    HomeBarCountWhite = 1,
+                    BearOffCountWhite = 14,
+                    BearOffCountBlack = 3
                 },
                 IsWhite = false,
                 Modus = GameModus.Backgammon,

@@ -20,7 +20,7 @@ namespace GammonX.Mars.NN.Tests.Performance;
 
 public partial class PerformanceTests
 {
-    [Fact]
+    [Fact(Skip = "PERFORMANCE")]
     public async Task MeasureCandidateWindows()
     {
         var window = ReadTuningInt("GAMMONX_PERF_WINDOW", 1);

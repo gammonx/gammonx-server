@@ -1,5 +1,13 @@
 # Changelog
 
+## 06.11.2026
+- mars neural net changes
+	- turn input is properly passed
+	- introduced trailing count for feature vectory holding 4+ checkers
+	- fixed home board gammon/backgammon evaluation
+	- record one prediction per move: two-ply when searched, otherwise one-ply; use it for TD bootstrapping
+	- fixed feature vector normalization
+
 ## 29.10.2026
 ### Fixes
 - made JoinRequest validation for bot queue more robust

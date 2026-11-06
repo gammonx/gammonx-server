@@ -11,7 +11,7 @@ namespace GammonX.Mars.NN.Tests.Performance;
 
 public partial class PerformanceTests
 {
-    [Fact]
+    [Fact(Skip = "PERFORMANCE")]
     public async Task MeasureSharedWorkerInference()
     {
         var maxBatchSize = ReadTuningInt("GAMMONX_PERF_BATCH_SIZE", 32);

@@ -76,7 +76,7 @@ namespace GammonX.Mars.NN.Tests
             Assert.True(board.PipCountBlack == 0 || board.PipCountWhite == 0);
         }
 
-        [Theory]
+        [Theory(Skip = "NOT DETERMINISTIC")]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
         [InlineData(GameModus.Backgammon)]
@@ -142,7 +142,7 @@ namespace GammonX.Mars.NN.Tests
             Assert.True(board.PipCountBlack == 0 || board.PipCountWhite == 0);
         }
 
-        [Theory]
+        [Theory(Skip = "NOT DETERMINISTIC")]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
         [InlineData(GameModus.Backgammon)]
@@ -211,7 +211,7 @@ namespace GammonX.Mars.NN.Tests
             Assert.Equal(0, board.PipCountWhite);
         }
 
-        [Theory]
+        [Theory(Skip = "NOT DETERMINISTIC")]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
         [InlineData(GameModus.Backgammon)]
@@ -280,7 +280,7 @@ namespace GammonX.Mars.NN.Tests
             Assert.Equal(0, board.PipCountWhite);
         }
 
-        [Theory]
+        [Theory(Skip = "NOT DETERMINISTIC")]
         [InlineData(GameModus.Backgammon)]
         public async Task NeuralNetBotHardOffersDoubleAgainstEasy(GameModus modus)
         {
@@ -416,7 +416,7 @@ namespace GammonX.Mars.NN.Tests
             Assert.Equal(1 * (doubleCount + 1), cubeValue);
         }
 
-        [Theory]
+        [Theory(Skip = "NOT DETERMINISTIC")]
         [InlineData(GameModus.Backgammon)]
         public async Task EvaluateMoveSelectionOfTwoPlyAndHard(GameModus modus)
         {

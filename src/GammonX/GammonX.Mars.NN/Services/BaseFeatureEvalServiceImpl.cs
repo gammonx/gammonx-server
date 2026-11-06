@@ -77,7 +77,7 @@ namespace GammonX.Mars.NN.Services
             {
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
 
-                var normalizedEvalResult = NormalizedEvalResultModel.From(eval);
+                var normalizedEvalResult = NormalizedEvalResultModel.From(eval, BoardService.Modus);
                 var predictions = await _neuralEvalService.PredictAsync(normalizedEvalResult, board, isWhite);
                 // we calculate the game equity
                 var outcome = new GameOutcomeModel(predictions);
@@ -250,7 +250,7 @@ namespace GammonX.Mars.NN.Services
             ArgumentNullException.ThrowIfNull(options.IsWhite);
             var board = BoardService.CreateBoard(options.BoardContract);
             var eval = CalculateEvalModelWithDiagnostics(board, options.TurnNumber.Value, options.IsWhite.Value);
-            return NormalizedEvalResultModel.From(eval);
+            return NormalizedEvalResultModel.From(eval, BoardService.Modus);
         }
 
         // <inheritdoc />
@@ -352,7 +352,7 @@ namespace GammonX.Mars.NN.Services
                     }
 
                     var eval = CalculateEvalModelWithDiagnostics(ownedBoard, turnNumber, isWhite);
-                    var evalModel = NormalizedEvalResultModel.From(eval);
+                    var evalModel = NormalizedEvalResultModel.From(eval, BoardService.Modus);
                     EvalResult evalResult;
 
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
@@ -452,7 +452,7 @@ namespace GammonX.Mars.NN.Services
             }
 
             var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
-            var normalizedEval = NormalizedEvalResultModel.From(eval);
+            var normalizedEval = NormalizedEvalResultModel.From(eval, BoardService.Modus);
 
             // we extract the feature vectors into the buffer if available, otherwise we allocate a new array
             var featureVectors = buffers == null
@@ -514,11 +514,11 @@ namespace GammonX.Mars.NN.Services
             if (_neuralEvalService == null)
             {
                 // we use a linear score as equity for non-inference evals
-                var score = EvalScoreCalculator.CalculateScore(eval, contactWeights);
+                var score = EvalScoreCalculator.CalculateScore(eval, contactWeights, board.Modus);
                 return new EvalResult(score, null);
             }
 
-            var evalModel = NormalizedEvalResultModel.From(eval);
+            var evalModel = NormalizedEvalResultModel.From(eval, BoardService.Modus);
             // we calculate the nn model prediction
             var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite);
 
@@ -544,7 +544,7 @@ namespace GammonX.Mars.NN.Services
                     continue;
                 }
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
-                features.Add(neuralService.ExtractFeatures(NormalizedEvalResultModel.From(eval), board, isWhite));
+                features.Add(neuralService.ExtractFeatures(NormalizedEvalResultModel.From(eval, BoardService.Modus), board, isWhite));
                 indices.Add(index);
             }
 

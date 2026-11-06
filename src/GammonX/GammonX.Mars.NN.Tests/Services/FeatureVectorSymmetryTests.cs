@@ -56,13 +56,13 @@ public sealed class FeatureVectorSymmetryTests
         board.BearOffChecker(false, 5);
 
         var extractor = FeatureVectorExtractorFactory.Create(modus);
-        var model = NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 17 });
+        var model = NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 17 }, modus);
         var features = extractor.Extract(model, board, false);
         var metadataOffset = modus == GameModus.Plakoto ? 2 : 0;
 
         Assert.Equal(5f / 15f, features[21 + metadataOffset]);
         Assert.Equal(3f / 15f, features[22 + metadataOffset]);
-        Assert.Equal(17f / 100f, features[23 + metadataOffset]);
+        Assert.Equal((float)(17d / 117d), features[23 + metadataOffset]);
         Assert.Equal(0f, features[20 + metadataOffset]);
     }
 

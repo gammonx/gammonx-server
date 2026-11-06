@@ -619,7 +619,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 PointsAwayOpp = 1,
                 Board = new BoardModelContract
                 {
-                    Fields = new int[24],
+                    Fields = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard().Fields,
                     DoublingCubeValue = 1
                 },
                 BotLevel = BotLevel.Hard
@@ -662,7 +662,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 IsWhite = isWhite,
                 Board = new BoardModelContract
                 {
-                    Fields = new int[24],
+                    Fields = [15 - bearOffCountBlack - homeBarCountBlack, .. new int[23]],
                     BearOffCountWhite = bearOffCountWhite,
                     BearOffCountBlack = bearOffCountBlack,
                     HomeBarCountWhite = homeBarCountWhite,
@@ -699,7 +699,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = botLevel,
                 Board = new BoardModelContract
                 {
-                    Fields = new int[24],
+                    Fields = [14, .. new int[23]],
                     BearOffCountWhite = 15,
                     HomeBarCountBlack = 1
                 }
@@ -847,7 +847,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 PointsAwayOpp = pointsAwayOpp,
                 Board = new BoardModelContract
                 {
-                    Fields = new int[24],
+                    Fields = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard().Fields,
                     DoublingCubeValue = cubeValue
                 },
             };

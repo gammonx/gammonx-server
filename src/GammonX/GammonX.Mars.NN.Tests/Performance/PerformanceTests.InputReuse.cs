@@ -16,7 +16,7 @@ namespace GammonX.Mars.NN.Tests.Performance;
 
 public partial class PerformanceTests
 {
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]

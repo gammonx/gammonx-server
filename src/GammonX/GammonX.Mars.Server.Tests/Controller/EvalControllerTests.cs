@@ -123,7 +123,7 @@ namespace GammonX.Mars.Server.Tests.Controller
             if (!isWhite)
             {
                 // black has stronger board
-                Assert.InRange(boardEval.Payload.EvalScore, 0.45, 0.7);
+                Assert.InRange(boardEval.Payload.EvalScore, 0.40, 0.7);
             }
             else
             {

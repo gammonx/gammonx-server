@@ -10,7 +10,7 @@
 
         public const string PlakotoBoard2 = "{\"fields\":[-13,0,0,0,-1,0,-1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,13],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":348,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
 
-        public const string PlakotoBoard3 = "{\"fields\":[-13,0,0,-1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,12],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
+        public const string PlakotoBoard3 = "{\"fields\":[-13,0,0,-1,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,13],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}";
 
         public const string PlakotoBoard4 = "{\"fields\":[-6,0,0,0,1,-2,2,0,0,0,-2,-1,0,0,0,0,0,-2,-1,3,0,0,0,8],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"pinnedFields\":[0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0]}";
 
@@ -50,7 +50,7 @@
 
         public const string PerformanceBoard1 = "{\"fields\":[-2,0,0,0,0,5,2,3,0,0,0,-2,3,0,-2,0,-3,2,-5,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
 
-        public const string PerformanceBoard2 = "{\"fields\":[0,0,2,2,2,4,0,2,0,0,1,-2,2,0,-2,2,-2,0,-2,0,-1,-1,0,-3],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
+        public const string PerformanceBoard2 = "{\"fields\":[0,0,2,2,2,2,0,2,0,0,1,-2,2,0,-2,2,-2,0,-2,0,-1,-1,0,-5],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
         
         public const string PerformanceBoard3 = "{\"fields\":[0,0,-2,2,2,3,0,3,0,0,0,-2,3,0,-2,0,-3,2,-5,0,-1,0,0,0],\"bearOffCountWhite\":0,\"bearOffCountBlack\":0,\"pipCountWhite\":350,\"pipCountBlack\":350,\"homebarCountWhite\":0,\"homebarCountBlack\":0}";
         

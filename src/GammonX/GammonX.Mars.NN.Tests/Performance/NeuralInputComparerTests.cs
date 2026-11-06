@@ -44,7 +44,7 @@ public class NeuralInputComparerTests
         service.AddRollEventToHistory(board, true, [2, 3]);
         var sameTurn = extractor.Extract(new NormalizedEvalResultModel(), board, true);
         Assert.True(NeuralInputComparer.Instance.Equals(first, sameTurn));
-        var nextTurn = extractor.Extract(NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 1 }), board, true);
+        var nextTurn = extractor.Extract(NormalizedEvalResultModel.From(new EvalResultModel { TurnNumber = 1 }, GameModus.Backgammon), board, true);
         Assert.False(NeuralInputComparer.Instance.Equals(first, nextTurn));
         board.Fields[0] = -1;
         var white = extractor.Extract(new NormalizedEvalResultModel(), board, true);

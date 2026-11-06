@@ -1,5 +1,7 @@
 ﻿using GammonX.Mars.NN.Models;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Mars.NN.Services
 {
     public static class EvalScoreCalculator
@@ -13,11 +15,12 @@ namespace GammonX.Mars.NN.Services
         /// </remarks>
         /// <param name="eval">Absolute feature eval scores.</param>
         /// <param name="contactWeights">Contact position weights.</param>
+        /// <param name="modus">Game mode selecting normalization bounds.</param>
         /// <returns>A weighted score representing the relative quality of the position.</returns>
-        public static double CalculateScore(EvalResultModel eval, ContactWeightModel contactWeights)
+        public static double CalculateScore(EvalResultModel eval, ContactWeightModel contactWeights, GameModus modus)
         {
             // TODO: provide turnnumber
-            var normalizedResult = NormalizedEvalResultModel.From(eval);
+            var normalizedResult = NormalizedEvalResultModel.From(eval, modus);
             var score = 0.0;
 
             // good for the player
@@ -78,11 +81,15 @@ namespace GammonX.Mars.NN.Services
         /// <param name="eval">Absolute feature eval scores.</param>
         /// <param name="contactWeights">(Cheap) Contact position weights.</param>
         /// <param name="raceWeights">Race position weights.</param>
+        /// <param name="modus">Game mode selecting normalization bounds.</param>
         /// <returns>A (cheap) weighted score representing the relative quality of the position.</returns>
-        public static (NormalizedEvalResultModel, double) CalculateCheapScore(EvalResultModel eval, ContactWeightModel contactWeights, RaceWeightModel raceWeights)
+        public static (NormalizedEvalResultModel, double) CalculateCheapScore(
+            EvalResultModel eval,
+            ContactWeightModel contactWeights,
+            RaceWeightModel raceWeights,
+            GameModus modus)
         {
-            // TODO: provide turnnumber
-            var normalizedResult = NormalizedEvalResultModel.From(eval);
+            var normalizedResult = NormalizedEvalResultModel.From(eval, modus);
             var score = 0.0;
 
             // we do not account for the turnnumber because it is kind of neutral

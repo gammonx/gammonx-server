@@ -1,5 +1,6 @@
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
+using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Tests.Services;
 
@@ -15,14 +16,15 @@ public sealed class EvalScoreCalculatorTests
         };
         var eval = new EvalResultModel
         {
-            AverageDistanceToBearOffPlayer = 13,
-            AverageDistanceToBearOffOpp = 26,
+            AverageDistanceToBearOffPlayer = 12.5,
+            AverageDistanceToBearOffOpp = 25,
         };
 
         var (_, score) = EvalScoreCalculator.CalculateCheapScore(
             eval,
             weights,
-            new RaceWeightModel());
+            new RaceWeightModel(),
+            GameModus.Backgammon);
 
         Assert.Equal(-0.15, score, precision: 10);
     }

@@ -83,6 +83,8 @@ public class FeatureBufferTests
             {
                 Array.Fill(fields, 2, 0, 6);
                 board.HomeBarCountWhite = 1;
+                board.BearOffCountWhite = 14;
+                board.BearOffCountBlack = 3;
             }
             else
             {

@@ -47,7 +47,7 @@ public class FeatureEvalOptionsTests
         Assert.All(results, result =>
         {
             Assert.Equal(legalMoves[0], result.MoveSequence);
-            Assert.Equal(0.37d, result.EvalResult.TurnNumber, 10);
+            Assert.Equal(37d / 137d, result.EvalResult.TurnNumber, 10);
         });
         Assert.Equal(results[0].MoveSequence, selected);
         Assert.Null(options.Candidates);
@@ -76,8 +76,8 @@ public class FeatureEvalOptionsTests
         var result = await service.EvalMoveSequenceAsync(options);
 
         Assert.Same(candidate, result.MoveSequence);
-        Assert.Equal(0.42d, result.EvalResult.TurnNumber, 10);
+        Assert.Equal(42d / 142d, result.EvalResult.TurnNumber, 10);
         Assert.Null(options.Candidates);
-        Assert.Equal(0.42d, service.EvalPositionForTraining(options).TurnNumber, 10);
+        Assert.Equal(42d / 142d, service.EvalPositionForTraining(options).TurnNumber, 10);
     }
 }

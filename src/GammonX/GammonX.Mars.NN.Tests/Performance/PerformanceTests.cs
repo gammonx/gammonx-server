@@ -31,40 +31,40 @@ public partial class PerformanceTests(ITestOutputHelper output)
 {
     private const int MeasurementIterations = 3;
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2, BotLevel.Hard)]
     [InlineData(2, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard1(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2)]
     public Task MeasureEnginePerformanceBoard1(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(3, 2, BotLevel.Hard)]
     [InlineData(3, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard2(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(3, 2)]
     public Task MeasureEnginePerformanceBoard2(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2, BotLevel.Hard)]
     [InlineData(2, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard3(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2)]
     public Task MeasureEnginePerformanceBoard3(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(1, 2, 2)]
     [InlineData(2, 3, 2)]
     [InlineData(3, 2, 2)]
