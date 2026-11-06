@@ -27,12 +27,11 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
         {
-            // TODO: we need scalar values between 0 and 1 for proper back propagation.
             if (features.Length != FeatureCount)
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
             }
-            
+
             var featureIndex = 0;
 
             // we always extract the feature vectors from active players perspective
@@ -67,18 +66,18 @@ namespace GammonX.Mars.NN.Services
             {
                 // we invert the board, so that the perspective always reflects the active player
                 // white i=0 takes board.Fields[0] and black i=0 takes board.Fields[23]
-                // the active player's checkers are positive; the opponent's checkers are negative
+                // Canonical own checkers stay negative; opponent checkers are positive.
                 var v = isWhite ? fields[i] : -fields[fields.Length - 1 - i];
-                features[featureIndex++] = v >= 1 ? 1f : 0f;                // own blot
-                features[featureIndex++] = v >= 2 ? 1f : 0f;                // own anchor
-                features[featureIndex++] = v >= 3 ? 1f : 0f;                // own 3+
+                features[featureIndex++] = v >= 1 ? 1f : 0f;                // opponent count >= 1
+                features[featureIndex++] = v >= 2 ? 1f : 0f;                // opponent count >= 2
+                features[featureIndex++] = v >= 3 ? 1f : 0f;                // opponent count >= 3
                 // the count tail increases from 1/12 at four checkers to 1 at fifteen
-                features[featureIndex++] = v >= 4 ? (v - 3) / 12f : 0f;     // own 4+
-                features[featureIndex++] = v <= -1 ? 1f : 0f;               // opp blot
-                features[featureIndex++] = v <= -2 ? 1f : 0f;               // opp anchor
-                features[featureIndex++] = v <= -3 ? 1f : 0f;               // opp 3+
+                features[featureIndex++] = v >= 4 ? (v - 3) / 12f : 0f;     // opponent count tail
+                features[featureIndex++] = v <= -1 ? 1f : 0f;               // player count >= 1
+                features[featureIndex++] = v <= -2 ? 1f : 0f;               // player count >= 2
+                features[featureIndex++] = v <= -3 ? 1f : 0f;               // player count >= 3
                 // the count tail increases from 1/12 at four checkers to 1 at fifteen
-                features[featureIndex++] = v <= -4 ? Math.Abs(v + 3) / 12f : 0f; // opp 4+
+                features[featureIndex++] = v <= -4 ? Math.Abs(v + 3) / 12f : 0f; // player count tail
             }
 
 

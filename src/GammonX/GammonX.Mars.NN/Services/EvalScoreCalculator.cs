@@ -19,14 +19,13 @@ namespace GammonX.Mars.NN.Services
         /// <returns>A weighted score representing the relative quality of the position.</returns>
         public static double CalculateScore(EvalResultModel eval, ContactWeightModel contactWeights, GameModus modus)
         {
-            // TODO: provide turnnumber
             var normalizedResult = NormalizedEvalResultModel.From(eval, modus);
-            var score = 0.0;
+            var score = ScoreBlots(normalizedResult, contactWeights, modus);
 
             // good for the player
             score += normalizedResult.HitOpponentProbability1 * contactWeights.HitOpponentProbability1Weight;
             score += normalizedResult.HitOpponentProbability2 * contactWeights.HitOpponentProbability2Weight;
-            score += normalizedResult.PipDifference * contactWeights.PipDifferenceWeight;
+            score += SignedPipAdvantage(normalizedResult) * contactWeights.PipDifferenceWeight;
             score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
             score += normalizedResult.NumChFrontLastPin * contactWeights.NumChFrontLastPinWeight;
             score += normalizedResult.EscapeProbability1 * contactWeights.EscapeProbability1Weight;
@@ -36,7 +35,6 @@ namespace GammonX.Mars.NN.Services
             score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
             score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
             score += normalizedResult.PrimeProbabilityPlayer * contactWeights.PrimeProbabilityPlayerWeight;
-            score += normalizedResult.BlotCountOpp * contactWeights.BlotCountOppWeight;
             score += normalizedResult.AnchorCountInFrontPlayer * contactWeights.AnchorCountInFrontPlayerWeight;
             score += normalizedResult.AverageStackHeightOpp * contactWeights.AverageStackHeightOppWeight;
             score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffOppWeight;
@@ -47,7 +45,6 @@ namespace GammonX.Mars.NN.Services
             score += normalizedResult.HomebarCountOpp * contactWeights.HomebarCountOppWeight;
             // bad for the player
             score -= normalizedResult.AnchorCountOpp * contactWeights.AnchorCountOppWeight;
-            score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
             score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
             score -= normalizedResult.HitProbability1 * contactWeights.HitProbability1Weight;
             score -= normalizedResult.HitProbability2 * contactWeights.HitProbability2Weight;
@@ -98,20 +95,20 @@ namespace GammonX.Mars.NN.Services
             if (eval.Race)
             {
                 // good for the player
-                score += normalizedResult.PipDifference * raceWeights.PipDifferenceWeight;
+                score += SignedPipAdvantage(normalizedResult) * raceWeights.PipDifferenceWeight;
                 score += normalizedResult.PipToBearOffOpp * raceWeights.PipToBearOffOppWeight;
                 // bad for the player
                 score -= normalizedResult.PipToBearOff * raceWeights.PipToBearOffWeight;
             }
             else
             {
+                score += ScoreBlots(normalizedResult, contactWeights, modus);
                 // good for the player
-                score += normalizedResult.PipDifference * contactWeights.PipDifferenceWeight;
+                score += SignedPipAdvantage(normalizedResult) * contactWeights.PipDifferenceWeight;
                 score += normalizedResult.PipToBearOffOpp * contactWeights.PipToBearOffOppWeight;
                 score += normalizedResult.PinCountOpp * contactWeights.PinCountOppWeight;
                 score += normalizedResult.AnchorCount * contactWeights.AnchorCountWeight;
                 score += normalizedResult.MaxPrimeLengthPlayer * contactWeights.MaxPrimeLengthPlayerWeight;
-                score += normalizedResult.BlotCountOpp * contactWeights.BlotCountOppWeight;
                 score += normalizedResult.AnchorCountInFrontPlayer * contactWeights.AnchorCountInFrontPlayerWeight;
                 score += normalizedResult.AverageStackHeightOpp * contactWeights.AverageStackHeightOppWeight;
                 score += normalizedResult.AverageDistanceToBearOffOpp * contactWeights.AverageDistanceToBearOffOppWeight;
@@ -121,7 +118,6 @@ namespace GammonX.Mars.NN.Services
                 score += normalizedResult.HomebarCountOpp * contactWeights.HomebarCountOppWeight;
                 // bad for the player
                 score -= normalizedResult.AnchorCountOpp * contactWeights.AnchorCountOppWeight;
-                score -= normalizedResult.BlotCount * contactWeights.BlotCountWeight;
                 score -= normalizedResult.BlotInStartRangeCount * contactWeights.BlotInStartRangeCountWeight;
                 score -= normalizedResult.PipToBearOff * contactWeights.PipToBearOffWeight;
                 score -= normalizedResult.PinCountPlayer * contactWeights.PinCountPlayerWeight;
@@ -135,6 +131,19 @@ namespace GammonX.Mars.NN.Services
             }
 
             return new ValueTuple<NormalizedEvalResultModel, double>(normalizedResult, score);
+        }
+
+        // Neural inputs use [0, 1] with equality at 0.5. Heuristic weights multiply
+        // signed advantage in [-1, 1], so equal pips contribute zero.
+        private static double SignedPipAdvantage(NormalizedEvalResultModel model) =>
+            2 * model.PipDifference - 1;
+
+        private static double ScoreBlots(NormalizedEvalResultModel model, ContactWeightModel weights, GameModus modus)
+        {
+            var ownMinusOpponent = model.BlotCount * weights.BlotCountWeight
+                - model.BlotCountOpp * weights.BlotCountOppWeight;
+            // Fevga singletons block points; in hitting/pinning modes they are exposed checkers.
+            return modus == GameModus.Fevga ? ownMinusOpponent : -ownMinusOpponent;
         }
     }
 }

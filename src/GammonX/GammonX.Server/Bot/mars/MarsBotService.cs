@@ -63,8 +63,8 @@ namespace GammonX.Server.Bot
                 catch (Exception ex) when (parameters.BotLevel == BotLevel.Expert && IsTimeout(ex, cancellationToken))
                 {
                     Serilog.Log.Error(ex, "Expert bot move evaluation timed out, falling back to hard level.");
-                    // TODO: we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
-                    // TODO: we fall back to a 1ply evaluation instead
+                    // we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
+                    // we fall back to a 1ply evaluation instead
                     parameters.BotLevel = BotLevel.Hard;
                     var result = await _httpClient.GetMoveEvalAsync(parameters, cancellationToken);
                     var moveSeq = result.Payload.MoveSequence;
