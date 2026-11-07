@@ -75,6 +75,8 @@ namespace GammonX.Mars.NN.Services
 
             if (board is IDoublingCubeModel cubeModel)
             {
+                // TODO: Audit cube offer/take timing: training evaluates afterstates from the player who just moved.
+                // Pre-roll evaluation may need the previous mover's perspective and inverted outcome probabilities.
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
 
                 var normalizedEvalResult = NormalizedEvalResultModel.From(eval, BoardService.Modus);
