@@ -116,8 +116,7 @@ namespace GammonX.Mars.Training.Tournament
                                 Console.WriteLine(
                                     $"  {played,5}/{totalGames}  A-points/game={FormatPoints(equity.PointsPerGame)}  " +
                                     $"approx.95%CI={FormatConfidenceInterval(equity)}  Scored={score.CompletedGames}  " +
-                                    $"AWins={score.ModelAWins}  BWins={score.ModelBWins}  Draws={score.Draws}  Discarded={score.Discarded}  " +
-                                    $"A-winrate (secondary)={FormatWinRate(score.ModelAWins, score.ModelBWins)}");
+                                    $"A-winrate={FormatWinRate(score.ModelAWins, score.ModelBWins)}");
                             }
                         }
                     }
@@ -142,7 +141,13 @@ namespace GammonX.Mars.Training.Tournament
                 score.Discarded,
                 totalGames > 0 ? (double)score.TotalTurns / totalGames : 0,
                 score.ModelATotalPoints,
-                score.ModelASquaredPoints);
+                score.ModelASquaredPoints)
+            {
+                ModelAGammonWins = score.ModelAGammonWins,
+                ModelABackgammonWins = score.ModelABackgammonWins,
+                ModelBGammonWins = score.ModelBGammonWins,
+                ModelBBackgammonWins = score.ModelBBackgammonWins,
+            };
         }
 
         private static async Task<TournamentGameResult> PlayGameAsync(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
@@ -403,27 +408,26 @@ namespace GammonX.Mars.Training.Tournament
 
             Console.WriteLine();
             Console.WriteLine("===========================================");
-            Console.WriteLine("  Tournament Results");
+            Console.WriteLine($" {result.ModelALabel} vs. {result.ModelBLabel}");
             Console.WriteLine("===========================================");
-            Console.WriteLine();
-            Console.WriteLine($"  Model A : {result.ModelALabel}");
-            Console.WriteLine($"  Model B : {result.ModelBLabel}");
-            Console.WriteLine("  Modus   : (from game)");
-            Console.WriteLine();
-            Console.WriteLine($"  Total games  : {result.TotalGames}");
-            Console.WriteLine($"  Scored games : {result.CompletedGames}");
-            Console.WriteLine($"  Decisive     : {decisive}");
-            Console.WriteLine($"  Draws        : {result.Draws}");
-            Console.WriteLine($"  Discarded    : {result.Discarded}");
-            Console.WriteLine($"  Avg turns    : {result.AvgTurns:F1}");
-            Console.WriteLine();
+            Console.WriteLine($"  Model A                : {result.ModelALabel}");
+            Console.WriteLine($"  Model B                : {result.ModelBLabel}");
+            Console.WriteLine("  Modus                   : (from game)");
+            Console.WriteLine($"  Total games            : {result.TotalGames}");
+            Console.WriteLine($"  Scored games           : {result.CompletedGames}");
+            Console.WriteLine($"  Decisive               : {decisive}");
+            Console.WriteLine($"  Draws                  : {result.Draws}");
+            Console.WriteLine($"  Discarded              : {result.Discarded}");
+            Console.WriteLine($"  Avg turns              : {result.AvgTurns:F1}");
             Console.WriteLine($"  A cubeless points/game : {FormatPoints(equity.PointsPerGame)}");
             Console.WriteLine($"  Approx. 95% equity CI  : {FormatConfidenceInterval(equity)}");
-            Console.WriteLine();
-            Console.WriteLine($"  Model A wins : {result.ModelAWins}");
-            Console.WriteLine($"  Model B wins : {result.ModelBWins}");
-            Console.WriteLine($"  A win rate (secondary, decisive games) : {FormatWinRate(result.ModelAWins, result.ModelBWins)}");
-            Console.WriteLine();
+            Console.WriteLine($"  Model A wins           : {result.ModelAWins}");
+            Console.WriteLine($"  A gammon wins          : {result.ModelAGammonWins}");
+            Console.WriteLine($"  A backgammon wins      : {result.ModelABackgammonWins}");
+            Console.WriteLine($"  Model B wins           : {result.ModelBWins}");
+            Console.WriteLine($"  B gammon wins          : {result.ModelBGammonWins}");
+            Console.WriteLine($"  B backgammon wins      : {result.ModelBBackgammonWins}");
+            Console.WriteLine($"  A win rate             : {FormatWinRate(result.ModelAWins, result.ModelBWins)}");
             Console.WriteLine($"  Verdict: {DetermineVerdict(result, equity)}");
             Console.WriteLine("===========================================");
         }

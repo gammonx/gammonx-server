@@ -34,6 +34,14 @@ namespace GammonX.Mars.Training.Tournament
         long ModelATotalPoints,
         long ModelASquaredPoints)
     {
+        public int ModelAGammonWins { get; init; }
+
+        public int ModelABackgammonWins { get; init; }
+
+        public int ModelBGammonWins { get; init; }
+
+        public int ModelBBackgammonWins { get; init; }
+
         public int CompletedGames => ModelAWins + ModelBWins + Draws;
     }
 

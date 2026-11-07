@@ -6,6 +6,14 @@ namespace GammonX.Mars.Training.Tournament
 
         public int ModelBWins { get; private set; }
 
+        public int ModelAGammonWins { get; private set; }
+
+        public int ModelABackgammonWins { get; private set; }
+
+        public int ModelBGammonWins { get; private set; }
+
+        public int ModelBBackgammonWins { get; private set; }
+
         public int Draws { get; private set; }
 
         public int Discarded { get; private set; }
@@ -31,13 +39,30 @@ namespace GammonX.Mars.Training.Tournament
             ModelATotalPoints += points;
             ModelASquaredPoints += points * points;
 
+            // Gammons count only two-point wins; backgammons are a separate category.
             if (points > 0)
             {
                 ModelAWins++;
+                if (points == 2)
+                {
+                    ModelAGammonWins++;
+                }
+                else if (points == 3)
+                {
+                    ModelABackgammonWins++;
+                }
             }
             else if (points < 0)
             {
                 ModelBWins++;
+                if (points == -2)
+                {
+                    ModelBGammonWins++;
+                }
+                else if (points == -3)
+                {
+                    ModelBBackgammonWins++;
+                }
             }
             else
             {

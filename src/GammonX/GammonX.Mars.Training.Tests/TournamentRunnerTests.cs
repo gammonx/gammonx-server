@@ -70,6 +70,18 @@ public sealed class TournamentRunnerTests
 
         Assert.Equal(whitePoints.Value, TournamentRunner.GetModelAPoints(whiteResult, true));
         Assert.Equal(-whitePoints.Value, TournamentRunner.GetModelAPoints(whiteResult, false));
+
+        foreach (var modelAIsWhite in new[] { true, false })
+        {
+            var points = modelAIsWhite ? whitePoints.Value : -whitePoints.Value;
+            var score = new TournamentScore();
+            score.RecordResult(new(whiteResult, 10, false), modelAIsWhite);
+
+            Assert.Equal(points == 2 ? 1 : 0, score.ModelAGammonWins);
+            Assert.Equal(points == 3 ? 1 : 0, score.ModelABackgammonWins);
+            Assert.Equal(points == -2 ? 1 : 0, score.ModelBGammonWins);
+            Assert.Equal(points == -3 ? 1 : 0, score.ModelBBackgammonWins);
+        }
     }
 
     [Theory]
@@ -149,6 +161,10 @@ public sealed class TournamentRunnerTests
 
         Assert.Equal(49, score.ModelAWins);
         Assert.Equal(51, score.ModelBWins);
+        Assert.Equal(49, score.ModelAGammonWins);
+        Assert.Equal(0, score.ModelABackgammonWins);
+        Assert.Equal(0, score.ModelBGammonWins);
+        Assert.Equal(0, score.ModelBBackgammonWins);
         Assert.Equal(draws, score.Draws);
         Assert.Equal(100 + draws, score.CompletedGames);
         Assert.Equal(47, score.ModelATotalPoints);
@@ -170,6 +186,10 @@ public sealed class TournamentRunnerTests
 
         score.RecordResult(new(GameResult.Unknown, 250, true), true);
         Assert.Equal(1, score.Discarded);
+        Assert.Equal(49, score.ModelAGammonWins);
+        Assert.Equal(0, score.ModelABackgammonWins);
+        Assert.Equal(0, score.ModelBGammonWins);
+        Assert.Equal(0, score.ModelBBackgammonWins);
         Assert.Equal(100 + draws, score.CompletedGames);
         Assert.Equal(47, score.ModelATotalPoints);
         Assert.Equal(247, score.ModelASquaredPoints);
