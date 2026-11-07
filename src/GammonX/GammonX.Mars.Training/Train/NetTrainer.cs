@@ -190,7 +190,7 @@ public static class NetTrainer
         trainStopwatch.Stop();
         Console.WriteLine($@"Training elapsed time: {trainStopwatch.Elapsed:hh\:mm\:ss}");
 
-        Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5})");
+        Console.WriteLine($"Model saved: {outputModelPath}  (epoch {bestEpoch}  val_loss: {bestValLoss:F5} train_loss: {bestTrainLoss:F5})");
     }
         
     private static EpochMetricsResult RunEpochStreaming(

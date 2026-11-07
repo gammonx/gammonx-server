@@ -40,7 +40,10 @@ namespace GammonX.Mars.NN.Nets
 
             InitializeModelArchitecture(architecture, device);
             OutputMode = outputMode;
-            // we increase p if model is over fitting
+            // dropout temporarily switches off randomly selected hidden activations during training. 
+            // With p = 0.1, each activation has a 10% chance of becoming zero on a training pass. 
+            // This discourages the network from relying too heavily on particular neurons and can reduce overfitting
+            // we currently disabled dropout because no overfitting is spotted
             _drop = Dropout(p: 0.0);
             RegisterComponents();
         }
