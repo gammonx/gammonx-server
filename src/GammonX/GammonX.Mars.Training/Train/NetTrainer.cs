@@ -85,6 +85,7 @@ public static class NetTrainer
             patience: 3,
             threshold: minimumDelta,
             threshold_mode: "abs");
+
         // Reduced BCE trains the model; unreduced BCE supplies row-weighted per-head diagnostics.
         var loss = BCELoss();
         var diagnosticLoss = BCELoss(reduction: Reduction.None);
@@ -211,13 +212,17 @@ public static class NetTrainer
             using (xBatch)
             using (yBatch)
             {
+                // forward propagation
                 using var pred = model.Forward(xBatch);
                 using var l = loss.forward(pred, yBatch);
 
                 if (train)
                 {
+                    // set optimizer to zero grad to remove previous epoch gradients
                     optimizer.zero_grad();
+                    // backward propagation
                     l.backward();
+                    // optimize weights
                     optimizer.step();
                 }
 

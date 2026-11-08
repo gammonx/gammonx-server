@@ -50,6 +50,11 @@ namespace GammonX.Mars.NN.Nets
 
         private void InitializeModelArchitecture(NetArchitecture architecture, Device device)
         {
+            // LATENCY:
+            // Gen12 A/B (2026-11-07): A cut CPU inference latency by 6-33% with one thread;
+            // 16-thread batching showed no reliable gain. In 20k one-ply games per matchup,
+            // PLAYING STRENGTH:
+            // A lost 0.0587 points/game to B trained on the same data, and 0.5476 to pretrained gen12 B.
             if (architecture == NetArchitecture.A)
             {
                 _fc1 = Linear(216, 256, true, device);
