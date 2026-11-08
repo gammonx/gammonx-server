@@ -22,6 +22,25 @@ The console application provides tools for generating data, training models, and
 
 10. **Audit trajectory output constraints** – Checks whether recorded trajectory predictions satisfy the expected probability ranges and hierarchy rules. Optionally evaluates a current model on the same positions to compare source-model and current-model constraint violations.
 
+## Model metadata
+
+Models own their configuration through `INetModel.Metadata`. `Save(path)` writes the weights
+and a `<path>.meta.json` sidecar together. Metadata includes the model filename (with its
+extension), game mode, architecture, output semantics, and any configured training inputs
+and settings. Saving under a different filename updates the metadata name.
+
+Configure a run with `model.ConfigureTraining(new NetTrainingMetadata(...))`, then call
+`NetTrainer.Train(model)`. For continued training, load the parent with
+`NetModelFactory.CreateForModel(...)` first and configure the new run's paths and settings.
+The loaded architecture and output semantics are preserved. Training paths in previously
+saved metadata describe that earlier run; inference does not require those files.
+
+Version 1 sidecars and legacy models without sidecars remain supported. Missing historical
+training settings remain unknown, and the next save writes the current metadata version.
+The `.dat` weight format is unchanged. Keep the weights and their sidecar together when
+copying or embedding a model. A save stages both files before replacing them, but the pair
+cannot be replaced atomically as a single filesystem operation.
+
 ## Tournament evaluation
 
 Both tournament modes measure actual cubeless points per game from model A's perspective: singles are worth +/-1, gammons +/-2, backgammons +/-3, and genuine draws 0. Outcome types determine cubeless scores, independently of the doubling cube. The report leads with average points and an approximate 95% confidence interval. Win counts and decisive-game win rate remain secondary information.

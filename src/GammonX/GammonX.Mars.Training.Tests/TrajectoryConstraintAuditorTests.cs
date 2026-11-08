@@ -56,8 +56,6 @@ public sealed class TrajectoryConstraintAuditorTests
                 model.Save(modelPath);
             }
 
-            NetModelMetadata.Write(modelPath, GameModus.Backgammon, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A);
-
             var report = TrajectoryConstraintAuditor.Analyze(
                 GameModus.Backgammon,
                 trajectoryPath,

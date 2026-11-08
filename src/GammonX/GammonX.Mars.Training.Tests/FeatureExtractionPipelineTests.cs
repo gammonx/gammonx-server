@@ -37,7 +37,6 @@ public sealed class FeatureExtractionPipelineTests
                 (net as IDisposable)?.Dispose();
             }
 
-            NetModelMetadata.Write(modelPath, mode, outputMode, NetArchitecture.A);
             neural = batched ? BatchedNeuralEvalService.Load(mode, modelPath, CPU) : NeuralEvalService.Load(mode, modelPath, CPU);
 
             if (neural is IHostedService worker)

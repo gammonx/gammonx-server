@@ -412,7 +412,7 @@ namespace GammonX.Mars.Training.Tournament
             Console.WriteLine("===========================================");
             Console.WriteLine($"  Model A                : {result.ModelALabel}");
             Console.WriteLine($"  Model B                : {result.ModelBLabel}");
-            Console.WriteLine("  Modus                   : (from game)");
+            Console.WriteLine("   Modus                  : (from game)");
             Console.WriteLine($"  Total games            : {result.TotalGames}");
             Console.WriteLine($"  Scored games           : {result.CompletedGames}");
             Console.WriteLine($"  Decisive               : {decisive}");

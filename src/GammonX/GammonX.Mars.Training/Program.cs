@@ -104,33 +104,37 @@ static void RunTrainModel()
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
     var learningRate = PromptFloat("Learning rate", 1e-4f);
 
-    NetArchitecture netArchitecture;
-    GameOutcomeOutputMode outputMode;
-    if (string.IsNullOrEmpty(inputModelPath))
+    using var model = CreateModelForTraining(modus, inputModelPath);
+    model.ConfigureTraining(new NetTrainingMetadata(
+        trainingCsvPath,
+        Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath,
+        InputModelPath: inputModelPath,
+        BatchSize: batchSize,
+        ProducerCount: producerCount,
+        QueueCapacity: queueCapacity,
+        LearningRate: learningRate));
+
+    NetTrainer.Train(model);
+}
+
+static INetModel CreateModelForTraining(GameModus modus, string? inputModelPath, bool promptOutputMode = true)
+{
+    var device = cuda.is_available() ? CUDA : CPU;
+    if (!string.IsNullOrEmpty(inputModelPath))
+        return NetModelFactory.CreateForModel(modus, inputModelPath, device);
+
+    var architecture = NetArchitecture.A;
+    var outputMode = GameOutcomeOutputMode.LegacyIndependentSigmoid;
+    if (modus is not (GameModus.Plakoto or GameModus.Fevga))
     {
-        netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
-        outputMode = PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid],
-            GameOutcomeOutputMode.MonotonicCumulative);
-    }
-    else
-    {
-        var metadata = NetModelMetadata.ReadOrLegacy(inputModelPath, modus);
-        netArchitecture = metadata.Architecture;
-        outputMode = metadata.OutputMode;
+        architecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+        outputMode = promptOutputMode
+            ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
+            : GameOutcomeOutputMode.MonotonicCumulative;
     }
 
-    NetTrainer.Train(
-        modus,
-        trainCsvPath: trainingCsvPath,
-        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
-        inputModelPath: inputModelPath,
-        outputModelPath: outputModelPath,
-        batchSize: batchSize,
-        producerCount: producerCount,
-        learningRate: learningRate,
-        queueCapacity: queueCapacity,
-        outputMode: outputMode,
-        architecture: netArchitecture);
+    return NetModelFactory.CreateNew(modus, device, outputMode, architecture);
 }
 
 #endregion Train Model
@@ -147,16 +151,15 @@ static void RunNoiseDiagnostic()
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
     var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
-    var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+    using var model = CreateModelForTraining(modus, inputModelPath, promptOutputMode: false);
+    model.ConfigureTraining(new NetTrainingMetadata(
+        trainingCsvPath,
+        Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath,
+        InputModelPath: inputModelPath,
+        ShuffleLabels: true));
 
-    NetTrainer.Train(
-        modus,
-        trainCsvPath: trainingCsvPath,
-        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
-        outputModelPath: outputModelPath,
-        inputModelPath: inputModelPath,
-        shuffleLabels: true,
-        architecture: netArchitecture);
+    NetTrainer.Train(model);
 }
 
 #endregion Noise Floor Diagnostic

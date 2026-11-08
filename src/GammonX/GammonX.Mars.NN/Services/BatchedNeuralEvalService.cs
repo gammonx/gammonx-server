@@ -114,10 +114,8 @@ namespace GammonX.Mars.NN.Services
             var device = cuda.is_available() ? CUDA : CPU;
             var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
             using var metadataStream = assembly.GetManifestResourceStream(metadataResourceName);
-            var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, metadataResourceName);
-            var net = NetModelFactory.CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
+            var net = NetModelFactory.CreateForModel(modus, stream, metadataStream, device, "training_net.dat");
             var extractor = FeatureVectorExtractorFactory.Create(modus);
-            net.LoadFromStream(stream);
             net.Eval();
             return new BatchedNeuralEvalService(net, extractor, maxBatchSize, device);
         }

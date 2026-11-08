@@ -11,13 +11,16 @@ namespace GammonX.Mars.Training.Tests;
 
 public sealed class ConstrainedTrainingTests
 {
-    [Fact]
-    public void ConstrainedTrainingWritesMetadataAndValidPredictions()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConstrainedTrainingWritesMetadataAndValidPredictions(bool resume)
     {
         var stem = $"gammonx-{Guid.NewGuid():N}";
         var trainingPath = Path.Combine(Path.GetTempPath(), stem + "-train.csv");
         var validationPath = Path.Combine(Path.GetTempPath(), stem + "-val.csv");
         var modelPath = Path.Combine(Path.GetTempPath(), stem + ".dat");
+        var inputModelPath = Path.Combine(Path.GetTempPath(), stem + "-parent.dat");
         var trainingBinaryPath = Path.Combine(Environment.CurrentDirectory, stem + "-train.bin");
         var validationBinaryPath = Path.Combine(Environment.CurrentDirectory, stem + "-val.bin");
 
@@ -26,25 +29,35 @@ public sealed class ConstrainedTrainingTests
             WriteDataset(trainingPath);
             WriteDataset(validationPath);
 
-            NetTrainer.Train(
-                GameModus.Backgammon,
+            using var trainingModel = NetModelFactory.CreateNew(GameModus.Backgammon, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B);
+            if (resume)
+            {
+                trainingModel.Save(inputModelPath);
+                trainingModel.Load(inputModelPath);
+            }
+
+            var training = new NetTrainingMetadata(
                 trainingPath,
                 validationPath,
-                "",
                 modelPath,
-                epochs: 1,
-                batchSize: 2,
-                producerCount: 1,
-                queueCapacity: 2,
-                earlyStoppingPatience: 1);
+                InputModelPath: resume ? inputModelPath : null,
+                Epochs: 1,
+                BatchSize: 2,
+                EarlyStoppingPatience: 1,
+                MinimumDelta: resume ? float.MaxValue : 1e-5f);
+            trainingModel.ConfigureTraining(training);
+            NetTrainer.Train(trainingModel);
 
             Assert.True(File.Exists(modelPath));
             Assert.True(File.Exists(NetModelMetadata.GetPath(modelPath)));
 
             var metadata = NetModelMetadata.ReadOrLegacy(modelPath, GameModus.Backgammon);
             Assert.Equal(GameOutcomeOutputMode.MonotonicCumulative, metadata.OutputMode);
+            Assert.Equal(NetArchitecture.B, metadata.Architecture);
+            Assert.Equal(Path.GetFileName(modelPath), metadata.Name);
+            Assert.Equal(training, metadata.Training);
 
-            var model = NetModelFactory.CreateForModel(GameModus.Backgammon, modelPath, CPU);
+            using var model = NetModelFactory.CreateForModel(GameModus.Backgammon, modelPath, CPU);
             model.Eval();
             using var input = tensor(new float[2 * 216], [2, 216], device: CPU);
             using var noGradScope = no_grad();
@@ -54,6 +67,14 @@ public sealed class ConstrainedTrainingTests
 
             Assert.Equal(2, metrics.Complete().RowCount);
             Assert.Equal(0, metrics.Complete().InvalidRowCount);
+
+            if (resume)
+            {
+                using var parent = NetModelFactory.CreateForModel(GameModus.Backgammon, inputModelPath, CPU);
+                parent.Eval();
+                using var parentPredictions = parent.Forward(input);
+                Assert.Equal(parentPredictions.data<float>().ToArray(), predictions.data<float>().ToArray());
+            }
         }
         finally
         {
@@ -61,6 +82,8 @@ public sealed class ConstrainedTrainingTests
             File.Delete(validationPath);
             File.Delete(modelPath);
             File.Delete(NetModelMetadata.GetPath(modelPath));
+            File.Delete(inputModelPath);
+            File.Delete(NetModelMetadata.GetPath(inputModelPath));
             File.Delete(trainingBinaryPath);
             File.Delete(validationBinaryPath);
         }

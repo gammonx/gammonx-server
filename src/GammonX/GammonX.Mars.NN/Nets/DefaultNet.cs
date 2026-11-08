@@ -17,7 +17,7 @@ namespace GammonX.Mars.NN.Nets
     /// In legacy mode, all five values are returned as independent sigmoid outputs.
     /// </remarks>
     /// <seealso cref="INetModel"/>
-    public sealed class DefaultNet : Module<Tensor, Tensor>, INetModel
+    public sealed class DefaultNet : NetModel
     {
         private Linear _fc1 = null!;
         private Linear _fc2 = null!;
@@ -29,17 +29,22 @@ namespace GammonX.Mars.NN.Nets
         /// <summary>
         /// Gets the output transformation used to convert logits into outcome probabilities.
         /// </summary>
-        public GameOutcomeOutputMode OutputMode { get; }
+        public GameOutcomeOutputMode OutputMode => Metadata.OutputMode;
 
-        public DefaultNet(Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture) : base(nameof(DefaultNet))
+        public DefaultNet(Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
+            : this(device, new NetModelMetadata(NetModelMetadata.CurrentFormatVersion, GameModus.Backgammon, outputMode, architecture))
         {
-            if (!Enum.IsDefined(outputMode))
+            // pass
+        }
+
+        public DefaultNet(Device device, NetModelMetadata metadata) : base(nameof(DefaultNet), metadata)
+        {
+            if (metadata.Modus is not (GameModus.Backgammon or GameModus.Tavla or GameModus.Portes))
             {
-                throw new ArgumentOutOfRangeException(nameof(outputMode), outputMode, "Unknown output mode.");
+                throw new ArgumentException($"Modus {metadata.Modus} does not use the default network.", nameof(metadata));
             }
 
-            InitializeModelArchitecture(architecture, device);
-            OutputMode = outputMode;
+            InitializeModelArchitecture(metadata.Architecture, device);
             // dropout temporarily switches off randomly selected hidden activations during training. 
             // With p = 0.1, each activation has a 10% chance of becoming zero on a training pass. 
             // This discourages the network from relying too heavily on particular neurons and can reduce overfitting
@@ -68,56 +73,6 @@ namespace GammonX.Mars.NN.Nets
                 _fc2 = Linear(384, 192, true, device);
                 _fc3 = Linear(192, 96, true, device);
                 _fc4 = Linear(96, 5, true, device);
-            }
-        }
-
-        // <inheritdoc />
-        public Tensor Forward(Tensor x)
-        {
-            return forward(x);
-        }
-
-        // <inheritdoc />
-        public void Load(string location)
-        {
-            load(location);
-        }
-
-        // <inheritdoc />
-        public void Save(string location)
-        {
-            save(location);
-        }
-
-        // <inheritdoc />
-        public void Eval()
-        {
-            eval();
-        }
-
-        // <inheritdoc />
-        public void Train()
-        {
-            train();
-        }
-
-        // <inheritdoc />
-        public IEnumerable<Parameter> GetParameters()
-        {
-            return parameters();
-        }
-
-        // <inheritdoc />
-        public void MoveTo(Device device)
-        {
-            foreach (var (_, param) in named_parameters())
-            {
-                param.to(device);
-            }
-
-            foreach (var (_, buf) in named_buffers())
-            {
-                buf.to(device);
             }
         }
 
