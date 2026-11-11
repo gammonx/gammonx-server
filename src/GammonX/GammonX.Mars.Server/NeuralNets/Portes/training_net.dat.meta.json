@@ -1,6 +1,6 @@
 {
   "FormatVersion": 2,
-  "Modus": "Backgammon",
+  "Modus": "Portes",
   "OutputMode": "MonotonicCumulative",
   "Architecture": "B",
   "Name": "training_net.td070.gen13-4-run3.dat",
