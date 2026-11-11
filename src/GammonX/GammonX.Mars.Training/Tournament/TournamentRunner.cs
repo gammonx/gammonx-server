@@ -407,9 +407,7 @@ namespace GammonX.Mars.Training.Tournament
             var equity = ComputePointEquity(result.CompletedGames, result.ModelATotalPoints, result.ModelASquaredPoints);
 
             Console.WriteLine();
-            Console.WriteLine("===========================================");
-            Console.WriteLine($" {result.ModelALabel} vs. {result.ModelBLabel}");
-            Console.WriteLine("===========================================");
+            Console.WriteLine($"### {result.ModelALabel} vs. {result.ModelBLabel}");
             Console.WriteLine($"  Model A                : {result.ModelALabel}");
             Console.WriteLine($"  Model B                : {result.ModelBLabel}");
             Console.WriteLine("   Modus                  : (from game)");
@@ -429,7 +427,6 @@ namespace GammonX.Mars.Training.Tournament
             Console.WriteLine($"  B backgammon wins      : {result.ModelBBackgammonWins}");
             Console.WriteLine($"  A win rate             : {FormatWinRate(result.ModelAWins, result.ModelBWins)}");
             Console.WriteLine($"  Verdict: {DetermineVerdict(result, equity)}");
-            Console.WriteLine("===========================================");
         }
 
         private static string FormatPoints(double? points)
