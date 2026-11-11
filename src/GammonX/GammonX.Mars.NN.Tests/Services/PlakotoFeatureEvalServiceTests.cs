@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Services;
@@ -64,7 +64,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = request.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
         }
@@ -119,7 +119,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -137,7 +137,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -172,7 +172,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
         }
 
@@ -209,7 +209,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
         }
 
@@ -237,7 +237,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalBoardRequest = requestBlack,
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -251,7 +251,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalBoardRequest = requestWhite,
                 ContactWeights = EvalWeights.PlakotoContactWeights,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
 
             Assert.True(resultBlack.Equity > 0.0);
             Assert.True(resultWhite.Equity < -0.0);
@@ -282,7 +282,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalCubeRequest = request,
                 IsWhite = request.IsWhite,
                 TurnNumber = request.TurnNumber,
-            }));
+            }, TestContext.Current.CancellationToken));
         }
     }
 }

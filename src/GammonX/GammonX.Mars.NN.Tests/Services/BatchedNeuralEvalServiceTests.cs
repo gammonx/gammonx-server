@@ -17,7 +17,7 @@ using static TorchSharp.torch;
 namespace GammonX.Mars.NN.Tests.Services;
 
 [Collection(nameof(PerformanceTestCollection))]
-public class BatchedNeuralEvalServiceTests
+public partial class BatchedNeuralEvalServiceTests
 {
     [Fact]
     public void CpuStorageWritesAndNarrowViewsHaveTheRequiredOwnership()
@@ -69,7 +69,7 @@ public class BatchedNeuralEvalServiceTests
                     return Enumerable.Range(0, featureCount).Select(column => (float)(value + column)).ToArray();
                 }).ToArray();
 
-                var results = await service.PredictBatchAsync(rows);
+                var results = await service.PredictBatchAsync(rows, TestContext.Current.CancellationToken);
 
                 Assert.Equal(count, results.Length);
                 for (var index = 0; index < count; index++)
@@ -100,9 +100,9 @@ public class BatchedNeuralEvalServiceTests
         try
         {
             if (failForward)
-                await Assert.ThrowsAsync<InvalidDataException>(() => service.PredictBatchAsync([[1], [2]]));
+                await Assert.ThrowsAsync<InvalidDataException>(() => service.PredictBatchAsync([[1], [2]], TestContext.Current.CancellationToken));
             else
-                Assert.Equal(2, (await service.PredictBatchAsync([[1], [2]])).Length);
+                Assert.Equal(2, (await service.PredictBatchAsync([[1], [2]], TestContext.Current.CancellationToken)).Length);
         }
         finally
         {
@@ -138,12 +138,12 @@ public class BatchedNeuralEvalServiceTests
                 var marker = index * 10;
                 if (index % 2 == 0)
                 {
-                    var result = await service.PredictAsync(new NormalizedEvalResultModel { BlotCount = marker }, board, true);
+                    var result = await service.PredictAsync(new NormalizedEvalResultModel { BlotCount = marker }, board, true, TestContext.Current.CancellationToken);
                     AssertRow(result, marker, width);
                 }
                 else
                 {
-                    var result = await batch.PredictBatchAsync([[marker], [marker + 1], [marker + 2]]);
+                    var result = await batch.PredictBatchAsync([[marker], [marker + 1], [marker + 2]], TestContext.Current.CancellationToken);
                     Assert.Equal(3, result.Length);
                     for (var row = 0; row < result.Length; row++)
                     {
@@ -169,10 +169,10 @@ public class BatchedNeuralEvalServiceTests
         try
         {
             INeuralEvalService batch = service;
-            await Assert.ThrowsAsync<ArgumentNullException>(() => batch.PredictBatchAsync(null!));
-            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([]));
-            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([[1], [2], [3], [4], [5]]));
-            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([[1, 2]]));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => batch.PredictBatchAsync(null!, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([], TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([[1], [2], [3], [4], [5]], TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ArgumentException>(() => batch.PredictBatchAsync([[1, 2]], TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -194,7 +194,7 @@ public class BatchedNeuralEvalServiceTests
         {
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard();
             await Assert.ThrowsAsync<InvalidDataException>(() =>
-                service.PredictAsync(new NormalizedEvalResultModel(), board, true));
+                service.PredictAsync(new NormalizedEvalResultModel(), board, true, TestContext.Current.CancellationToken));
             net.Verify(model => model.Forward(It.IsAny<Tensor>()), Times.Never);
         }
         finally
@@ -217,9 +217,9 @@ public class BatchedNeuralEvalServiceTests
         try
         {
             INeuralEvalService batch = service;
-            var error = await Assert.ThrowsAsync<InvalidDataException>(() => batch.PredictBatchAsync([[1], [2]]));
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => batch.PredictBatchAsync([[1], [2]], TestContext.Current.CancellationToken));
             Assert.Equal("Model failed.", error.Message);
-            var results = await batch.PredictBatchAsync([[3], [4]]);
+            var results = await batch.PredictBatchAsync([[3], [4]], TestContext.Current.CancellationToken);
             AssertRow(results[0], 3, 1);
             AssertRow(results[1], 4, 1);
         }
@@ -239,7 +239,7 @@ public class BatchedNeuralEvalServiceTests
         {
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard();
             var actual = await Assert.ThrowsAsync<InvalidDataException>(() =>
-                service.PredictAsync(new NormalizedEvalResultModel(), board, true));
+                service.PredictAsync(new NormalizedEvalResultModel(), board, true, TestContext.Current.CancellationToken));
             Assert.Same(failure, actual);
         }
         finally
@@ -255,7 +255,7 @@ public class BatchedNeuralEvalServiceTests
         await service.StartAsync(TestContext.Current.CancellationToken);
         try
         {
-            await Assert.ThrowsAsync<InvalidDataException>(() => service.PredictBatchAsync([[1], [2]]));
+            await Assert.ThrowsAsync<InvalidDataException>(() => service.PredictBatchAsync([[1], [2]], TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -288,7 +288,7 @@ public class BatchedNeuralEvalServiceTests
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard();
             var bulk = SendChunks();
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            var single = service.PredictAsync(new NormalizedEvalResultModel { BlotCount = 99 }, board, true);
+            var single = service.PredictAsync(new NormalizedEvalResultModel { BlotCount = 99 }, board, true, TestContext.Current.CancellationToken);
             release.Set();
             AssertRow(await single.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken), 99, 1);
             await bulk.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -296,8 +296,8 @@ public class BatchedNeuralEvalServiceTests
 
             async Task SendChunks()
             {
-                await batch.PredictBatchAsync([[1], [2], [3], [4]]);
-                await batch.PredictBatchAsync([[5], [6], [7], [8]]);
+                await batch.PredictBatchAsync([[1], [2], [3], [4]], TestContext.Current.CancellationToken);
+                await batch.PredictBatchAsync([[5], [6], [7], [8]], TestContext.Current.CancellationToken);
             }
         }
         finally
@@ -323,15 +323,15 @@ public class BatchedNeuralEvalServiceTests
         INeuralEvalService batch = service;
         try
         {
-            var active = batch.PredictBatchAsync([[1], [2], [3], [4]]);
+            var active = batch.PredictBatchAsync([[1], [2], [3], [4]], TestContext.Current.CancellationToken);
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            var queued = batch.PredictBatchAsync([[5]]);
+            var queued = batch.PredictBatchAsync([[5]], TestContext.Current.CancellationToken);
             var stopping = service.StopAsync(CancellationToken.None);
             release.Set();
             await active.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             await stopping.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
-            await Assert.ThrowsAsync<InvalidOperationException>(() => batch.PredictBatchAsync([[6]]));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => batch.PredictBatchAsync([[6]], TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -358,11 +358,11 @@ public class BatchedNeuralEvalServiceTests
         {
             INeuralEvalService batch = service;
             var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard();
-            var active = batch.PredictBatchAsync([[1], [2], [3], [4]]);
+            var active = batch.PredictBatchAsync([[1], [2], [3], [4]], TestContext.Current.CancellationToken);
             await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             var singles = Enumerable.Range(0, 40)
-                .Select(_ => service.PredictAsync(new NormalizedEvalResultModel(), board, true)).ToArray();
-            var groups = Enumerable.Range(0, 40).Select(_ => batch.PredictBatchAsync([[5]])).ToArray();
+                .Select(_ => service.PredictAsync(new NormalizedEvalResultModel(), board, true, TestContext.Current.CancellationToken)).ToArray();
+            var groups = Enumerable.Range(0, 40).Select(_ => batch.PredictBatchAsync([[5]], TestContext.Current.CancellationToken)).ToArray();
             await cancellation.CancelAsync();
             release.Set();
             await active.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);

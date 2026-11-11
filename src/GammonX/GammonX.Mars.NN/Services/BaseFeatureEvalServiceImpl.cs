@@ -57,15 +57,19 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public async Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(FeatureEvalOptions options)
+        public async Task<(CubeAction ShouldOffer, CubeAction ShouldTake)> EvalCubeAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.EvalCubeRequest);
             ArgumentNullException.ThrowIfNull(options.IsWhite);
             ArgumentNullException.ThrowIfNull(options.TurnNumber);
 
             if (_neuralEvalService == null)
+            {
                 throw new InvalidOperationException("Neural evaluation service is required for cube evaluation.");
+            }
 
             var contract = options.EvalCubeRequest;
             var boardContract = contract.Board;
@@ -80,7 +84,10 @@ namespace GammonX.Mars.NN.Services
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
 
                 var normalizedEvalResult = NormalizedEvalResultModel.From(eval, BoardService.Modus);
-                var predictions = await _neuralEvalService.PredictAsync(normalizedEvalResult, board, isWhite);
+                var predictions = await _neuralEvalService.PredictAsync(normalizedEvalResult, board, isWhite, cancellationToken);
+                
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // we calculate the game equity
                 var outcome = new GameOutcomeModel(predictions);
                 var equityModel = new GameEquityModel(outcome);
@@ -157,8 +164,10 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public async Task<EvalResult> EvalBoardStateAsync(FeatureEvalOptions options)
+        public async Task<EvalResult> EvalBoardStateAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.EvalBoardRequest);
             ArgumentNullException.ThrowIfNull(options.TurnNumber);
@@ -174,26 +183,31 @@ namespace GammonX.Mars.NN.Services
             if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
             {
                 // we calculate the eval based on a two-ply evaluation of the resulting board state
-                var twoPlyEval = await CalculateTwoPlyEquityAsync(board, turnNumber, isWhite);
+                var twoPlyEval = await CalculateTwoPlyEquityAsync(board, turnNumber, isWhite, cancellationToken);
                 return twoPlyEval;
             }
 
             var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
-            return await EvalPositionAsync(board, isWhite, eval, options.ContactWeights);
+            return await EvalPositionAsync(board, isWhite, eval, options.ContactWeights, cancellationToken);
         }
 
         // <inheritdoc />
-        public async Task<MoveSequenceModel> EvalMoveSequencesAsync(FeatureEvalOptions options)
+        public async Task<MoveSequenceModel> EvalMoveSequencesAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.EvalMoveRequest);
-            var evalMoves = await EvalMoveSequencesForTrainingAsync(options);
+            var evalMoves = await EvalMoveSequencesForTrainingAsync(options, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             return evalMoves.Select(options.EvalMoveRequest.BotLevel);
         }
 
         // <inheritdoc />
-        public async Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(FeatureEvalOptions options)
+        public async Task<FinalEvalResultModels> EvalMoveSequencesForTrainingAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.EvalMoveRequest);
             ArgumentNullException.ThrowIfNull(options.TurnNumber);
@@ -206,7 +220,7 @@ namespace GammonX.Mars.NN.Services
 
             var board = BoardService.CreateBoard(boardContract);
             // we only evaluate move sequences which result in a unique end board state
-            var legalMovesSeq = BoardService.GetUniqueLegalMoveSequences(board, isWhite, rolls);
+            var legalMovesSeq = BoardService.GetUniqueLegalMoveSequences(board, isWhite, rolls, cancellationToken);
 
             if (legalMovesSeq.Length == 0)
                 return [];
@@ -219,13 +233,16 @@ namespace GammonX.Mars.NN.Services
                 TurnNumber = options.TurnNumber,
                 ContactWeights = options.ContactWeights,
                 MaxCandidates = options.MaxCandidates,
-            }, board);
+            }, board, cancellationToken);
+
             return [.. evalResult];
         }
 
         // <inheritdoc />
-        public async Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(FeatureEvalOptions options)
+        public async Task<FinalEvalResultModels> EvalMoveSequenceCandidatesAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.BoardContract);
             ArgumentNullException.ThrowIfNull(options.Candidates);
@@ -235,10 +252,12 @@ namespace GammonX.Mars.NN.Services
             ArgumentNullException.ThrowIfNull(options.IsWhite);
 
             if (options.Candidates.Count == 0)
+            {
                 return [];
+            }
 
             var board = BoardService.CreateBoard(options.BoardContract);
-            var evalResult = await GetCandidatesByEvalAsync(options, board);
+            var evalResult = await GetCandidatesByEvalAsync(options, board, cancellationToken);
 
             return [.. evalResult];
         }
@@ -250,14 +269,18 @@ namespace GammonX.Mars.NN.Services
             ArgumentNullException.ThrowIfNull(options.BoardContract);
             ArgumentNullException.ThrowIfNull(options.TurnNumber);
             ArgumentNullException.ThrowIfNull(options.IsWhite);
+
             var board = BoardService.CreateBoard(options.BoardContract);
             var eval = CalculateEvalModelWithDiagnostics(board, options.TurnNumber.Value, options.IsWhite.Value);
+
             return NormalizedEvalResultModel.From(eval, BoardService.Modus);
         }
 
         // <inheritdoc />
-        public async Task<FinalEvalResultModel> EvalMoveSequenceAsync(FeatureEvalOptions options)
+        public async Task<FinalEvalResultModel> EvalMoveSequenceAsync(FeatureEvalOptions options, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.Candidate);
             var evalResult = await EvalMoveSequenceCandidatesAsync(new FeatureEvalOptions
@@ -268,12 +291,14 @@ namespace GammonX.Mars.NN.Services
                 BotLevel = options.BotLevel,
                 TurnNumber = options.TurnNumber,
                 ContactWeights = options.ContactWeights,
-            });
+            }, cancellationToken);
             return evalResult[0];
         }
 
-        internal async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(FeatureEvalOptions options, IBoardModel board)
+        internal async Task<IEnumerable<FinalEvalResultModel>> GetCandidatesByEvalAsync(FeatureEvalOptions options, IBoardModel board, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(options.BotLevel);
             ArgumentNullException.ThrowIfNull(options.TurnNumber);
@@ -322,6 +347,8 @@ namespace GammonX.Mars.NN.Services
                     {
                         while (Volatile.Read(ref failed) == 0)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             var index = Interlocked.Increment(ref next);
                             if (index >= evalCount)
                                 return;
@@ -336,11 +363,15 @@ namespace GammonX.Mars.NN.Services
                 }
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Stable sorting preserves original candidate order for equal evals.
             return evals.OrderByDescending(e => e.Equity);
 
             async Task EvaluateCandidateAsync(IBoardModel ownedBoard, int index)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var moveSeq = options.Candidates[index];
                 var appliedMoves = 0;
                 EvaluationMetrics.RecordActiveCandidates(1);
@@ -360,13 +391,15 @@ namespace GammonX.Mars.NN.Services
                     if (searchDepth == SearchDepth.TwoPly && _neuralEvalService != null)
                     {
                         // we calculate the equity based on a two-ply evaluation of the resulting board state
-                        evalResult = await CalculateTwoPlyEquityAsync(ownedBoard, turnNumber, isWhite);
+                        evalResult = await CalculateTwoPlyEquityAsync(ownedBoard, turnNumber, isWhite, cancellationToken);
                     }
                     else
                     {
                         // we calculate the one-ply equity for the active player and his move
-                        evalResult = await EvalPositionAsync(ownedBoard, isWhite, eval, options.ContactWeights);
+                        evalResult = await EvalPositionAsync(ownedBoard, isWhite, eval, options.ContactWeights, cancellationToken);
                     }
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     evals[index] = new FinalEvalResultModel(
                         evalResult.Equity,
@@ -389,8 +422,10 @@ namespace GammonX.Mars.NN.Services
             }
         }
 
-        private Task<EvalResult> CalculateTwoPlyEquityAsync(IBoardModel board, int turnNumber, bool isWhite)
+        private Task<EvalResult> CalculateTwoPlyEquityAsync(IBoardModel board, int turnNumber, bool isWhite, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (_neuralEvalService == null)
             {
                 throw new InvalidOperationException("Neural evaluation service is not available for two-ply search.");
@@ -409,7 +444,7 @@ namespace GammonX.Mars.NN.Services
                 {
                     // we increase the turn number for the next ply, since the opponent will have played a move
                     var twoPlyTurnNumber = turnNumber + 1;
-                    return CalculatePositionBatchAsync(boards, _neuralEvalService, twoPlyTurnNumber, perspectiveIsWhite);
+                    return CalculatePositionBatchAsync(boards, _neuralEvalService, twoPlyTurnNumber, perspectiveIsWhite, cancellationToken);
                 },
                 // Bound each callers work item even when the shared worker allows larger batches.
                 maxBatchSize: Math.Min(_neuralEvalService.MaxBatchSize, 32),
@@ -425,19 +460,19 @@ namespace GammonX.Mars.NN.Services
                     {
                         // we increase the turn number for the next ply, since the opponent will have played a move
                         var twoPlyTurnNumber = turnNumber + 1;
-                        var prepared = PreparePosition(position, _neuralEvalService, buffers, nextBuffer, twoPlyTurnNumber, isWhite);
+                        var prepared = PreparePosition(position, _neuralEvalService, buffers, nextBuffer, twoPlyTurnNumber, isWhite, cancellationToken);
                         nextBuffer++;
                         return prepared;
                     }, async positions =>
                     {
-                        var results = await EvalPreparedPositionsAsync(positions, board.Modus, _neuralEvalService);
+                        var results = await EvalPreparedPositionsAsync(positions, board.Modus, _neuralEvalService, cancellationToken);
                         nextBuffer = 0;
                         return results;
-                    });
+                    }, cancellationToken);
             }
 
             // we create board deep clones for each board inference
-            return evaluator.EvaluateAsync(board, isWhite);
+            return evaluator.EvaluateAsync(board, isWhite, cancellationToken);
         }
 
         private PreparedPosition PreparePosition(
@@ -446,8 +481,11 @@ namespace GammonX.Mars.NN.Services
             float[][]? buffers,
             int bufferIndex,
             int turnNumber,
-            bool isWhite)
+            bool isWhite,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (TryGetTerminal(board, isWhite, out var terminal))
             {
                 return new PreparedPosition(null, terminal);
@@ -464,14 +502,18 @@ namespace GammonX.Mars.NN.Services
             return new PreparedPosition(featureVectors, null);
         }
 
-        private static async Task<EvalResult[]> EvalPreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural)
+        private static async Task<EvalResult[]> EvalPreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var evalResults = new EvalResult[positions.Count];
             var features = new List<float[]>(positions.Count);
             var indices = new List<int>(positions.Count);
 
             for (var index = 0; index < positions.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var position = positions[index];
                 if (position.Features == null)
                 {
@@ -489,7 +531,9 @@ namespace GammonX.Mars.NN.Services
                 return evalResults;
             }
 
-            var predictions = await neural.PredictBatchAsync(features.ToArray());
+            var predictions = await neural.PredictBatchAsync(features.ToArray(), cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (predictions.Length != indices.Count)
             {
@@ -504,8 +548,9 @@ namespace GammonX.Mars.NN.Services
             return evalResults;
         }
 
-        private async Task<EvalResult> EvalPositionAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights)
+        private async Task<EvalResult> EvalPositionAsync(IBoardModel board, bool isWhite, EvalResultModel eval, ContactWeightModel contactWeights, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // we check if the game has already ended and return the terminal eval if so
             if (TryGetTerminal(board, isWhite, out var terminal))
             {
@@ -522,7 +567,9 @@ namespace GammonX.Mars.NN.Services
 
             var evalModel = NormalizedEvalResultModel.From(eval, BoardService.Modus);
             // we calculate the nn model prediction
-            var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite);
+            var predictions = await _neuralEvalService.PredictAsync(evalModel, board, isWhite, cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             return ToEvalResult(board.Modus, predictions);
         }
@@ -531,14 +578,18 @@ namespace GammonX.Mars.NN.Services
             IReadOnlyList<IBoardModel> boards,
             INeuralEvalService neuralService,
             int turnNumber,
-            bool isWhite)
+            bool isWhite,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var evalResults = new EvalResult[boards.Count];
             var features = new List<float[]>(boards.Count);
             var indices = new List<int>(boards.Count);
             // we collect all feature vectors from all different board positions that are not terminal
             for (var index = 0; index < boards.Count; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var board = boards[index];
                 if (TryGetTerminal(board, isWhite, out var terminal))
                 {
@@ -560,12 +611,14 @@ namespace GammonX.Mars.NN.Services
 
             try
             {
-                predictions = await neuralService.PredictBatchAsync(features.ToArray());
+                predictions = await neuralService.PredictBatchAsync(features.ToArray(), cancellationToken);
             }
             finally
             {
                 EvaluationMetrics.RecordFeatureRows(-features.Count);
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (predictions.Length != indices.Count)
             {

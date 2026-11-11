@@ -82,7 +82,7 @@ public sealed class FeatureExtractionPipelineTests
                 Assert.All(expected, value => Assert.True(float.IsFinite(value) && value >= 0 && value <= 1));
 
                 expectedRows.Add(expected);
-                expectedPredictions.Add((await neural.PredictBatchAsync([expected]))[0]);
+                expectedPredictions.Add((await neural.PredictBatchAsync([expected], TestContext.Current.CancellationToken))[0]);
                 await recorder.RecordPositionAsync(model, board, white);
             }
 

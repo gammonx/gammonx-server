@@ -193,7 +193,7 @@ namespace GammonX.Mars.Training.Tournament
                     EvalMoveRequest = evalRequest,
                     ContactWeights = contactWeights,
                     TurnNumber = turnCount,
-                });
+                }, CancellationToken.None);
 
                 foreach (var move in result.Moves)
                 {
@@ -290,7 +290,7 @@ namespace GammonX.Mars.Training.Tournament
                         EvalMoveRequest = evalRequest,
                         ContactWeights = contactWeights,
                         TurnNumber = turnCount,
-                    });
+                    }, CancellationToken.None);
                 }
 
                 var hasWon = false;

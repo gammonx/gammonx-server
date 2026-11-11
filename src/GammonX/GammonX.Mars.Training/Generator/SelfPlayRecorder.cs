@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Models;
+using GammonX.Engine.Models;
 
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
@@ -65,7 +65,7 @@ namespace GammonX.Mars.Training.Generator
 
             if (prediction == null && _neuralEvalService != null)
             {
-                prediction = await _neuralEvalService.PredictAsync(model, board, isWhite);
+                prediction = await _neuralEvalService.PredictAsync(model, board, isWhite, CancellationToken.None);
             }
 
             if (prediction?.Length == GameOutcomeConstraintValidator.FullHeadCount)

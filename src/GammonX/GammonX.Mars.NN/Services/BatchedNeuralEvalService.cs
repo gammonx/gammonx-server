@@ -31,7 +31,8 @@ namespace GammonX.Mars.NN.Services
         private readonly record struct InferenceRequest(
             float[][] Vectors,
             TaskCompletionSource<float[][]> Result,
-            long Queued)
+            long Queued,
+            CancellationToken CancellationToken)
         {
             public int Count => Vectors.Length;
 
@@ -123,12 +124,14 @@ namespace GammonX.Mars.NN.Services
         #region INeuralEvalService Impl
 
         // <inheritdoc />
-        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             EnsureRunning();
 
             var vec = ExtractFeatures(model, board, isWhite);
-            var results = await PredictBatchAsync([vec]).ConfigureAwait(false);
+            var results = await PredictBatchAsync([vec], cancellationToken).ConfigureAwait(false);
             return results[0];
         }
 
@@ -140,8 +143,10 @@ namespace GammonX.Mars.NN.Services
         public int MaxBatchSize { get; }
 
         // <inheritdoc />
-        public async Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(features);
             if (features.Length == 0 || features.Length > MaxBatchSize)
             {
@@ -164,9 +169,17 @@ namespace GammonX.Mars.NN.Services
 
             try
             {
-                await _channel.Writer.WriteAsync(
-                    new InferenceRequest(features, tcs, EvaluationMetrics.GetQueueTimestamp()),
-                    _cts.Token).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var request = new InferenceRequest(features, tcs, EvaluationMetrics.GetQueueTimestamp(), cancellationToken);
+                // Allocate linked cancellation registrations only when queue admission must wait.
+                if (!_channel.Writer.TryWrite(request))
+                {
+                    using var admissionCancellation = cancellationToken.CanBeCanceled
+                        ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cts.Token)
+                        : null;
+                    await _channel.Writer.WriteAsync(request, admissionCancellation?.Token ?? _cts.Token).ConfigureAwait(false);
+                }
             }
             catch
             {
@@ -176,6 +189,8 @@ namespace GammonX.Mars.NN.Services
 
             EvaluationMetrics.RecordInferenceRequest();
 
+            // Completion acknowledges that the worker no longer reads the borrowed feature rows.
+            // Cancelling only this await would let callers reuse buffers while they are still queued.
             return await tcs.Task.ConfigureAwait(false);
         }
 
@@ -268,9 +283,9 @@ namespace GammonX.Mars.NN.Services
 
             // TODO: we need to apply the reuse logic for GPU based tensors
             var reuseInput = ReuseCPUTensor && _device.type == DeviceType.CPU;
-            
+
             Tensor? input = null;
-            
+
             try
             {
                 while (true)
@@ -279,23 +294,43 @@ namespace GammonX.Mars.NN.Services
 
                     var waitStarted = waiting.IsCompletedSuccessfully ? 0 : EvaluationMetrics.GetWorkerWaitTimestamp();
                     var available = await waiting.ConfigureAwait(false);
-                    
+
                     EvaluationMetrics.RecordWorkerWait(waitStarted);
 
                     if (!available)
                         break;
 
                     ct.ThrowIfCancellationRequested();
+
                     batch.Clear();
                     var rowCount = 0;
 
-                    while (_channel.Reader.TryPeek(out var next) && rowCount + next.Count <= MaxBatchSize)
+                    while (_channel.Reader.TryPeek(out var next))
                     {
+                        if (!next.CancellationToken.IsCancellationRequested && rowCount + next.Count > MaxBatchSize)
+                            break;
                         if (!_channel.Reader.TryRead(out var request))
                             break;
+                        EvaluationMetrics.RecordQueuedRows(-request.Count);
+                        if (request.CancellationToken.IsCancellationRequested)
+                        {
+                            request.Cancel(request.CancellationToken);
+                            continue;
+                        }
                         batch.Add(request);
                         rowCount += request.Count;
-                        EvaluationMetrics.RecordQueuedRows(-request.Count);
+                    }
+
+                    // Cancellation may have arrived while the group was assembled.
+                    for (var index = batch.Count - 1; index >= 0; index--)
+                    {
+                        var request = batch[index];
+                        if (request.CancellationToken.IsCancellationRequested)
+                        {
+                            rowCount -= request.Count;
+                            batch.RemoveAt(index);
+                            request.Cancel(request.CancellationToken);
+                        }
                     }
 
                     if (batch.Count == 0)
@@ -307,8 +342,8 @@ namespace GammonX.Mars.NN.Services
                         {
                             // we allocate a reusable input tensor for CPU to avoid repeated allocations
                             input = empty(
-                                    size: [MaxBatchSize, _extractor.FeatureCount], 
-                                    dtype: ScalarType.Float32, 
+                                    size: [MaxBatchSize, _extractor.FeatureCount],
+                                    dtype: ScalarType.Float32,
                                     device: CPU)
                                 .DetachFromDisposeScope();
                         }
@@ -317,14 +352,19 @@ namespace GammonX.Mars.NN.Services
                     catch (Exception ex)
                     {
                         foreach (var request in batch)
-                            request.Fail(ex);
+                        {
+                            if (request.CancellationToken.IsCancellationRequested)
+                                request.Cancel(request.CancellationToken);
+                            else
+                                request.Fail(ex);
+                        }
                     }
                 }
             }
             finally
             {
                 input?.Dispose();
-                
+
                 Interlocked.Exchange(ref _state, 2);
                 _channel.Writer.TryComplete();
 
@@ -386,6 +426,12 @@ namespace GammonX.Mars.NN.Services
             var offset = 0;
             foreach (var request in batch)
             {
+                if (request.CancellationToken.IsCancellationRequested)
+                {
+                    offset += request.Count;
+                    request.Cancel(request.CancellationToken);
+                    continue;
+                }
                 var results = new float[request.Count][];
                 for (var row = 0; row < results.Length; row++)
                     results[row] = ReadRow(offset++);
@@ -413,7 +459,7 @@ namespace GammonX.Mars.NN.Services
                 CopyFeatures(batch, MemoryMarshal.Cast<byte, float>(inputStorage.bytes));
                 return inputStorage.narrow(0, 0, rowCount);
             }
-            
+
             // we allocate a new input tensor
             var flat = new float[rowCount * featureCount];
             CopyFeatures(batch, flat);

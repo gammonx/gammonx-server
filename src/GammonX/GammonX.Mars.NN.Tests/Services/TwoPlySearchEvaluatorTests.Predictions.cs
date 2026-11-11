@@ -92,7 +92,7 @@ public partial class TwoPlySearchEvaluatorTests
         return prepared
             ? evaluator.EvalPreparedAsync(harness.Board.Object, true,
                 (board, _) => new PreparedPosition([board.Fields[0]]),
-                positions => Task.FromResult(positions.Select(position => evaluate((int)position.Features![0])).ToArray()))
-            : evaluator.EvaluateAsync(harness.Board.Object, true);
+                positions => Task.FromResult(positions.Select(position => evaluate((int)position.Features![0])).ToArray()), TestContext.Current.CancellationToken)
+            : evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
     }
 }

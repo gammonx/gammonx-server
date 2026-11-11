@@ -8,7 +8,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 using Newtonsoft.Json;
 
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using System.Net.Http.Json;
+
+using GammonX.Engine.Diagnostics;
+
+using static TorchSharp.torch;
 
 namespace GammonX.Mars.Server.Tests.Controller
 {
@@ -22,6 +28,49 @@ namespace GammonX.Mars.Server.Tests.Controller
             {
                 // pass
             });
+        }
+
+        [Fact]
+        public async Task MultipleHostsUseConfiguredInferenceThreads()
+        {
+            var threadCounts = new ConcurrentQueue<(int IntraOp, int InterOp)>();
+            using var listener = new MeterListener();
+            listener.InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Meter.Name == EvaluationMetrics.MeterName && instrument.Name == EvaluationMetrics.BatchSizeName)
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            };
+            listener.SetMeasurementEventCallback<long>((_, _, _, _) =>
+                threadCounts.Enqueue((get_num_threads(), get_num_interop_threads())));
+            listener.Start();
+
+            using var secondFactory = _factory.WithWebHostBuilder(_ => { });
+            using var firstClient = _factory.CreateClient();
+            using var secondClient = secondFactory.CreateClient();
+            var board = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.DefaultBoard1);
+            Assert.NotNull(board);
+            var request = new EvalBoardRequestContract
+            {
+                TurnNumber = 0,
+                Board = board,
+                Modus = GameModus.Backgammon,
+                IsWhite = true,
+                BotLevel = BotLevel.Hard
+            };
+
+            foreach (var client in new[] { firstClient, secondClient })
+            {
+                using var response = await client.PostAsJsonAsync("/bot/mars/api/eval/board", request, TestContext.Current.CancellationToken);
+                response.EnsureSuccessStatusCode();
+            }
+
+            Assert.True(threadCounts.Count >= 2);
+            var expectedIntraOp = int.Parse(Environment.GetEnvironmentVariable("MKL_NUM_THREADS")
+                ?? Environment.GetEnvironmentVariable("OMP_NUM_THREADS") ?? "1");
+            var expectedInterOp = int.Parse(Environment.GetEnvironmentVariable("TORCH_INTEROP_THREADS") ?? "1");
+            Assert.All(threadCounts, counts => Assert.Equal((expectedIntraOp, expectedInterOp), counts));
         }
 
         #region Board Eval

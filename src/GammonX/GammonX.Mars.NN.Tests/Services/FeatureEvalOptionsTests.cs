@@ -21,7 +21,7 @@ public class FeatureEvalOptionsTests
     {
         var boards = BoardServiceFactory.Create(modus);
         var board = boards.CreateBoard();
-        var legalMoves = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3]);
+        var legalMoves = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3], TestContext.Current.CancellationToken);
         Assert.NotEmpty(legalMoves);
         var options = new FeatureEvalOptions
         {
@@ -40,8 +40,8 @@ public class FeatureEvalOptionsTests
         };
         var service = FeatureEvalServiceFactory.Create(modus, null!);
 
-        var results = await service.EvalMoveSequencesForTrainingAsync(options);
-        var selected = await service.EvalMoveSequencesAsync(options);
+        var results = await service.EvalMoveSequencesForTrainingAsync(options, TestContext.Current.CancellationToken);
+        var selected = await service.EvalMoveSequencesAsync(options, TestContext.Current.CancellationToken);
 
         Assert.Single(results);
         Assert.All(results, result =>
@@ -61,7 +61,7 @@ public class FeatureEvalOptionsTests
     {
         var boards = BoardServiceFactory.Create(modus);
         var board = boards.CreateBoard();
-        var candidate = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3])[0];
+        var candidate = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3], TestContext.Current.CancellationToken)[0];
         var options = new FeatureEvalOptions
         {
             BoardContract = board.ToContract(false),
@@ -73,7 +73,7 @@ public class FeatureEvalOptionsTests
         };
         var service = FeatureEvalServiceFactory.Create(modus, null!);
 
-        var result = await service.EvalMoveSequenceAsync(options);
+        var result = await service.EvalMoveSequenceAsync(options, TestContext.Current.CancellationToken);
 
         Assert.Same(candidate, result.MoveSequence);
         Assert.Equal(42d / 142d, result.EvalResult.TurnNumber, 10);

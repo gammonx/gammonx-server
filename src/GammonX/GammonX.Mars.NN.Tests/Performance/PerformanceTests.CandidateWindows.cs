@@ -91,7 +91,7 @@ public partial class PerformanceTests
                     IsWhite = false,
                     TurnNumber = 0,
                 });
-                var expected = await neural.PredictAsync(model, board, false);
+                var expected = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
                 var latencies = new List<double>();
                 using var process = Process.GetCurrentProcess();
                 var cpu = process.TotalProcessorTime;
@@ -109,7 +109,7 @@ public partial class PerformanceTests
                     {
                         Assert.False(first.IsCompleted && second.IsCompleted, "Probes must overlap search.");
                         var probeStart = Stopwatch.GetTimestamp();
-                        var actual = await neural.PredictAsync(model, board, false);
+                        var actual = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
                         latencies.Add(Stopwatch.GetElapsedTime(probeStart).TotalMilliseconds);
                         for (var head = 0; head < expected.Length; head++)
                             Assert.InRange(Math.Abs(actual[head] - expected[head]), 0, 1e-5);
@@ -191,7 +191,7 @@ public partial class PerformanceTests
                     },
                     ContactWeights = EvalWeights.DefaultContactWeights,
                     TurnNumber = 0,
-                });
+                }, TestContext.Current.CancellationToken);
             }
 
             void Validate(FinalEvalResultModels actual)

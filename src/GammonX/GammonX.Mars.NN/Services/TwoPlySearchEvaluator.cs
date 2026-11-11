@@ -29,8 +29,10 @@ namespace GammonX.Mars.NN.Services
             _batchAcrossRolls = batchAcrossRolls;
         }
 
-        public async Task<EvalResult> EvaluateAsync(IBoardModel board, bool isWhite)
+        public async Task<EvalResult> EvaluateAsync(IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var opponentIsWhite = !isWhite;
             var bestByRoll = new EvalResult[21];
 
@@ -51,7 +53,7 @@ namespace GammonX.Mars.NN.Services
                         int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
 
                         // we get all legal move sequences for the current roll, and apply them to clones of the original board
-                        var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
+                        var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls, cancellationToken);
                         if (sequences.Length == 0)
                         {
                             // A pass contributes one row for this roll, even when adjacent rolls also pass.
@@ -68,6 +70,8 @@ namespace GammonX.Mars.NN.Services
                         {
                             foreach (var sequence in sequences)
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
+
                                 IBoardModel reply;
                                 using (EvaluationMetrics.Measure(EvaluationMetrics.ReplyClone))
                                 {
@@ -119,7 +123,11 @@ namespace GammonX.Mars.NN.Services
                     return;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var scores = await _evalPositionsAsync(boards, opponentIsWhite);
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (scores.Length != boards.Count)
                 {

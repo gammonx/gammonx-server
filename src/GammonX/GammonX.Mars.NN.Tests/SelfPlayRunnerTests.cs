@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Services;
+using GammonX.Engine.Services;
 using GammonX.Engine.Extensions;
 
 using GammonX.Mars.NN.Services;
@@ -56,7 +56,7 @@ namespace GammonX.Mars.NN.Tests
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     MaxCandidates = 150,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
 
                 if (result.Moves.Count != 0)
                 {
@@ -122,7 +122,7 @@ namespace GammonX.Mars.NN.Tests
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     MaxCandidates = 150,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
 
                 if (result.Moves.Count != 0)
                 {
@@ -190,7 +190,7 @@ namespace GammonX.Mars.NN.Tests
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     MaxCandidates = 150,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
 
                 if (result.Moves.Count != 0)
                 {
@@ -259,7 +259,7 @@ namespace GammonX.Mars.NN.Tests
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     MaxCandidates = 150,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
 
                 if (result.Moves.Count != 0)
                 {
@@ -322,7 +322,7 @@ namespace GammonX.Mars.NN.Tests
                     EvalCubeRequest = evalCubePlayerReq,
                     IsWhite = evalCubePlayerReq.IsWhite,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
                 Assert.NotEqual(CubeAction.Unknown, shouldOffer);
                 Assert.NotEqual(CubeAction.Unknown, shouldTake);
 
@@ -348,7 +348,7 @@ namespace GammonX.Mars.NN.Tests
                         EvalCubeRequest = evalCubeOppReq,
                         IsWhite = evalCubeOppReq.IsWhite,
                         TurnNumber = turnCount,
-                    });
+                    }, TestContext.Current.CancellationToken);
                     Assert.NotEqual(CubeAction.Unknown, shouldOfferOpp);
                     Assert.NotEqual(CubeAction.Unknown, shouldTakeOpp);
 
@@ -392,7 +392,7 @@ namespace GammonX.Mars.NN.Tests
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     MaxCandidates = 150,
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
 
                 if (result.Moves.Count != 0)
                 {
@@ -468,13 +468,13 @@ namespace GammonX.Mars.NN.Tests
                     EvalMoveRequest = twoPlyRequest,
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
                 var onePlyResult = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
                 {
                     EvalMoveRequest = onePlyRequest,
                     ContactWeights = EvalWeights.GetContactWeights(modus),
                     TurnNumber = turnCount,
-                });
+                }, TestContext.Current.CancellationToken);
                 if (!twoPlyResult.Equals(onePlyResult))
                 {
                     differentSelectionCount++;

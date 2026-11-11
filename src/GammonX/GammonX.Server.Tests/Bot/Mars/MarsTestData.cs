@@ -13,7 +13,7 @@ namespace GammonX.Server.Tests.Bot.Mars
     {
         public const string MoveResponse = "{\"type\":\"OK\",\"payload\":{\"moveSequence\":{\"moves\":[]}}}";
 
-        public static MarsClient CreateClient(ScriptedHttpMessageHandler handler, int maxAttempts)
+        public static MarsClient CreateClient(ScriptedHttpMessageHandler handler, int? maxAttempts = null)
         {
             return new MarsClient(maxAttempts, 0, handler)
             {

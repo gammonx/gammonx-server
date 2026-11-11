@@ -35,12 +35,12 @@ namespace GammonX.Server.Tests.Bot.Mars
         }
 
         [Fact]
-        public async Task ExpertMoveFallsBackToHardOnlyAfterTimeout()
+        public async Task ExpertMoveFallsBackToHardAfterOneAttemptWithDefaultOptions()
         {
             var handler = new ScriptedHttpMessageHandler(
                 _ => Task.FromException<HttpResponseMessage>(new TaskCanceledException("Mars timed out")),
                 _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, MarsStubs.MoveResponse)));
-            using var client = MarsStubs.CreateClient(handler, 1);
+            using var client = MarsStubs.CreateClient(handler, new BotServiceOptions().MAX_RETRY_ATTEMPTS);
             var botService = new MarsBotService(client);
             var (matchSession, botPlayerId) = CreateExpertSession();
 
@@ -83,6 +83,44 @@ namespace GammonX.Server.Tests.Bot.Mars
                 botService.GetNextMovesAsync(matchSession, botPlayerId, cancellationTokenSource.Token));
 
             Assert.Equal(0, handler.RequestCount);
+        }
+
+        [Fact]
+        public async Task HardFallbackTimeoutIsNotRetriedWithDefaultOptions()
+        {
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromException<HttpResponseMessage>(new TaskCanceledException("Expert timed out")),
+                _ => Task.FromException<HttpResponseMessage>(new TaskCanceledException("Hard timed out")),
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, MarsStubs.MoveResponse)));
+            using var client = MarsStubs.CreateClient(handler, new BotServiceOptions().MAX_RETRY_ATTEMPTS);
+            var botService = new MarsBotService(client);
+            var (matchSession, botPlayerId) = CreateExpertSession();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                botService.GetNextMovesAsync(matchSession, botPlayerId, CancellationToken.None));
+
+            Assert.Equal(2, handler.RequestCount);
+            Assert.Equal((int)BotLevel.Expert, GetBotLevel(handler.RequestBodies[0]));
+            Assert.Equal((int)BotLevel.Hard, GetBotLevel(handler.RequestBodies[1]));
+        }
+
+        [Fact]
+        public async Task ExpertMoveDoesNotRetryOrFallbackWhenCallerCancelsDuringRequest()
+        {
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var handler = new ScriptedHttpMessageHandler(token =>
+            {
+                cancellationTokenSource.Cancel();
+                return Task.FromCanceled<HttpResponseMessage>(token);
+            });
+            using var client = MarsStubs.CreateClient(handler, new BotServiceOptions().MAX_RETRY_ATTEMPTS);
+            var botService = new MarsBotService(client);
+            var (matchSession, botPlayerId) = CreateExpertSession();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                botService.GetNextMovesAsync(matchSession, botPlayerId, cancellationTokenSource.Token));
+
+            Assert.Equal(1, handler.RequestCount);
         }
 
         private static int GetBotLevel(string requestBody)

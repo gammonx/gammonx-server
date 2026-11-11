@@ -65,7 +65,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -83,7 +83,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -124,7 +124,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -142,7 +142,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Fevga));
@@ -181,7 +181,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
@@ -199,7 +199,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultBlack);
         }
 
@@ -235,7 +235,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 MaxCandidates = 20,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
         }
 
@@ -263,7 +263,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalBoardRequest = requestBlack,
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 TurnNumber = requestBlack.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
@@ -277,7 +277,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalBoardRequest = requestWhite,
                 ContactWeights = EvalWeights.FevgaContactWeights,
                 TurnNumber = requestWhite.TurnNumber,
-            });
+            }, TestContext.Current.CancellationToken);
 
             Assert.True(resultBlack.Equity > 0.0);
             Assert.True(resultWhite.Equity < -0.0);
@@ -308,7 +308,7 @@ namespace GammonX.Mars.NN.Tests.Services
                 EvalCubeRequest = request,
                 IsWhite = request.IsWhite,
                 TurnNumber = request.TurnNumber,
-            }));
+            }, TestContext.Current.CancellationToken));
         }
     }
 }

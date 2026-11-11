@@ -14,13 +14,17 @@ internal sealed partial class TwoPlySearchEvaluator
     /// <param name="isWhite">Indicates if the player is white.</param>
     /// <param name="prepare">The function to prepare the position.</param>
     /// <param name="scoreAsync">The function to score the positions asynchronously.</param>
+    /// <param name="cancellationToken">Cancels traversal and scoring without returning an incomplete expected score.</param>
     /// <returns>The evaluated score.</returns>
     /// <exception cref="InvalidDataException">Thrown when the input data is invalid.</exception>
     internal async Task<EvalResult> EvalPreparedAsync(
         IBoardModel board, bool isWhite,
         Func<IBoardModel, bool, PreparedPosition> prepare,
-        Func<IReadOnlyList<PreparedPosition>, Task<EvalResult[]>> scoreAsync)
+        Func<IReadOnlyList<PreparedPosition>, Task<EvalResult[]>> scoreAsync,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var opponentIsWhite = !isWhite;
         var bestByRoll = new EvalResult[21];
         Array.Fill(bestByRoll, new EvalResult(double.NegativeInfinity, null));
@@ -38,8 +42,8 @@ internal sealed partial class TwoPlySearchEvaluator
                 for (var die2 = die1; die2 <= 6; die2++, rollIndex++)
                 {
                     int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
-                    var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls);
-                    
+                    var sequences = _boardService.GetUniqueLegalMoveSequences(board, opponentIsWhite, rolls, cancellationToken);
+
                     // we extract the features directly from the board if no legal moves are available, which is the case for a pass
                     if (sequences.Length == 0)
                     {
@@ -62,6 +66,8 @@ internal sealed partial class TwoPlySearchEvaluator
 
                         foreach (var sequence in sequences)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             var applied = 0;
                             try
                             {
@@ -129,7 +135,12 @@ internal sealed partial class TwoPlySearchEvaluator
                 return;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             var scores = await scoreAsync(positions);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (scores.Length != positions.Count)
             {
                 throw new InvalidDataException("Batch scoring must return one score per reply or pass.");

@@ -43,7 +43,7 @@ public partial class TwoPlySearchEvaluatorTests
             return boards.Select(board => new EvalResult(board.Fields[0], null)).ToArray();
         }, CloneBoard, cap, batchAcrossRolls: true);
 
-        var score = await evaluator.EvaluateAsync(harness.Board.Object, true);
+        var score = await evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedRows, actualRows);
         Assert.Equal(BitConverter.DoubleToInt64Bits(expectedScore), BitConverter.DoubleToInt64Bits(score.Equity));
@@ -73,7 +73,7 @@ public partial class TwoPlySearchEvaluatorTests
             return Enumerable.Repeat(new EvalResult(1d, null), boards.Count).ToArray();
         }, board => { var clone = CloneBoard(board); clones.Add(clone); return clone; }, maxBatchSize: 4, batchAcrossRolls: true);
 
-        var evaluation = evaluator.EvaluateAsync(harness.Board.Object, true);
+        var evaluation = evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
         try
         {
             Assert.False(evaluation.IsCompleted);
@@ -112,7 +112,7 @@ public partial class TwoPlySearchEvaluatorTests
             return [];
         }, board => { var clone = CloneBoard(board); clones.Add(clone); return clone; }, maxBatchSize: 4, batchAcrossRolls: true);
 
-        var error = await Record.ExceptionAsync(() => evaluator.EvaluateAsync(harness.Board.Object, true));
+        var error = await Record.ExceptionAsync(() => evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken));
 
         Assert.NotNull(error);
         if (failure == "cancellation")
@@ -152,7 +152,7 @@ public partial class TwoPlySearchEvaluatorTests
                 return clone;
             }, batchAcrossRolls: true);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => evaluator.EvaluateAsync(harness.Board.Object, true));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => evaluator.EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken));
 
         Assert.Single(clones);
         Assert.Equal(0, clones[0].Fields[0]);

@@ -33,7 +33,7 @@ public class CandidateWindowTests
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 BotLevel = BotLevel.Expert,
             };
-        var evaluation = service.GetCandidatesByEvalAsync(options, board);
+        var evaluation = service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken);
         for (var index = 1; index <= window; index++)
         {
             Assert.Equal(index, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
@@ -82,7 +82,7 @@ public class CandidateWindowTests
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 BotLevel = BotLevel.Expert,
             };
-        var evaluation = service.GetCandidatesByEvalAsync(options, board);
+        var evaluation = service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
         Assert.Equal(2, await neural.Started.Reader.ReadAsync(TestContext.Current.CancellationToken));
@@ -122,7 +122,7 @@ public class CandidateWindowTests
             boards.AddRollEventToHistory(board, turn % 2 == 0, [2, 3]);
         }
         var original = board.DeepClone();
-        var moves = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3]).Take(4).ToArray();
+        var moves = boards.GetUniqueLegalMoveSequences(board, isWhite, [2, 3], TestContext.Current.CancellationToken).Take(4).ToArray();
         Assert.NotEmpty(moves);
 
         var neural = new FeatureScorer(modus);
@@ -135,13 +135,13 @@ public class CandidateWindowTests
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 BotLevel = BotLevel.Expert,
             };
-        var reference = (await service.GetCandidatesByEvalAsync(options, board)).ToArray();
+        var reference = (await service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken)).ToArray();
         
         var rows = neural.Rows.ToArray();
         neural.Rows.Clear();
         service.ParallelCandidateCount = window;
         service.ReuseReplyBoard = true;
-        var actual = (await service.GetCandidatesByEvalAsync(options, board)).ToArray();
+        var actual = (await service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken)).ToArray();
 
         Assert.Equal(reference.Select(row => row.MoveSequence), actual.Select(row => row.MoveSequence));
         for (var index = 0; index < reference.Length; index++)
@@ -178,7 +178,7 @@ public class CandidateWindowTests
             Fields = fields, BearOffCountWhite = 14
         });
 
-        var moves = boards.GetUniqueLegalMoveSequences(board, true, [1]);
+        var moves = boards.GetUniqueLegalMoveSequences(board, true, [1], TestContext.Current.CancellationToken);
         var neural = new FeatureScorer(GameModus.Backgammon);
         var service = new DefaultFeatureEvalService(neural, GameModus.Backgammon) { ParallelCandidateCount = window };
         var options = new FeatureEvalOptions
@@ -189,7 +189,7 @@ public class CandidateWindowTests
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 BotLevel = BotLevel.Expert,
             };
-        var result = await service.GetCandidatesByEvalAsync(options, board);
+        var result = await service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken);
         
         Assert.All(result, row => Assert.True(row.Equity > 0));
         Assert.NotEmpty(result);
@@ -212,7 +212,7 @@ public class CandidateWindowTests
             var boards = BoardServiceFactory.Create(GameModus.Backgammon);
             var board = boards.CreateBoard();
             var original = board.DeepClone();
-            var moves = boards.GetUniqueLegalMoveSequences(board, true, [2, 3]);
+            var moves = boards.GetUniqueLegalMoveSequences(board, true, [2, 3], TestContext.Current.CancellationToken);
             var service = new DefaultFeatureEvalService(neural, GameModus.Backgammon) { ParallelCandidateCount = 4 };
             var options = new FeatureEvalOptions
             {
@@ -222,13 +222,13 @@ public class CandidateWindowTests
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 BotLevel = BotLevel.Expert,
             };
-            var evaluation = service.GetCandidatesByEvalAsync(options, board);
+            var evaluation = service.GetCandidatesByEvalAsync(options, board, TestContext.Current.CancellationToken);
             await neural.StopAsync(CancellationToken.None);
             var error = await Record.ExceptionAsync(() => evaluation.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
             Assert.NotNull(error);
             Assert.IsNotType<TimeoutException>(error);
             Assert.True(board.Equals(original));
-            await Assert.ThrowsAsync<InvalidOperationException>(() => neural.PredictBatchAsync([new float[216]]));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => neural.PredictBatchAsync([new float[216]], TestContext.Current.CancellationToken));
         }
         finally
         {
@@ -243,7 +243,7 @@ public class CandidateWindowTests
         real.AddRollEventToHistory(board, true, [2, 3]);
         ((IDoublingCubeModel)board).AcceptDoublingCubeOffer(true);
         var mock = new Mock<IBoardService>();
-        mock.Setup(service => service.GetUniqueLegalMoveSequences(It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<int[]>()))
+        mock.Setup(service => service.GetUniqueLegalMoveSequences(It.IsAny<IBoardModel>(), It.IsAny<bool>(), It.IsAny<int[]>(), It.IsAny<CancellationToken>()))
             .Returns([]);
         mock.Setup(service => service.MoveCheckerTo(It.IsAny<IBoardModel>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool>()))
             .Callback<IBoardModel, int, int, bool>(real.MoveCheckerTo);
@@ -311,7 +311,7 @@ public class CandidateWindowTests
             return destination;
         }
 
-        public async Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Calls);
             var active = Interlocked.Increment(ref Active);
@@ -331,7 +331,7 @@ public class CandidateWindowTests
             }
         }
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => throw new InvalidOperationException("Two-ply must use batches.");
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken) => throw new InvalidOperationException("Two-ply must use batches.");
     }
 
     private sealed class FeatureScorer(GameModus modus) : INeuralEvalService
@@ -351,7 +351,7 @@ public class CandidateWindowTests
             return destination;
         }
 
-        public async Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             await Task.Yield();
             return features.Select(row =>
@@ -361,7 +361,7 @@ public class CandidateWindowTests
             }).ToArray();
         }
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) => throw new InvalidOperationException("Two-ply must use batches.");
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken) => throw new InvalidOperationException("Two-ply must use batches.");
         
     }
 }

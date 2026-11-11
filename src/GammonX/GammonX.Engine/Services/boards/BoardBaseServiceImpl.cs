@@ -30,7 +30,7 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _, CancellationToken.None);
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
             var sequences = sequencesByBoardHash
                 .Select(sbbh => sbbh.Item2)
@@ -44,7 +44,7 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _, CancellationToken.None);
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
             var sequences = sequencesByBoardHash
                 .Select(sbbh => sbbh.Item2)
@@ -56,16 +56,20 @@ namespace GammonX.Engine.Services
         }
 
         // <inheritdoc />
-        public MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
+        public MoveSequenceModel[] GetUniqueLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var measurement = EvaluationMetrics.Measure(EvaluationMetrics.MoveGeneration);
 
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out var rawSequenceCount, uniqueBoards: true);
+            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out var rawSequenceCount, uniqueBoards: true, cancellationToken: cancellationToken);
             var sequences = sequencesByBoardHash.Select(item => item.Item2).ToList();
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
 
             EvaluationMetrics.RecordSequences(rawSequenceCount, unique.Count);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             return unique.ToArray();
         }
@@ -78,13 +82,13 @@ namespace GammonX.Engine.Services
             int maxDepthSeen = 0;
             bool satisfied = false;
             ExploreWithCallback(
-                model, 
-                isWhite, 
-                sortedRolls, 
-                new List<MoveModel>(), 
-                sortedRolls.Count, 
-                callback, 
-                ref maxDepthSeen, 
+                model,
+                isWhite,
+                sortedRolls,
+                new List<MoveModel>(),
+                sortedRolls.Count,
+                callback,
+                ref maxDepthSeen,
                 ref satisfied);
             return satisfied;
         }
@@ -439,7 +443,7 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, out int rawSequenceCount, bool uniqueBoards = false)
+        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, out int rawSequenceCount, CancellationToken cancellationToken, bool uniqueBoards = false)
         {
             var sortedRolls = rolls.ToList();
             sortedRolls.Sort();
@@ -454,7 +458,7 @@ namespace GammonX.Engine.Services
             // We track the total number of raw sequences explored, including duplicates.
             rawSequenceCount = 0;
 
-            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount);
+            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
 
             return results;
         }
@@ -468,8 +472,11 @@ namespace GammonX.Engine.Services
             List<(IBoardModel, MoveSequenceModel)> results,
             HashSet<IBoardModel>? seen,
             Dictionary<int, HashSet<IBoardModel>>? repeatedStates,
-            ref int rawSequenceCount)
+            ref int rawSequenceCount,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (repeatedStates != null && currentMoves.Count > 0 && remainingRolls.Count > 0 && board is BoardBaseImpl position)
             {
                 // We check if this board position has already been encountered for the given remaining dice count.
@@ -510,20 +517,25 @@ namespace GammonX.Engine.Services
 
                 foreach (var move in possibleMoves)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     MoveCheckerTo(board, move.From, move.To, isWhite);
 
                     remainingRolls.RemoveAt(i);
                     currentMoves.Add(move);
                     usedDices.Add(die);
 
-                    ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount);
-
-                    usedDices.RemoveAt(usedDices.Count - 1);
-                    currentMoves.RemoveAt(currentMoves.Count - 1);
-                    remainingRolls.Insert(i, die);
-
-                    // we use undo move here to avoid the overhead of cloning the board for each move
-                    UndoMove(board, move, isWhite);
+                    try
+                    {
+                        ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
+                    }
+                    finally
+                    {
+                        usedDices.RemoveAt(usedDices.Count - 1);
+                        currentMoves.RemoveAt(currentMoves.Count - 1);
+                        remainingRolls.Insert(i, die);
+                        UndoMove(board, move, isWhite);
+                    }
                 }
             }
 
@@ -549,7 +561,7 @@ namespace GammonX.Engine.Services
                 }
 
                 seen?.Add(boardSnapshot);
-                
+
                 results.Add(new ValueTuple<IBoardModel, MoveSequenceModel>(boardSnapshot, moveSeq));
             }
         }
@@ -667,7 +679,7 @@ namespace GammonX.Engine.Services
         {
             // flatten sequences into a set of (from,to):
             // add all single moves from allowed sequences
-            // additionally add collapsed chains (e.g. (0->1,1->3) -> collapsed (0->3)) 
+            // additionally add collapsed chains (e.g. (0->1,1->3) -> collapsed (0->3))
             // only if all moves in the sequence form a continuous chain.
             var flattenedMoves = new HashSet<(int from, int to)>();
             var sequenceCopies = sequences.Select(s => s.DeepClone());

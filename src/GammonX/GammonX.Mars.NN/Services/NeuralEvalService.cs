@@ -17,7 +17,7 @@ namespace GammonX.Mars.NN.Services
     {
         // TorchSharps internal symbolic shape system (SymNodeImpl) uses global C++ state
         // that is not thread-safe. All forward passes must be serialized across all instances.
-        private static readonly Lock InferLock = new();
+        private static readonly SemaphoreSlim InferLock = new(1, 1);
 
         private readonly INetModel _netModel;
         private readonly IFeatureVectorExtractor _extractor;
@@ -26,7 +26,7 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public int MaxBatchSize => 32;
 
-        private NeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, Device device)
+        internal NeuralEvalService(INetModel netModel, IFeatureVectorExtractor extractor, Device device)
         {
             _netModel = netModel;
             _extractor = extractor;
@@ -34,7 +34,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         /// <summary>
-        /// Loads the model from the given path and starts the background worker.
+        /// Loads the model from the given path for serialized inference.
         /// </summary>
         /// <param name="modus">The game modus.</param>
         /// <param name="modelPath">The path to the model file.</param>
@@ -42,7 +42,8 @@ namespace GammonX.Mars.NN.Services
         /// <returns>The loaded <see cref="NeuralEvalService"/>.</returns>
         public static INeuralEvalService Load(GameModus modus, string modelPath, Device device)
         {
-            lock (InferLock)
+            InferLock.Wait();
+            try
             {
                 // we only support CPU based models for now in production
                 var net = NetModelFactory.CreateForModel(modus, modelPath, device);
@@ -50,16 +51,20 @@ namespace GammonX.Mars.NN.Services
                 net.Eval();
                 return new NeuralEvalService(net, extractor, device);
             }
+            finally
+            {
+                InferLock.Release();
+            }
         }
 
         /// <summary>
         /// Loads the model from an embedded resource at
         /// <c>NeuralNets/{modus}/training_net.dat</c> in the given assembly.
+        /// </summary>
         /// <param name="assembly">The assembly to load the embedded resource from.</param>
         /// <param name="modus">The game modus.</param>
         /// <param name="device">The device to run the model on.</param>
         /// <returns><c>null</c> if no embedded resource exists for the given modus.</returns>
-        /// </summary>
         public static INeuralEvalService LoadEmbedded(Assembly assembly, GameModus modus, Device device)
         {
             var resourceName = $"GammonX.Mars.Server.NeuralNets.{modus}.training_net.dat";
@@ -70,7 +75,8 @@ namespace GammonX.Mars.NN.Services
                 return null!;
             }
 
-            lock (InferLock)
+            InferLock.Wait();
+            try
             {
                 // we only support CPU based models for now in production
                 var metadataResourceName = resourceName + NetModelMetadata.MetadataSuffix;
@@ -80,12 +86,18 @@ namespace GammonX.Mars.NN.Services
                 net.Eval();
                 return new NeuralEvalService(net, extractor, device);
             }
+            finally
+            {
+                InferLock.Release();
+            }
         }
 
         // <inheritdoc />
-        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite)
+        public async Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
-            var predictions = await PredictBatchAsync([ExtractFeatures(model, board, isWhite)]).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var predictions = await PredictBatchAsync([ExtractFeatures(model, board, isWhite)], cancellationToken).ConfigureAwait(false);
             return predictions[0];
         }
 
@@ -116,8 +128,10 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        public Task<float[][]> PredictBatchAsync(float[][] features)
+        public async Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             ArgumentNullException.ThrowIfNull(features);
             if (features.Length == 0 || features.Length > MaxBatchSize)
                 throw new ArgumentException($"A batch must contain between 1 and {MaxBatchSize} rows.", nameof(features));
@@ -130,8 +144,11 @@ namespace GammonX.Mars.NN.Services
                     throw new ArgumentException($"Each row must have {_extractor.FeatureCount} features.", nameof(features));
                 row.CopyTo(flat, index * _extractor.FeatureCount);
             }
-            lock (InferLock)
+            await InferLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 using var input = tensor(flat, [features.Length, _extractor.FeatureCount], device: _device);
                 using var _ = no_grad();
                 using var output = _netModel.Forward(input);
@@ -149,7 +166,14 @@ namespace GammonX.Mars.NN.Services
                     results[index] = new float[5];
                     Array.Copy(values, index * width, results[index], 0, width);
                 }
-                return Task.FromResult(results);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                return results;
+            }
+            finally
+            {
+                InferLock.Release();
             }
         }
     }

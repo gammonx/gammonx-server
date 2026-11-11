@@ -83,6 +83,7 @@ RUN dotnet publish "./GammonX.Mars.Server.csproj" -c ${BUILD_CONFIGURATION} -o /
 FROM mars-server-image AS mars-server-final
 ARG BUILD_CONFIGURATION=Release
 ENV DOTNET_ENVIRONMENT=Production
+ENV OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 WORKDIR /app
 COPY --from=mars-server-publish /app/publish .
 USER ${APP_UID}:${APP_GID}

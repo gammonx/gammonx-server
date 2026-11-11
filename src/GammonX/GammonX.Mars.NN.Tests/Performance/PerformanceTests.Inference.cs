@@ -35,13 +35,13 @@ public partial class PerformanceTests
                 IsWhite = false,
                 TurnNumber = 0,
             });
-            var expected = await neural.PredictAsync(features, board, false);
+            var expected = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
             await service.EvalMoveSequencesAsync(new FeatureEvalOptions
             {
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            });
+            }, TestContext.Current.CancellationToken);
 
             WriteProcessMemory("AfterWarmup");
             var singleLatencies = new List<double>();
@@ -54,13 +54,13 @@ public partial class PerformanceTests
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            });
+            }, TestContext.Current.CancellationToken);
             var second = service.EvalMoveSequencesAsync(new FeatureEvalOptions
             {
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            });
+            }, TestContext.Current.CancellationToken);
 
             for (var index = 0; index < 100; index++)
             {
@@ -68,7 +68,7 @@ public partial class PerformanceTests
                     break;
 
                 var singleStart = Stopwatch.GetTimestamp();
-                var actual = await neural.PredictAsync(features, board, false);
+                var actual = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
                 singleLatencies.Add(Stopwatch.GetElapsedTime(singleStart).TotalMilliseconds);
 
                 for (var head = 0; head < expected.Length; head++)

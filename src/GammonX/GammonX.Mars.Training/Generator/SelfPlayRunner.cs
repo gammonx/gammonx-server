@@ -121,7 +121,7 @@ namespace GammonX.Mars.Training.Generator
                     EvalMoveRequest = evalRequest,
                     ContactWeights = contactWeights,
                     TurnNumber = turnCount,
-                });
+                }, CancellationToken.None);
 
                 if (moveSequences.Count != 0)
                 {
@@ -283,7 +283,7 @@ namespace GammonX.Mars.Training.Generator
                         BotLevel = botLevel,
                         ContactWeights = contactWeights,
                         TurnNumber = turnCount,
-                    });
+                    }, CancellationToken.None);
                 }
                 else
                 {
@@ -302,7 +302,7 @@ namespace GammonX.Mars.Training.Generator
                         EvalMoveRequest = evalRequest,
                         ContactWeights = contactWeights,
                         TurnNumber = turnCount,
-                    });
+                    }, CancellationToken.None);
 
                     if (result.Count != 0)
                     {
@@ -526,7 +526,7 @@ namespace GammonX.Mars.Training.Generator
                         BotLevel = botLevel,
                         ContactWeights = contactWeights,
                         TurnNumber = turnCount,
-                    });
+                    }, CancellationToken.None);
                     selectedRank = null;
                 }
             }
@@ -608,7 +608,7 @@ namespace GammonX.Mars.Training.Generator
                     ContactWeights = contactWeights,
                     BotLevel = BotLevel.Expert,
                     TurnNumber = turnIndex,
-                });
+                }, CancellationToken.None);
 
                 if (evaluatedResults.Count != candidates.Length)
                     throw new InvalidOperationException("Candidate evaluation must return one result per requested move sequence.");
@@ -657,7 +657,7 @@ namespace GammonX.Mars.Training.Generator
             bool isWhite,
             int[] rolls)
         {
-            return boardService.GetUniqueLegalMoveSequences(board, isWhite, rolls);
+            return boardService.GetUniqueLegalMoveSequences(board, isWhite, rolls, CancellationToken.None);
         }
 
         private static MatchVariant From(GameModus modus)

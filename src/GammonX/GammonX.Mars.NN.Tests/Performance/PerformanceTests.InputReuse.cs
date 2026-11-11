@@ -34,7 +34,7 @@ public partial class PerformanceTests
         var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
         var board = boardService.CreateBoard(contract);
         int[] rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2];
-        var moves = boardService.GetUniqueLegalMoveSequences(board, false, rolls);
+        var moves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
         using var neural = Assert.IsType<BatchedNeuralEvalService>(BatchedNeuralEvalService.Load(
             GameModus.Backgammon,
             Path.Combine("Data", "NeuralNets", "Backgammon", "training_net.dat"), CPU));
@@ -55,7 +55,7 @@ public partial class PerformanceTests
                     BotLevel = BotLevel.Expert,
                     ContactWeights = EvalWeights.DefaultContactWeights,
                     TurnNumber = 0,
-                });
+                }, TestContext.Current.CancellationToken);
                 Assert.True(double.IsFinite(result.Equity));
                 Assert.Equal(observer.Rows, observer.Unique + observer.WithinBatchDuplicates + observer.CrossBatchDuplicates);
                 Assert.Equal(0, observer.RemainingGroups);
@@ -81,7 +81,7 @@ public partial class PerformanceTests
             for (var die2 = die1; die2 <= 6; die2++)
             {
                 int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
-                var count = Math.Max(1, service.GetUniqueLegalMoveSequences(root, true, rolls).Length);
+                var count = Math.Max(1, service.GetUniqueLegalMoveSequences(root, true, rolls, TestContext.Current.CancellationToken).Length);
                 for (var row = 0; row < count; row++)
                 {
                     pending.Add(die1 * 10 + die2);
@@ -132,10 +132,10 @@ public partial class PerformanceTests
         public float[] ExtractFeatures(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, float[]? destination) =>
             inner.ExtractFeatures(model, board, isWhite, destination);
 
-        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite) =>
-            inner.PredictAsync(model, board, isWhite);
+        public Task<float[]> PredictAsync(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, CancellationToken cancellationToken) =>
+            inner.PredictAsync(model, board, isWhite, cancellationToken);
 
-        public Task<float[][]> PredictBatchAsync(float[][] features)
+        public Task<float[][]> PredictBatchAsync(float[][] features, CancellationToken cancellationToken)
         {
             var group = _groups.Dequeue();
             Assert.Equal(group.Length, features.Length);
@@ -170,7 +170,7 @@ public partial class PerformanceTests
             }
             if (misses > 0)
                 GroupsWithNewRows++;
-            return inner.PredictBatchAsync(features);
+            return inner.PredictBatchAsync(features, cancellationToken);
         }
     }
 }
