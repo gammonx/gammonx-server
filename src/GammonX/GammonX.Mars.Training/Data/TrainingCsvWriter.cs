@@ -15,7 +15,7 @@ public static class TrainingCsvWriter
     {
         using var writer = new StreamWriter(path);
 
-        // TODO: implement 5 head output for fevga and plakoto
+        // TODO: support 5 head output for Plakoto and Fevga
         var singleHead = modus is GameModus.Fevga or GameModus.Plakoto;
         var labelHeaders = singleHead
             ? WellKnownCsvHeaders.TrainingDataHeaderLegacy
@@ -33,6 +33,5 @@ public static class TrainingCsvWriter
         }
     }
 
-    private static string FormatFloat(float value)
-        => value.ToString("G6", CultureInfo.InvariantCulture);
+    private static string FormatFloat(float value) => value.ToString("G6", CultureInfo.InvariantCulture);
 }

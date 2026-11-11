@@ -13,7 +13,7 @@ using GammonX.Mars.Training.Validation;
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
-
+using System.Globalization;
 using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
@@ -236,7 +236,7 @@ static async Task RunBotServiceTournamentAsync()
 static void RunShuffleCsv()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: enable full GAME equity predictions for plakoto/fevga
+    // TODO: support 5 head output for Plakoto and Fevga
     var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
 
     // we shuffle all inputs training data to create new CSV files which can be used for combined training
@@ -488,7 +488,7 @@ static string GetGameMetadataPath(string csvPath)
 static void RunSelectRandomGames()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: enable full GAME equity predictions for plakoto/fevga
+    // TODO: support 5 head output for Plakoto and Fevga
     var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
 
     Console.WriteLine();
@@ -732,7 +732,7 @@ static void RunAnalyzeExploration()
                  .OrderBy(pair => pair.Key.Modus)
                  .ThenBy(pair => pair.Key.AgainstBot)
                  .ThenBy(pair => pair.Key.EarlyPhase ? 0 : 1)
-                 .ThenBy(pair => pair.Key.CandidateBucket))
+                 .ThenBy(pair => pair.Key.CandidateBucket, StringComparer.InvariantCultureIgnoreCase))
     {
         var key = group.Key;
         Console.WriteLine();
@@ -1400,7 +1400,7 @@ static float PromptFloat(string label, float defaultValue)
 {
     Console.Write($"{label} [{defaultValue}]: ");
     var input = Console.ReadLine()?.Trim();
-    return float.TryParse(input, out var v) ? v : defaultValue;
+    return float.TryParse(input, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
 }
 
 static int? PromptOptionalInt(string label)
@@ -1426,7 +1426,7 @@ static string PromptString(string label, string defaultValue)
 static bool PromptBool(string label, bool defaultValue)
 {
     Console.Write($"{label} yes/no [{(defaultValue ? "YES" : "NO")}]: ");
-    var input = Console.ReadLine()?.Trim().ToLower();
+    var input = Console.ReadLine()?.Trim().ToLower(CultureInfo.InvariantCulture);
     if (string.IsNullOrEmpty(input))
         return defaultValue;
     if (input == "y" || input == "yes")

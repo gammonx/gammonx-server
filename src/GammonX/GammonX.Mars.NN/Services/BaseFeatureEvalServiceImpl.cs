@@ -5,7 +5,6 @@ using GammonX.Engine.Extensions;
 
 using GammonX.Mars.NN.Models;
 
-using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 namespace GammonX.Mars.NN.Services
@@ -456,11 +455,11 @@ namespace GammonX.Mars.NN.Services
                 var nextBuffer = 0;
                 // we reuse the same board instance for each inference reply, applying and undoing the moves before inference.
                 return evaluator.EvalPreparedAsync(board, isWhite,
-                    (position, isWhite) =>
+                    (position, white) =>
                     {
                         // we increase the turn number for the next ply, since the opponent will have played a move
                         var twoPlyTurnNumber = turnNumber + 1;
-                        var prepared = PreparePosition(position, _neuralEvalService, buffers, nextBuffer, twoPlyTurnNumber, isWhite, cancellationToken);
+                        var prepared = PreparePosition(position, _neuralEvalService, buffers, nextBuffer, twoPlyTurnNumber, white, cancellationToken);
                         nextBuffer++;
                         return prepared;
                     }, async positions =>

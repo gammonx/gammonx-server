@@ -30,7 +30,7 @@ public static class NetTrainer
 
         // TODO: usual batch sizes of 32/64/128?
 
-        // TODO: enable full GAME equity predictions for plakoto/fevga
+        // TODO: support 5 head output for Plakoto and Fevga
         var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
 
         var device = cuda.is_available() ? CUDA : CPU;

@@ -24,13 +24,20 @@ namespace GammonX.Mars.NN.Nets
 
         public FevgaNet(Device device, NetModelMetadata metadata) : base(nameof(FevgaNet), metadata)
         {
+            // TODO: support 5 head output for Plakoto and Fevga
             metadata.Validate(GameModus.Fevga, nameof(FevgaNet));
+
             _fc1 = Linear(216, 256, true, device);
             _fc2 = Linear(256, 128, true, device);
             _fc3 = Linear(128, 64, true, device);
             _fc4 = Linear(64, 1, true, device);
-            // increase p if model is over fitting
+            
+            // dropout temporarily switches off randomly selected hidden activations during training. 
+            // With p = 0.1, each activation has a 10% chance of becoming zero on a training pass. 
+            // This discourages the network from relying too heavily on particular neurons and can reduce over fitting
+            // we currently disabled dropout because no over fitting is spotted
             _drop = Dropout(p: 0.0);
+            
             RegisterComponents();
         }
 

@@ -178,9 +178,9 @@ namespace GammonX.Mars.NN.Services
 
         private static EvalResult AverageBestReplies(EvalResult[] bestByRoll)
         {
-            // we keep equity arithmetic unchanged and average only the selected replys distribution.
+            // we keep equity arithmetic unchanged and average only the selected replies distribution.
             var expectedEquity = 0d;
-            // TODO: Plakoto and Fevga 5 headoutput
+            // TODO: support 5 head output for Plakoto and Fevga
             var headCount = bestByRoll.Any(reply => reply.Prediction is { Length: 1 }) ? 1 : 5;
             
             var expectedPrediction = bestByRoll.All(reply => reply.Prediction != null)
@@ -195,12 +195,15 @@ namespace GammonX.Mars.NN.Services
                     var reply = bestByRoll[rollIndex++];
                     var weight = die1 == die2 ? 1d : 2d;
                     expectedEquity -= weight * reply.Equity / 36d;
-                    
+
                     if (expectedPrediction == null)
+                    {
                         continue;
+                    }
 
                     var prediction = reply.Prediction!;
                     expectedPrediction[0] += weight * (1d - prediction[0]) / 36d;
+
                     if (headCount == 5)
                     {
                         // we invert the prediction for the players perspective
