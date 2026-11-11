@@ -18,36 +18,14 @@ using static TorchSharp.torch;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
-namespace GammonX.Mars.Training
+namespace GammonX.Mars.Training.Tournament
 {
-    public sealed record TournamentEntry(
-        string? Path,
-        BotLevel Level,
-        bool? IsWhite,
-        INeuralEvalService? Service);
-
-    public sealed record TournamentGameResult(
-        bool WhiteWon,
-        int TurnCount,
-        bool Discarded);
-
-    public readonly record struct BotPlayerAssignment(
-        Guid ModelPlayerId,
-        Guid WildBgPlayerId);
-
-    public sealed record TournamentResult(
-        string ModelALabel,
-        string ModelBLabel,
-        int TotalGames,
-        int ModelAWins,
-        int ModelBWins,
-        int Draws,
-        int Discarded,
-        double AvgTurns,
-        IReadOnlyList<double> ModelAWinRateHistory);
-
     public static class TournamentRunner
     {
+        private const int MinimumCompletedGames = 100;
+
+        private const double ConfidenceMultiplier = 1.96;
+
         public static BotPlayerAssignment AssignBotPlayers(Guid player1Id, Guid player2Id, bool modelIsWhite)
         {
             return modelIsWhite ? new BotPlayerAssignment(player1Id, player2Id) : new BotPlayerAssignment(player2Id, player1Id);
@@ -90,12 +68,7 @@ namespace GammonX.Mars.Training
                 await ((BatchedNeuralEvalService)serviceB).StartAsync(CancellationToken.None);
             }
 
-            var modelAWins = 0;
-            var modelBWins = 0;
-            var draws = 0;
-            var discarded = 0;
-            var totalTurns = 0L;
-            var winRateHistory = new List<double>();
+            var score = new TournamentScore();
             var lockObj = new object();
 
             Console.WriteLine();
@@ -134,41 +107,16 @@ namespace GammonX.Mars.Training
 
                         lock (lockObj)
                         {
-                            totalTurns += result.TurnCount;
-
-                            if (result.Discarded)
-                            {
-                                discarded++;
-                            }
-                            else if (result.WhiteWon)
-                            {
-                                if (modelAIsWhite)
-                                    modelAWins++;
-                                else
-                                    modelBWins++;
-                            }
-                            else
-                            {
-                                // black won or draw
-                                if (!modelAIsWhite)
-                                    modelAWins++;
-                                else if (result.TurnCount < 250)
-                                    modelBWins++;
-                                else
-                                    draws++;
-                            }
-
-                            var played = modelAWins + modelBWins + draws + discarded;
-                            var total = modelAWins + modelBWins;
-                            var winRate = total > 0 ? (double)modelAWins / total : 0.5;
-                            winRateHistory.Add(winRate);
+                            score.RecordResult(result, modelAIsWhite);
+                            var played = score.CompletedGames + score.Discarded;
 
                             if (played % 50 == 0 || played == totalGames)
                             {
-                                var (low, high) = ComputeWilsonCi(modelAWins, total);
+                                var equity = ComputePointEquity(score.CompletedGames, score.ModelATotalPoints, score.ModelASquaredPoints);
                                 Console.WriteLine(
-                                    $"  {played,5}/{totalGames}  AWins={modelAWins}  BWins={modelBWins}  Draws={draws}  Discarded={discarded}  " +
-                                    $"A-winrate={winRate:P1}  95%CI=[{low:P1},{high:P1}]");
+                                    $"  {played,5}/{totalGames}  A-points/game={FormatPoints(equity.PointsPerGame)}  " +
+                                    $"approx.95%CI={FormatConfidenceInterval(equity)}  Scored={score.CompletedGames}  " +
+                                    $"A-winrate={FormatWinRate(score.ModelAWins, score.ModelBWins)}");
                             }
                         }
                     }
@@ -176,7 +124,7 @@ namespace GammonX.Mars.Training
                     {
                         lock (lockObj)
                         {
-                            discarded++;
+                            score.RecordDiscardedGame();
                         }
 
                         Console.WriteLine($"  Error during tournament (discarded): {ex.Message}");
@@ -187,12 +135,19 @@ namespace GammonX.Mars.Training
                 modelALabel,
                 modelBLabel ?? "wildbg",
                 totalGames,
-                modelAWins,
-                modelBWins,
-                draws,
-                discarded,
-                totalGames > 0 ? (double)totalTurns / totalGames : 0,
-                winRateHistory);
+                score.ModelAWins,
+                score.ModelBWins,
+                score.Draws,
+                score.Discarded,
+                totalGames > 0 ? (double)score.TotalTurns / totalGames : 0,
+                score.ModelATotalPoints,
+                score.ModelASquaredPoints)
+            {
+                ModelAGammonWins = score.ModelAGammonWins,
+                ModelABackgammonWins = score.ModelABackgammonWins,
+                ModelBGammonWins = score.ModelBGammonWins,
+                ModelBBackgammonWins = score.ModelBBackgammonWins,
+            };
         }
 
         private static async Task<TournamentGameResult> PlayGameAsync(GameModus modus, TournamentEntry entryA, TournamentEntry entryB, ContactWeightModel contactWeights)
@@ -233,7 +188,12 @@ namespace GammonX.Mars.Training
                     BotLevel = botLevel
                 };
 
-                var result = await activeService.EvalMoveSequencesAsync(evalRequest, contactWeights, CancellationToken.None);
+                var result = await activeService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                {
+                    EvalMoveRequest = evalRequest,
+                    ContactWeights = contactWeights,
+                    TurnNumber = turnCount,
+                }, CancellationToken.None);
 
                 foreach (var move in result.Moves)
                 {
@@ -243,15 +203,12 @@ namespace GammonX.Mars.Training
                 isWhite = !isWhite;
 
                 if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
-                    return new TournamentGameResult(false, turnCount, false);
+                {
+                    return CreateGameResult(board, turnCount);
+                }
             }
 
-            if (turnCount >= maxTurns)
-                return new TournamentGameResult(false, turnCount, true);
-
-            var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
-
-            return new TournamentGameResult(whiteWon, turnCount, false);
+            return CreateGameResult(board, turnCount);
         }
 
         private static async Task<TournamentGameResult> PlayAgainstBotServiceGameAsync(GameModus modus, TournamentEntry modelA, ContactWeightModel contactWeights)
@@ -328,7 +285,12 @@ namespace GammonX.Mars.Training
                         Rolls = rolls,
                         BotLevel = modelA.Level
                     };
-                    nextMoves = await evalService.EvalMoveSequencesAsync(evalRequest, contactWeights, CancellationToken.None);
+                    nextMoves = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = evalRequest,
+                        ContactWeights = contactWeights,
+                        TurnNumber = turnCount,
+                    }, CancellationToken.None);
                 }
 
                 var hasWon = false;
@@ -353,11 +315,46 @@ namespace GammonX.Mars.Training
             }
             while (turnCount < maxTurns);
 
-            if (turnCount >= maxTurns)
-                return new TournamentGameResult(false, turnCount, true);
+            return CreateGameResult(board, turnCount);
+        }
+
+        internal static TournamentGameResult CreateGameResult(IBoardModel board, int turnCount)
+        {
+            if (board is IPinModel pinModel && pinModel.BothMothersArePinned)
+            {
+                return new TournamentGameResult(GameResult.Draw, turnCount, false);
+            }
 
             var whiteWon = board.BearOffCountWhite == board.WinConditionCount;
-            return new TournamentGameResult(whiteWon, turnCount, false);
+            var blackWon = board.BearOffCountBlack == board.WinConditionCount;
+            if (!whiteWon && !blackWon)
+            {
+                return new TournamentGameResult(GameResult.Unknown, turnCount, true);
+            }
+
+            // Resolve the terminal board before discarding a game at the turn limit.
+            var result = board.ToGameResult(Guid.Empty, whiteWon);
+            var whiteResult = whiteWon ? result.WinnerResult : result.LoserResult;
+            return new TournamentGameResult(whiteResult, turnCount, false);
+        }
+
+        internal static int GetModelAPoints(GameResult whiteResult, bool modelAIsWhite)
+        {
+            // Outcome types give cubeless points; GameResultModel.Points can include the cube.
+            var whitePoints = whiteResult switch
+            {
+                GameResult.Single => 1,
+                GameResult.Gammon => 2,
+                GameResult.Backgammon => 3,
+                GameResult.LostSingle => -1,
+                GameResult.LostGammon => -2,
+                GameResult.LostBackgammon => -3,
+                GameResult.Draw => 0,
+                _ => throw new ArgumentOutOfRangeException(nameof(whiteResult), whiteResult, "Unsupported tournament outcome.")
+            };
+
+            // Every game is stored from White's perspective; score it for A exactly once.
+            return modelAIsWhite ? whitePoints : -whitePoints;
         }
 
         private static MatchVariant From(this GameModus modus)
@@ -377,101 +374,97 @@ namespace GammonX.Mars.Training
             }
         }
 
-        /// <summary>
-        /// Wilson score confidence interval for a proportion.
-        /// More accurate than normal approximation for small samples or extreme proportions.
-        /// </summary>
-        private static (double low, double high) ComputeWilsonCi(int successes, int total, double z = 1.96)
+        internal static TournamentEquityStatistics ComputePointEquity(int completedGames, long totalPoints, long squaredPoints)
         {
-            if (total == 0) return (0, 1);
-            var p = (double)successes / total;
-            var n = total;
-            var denom = 1 + z * z / n;
-            var centre = (p + z * z / (2 * n)) / denom;
-            var margin = z * Math.Sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom;
-            return (Math.Max(0, centre - margin), Math.Min(1, centre + margin));
+            if (completedGames == 0)
+            {
+                return new TournamentEquityStatistics(null, null, null);
+            }
+
+            var mean = (double)totalPoints / completedGames;
+            if (completedGames < MinimumCompletedGames)
+            {
+                return new TournamentEquityStatistics(mean, null, null);
+            }
+
+            // Use unbiased sample variance, including zero-point draws in the sample count.
+            // Clamp roundoff; identical observed scores do not establish a zero population variance.
+            var variance = Math.Max(0d, (squaredPoints - completedGames * mean * mean) / (completedGames - 1));
+            if (variance == 0d)
+            {
+                return new TournamentEquityStatistics(mean, null, null);
+            }
+
+            // Large-sample normal approximation for independent games at a fixed stopping point.
+            var margin = ConfidenceMultiplier * Math.Sqrt(variance / completedGames);
+            
+            return new TournamentEquityStatistics(mean, mean - margin, mean + margin);
         }
 
         public static void PrintReport(TournamentResult result)
         {
             var decisive = result.ModelAWins + result.ModelBWins;
-            var winRate = decisive > 0 ? (double)result.ModelAWins / decisive : 0.5;
-            var ci = ComputeWilsonCi(result.ModelAWins, decisive);
-            var significance = decisive >= 100
-                ? DetermineSignificance(result.ModelAWins, decisive)
-                : "insufficient games for significance test";
+            var equity = ComputePointEquity(result.CompletedGames, result.ModelATotalPoints, result.ModelASquaredPoints);
 
             Console.WriteLine();
-            Console.WriteLine("===========================================");
-            Console.WriteLine("  Tournament Results");
-            Console.WriteLine("===========================================");
-            Console.WriteLine();
-            Console.WriteLine($"  Model A : {result.ModelALabel}");
-            Console.WriteLine($"  Model B : {result.ModelBLabel}");
-            Console.WriteLine("  Modus   : (from game)");
-            Console.WriteLine();
-            Console.WriteLine($"  Total games  : {result.TotalGames}");
-            Console.WriteLine($"  Decisive     : {decisive}");
-            Console.WriteLine($"  Draws        : {result.Draws}");
-            Console.WriteLine($"  Discarded    : {result.Discarded}");
-            Console.WriteLine($"  Avg turns    : {result.AvgTurns:F1}");
-            Console.WriteLine();
-            Console.WriteLine($"  Model A wins : {result.ModelAWins} ({(decisive > 0 ? (double)result.ModelAWins / decisive : 0):P1})");
-            Console.WriteLine($"  Model B wins : {result.ModelBWins} ({(decisive > 0 ? (double)result.ModelBWins / decisive : 0):P1})");
-            Console.WriteLine();
-            Console.WriteLine($"  A win rate   : {winRate:P2}");
-            Console.WriteLine($"  95% CI       : [{ci.low:P2}, {ci.high:P2}]");
-            Console.WriteLine($"  Significance : {significance}");
-            Console.WriteLine();
-
-            // convergence of win rate over time
-            if (result.ModelAWinRateHistory.Count >= 10)
-            {
-                var last10 = result.ModelAWinRateHistory.TakeLast(10).ToList();
-                var last10Avg = last10.Average();
-                var last10Std = Math.Sqrt(last10.Average(x => (x - last10Avg) * (x - last10Avg)));
-                Console.WriteLine($"  Win rate last 10 checkpoints: {last10Avg:P2} � {last10Std:P2}");
-            }
-
-            Console.WriteLine();
-            PrintVerdict(ci, decisive);
-            Console.WriteLine("===========================================");
+            Console.WriteLine($"### {result.ModelALabel} vs. {result.ModelBLabel}");
+            Console.WriteLine($"  Model A                : {result.ModelALabel}");
+            Console.WriteLine($"  Model B                : {result.ModelBLabel}");
+            Console.WriteLine("   Modus                  : (from game)");
+            Console.WriteLine($"  Total games            : {result.TotalGames}");
+            Console.WriteLine($"  Scored games           : {result.CompletedGames}");
+            Console.WriteLine($"  Decisive               : {decisive}");
+            Console.WriteLine($"  Draws                  : {result.Draws}");
+            Console.WriteLine($"  Discarded              : {result.Discarded}");
+            Console.WriteLine($"  Avg turns              : {result.AvgTurns:F1}");
+            Console.WriteLine($"  A cubeless points/game : {FormatPoints(equity.PointsPerGame)}");
+            Console.WriteLine($"  Approx. 95% equity CI  : {FormatConfidenceInterval(equity)}");
+            Console.WriteLine($"  Model A wins           : {result.ModelAWins}");
+            Console.WriteLine($"  A gammon wins          : {result.ModelAGammonWins}");
+            Console.WriteLine($"  A backgammon wins      : {result.ModelABackgammonWins}");
+            Console.WriteLine($"  Model B wins           : {result.ModelBWins}");
+            Console.WriteLine($"  B gammon wins          : {result.ModelBGammonWins}");
+            Console.WriteLine($"  B backgammon wins      : {result.ModelBBackgammonWins}");
+            Console.WriteLine($"  A win rate             : {FormatWinRate(result.ModelAWins, result.ModelBWins)}");
+            Console.WriteLine($"  Verdict: {DetermineVerdict(result, equity)}");
         }
 
-        private static string DetermineSignificance(int aWins, int total)
+        private static string FormatPoints(double? points)
         {
-            if (total == 0) return "no data";
-            var p = (double)aWins / total;
-
-            // two-sided binomial z-test vs H0: p=0.5
-            var z = Math.Abs((p - 0.5) / Math.Sqrt(0.25 / total));
-            return z switch
-            {
-                >= 3.29 => $"p<0.001 (z={z:F2}) � highly significant",
-                >= 2.58 => $"p<0.01  (z={z:F2}) � significant",
-                >= 1.96 => $"p<0.05  (z={z:F2}) � significant",
-                >= 1.65 => $"p<0.10  (z={z:F2}) � marginal",
-                _ => $"p>0.10  (z={z:F2}) � not significant"
-            };
+            return points?.ToString("+0.0000;-0.0000;0.0000") ?? "n/a";
         }
 
-        private static void PrintVerdict((double low, double high) ci, int decisive)
+        private static string FormatConfidenceInterval(TournamentEquityStatistics equity)
         {
-            if (decisive < 100)
-            {
-                Console.WriteLine("  Verdict: Too few games for a reliable conclusion.");
-                Console.WriteLine("           Run at least 500 games for statistical significance.");
-                return;
-            }
+            return equity.LowerBound.HasValue && equity.UpperBound.HasValue
+                ? $"[{FormatPoints(equity.LowerBound)}, {FormatPoints(equity.UpperBound)}]"
+                : "n/a";
+        }
 
-            if (ci.low > 0.52)
-                Console.WriteLine("  Verdict: A is STRONGER (significant).");
-            else if (ci.high < 0.48)
-                Console.WriteLine("  Verdict: B is STRONGER (significant).");
-            else if (ci.low > 0.48 && ci.high < 0.52)
-                Console.WriteLine("  Verdict: EQUIVALENT (within noise).");
-            else
-                Console.WriteLine("  Verdict: INCONCLUSIVE.");
+        private static string FormatWinRate(int modelAWins, int modelBWins)
+        {
+            var decisive = modelAWins + modelBWins;
+            return decisive > 0 ? ((double)modelAWins / decisive).ToString("P2") : "n/a";
+        }
+
+        internal static string DetermineVerdict(TournamentResult result, TournamentEquityStatistics equity)
+        {
+            if (result.Discarded > 0 || result.CompletedGames != result.TotalGames)
+                return "INCONCLUSIVE (discarded or unprocessed games; completed-game scores are diagnostic only).";
+
+            if (result.CompletedGames < MinimumCompletedGames)
+                return $"INCONCLUSIVE (at least {MinimumCompletedGames} completed games required for the approximate equity interval).";
+
+            if (!equity.LowerBound.HasValue || !equity.UpperBound.HasValue)
+                return "INCONCLUSIVE (insufficient observed variation to estimate an equity interval).";
+
+            if (equity.LowerBound.Value > 0d)
+                return "A is STRONGER (positive point equity; approximate 95% CI excludes zero).";
+
+            if (equity.UpperBound.Value < 0d)
+                return "B is STRONGER (negative point equity for A; approximate 95% CI excludes zero).";
+
+            return "INCONCLUSIVE (insufficient evidence of a difference in point equity).";
         }
     }
 }

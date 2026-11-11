@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Extensions;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Services;
@@ -45,6 +45,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalMoveRequestContract request = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
@@ -57,7 +58,13 @@ namespace GammonX.Mars.NN.Tests.Services
             EvalWeights.PlakotoCheapContactWeights.Validate();
 
             var evalService = new PlakotoFeatureEvalService(null);
-            var result = await evalService.EvalMoveSequencesAsync(request, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
+            var result = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = request,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                MaxCandidates = 20,
+                TurnNumber = request.TurnNumber,
+            }, TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
         }
@@ -99,24 +106,38 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
 
             EvalMoveRequestContract requestBlack = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
                 IsWhite = false,
                 BotLevel = BotLevel.Hard
             };
-            var resultBlack = await evalService.EvalMoveSequencesAsync(requestBlack, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
+            var resultBlack = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestBlack,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestBlack.TurnNumber,
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultBlack);
 
             var invertedBlack = resultBlack.Moves.Select(m => m.Invert(GameModus.Plakoto));
@@ -138,13 +159,20 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
         }
 
@@ -168,13 +196,20 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalMoveRequestContract requestWhite = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 Rolls = [roll1, roll2, roll1, roll2],
                 IsWhite = true,
                 BotLevel = BotLevel.Hard
             };
-            var resultWhite = await evalService.EvalMoveSequencesAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken, 20);
+            var resultWhite = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+            {
+                EvalMoveRequest = requestWhite,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                MaxCandidates = 20,
+                TurnNumber = requestWhite.TurnNumber,
+            }, TestContext.Current.CancellationToken);
             Assert.NotNull(resultWhite);
         }
 
@@ -192,22 +227,34 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalBoardRequestContract requestBlack = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 IsWhite = false
             };
-            var resultBlack = await evalService.EvalBoardStateAsync(requestBlack, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken);
+            var resultBlack = await evalService.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = requestBlack,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                TurnNumber = requestBlack.TurnNumber,
+            }, TestContext.Current.CancellationToken);
 
             EvalBoardRequestContract requestWhite = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 IsWhite = true
             };
-            var resultWhite = await evalService.EvalBoardStateAsync(requestWhite, EvalWeights.PlakotoContactWeights, TestContext.Current.CancellationToken);
+            var resultWhite = await evalService.EvalBoardStateAsync(new FeatureEvalOptions
+            {
+                EvalBoardRequest = requestWhite,
+                ContactWeights = EvalWeights.PlakotoContactWeights,
+                TurnNumber = requestWhite.TurnNumber,
+            }, TestContext.Current.CancellationToken);
 
-            Assert.True(resultBlack > 0.0);
-            Assert.True(resultWhite < -0.0);
+            Assert.True(resultBlack.Equity > 0.0);
+            Assert.True(resultWhite.Equity < -0.0);
         }
 
         [Fact]
@@ -220,6 +267,7 @@ namespace GammonX.Mars.NN.Tests.Services
 
             EvalCubeRequestContract request = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = GameModus.Plakoto,
                 IsWhite = false,
@@ -229,7 +277,12 @@ namespace GammonX.Mars.NN.Tests.Services
                 BotLevel = BotLevel.Hard
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(request, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => evalService.EvalCubeAsync(new FeatureEvalOptions
+            {
+                EvalCubeRequest = request,
+                IsWhite = request.IsWhite,
+                TurnNumber = request.TurnNumber,
+            }, TestContext.Current.CancellationToken));
         }
     }
 }

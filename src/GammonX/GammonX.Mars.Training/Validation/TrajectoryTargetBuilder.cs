@@ -5,7 +5,7 @@ using GammonX.Mars.Training.Sidecars;
 namespace GammonX.Mars.Training.Validation;
 
 /// <summary>
-/// Rebuilds training labels from recorded game trajectories using forward-view temporal-difference targets.
+/// Rebuilds forward-view TD labels from recorded predictions and game outcomes.
 /// </summary>
 /// <remarks>
 /// Rows are grouped by game, ordered by turn, and matched with game metadata before labels are calculated.

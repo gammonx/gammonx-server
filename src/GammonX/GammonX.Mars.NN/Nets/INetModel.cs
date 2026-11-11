@@ -25,8 +25,18 @@ namespace GammonX.Mars.NN.Nets
     /// Implementations accept and return TorchSharp tensors. For the five-head outcome models,
     /// the output columns are ordered as win, win gammon, win backgammon, lose gammon, and lose backgammon.
     /// </remarks>
-    public interface INetModel
+    public interface INetModel : IDisposable
     {
+        /// <summary>
+        /// Gets the model configuration and any recorded training settings.
+        /// </summary>
+        NetModelMetadata Metadata { get; }
+
+        /// <summary>
+        /// Configures a new training run without changing the network architecture or output mode.
+        /// </summary>
+        void ConfigureTraining(NetTrainingMetadata training);
+
         /// <summary>
         /// Evaluates a batch of input feature rows.
         /// </summary>
@@ -35,13 +45,18 @@ namespace GammonX.Mars.NN.Nets
         Tensor Forward(Tensor x);
 
         /// <summary>
-        /// Loads model parameters from the specified file location.
+        /// Loads model parameters and compatible metadata from the specified file location.
         /// </summary>
         /// <param name="location">The model file path.</param>
         void Load(string location);
 
         /// <summary>
-        /// Saves model parameters to the specified file location.
+        /// Loads model weights from a stream, preserving the metadata supplied at construction.
+        /// </summary>
+        void LoadFromStream(Stream stream);
+
+        /// <summary>
+        /// Saves model parameters and metadata to the specified file location and its sidecar.
         /// </summary>
         /// <param name="location">The destination model file path.</param>
         void Save(string location);
@@ -69,48 +84,24 @@ namespace GammonX.Mars.NN.Nets
         void MoveTo(Device device);
     }
 
-    public static class NetModelExtensions
-    {
-        /// <summary>
-        /// Loads model weights from a stream by writing to a temp file, since TorchSharp
-        /// only supports loading from a file path.
-        /// </summary>
-        public static void LoadFromStream(this INetModel model, Stream stream)
-        {
-            var tmp = Path.GetTempFileName();
-            try
-            {
-                using (var fs = File.OpenWrite(tmp))
-                    stream.CopyTo(fs);
-                model.Load(tmp);
-            }
-            finally
-            {
-                File.Delete(tmp);
-            }
-        }
-    }
-
     public static class NetModelFactory
     {
         public static INetModel CreateNew(GameModus modus, Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
         {
-            INetModel netModel = modus switch
+            return CreateNew(new NetModelMetadata(NetModelMetadata.CurrentFormatVersion, modus, outputMode, architecture), device);
+        }
+
+        public static INetModel CreateNew(NetModelMetadata metadata, Device device)
+        {
+            return metadata.Modus switch
             {
-                GameModus.Plakoto => new PlakotoNet(device),
-                GameModus.Fevga => new FevgaNet(device),
-                GameModus.Backgammon => new DefaultNet(device, outputMode, architecture),
-                GameModus.Tavla => new DefaultNet(device, outputMode, architecture),
-                GameModus.Portes => new DefaultNet(device, outputMode, architecture),
-                _ => throw new NotSupportedException($"Modus {modus} has no net model.")
+                GameModus.Plakoto => new PlakotoNet(device, metadata),
+                GameModus.Fevga => new FevgaNet(device, metadata),
+                GameModus.Backgammon => new DefaultNet(device, metadata),
+                GameModus.Tavla => new DefaultNet(device, metadata),
+                GameModus.Portes => new DefaultNet(device, metadata),
+                _ => throw new NotSupportedException($"Modus {metadata.Modus} has no net model.")
             };
-
-            if (modus is GameModus.Plakoto or GameModus.Fevga && outputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
-            {
-                throw new ArgumentException($"Output mode {outputMode} is only supported by five-head game modes.", nameof(outputMode));
-            }
-
-            return netModel;
         }
 
         /// <summary>
@@ -126,9 +117,37 @@ namespace GammonX.Mars.NN.Nets
         public static INetModel CreateForModel(GameModus modus, string modelPath, Device device)
         {
             var metadata = NetModelMetadata.ReadOrLegacy(modelPath, modus);
-            var netModel = CreateNew(modus, device, metadata.OutputMode, metadata.Architecture);
-            netModel.Load(modelPath);
-            return netModel;
+            var netModel = CreateNew(metadata, device);
+            try
+            {
+                netModel.Load(modelPath);
+                return netModel;
+            }
+            catch
+            {
+                netModel.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates a model from weight and metadata streams, including embedded resources.
+        /// </summary>
+        public static INetModel CreateForModel(GameModus modus, Stream modelStream, Stream? metadataStream, Device device, string modelName)
+        {
+            var metadata = NetModelMetadata.ReadOrLegacy(metadataStream, modus, modelName + NetModelMetadata.MetadataSuffix)
+                with { Name = Path.GetFileName(modelName) };
+            var netModel = CreateNew(metadata, device);
+            try
+            {
+                netModel.LoadFromStream(modelStream);
+                return netModel;
+            }
+            catch
+            {
+                netModel.Dispose();
+                throw;
+            }
         }
     }
 }

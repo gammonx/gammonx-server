@@ -21,5 +21,8 @@ namespace GammonX.Models.Contracts
 
         [DataMember(Name = "botLevel", IsRequired = true)]
         public BotLevel BotLevel { get; set; } = BotLevel.Unknown;
+
+        [DataMember(Name = "turnNumber", IsRequired = true)]
+        public int? TurnNumber { get; set; }
     }
 }

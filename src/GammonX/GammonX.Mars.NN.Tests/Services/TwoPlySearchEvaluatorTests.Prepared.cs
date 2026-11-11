@@ -22,7 +22,7 @@ public partial class TwoPlySearchEvaluatorTests
             {
                 var scores = boards.Select(board => (double)board.Fields[0]).ToArray();
                 referenceRows.AddRange(scores);
-                return Task.FromResult(scores);
+                return Task.FromResult(scores.Select(value => new EvalResult(value, null)).ToArray());
             }, CloneBoard, cap, crossRoll).EvaluateAsync(harness.Board.Object, true, TestContext.Current.CancellationToken);
         var clones = new List<IBoardModel>();
         var rows = new List<double>();
@@ -30,7 +30,7 @@ public partial class TwoPlySearchEvaluatorTests
             (_, _) => throw new Exception("Prepared path must not score boards."),
             board => { var clone = CloneBoard(board); clones.Add(clone); return clone; }, cap, crossRoll);
 
-        var score = await evaluator.EvaluatePreparedAsync(harness.Board.Object, true,
+        var score = await evaluator.EvalPreparedAsync(harness.Board.Object, true,
             (board, white) =>
             {
                 Assert.False(white);
@@ -42,11 +42,11 @@ public partial class TwoPlySearchEvaluatorTests
                 await Task.Yield();
                 var values = positions.Select(row => (double)row.Features![0]).ToArray();
                 rows.AddRange(values);
-                return values;
+                return values.Select(value => new EvalResult(value, null)).ToArray();
             }, TestContext.Current.CancellationToken);
 
         Assert.Equal(referenceRows, rows);
-        Assert.Equal(BitConverter.DoubleToInt64Bits(reference), BitConverter.DoubleToInt64Bits(score));
+        Assert.Equal(BitConverter.DoubleToInt64Bits(reference.Equity), BitConverter.DoubleToInt64Bits(score.Equity));
         Assert.Equal(7, Assert.Single(clones).Fields[0]);
         Assert.Equal(7, harness.Fields[0]);
     }
@@ -60,7 +60,7 @@ public partial class TwoPlySearchEvaluatorTests
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object, (_, _) => throw new Exception(),
             board => working = CloneBoard(board), 4, true);
-        var evaluation = evaluator.EvaluatePreparedAsync(harness.Board.Object, true,
+        var evaluation = evaluator.EvalPreparedAsync(harness.Board.Object, true,
             (board, _) => { prepared++; return new PreparedPosition([board.Fields[0]]); },
             async rows =>
             {
@@ -68,7 +68,7 @@ public partial class TwoPlySearchEvaluatorTests
                 Assert.Equal(0, working!.Fields[0]);
                 var values = rows.Select(row => (double)row.Features![0]).ToArray();
                 Assert.Equal(Enumerable.Range(0, rows.Count).Select(index => (double)(index % 2 + 1)), values);
-                return values;
+                return values.Select(value => new EvalResult(value, null)).ToArray();
             }, TestContext.Current.CancellationToken);
         try
         {
@@ -107,7 +107,7 @@ public partial class TwoPlySearchEvaluatorTests
         IBoardModel? working = null;
         var evaluator = new TwoPlySearchEvaluator(harness.BoardService.Object, (_, _) => throw new Exception(),
             board => failure == "clone" ? throw new InvalidDataException("clone") : working = CloneBoard(board), 4, true);
-        var error = await Record.ExceptionAsync(() => evaluator.EvaluatePreparedAsync(harness.Board.Object, true,
+        var error = await Record.ExceptionAsync(() => evaluator.EvalPreparedAsync(harness.Board.Object, true,
             (board, _) => failure == "prepare" ? throw new InvalidDataException("prepare") : new PreparedPosition([board.Fields[0]]),
             async _ =>
             {

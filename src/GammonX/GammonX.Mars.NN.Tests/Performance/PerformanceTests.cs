@@ -31,40 +31,40 @@ public partial class PerformanceTests(ITestOutputHelper output)
 {
     private const int MeasurementIterations = 3;
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2, BotLevel.Hard)]
     [InlineData(2, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard1(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2)]
     public Task MeasureEnginePerformanceBoard1(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(3, 2, BotLevel.Hard)]
     [InlineData(3, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard2(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(3, 2)]
     public Task MeasureEnginePerformanceBoard2(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2, BotLevel.Hard)]
     [InlineData(2, 2, BotLevel.Expert)]
     public Task MeasureEvalPerformanceBoard3(int roll1, int roll2, BotLevel botLevel) =>
         MeasureEvalPerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2, botLevel);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(2, 2)]
     public Task MeasureEnginePerformanceBoard3(int roll1, int roll2) =>
         MeasureEnginePerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2);
 
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(1, 2, 2)]
     [InlineData(2, 3, 2)]
     [InlineData(3, 2, 2)]
@@ -145,9 +145,15 @@ public partial class PerformanceTests(ITestOutputHelper output)
             var countingService = new CountingNeuralEvalService(neuralService);
             var evalService = FeatureEvalServiceFactory.Create(GameModus.Backgammon, countingService);
             ConfigureRollBatching(evalService);
-            var features = evalService.EvalPositionForTraining(boardContract, false);
+            var features = evalService.EvalPositionForTraining(new FeatureEvalOptions
+            {
+                BoardContract = boardContract,
+                IsWhite = false,
+                TurnNumber = 0,
+            });
             var request = new EvalMoveRequestContract
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 BotLevel = botLevel,
                 IsWhite = false,
@@ -196,9 +202,14 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 var warmupStart = Stopwatch.GetTimestamp();
                 if (tuning != null)
                 {
-                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+                    candidateScores = await evalService.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    }, TestContext.Current.CancellationToken);
                     Assert.Equal(legalMoves.Length, candidateScores.Count);
-                    Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Score)));
+                    Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Equity)));
                     warmup = candidateScores.Select(botLevel);
                     Assert.True(workerBatches > 0);
                     Assert.True(mismatchedThreads == -1, $"Expected {tuning.Threads} Torch threads on every worker batch; observed {mismatchedThreads}.");
@@ -207,7 +218,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 }
                 else
                 {
-                    warmup = await evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+                    warmup = await evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    }, TestContext.Current.CancellationToken);
                 }
                 output.WriteLine(FormattableString.Invariant(
                     $"FullEvaluationWarmupMs={Stopwatch.GetElapsedTime(warmupStart).TotalMilliseconds:F3}"));
@@ -220,7 +236,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 botLevel == BotLevel.Expert ? "TwoPly" : "OnePly",
                 legalMoves.Length,
                 () => new ValueTask<MoveSequenceModel>(
-                    evalService.EvalMoveSequencesAsync(request, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken)),
+                    evalService.EvalMoveSequencesAsync(new FeatureEvalOptions
+                    {
+                        EvalMoveRequest = request,
+                        ContactWeights = EvalWeights.DefaultContactWeights,
+                        TurnNumber = request.TurnNumber,
+                    }, TestContext.Current.CancellationToken)),
                 result =>
                 {
                     Validate(result);

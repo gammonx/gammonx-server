@@ -45,6 +45,7 @@ namespace GammonX.Server.Bot
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.Rolls);
+            ArgumentNullException.ThrowIfNull(parameters.TurnNumber);
 
             if (parameters.BotLevel == BotLevel.Unknown)
             {
@@ -70,6 +71,7 @@ namespace GammonX.Server.Bot
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
+            ArgumentNullException.ThrowIfNull(parameters.TurnNumber);
 
             if (parameters.BotLevel == BotLevel.Unknown)
             {
@@ -95,6 +97,7 @@ namespace GammonX.Server.Bot
         {
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
+            ArgumentNullException.ThrowIfNull(parameters.TurnNumber);
 
             var uri = new Uri("api/eval/board", UriKind.Relative);
 

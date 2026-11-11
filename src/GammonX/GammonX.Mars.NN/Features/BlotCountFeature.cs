@@ -11,13 +11,9 @@ namespace GammonX.Mars.NN.Features
         public int Eval(IBoardModel board, bool isWhite)
         {
             var blotCount = 0;
-            var pinModel = board as IPinModel;
             for (var index = 0; index < board.Fields.Length; index++)
             {
-                var isBlot = isWhite
-                    ? board.Fields[index] == -1
-                    : board.Fields[index] == 1;
-                if (isBlot && (pinModel is null || pinModel.PinnedFields[index] == 0))
+                if (FeatureBoardGeometry.IsBlot(board, isWhite, index))
                 {
                     blotCount++;
                 }

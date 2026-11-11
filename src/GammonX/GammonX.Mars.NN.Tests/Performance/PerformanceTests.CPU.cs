@@ -15,7 +15,7 @@ public partial class PerformanceTests
     /// MKL_NUM_THREADS before launch; GAMMONX_PERF_THREADS verifies the requested value.
     /// Optional GAMMONX_PERF_BOARD, GAMMONX_PERF_BATCH_SIZE and GAMMONX_PERF_PHASE select the workload.
     /// </summary>
-    [Fact]
+    [Fact(Skip = "PERFORMANCE")]
     public async Task MeasureCpuThreadAndBatchTuning()
     {
         var threads = ReadTuningInt("GAMMONX_PERF_THREADS", get_num_threads());
@@ -53,7 +53,7 @@ public partial class PerformanceTests
 
         foreach (var candidate in scores)
         {
-            output.WriteLine(FormattableString.Invariant( $"TUNING_CANDIDATE,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(candidate.MoveSequence)},{candidate.Score:R}"));
+            output.WriteLine(FormattableString.Invariant( $"TUNING_CANDIDATE,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(candidate.MoveSequence)},{candidate.Equity:R}"));
         }
 
         output.WriteLine($"TUNING_SELECTION,{phase},Board{boardNumber},{threads},{batchSize},{MoveKey(result.SelectedMove)}");

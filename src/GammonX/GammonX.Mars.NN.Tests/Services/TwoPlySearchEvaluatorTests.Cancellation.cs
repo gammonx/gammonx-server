@@ -17,7 +17,7 @@ public partial class TwoPlySearchEvaluatorTests
             (boards, _) =>
             {
                 cancellation.Cancel();
-                return Task.FromResult(new double[boards.Count]);
+                return Task.FromResult(new EvalResult[boards.Count]);
             }, board =>
             {
                 var clone = CloneBoard(board);
@@ -26,11 +26,11 @@ public partial class TwoPlySearchEvaluatorTests
             }, maxBatchSize: 2, batchAcrossRolls: true);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => prepared
-            ? evaluator.EvaluatePreparedAsync(harness.Board.Object, true,
+            ? evaluator.EvalPreparedAsync(harness.Board.Object, true,
                 (board, _) => new PreparedPosition([board.Fields[0]]), positions =>
                 {
                     cancellation.Cancel();
-                    return Task.FromResult(new double[positions.Count]);
+                    return Task.FromResult(new EvalResult[positions.Count]);
                 }, cancellation.Token)
             : evaluator.EvaluateAsync(harness.Board.Object, true, cancellation.Token));
 

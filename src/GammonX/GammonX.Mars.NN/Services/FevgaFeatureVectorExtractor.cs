@@ -1,5 +1,4 @@
-﻿using GammonX.Engine.History;
-using GammonX.Engine.Models;
+﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
@@ -27,11 +26,10 @@ namespace GammonX.Mars.NN.Services
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
             }
-            
-            // we always extract the feature from the perspective of the white player, so we invert the board if the active player is black
-            var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
 
-            var turnNumber = board.History.Events.Count(e => e.Type == HistoryEventType.Roll);
+            // Canonicalize the board to white; model scalars already describe the active player.
+            // White checkers stay negative. Preserve the opponent-first raw channel order.
+            var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
 
             var featureIndex = 0;
             // self-crafted structural features
@@ -61,22 +59,24 @@ namespace GammonX.Mars.NN.Services
             features[featureIndex++] = 0f;
             features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
             features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
-            features[featureIndex++] = turnNumber / 100f;
+            features[featureIndex++] = (float)model.TurnNumber;
 
             // we add the raw board as input
             var fields = boardClone.Fields;
             for (var i = 0; i < boardClone.Fields.Length; i++)
             {
-                // white player view: own = positive, opponent = negative
+                // Canonical white view: own = negative, opponent = positive.
                 var v = fields[i];
-                features[featureIndex++] = v >= 1 ? 1f : 0f;  // own blot
-                features[featureIndex++] = v >= 2 ? 1f : 0f;  // own anchor
-                features[featureIndex++] = v >= 3 ? 1f : 0f;  // own 3+
-                features[featureIndex++] = v >= 4 ? 1f : 0f;  // own 4+
-                features[featureIndex++] = v <= -1 ? 1f : 0f; // opp blot
-                features[featureIndex++] = v <= -2 ? 1f : 0f; // opp anchor
-                features[featureIndex++] = v <= -3 ? 1f : 0f; // opp 3+
-                features[featureIndex++] = v <= -4 ? 1f : 0f; // opp 4+
+                features[featureIndex++] = v >= 1 ? 1f : 0f;                // opponent count >= 1
+                features[featureIndex++] = v >= 2 ? 1f : 0f;                // opponent count >= 2
+                features[featureIndex++] = v >= 3 ? 1f : 0f;                // opponent count >= 3
+                // the count tail increases from 1/12 at four checkers to 1 at fifteen
+                features[featureIndex++] = v >= 4 ? (v - 3) / 12f : 0f;     // opponent count tail
+                features[featureIndex++] = v <= -1 ? 1f : 0f;               // player count >= 1
+                features[featureIndex++] = v <= -2 ? 1f : 0f;               // player count >= 2
+                features[featureIndex++] = v <= -3 ? 1f : 0f;               // player count >= 3
+                // the count tail increases from 1/12 at four checkers to 1 at fifteen
+                features[featureIndex++] = v <= -4 ? Math.Abs(v + 3) / 12f : 0f; // player count tail
             }
 
 

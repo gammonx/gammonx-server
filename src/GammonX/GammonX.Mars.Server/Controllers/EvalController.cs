@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Models;
+using GammonX.Engine.Models;
 
 using GammonX.Mars.NN;
 using GammonX.Mars.NN.Services;
@@ -49,7 +49,14 @@ namespace GammonX.Mars.Server.Controllers
                 contactWeights.Validate();
                 cheapContactWeights.Validate();
 
-                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(request, cancellationToken);
+                var options = new FeatureEvalOptions
+                {
+                    EvalCubeRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                };
+
+                var (shouldOffer, shouldTake) = await evalService.EvalCubeAsync(options, cancellationToken);
                 var payload = new CubeEvalPayload { ShouldOffer = shouldOffer, ShouldTake = shouldTake };
                 var response = new ResponseContract<CubeEvalPayload>("OK", payload);
                 return Ok(response);
@@ -74,8 +81,17 @@ namespace GammonX.Mars.Server.Controllers
                 var evalService = _serviceProvider.GetRequiredKeyedService<IFeatureEvalService>(request.Modus);
                 var contactWeights = EvalWeights.GetContactWeights(request.Modus);
                 contactWeights.Validate();
-                var boardScore = await evalService.EvalBoardStateAsync(request, contactWeights, cancellationToken);
-                var payload = new BoardEvalPayload { EvalScore = boardScore };
+
+                var options = new FeatureEvalOptions
+                {
+                    EvalBoardRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                    ContactWeights = contactWeights,
+                };
+
+                var boardScore = await evalService.EvalBoardStateAsync(options, cancellationToken);
+                var payload = new BoardEvalPayload { EvalScore = boardScore.Equity };
                 var response = new ResponseContract<BoardEvalPayload>("OK", payload);
                 return Ok(response);
             }
@@ -107,7 +123,15 @@ namespace GammonX.Mars.Server.Controllers
 
                 contactWeights.Validate();
 
-                var bestMove = await evalService.EvalMoveSequencesAsync(request, contactWeights, cancellationToken: cancellationToken);
+                var options = new FeatureEvalOptions
+                {
+                    EvalMoveRequest = request,
+                    TurnNumber = request.TurnNumber,
+                    IsWhite = request.IsWhite,
+                    ContactWeights = contactWeights,
+                };
+
+                var bestMove = await evalService.EvalMoveSequencesAsync(options, cancellationToken);
                 if (bestMove != null)
                 {
                     var payload = new MoveEvalPayload { MoveSequence = bestMove };

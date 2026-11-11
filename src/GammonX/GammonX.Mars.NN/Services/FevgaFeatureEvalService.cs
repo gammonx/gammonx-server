@@ -35,7 +35,7 @@ namespace GammonX.Mars.NN.Services
         }
 
         // <inheritdoc />
-        protected override EvalResultModel CalculateEvalModel(IBoardModel board, bool isWhite)
+        protected override EvalResultModel CalculateEvalModel(IBoardModel board, int turnNumber, bool isWhite)
         {
             EvalResultModel eval = new EvalResultModel
             {
@@ -48,8 +48,7 @@ namespace GammonX.Mars.NN.Services
                 HomebarCountPlayer = _homebarCountFeature.Eval(board, isWhite),
                 HomebarCountOpp = _homebarCountFeature.Eval(board, !isWhite),
                 BlotCountOpp = _blotCountFeature.Eval(board, !isWhite),
-                // we need to invert the count in order to get the normalized value correct
-                BlotCount = -_blotCountFeature.Eval(board, isWhite),
+                BlotCount = _blotCountFeature.Eval(board, isWhite),
                 AnchorCountInFrontPlayer = _anchorCountInFrontFeature.Eval(board, isWhite),
                 AnchorCountInFrontOpp = _anchorCountInFrontFeature.Eval(board, !isWhite),
                 AverageStackHeightPlayer = _averageStackHeightFeature.Eval(board, isWhite),
@@ -60,6 +59,7 @@ namespace GammonX.Mars.NN.Services
                 AverageGapSizeOpp = _averageGapSizeFeature.Eval(board, !isWhite),
                 CheckersInPrimeZonePlayer = _checkersInPrimeZoneFeature.Eval(board, isWhite),
                 CheckersInPrimeZoneOpp = _checkersInPrimeZoneFeature.Eval(board, !isWhite),
+                TurnNumber = turnNumber
             };
 
             return eval;

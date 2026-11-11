@@ -1,48 +1,30 @@
-﻿using GammonX.Engine.Models;
+using GammonX.Engine.Models;
 
 namespace GammonX.Mars.NN.Features
 {
     /// <summary>
-    /// A race means both sides have fully passed each other.
-    /// the lowest-indexed white checker sits at a higher index than the highest-indexed black checker. 
+    /// A race has no shared board point in the two sides' remaining movement paths.
+    /// Includes hidden pinned checkers and entry paths from bar/reserve.
     /// </summary>
     public sealed class RaceFeature : IFeature<bool>
     {
-        // <inheritdoc />
-        public bool Eval(IBoardModel board, bool isWhite)
+        public bool Eval(IBoardModel board, bool isWhite) =>
+            (RemainingPath(board, true) & RemainingPath(board, false)) == 0;
+
+        private static uint RemainingPath(IBoardModel board, bool isWhite)
         {
-            var maxBlackIndex = -1;
-            var minWhiteIndex = board.Fields.Length;
+            var rearDistance = FeatureBoardGeometry.RearDistance(board, isWhite);
 
-            var fieldTuples = board.Fields.Index();
+            // Every other remaining checker follows a suffix of the rearmost checkers path.
+            var firstPosition = Math.Max(board.Fields.Length - rearDistance, 0);
+            uint path = 0;
 
-            var whiteIndices = fieldTuples.Where(t => t.Item < 0).Select(t => t.Index);
-            var blackIndices = fieldTuples.Where(t => t.Item > 0).Select(t => t.Index);
-
-            minWhiteIndex = whiteIndices.Any() ? whiteIndices.Min() : int.MaxValue;
-            maxBlackIndex = blackIndices.Any() ? blackIndices.Max() : int.MinValue;
-
-            // in Plakoto, a pinned checker is hidden from fields array: the pinners checker occupies
-            // the field while the pinned checker is recorded only in pinned fields. A pinned
-            // checker is still on the board and must be included in the contact check — omitting
-            // it causes a false race when e.g. a white checker is pinned deep in blacks home.
-            if (board is IPinModel pinModel)
+            for (var position = firstPosition; position < board.Fields.Length; position++)
             {
-                var pinTuples = pinModel.PinnedFields.Index();
-
-                var whitePinIndices = pinTuples.Where(t => t.Item < 0).Select(t => t.Index);
-                var blackPinIndices = pinTuples.Where(t => t.Item > 0).Select(t => t.Index);
-
-                var minPinWhiteIndex = whitePinIndices.Any() ? whitePinIndices.Min() : int.MaxValue;
-                var maxPinBlackIndex = blackPinIndices.Any() ? blackPinIndices.Max() : int.MinValue;
-
-                minWhiteIndex = Math.Min(minWhiteIndex, minPinWhiteIndex);
-                maxBlackIndex = Math.Max(maxBlackIndex, maxPinBlackIndex);
+                path |= 1u << FeatureBoardGeometry.BoardIndex(board, isWhite, position);
             }
 
-            // race: all black checkers are at lower indices than all white checkers
-            // meaning both sides have passed each other with no contact remaining
-            return minWhiteIndex >= maxBlackIndex;
+            return path;
         }
     }
 }

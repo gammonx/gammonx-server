@@ -392,8 +392,9 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(0, boardModel.BearOffCountWhite);
             Assert.Equal(0, boardModel.BearOffCountBlack);
 			Assert.Equal(15, boardModel.WinConditionCount);
-			Assert.Equal(360, boardModel.PipCountWhite);
-			Assert.Equal(360, boardModel.PipCountBlack);
+			// One checker at distance 24 and fourteen reserves at distance 25.
+			Assert.Equal(374, boardModel.PipCountWhite);
+			Assert.Equal(374, boardModel.PipCountBlack);
 			var homebarModel = boardModel as IHomeBarModel;
             Assert.NotNull(homebarModel);
 			Assert.False(homebarModel.CanSendToHomeBar);

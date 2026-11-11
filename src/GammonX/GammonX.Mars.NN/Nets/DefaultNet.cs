@@ -17,7 +17,7 @@ namespace GammonX.Mars.NN.Nets
     /// In legacy mode, all five values are returned as independent sigmoid outputs.
     /// </remarks>
     /// <seealso cref="INetModel"/>
-    public sealed class DefaultNet : Module<Tensor, Tensor>, INetModel
+    public sealed class DefaultNet : NetModel
     {
         private Linear _fc1 = null!;
         private Linear _fc2 = null!;
@@ -29,24 +29,37 @@ namespace GammonX.Mars.NN.Nets
         /// <summary>
         /// Gets the output transformation used to convert logits into outcome probabilities.
         /// </summary>
-        public GameOutcomeOutputMode OutputMode { get; }
+        public GameOutcomeOutputMode OutputMode => Metadata.OutputMode;
 
-        public DefaultNet(Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture) : base(nameof(DefaultNet))
+        public DefaultNet(Device device, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
+            : this(device, new NetModelMetadata(NetModelMetadata.CurrentFormatVersion, GameModus.Backgammon, outputMode, architecture))
         {
-            if (!Enum.IsDefined(outputMode))
+            // pass
+        }
+
+        public DefaultNet(Device device, NetModelMetadata metadata) : base(nameof(DefaultNet), metadata)
+        {
+            if (metadata.Modus is not (GameModus.Backgammon or GameModus.Tavla or GameModus.Portes))
             {
-                throw new ArgumentOutOfRangeException(nameof(outputMode), outputMode, "Unknown output mode.");
+                throw new ArgumentException($"Modus {metadata.Modus} does not use the default network.", nameof(metadata));
             }
 
-            InitializeModelArchitecture(architecture, device);
-            OutputMode = outputMode;
-            // we increase p if model is over fitting
+            InitializeModelArchitecture(metadata.Architecture, device);
+            // dropout temporarily switches off randomly selected hidden activations during training. 
+            // With p = 0.1, each activation has a 10% chance of becoming zero on a training pass. 
+            // This discourages the network from relying too heavily on particular neurons and can reduce overfitting
+            // we currently disabled dropout because no overfitting is spotted
             _drop = Dropout(p: 0.0);
             RegisterComponents();
         }
 
         private void InitializeModelArchitecture(NetArchitecture architecture, Device device)
         {
+            // LATENCY:
+            // Gen12 A/B (2026-11-07): A cut CPU inference latency by 6-33% with one thread;
+            // 16-thread batching showed no reliable gain. In 20k one-ply games per matchup,
+            // PLAYING STRENGTH:
+            // A lost 0.0587 points/game to B trained on the same data, and 0.5476 to pretrained gen12 B.
             if (architecture == NetArchitecture.A)
             {
                 _fc1 = Linear(216, 256, true, device);
@@ -60,56 +73,6 @@ namespace GammonX.Mars.NN.Nets
                 _fc2 = Linear(384, 192, true, device);
                 _fc3 = Linear(192, 96, true, device);
                 _fc4 = Linear(96, 5, true, device);
-            }
-        }
-
-        // <inheritdoc />
-        public Tensor Forward(Tensor x)
-        {
-            return forward(x);
-        }
-
-        // <inheritdoc />
-        public void Load(string location)
-        {
-            load(location);
-        }
-
-        // <inheritdoc />
-        public void Save(string location)
-        {
-            save(location);
-        }
-
-        // <inheritdoc />
-        public void Eval()
-        {
-            eval();
-        }
-
-        // <inheritdoc />
-        public void Train()
-        {
-            train();
-        }
-
-        // <inheritdoc />
-        public IEnumerable<Parameter> GetParameters()
-        {
-            return parameters();
-        }
-
-        // <inheritdoc />
-        public void MoveTo(Device device)
-        {
-            foreach (var (_, param) in named_parameters())
-            {
-                param.to(device);
-            }
-
-            foreach (var (_, buf) in named_buffers())
-            {
-                buf.to(device);
             }
         }
 

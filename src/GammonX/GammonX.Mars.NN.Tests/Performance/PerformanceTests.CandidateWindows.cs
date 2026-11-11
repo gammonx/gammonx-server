@@ -20,7 +20,7 @@ namespace GammonX.Mars.NN.Tests.Performance;
 
 public partial class PerformanceTests
 {
-    [Fact]
+    [Fact(Skip = "PERFORMANCE")]
     public async Task MeasureCandidateWindows()
     {
         var window = ReadTuningInt("GAMMONX_PERF_WINDOW", 1);
@@ -85,7 +85,12 @@ public partial class PerformanceTests
             if (mode == "Mixed")
             {
                 var board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard(contract);
-                var model = service.EvalPositionForTraining(contract, false);
+                var model = service.EvalPositionForTraining(new FeatureEvalOptions
+                {
+                    BoardContract = contract,
+                    IsWhite = false,
+                    TurnNumber = 0,
+                });
                 var expected = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
                 var latencies = new List<double>();
                 using var process = Process.GetCurrentProcess();
@@ -166,7 +171,7 @@ public partial class PerformanceTests
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,
                 PeakWorkingSet = memory.PeakWorkingSet64, ManagedLive = GC.GetTotalMemory(false),
-                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), row.Score }).ToArray(),
+                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), row.Equity }).ToArray(),
                 Selected = MoveKey(warmup.Select(BotLevel.Expert)),
                 MaximumScoreDifference = maximumScoreDifference
             }));
@@ -176,21 +181,27 @@ public partial class PerformanceTests
                 // Board construction owns the contract's array, so simultaneous requests need distinct contracts.
                 var input = JsonConvert.DeserializeObject<BoardModelContract>(json);
                 Assert.NotNull(input);
-                return service.EvalMoveSequencesForTrainingAsync(new EvalMoveRequestContract
+                return service.EvalMoveSequencesForTrainingAsync(new FeatureEvalOptions
                 {
-                    Board = input, IsWhite = false, Modus = GameModus.Backgammon,
-                    BotLevel = BotLevel.Expert, Rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]
-                }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+                    EvalMoveRequest = new EvalMoveRequestContract
+                    {
+                        TurnNumber = 0,
+                        Board = input, IsWhite = false, Modus = GameModus.Backgammon,
+                        BotLevel = BotLevel.Expert, Rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]
+                    },
+                    ContactWeights = EvalWeights.DefaultContactWeights,
+                    TurnNumber = 0,
+                }, TestContext.Current.CancellationToken);
             }
 
             void Validate(FinalEvalResultModels actual)
             {
                 Assert.Equal(reference.Count, actual.Count);
                 Assert.True(reference.Select(BotLevel.Expert).Equals(actual.Select(BotLevel.Expert)));
-                var scores = actual.ToDictionary(row => MoveKey(row.MoveSequence), row => row.Score);
+                var scores = actual.ToDictionary(row => MoveKey(row.MoveSequence), row => row.Equity);
                 foreach (var row in reference)
                 {
-                    var difference = Math.Abs(row.Score - scores[MoveKey(row.MoveSequence)]);
+                    var difference = Math.Abs(row.Equity - scores[MoveKey(row.MoveSequence)]);
                     maximumScoreDifference = Math.Max(maximumScoreDifference, difference);
                     Assert.InRange(difference, 0, 1e-5);
                 }

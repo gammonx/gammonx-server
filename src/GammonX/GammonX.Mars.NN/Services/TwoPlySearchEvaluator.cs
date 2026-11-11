@@ -9,42 +9,34 @@ namespace GammonX.Mars.NN.Services
     {
         private readonly IBoardService _boardService;
         private readonly Func<IBoardModel, IBoardModel> _cloneBoard;
-        private readonly Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> _evalPositionsAsync;
+        private readonly Func<IReadOnlyList<IBoardModel>, bool, Task<EvalResult[]>> _evalPositionsAsync;
         private readonly int _maxBatchSize;
         // if set to true, each inference batch is filled and may contain replies from multiple rolls; if false, each batch is flushed after each roll.
         private readonly bool _batchAcrossRolls;
 
         public TwoPlySearchEvaluator(
             IBoardService boardService,
-            Func<IReadOnlyList<IBoardModel>, bool, Task<double[]>> scorePositions,
+            Func<IReadOnlyList<IBoardModel>, bool, Task<EvalResult[]>> evalPositions,
             Func<IBoardModel, IBoardModel>? cloneBoard = null,
             int maxBatchSize = 32,
             bool batchAcrossRolls = false)
         {
             _boardService = boardService ?? throw new ArgumentNullException(nameof(boardService));
-            _evalPositionsAsync = scorePositions ?? throw new ArgumentNullException(nameof(scorePositions));
+            _evalPositionsAsync = evalPositions ?? throw new ArgumentNullException(nameof(evalPositions));
             _cloneBoard = cloneBoard ?? (board => board.DeepClone());
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBatchSize);
             _maxBatchSize = maxBatchSize;
             _batchAcrossRolls = batchAcrossRolls;
         }
 
-        /// <summary>
-        /// Scores every opponent roll, restoring reply boards before completion or cancellation.
-        /// </summary>
-        /// <param name="board">The position after the active player's candidate move.</param>
-        /// <param name="isWhite">The active player's perspective.</param>
-        /// <param name="cancellationToken">Cancels traversal and scoring without returning an incomplete expected score.</param>
-        /// <returns>The expected score from the active player's perspective.</returns>
-        /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
-        public async Task<double> EvaluateAsync(IBoardModel board, bool isWhite, CancellationToken cancellationToken)
+        public async Task<EvalResult> EvaluateAsync(IBoardModel board, bool isWhite, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var opponentIsWhite = !isWhite;
-            var bestByRoll = new double[21];
+            var bestByRoll = new EvalResult[21];
 
-            Array.Fill(bestByRoll, double.NegativeInfinity);
+            Array.Fill(bestByRoll, new EvalResult(double.NegativeInfinity, null));
             var boards = new List<IBoardModel>(_maxBatchSize);
             var pending = new PendingReply[_maxBatchSize];
             var rollIndex = 0;
@@ -122,20 +114,7 @@ namespace GammonX.Mars.NN.Services
                 RestorePending();
             }
 
-            // we preserve the original roll order and arithmetic when converting opponent perspective.
-            var activePlayerExpectedScore = 0d;
-            rollIndex = 0;
-            for (var die1 = 1; die1 <= 6; die1++)
-            {
-                for (var die2 = die1; die2 <= 6; die2++)
-                {
-                    activePlayerExpectedScore -= (die1 == die2 ? 1d : 2d) * bestByRoll[rollIndex++] / 36d;
-                }
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            return activePlayerExpectedScore;
+            return AverageBestReplies(bestByRoll);
 
             async Task ScorePendingAsync()
             {
@@ -158,7 +137,10 @@ namespace GammonX.Mars.NN.Services
                 for (var index = 0; index < scores.Length; index++)
                 {
                     var roll = pending[index].RollIndex;
-                    bestByRoll[roll] = Math.Max(bestByRoll[roll], scores[index]);
+                    if (scores[index].Equity > bestByRoll[roll].Equity)
+                    {
+                        bestByRoll[roll] = scores[index];
+                    }
                 }
 
                 RestorePending();
@@ -192,6 +174,49 @@ namespace GammonX.Mars.NN.Services
                     EvaluationMetrics.RecordReplyBoards(-retained);
                 }
             }
+        }
+
+        private static EvalResult AverageBestReplies(EvalResult[] bestByRoll)
+        {
+            // we keep equity arithmetic unchanged and average only the selected replys distribution.
+            var expectedEquity = 0d;
+            // TODO: Plakoto and Fevga 5 headoutput
+            var headCount = bestByRoll.Any(reply => reply.Prediction is { Length: 1 }) ? 1 : 5;
+            
+            var expectedPrediction = bestByRoll.All(reply => reply.Prediction != null)
+                ? new double[headCount]
+                : null;
+            
+            var rollIndex = 0;
+            for (var die1 = 1; die1 <= 6; die1++)
+            {
+                for (var die2 = die1; die2 <= 6; die2++)
+                {
+                    var reply = bestByRoll[rollIndex++];
+                    var weight = die1 == die2 ? 1d : 2d;
+                    expectedEquity -= weight * reply.Equity / 36d;
+                    
+                    if (expectedPrediction == null)
+                        continue;
+
+                    var prediction = reply.Prediction!;
+                    expectedPrediction[0] += weight * (1d - prediction[0]) / 36d;
+                    if (headCount == 5)
+                    {
+                        // we invert the prediction for the players perspective
+                        expectedPrediction[1] += weight * prediction[3] / 36d;
+                        expectedPrediction[2] += weight * prediction[4] / 36d;
+                        expectedPrediction[3] += weight * prediction[1] / 36d;
+                        expectedPrediction[4] += weight * prediction[2] / 36d;
+                    }
+                }
+            }
+
+            return new EvalResult(
+                expectedEquity,
+                expectedPrediction == null 
+                    ? null 
+                    : Array.ConvertAll(expectedPrediction, value => (float)value));
         }
 
         private struct PendingReply

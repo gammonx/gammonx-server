@@ -23,9 +23,10 @@ namespace GammonX.Mars.NN.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(22.33, whiteResult, 2);
+            // Each side has 13 checkers at distance 24, one at 20, and one at 18.
+            Assert.Equal(350d / 15, whiteResult, 10);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(22.33, blackResult, 2);
+            Assert.Equal(350d / 15, blackResult, 10);
         }
 
         [Fact]
@@ -38,9 +39,10 @@ namespace GammonX.Mars.NN.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(20.80, whiteResult, 2);
+            // White's visible checkers contribute 207 pips; five reserves contribute 125.
+            Assert.Equal(332d / 15, whiteResult, 10);
             var blackResult = feature.Eval(board, false);
-            Assert.Equal(19.27, blackResult, 2);
+            Assert.Equal(304d / 15, blackResult, 10);
         }
 
         [Fact]
@@ -53,7 +55,8 @@ namespace GammonX.Mars.NN.Tests.Features
 
             var feature = new AverageDistanceToBearOffFeature();
             var whiteResult = feature.Eval(board, true);
-            Assert.Equal(23.0, whiteResult, 2);
+            // All fifteen white checkers remain in reserve, 25 pips from bearing off.
+            Assert.Equal(25.0, whiteResult, 2);
             var blackResult = feature.Eval(board, false);
             Assert.Equal(0.0, blackResult, 2);
         }

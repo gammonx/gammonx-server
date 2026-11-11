@@ -3,6 +3,7 @@ using GammonX.Mars.NN.Services;
 using GammonX.Mars.NN.Nets;
 
 using GammonX.Mars.Training;
+using GammonX.Mars.Training.Tournament;
 using GammonX.Mars.Training.Data;
 using GammonX.Mars.Training.Generator;
 using GammonX.Mars.Training.Sidecars;
@@ -101,33 +102,39 @@ static void RunTrainModel()
     var batchSize = PromptInt("Batch size", 16384);
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
+    var learningRate = PromptFloat("Learning rate", 1e-4f);
 
-    NetArchitecture netArchitecture;
-    GameOutcomeOutputMode outputMode;
-    if (string.IsNullOrEmpty(inputModelPath))
+    using var model = CreateModelForTraining(modus, inputModelPath);
+    model.ConfigureTraining(new NetTrainingMetadata(
+        trainingCsvPath,
+        Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath,
+        InputModelPath: inputModelPath,
+        BatchSize: batchSize,
+        ProducerCount: producerCount,
+        QueueCapacity: queueCapacity,
+        LearningRate: learningRate));
+
+    NetTrainer.Train(model);
+}
+
+static INetModel CreateModelForTraining(GameModus modus, string? inputModelPath, bool promptOutputMode = true)
+{
+    var device = cuda.is_available() ? CUDA : CPU;
+    if (!string.IsNullOrEmpty(inputModelPath))
+        return NetModelFactory.CreateForModel(modus, inputModelPath, device);
+
+    var architecture = NetArchitecture.A;
+    var outputMode = GameOutcomeOutputMode.LegacyIndependentSigmoid;
+    if (modus is not (GameModus.Plakoto or GameModus.Fevga))
     {
-        netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
-        outputMode = PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid],
-            GameOutcomeOutputMode.MonotonicCumulative);
-    }
-    else
-    {
-        var metadata = NetModelMetadata.ReadOrLegacy(inputModelPath, modus);
-        netArchitecture = metadata.Architecture;
-        outputMode = metadata.OutputMode;
+        architecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+        outputMode = promptOutputMode
+            ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
+            : GameOutcomeOutputMode.MonotonicCumulative;
     }
 
-    NetTrainer.Train(
-        modus,
-        trainCsvPath: trainingCsvPath,
-        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
-        inputModelPath: inputModelPath,
-        outputModelPath: outputModelPath,
-        batchSize: batchSize,
-        producerCount: producerCount,
-        queueCapacity: queueCapacity,
-        outputMode: outputMode,
-        architecture: netArchitecture);
+    return NetModelFactory.CreateNew(modus, device, outputMode, architecture);
 }
 
 #endregion Train Model
@@ -144,16 +151,15 @@ static void RunNoiseDiagnostic()
     var trainingCsvPath = PromptString("Training CSV path", "training_data.csv");
     var outputModelPath = PromptString("Output model path", "noise_diagnostic.dat");
     var inputModelPath = PromptString("Input model path. Leave blank for new model.", "");
-    var netArchitecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+    using var model = CreateModelForTraining(modus, inputModelPath, promptOutputMode: false);
+    model.ConfigureTraining(new NetTrainingMetadata(
+        trainingCsvPath,
+        Path.ChangeExtension(trainingCsvPath, ".val.csv"),
+        outputModelPath,
+        InputModelPath: inputModelPath,
+        ShuffleLabels: true));
 
-    NetTrainer.Train(
-        modus,
-        trainCsvPath: trainingCsvPath,
-        valCsvPath: Path.ChangeExtension(trainingCsvPath, ".val.csv"),
-        outputModelPath: outputModelPath,
-        inputModelPath: inputModelPath,
-        shuffleLabels: true,
-        architecture: netArchitecture);
+    NetTrainer.Train(model);
 }
 
 #endregion Noise Floor Diagnostic
@@ -988,13 +994,14 @@ static async Task RunGenerateTrainingDataAsync()
     var playAgainstBotService = PromptBool("Play against wildbg bot", false);
     var evalBatchSize = PromptInt("Eval Batch Size", 64);
     var processCount = PromptInt("Process count", Environment.ProcessorCount);
-    // we configure the rank aware exploration parameters (selecting the best move exploration)
+    // we want to collect data on how close the top moves were
     var collectScoreGapDiagnostics = PromptBool("Write score-gap diagnostics", false);
+    // we configure the rank aware exploration parameters (selecting the best move exploration)
     var scoreGapAwareExploration = PromptBool("Enable score-gap ranked exploration", false);
-    var scoreGapSmallThreshold = PromptFloat("Small score-gap threshold", 0.02f);
-    var scoreGapLargeThreshold = PromptFloat("Large score-gap threshold", 0.2f);
-    var smallGapRankedMultiplier = PromptFloat("Small-gap ranked multiplier", 1.5f);
-    var largeGapRankedMultiplier = PromptFloat("Large-gap ranked multiplier", 0.5f);
+    var scoreGapSmallThreshold = scoreGapAwareExploration ? PromptFloat("Small score-gap threshold", 0.02f) : 0.02f;
+    var scoreGapLargeThreshold = scoreGapAwareExploration ? PromptFloat("Large score-gap threshold", 0.2f) : 0.2f;
+    var smallGapRankedMultiplier = scoreGapAwareExploration ? PromptFloat("Small-gap ranked multiplier", 1.5f) : 1.5f;
+    var largeGapRankedMultiplier = scoreGapAwareExploration ? PromptFloat("Large-gap ranked multiplier", 0.5f) : 0.5f;
     // we configure the selective two-ply search parameters (selectively execute a two-ply search based on the 1-ply evaluation gap)
     // it is a compromise between computational cost (full 2-ply) and search accuracy (selective 2-ply)
     var selectiveTwoPlyEnabled = PromptBool("Enable selective 2-ply search", false);

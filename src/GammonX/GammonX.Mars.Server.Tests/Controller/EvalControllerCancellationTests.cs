@@ -42,11 +42,13 @@ public class EvalControllerCancellationTests : IClassFixture<WebApplicationFacto
             "move" => controller.Move(request, cancellation.Token),
             "board" => controller.Board(new EvalBoardRequestContract
             {
-                Board = request.Board, Modus = request.Modus, BotLevel = request.BotLevel
+                Board = request.Board, Modus = request.Modus, BotLevel = request.BotLevel,
+                IsWhite = request.IsWhite, TurnNumber = request.TurnNumber
             }, cancellation.Token),
             "cube" => controller.Cube(new EvalCubeRequestContract
             {
-                Board = request.Board, Modus = request.Modus, BotLevel = request.BotLevel
+                Board = request.Board, Modus = request.Modus, BotLevel = request.BotLevel,
+                IsWhite = request.IsWhite, TurnNumber = request.TurnNumber
             }, cancellation.Token),
             _ => throw new ArgumentOutOfRangeException(nameof(endpoint))
         };
@@ -83,6 +85,7 @@ public class EvalControllerCancellationTests : IClassFixture<WebApplicationFacto
 
     private static EvalMoveRequestContract CreateRequest() => new()
     {
+        TurnNumber = 0,
         Board = JsonConvert.DeserializeObject<BoardModelContract>(MockBoards.DefaultBoard1)!,
         Modus = GameModus.Backgammon,
         BotLevel = BotLevel.Hard,

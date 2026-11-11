@@ -3,10 +3,12 @@
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 
+using GammonX.Models.Enums;
+
 namespace GammonX.Mars.NN.Nets
 {
     // <inheritdoc />
-    public sealed class PlakotoNet : Module<Tensor, Tensor>, INetModel
+    public sealed class PlakotoNet : NetModel
     {
         private readonly Linear _fc1;
         private readonly Linear _fc2;
@@ -14,8 +16,15 @@ namespace GammonX.Mars.NN.Nets
         private readonly Linear _fc4;
         private readonly Dropout _drop;
 
-        public PlakotoNet(Device device) : base(nameof(PlakotoNet))
+        public PlakotoNet(Device device)
+            : this(device, new NetModelMetadata(NetModelMetadata.CurrentFormatVersion, GameModus.Plakoto, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A))
         {
+            // pass
+        }
+
+        public PlakotoNet(Device device, NetModelMetadata metadata) : base(nameof(PlakotoNet), metadata)
+        {
+            metadata.Validate(GameModus.Plakoto, nameof(PlakotoNet));
             _fc1 = Linear(266, 256, true, device);
             _fc2 = Linear(256, 128, true, device);
             _fc3 = Linear(128, 64, true, device);
@@ -23,51 +32,6 @@ namespace GammonX.Mars.NN.Nets
             // increase p if model is over fitting
             _drop = Dropout(p: 0.0);
             RegisterComponents();
-        }
-
-        // <inheritdoc />
-        public Tensor Forward(Tensor x)
-        {
-            return forward(x);
-        }
-
-        // <inheritdoc />
-        public void Load(string location)
-        {
-            load(location);
-        }
-
-        // <inheritdoc />
-        public void Save(string location)
-        {
-            save(location);
-        }
-
-        // <inheritdoc />
-        public void Eval()
-        {
-            eval();
-        }
-
-        // <inheritdoc />
-        public void Train()
-        {
-            train();
-        }
-
-        // <inheritdoc />
-        public IEnumerable<Parameter> GetParameters()
-        {
-            return parameters();
-        }
-
-        // <inheritdoc />
-        public void MoveTo(Device device)
-        {
-            foreach (var (_, param) in named_parameters())
-                param.to(device);
-            foreach (var (_, buf) in named_buffers())
-                buf.to(device);
         }
 
         // <inheritdoc />

@@ -11,14 +11,16 @@ namespace GammonX.Mars.NN.Services
     public interface IFeatureVectorExtractor
     {
         /// <summary>
-        /// Gets the amount of features vectors extracted by this extractor.
+        /// Gets the number of channels in each extracted feature vector.
         /// </summary>
         /// <remarks></remarks>
         public int FeatureCount { get; }
 
         /// <summary>
         /// Extracts the normalized feature vector from an eval result for use as NN input.
-        /// All values are already in [0, 1] via <see cref="NormalizedEvalResultModel"/>.
+        /// Requires normalized model measurements and a valid board. Channels retain
+        /// their fixed order: active-player scalars, then opponent-first raw point counts,
+        /// followed by opponent/player pin indicators in Plakoto.
         /// </summary>
         /// <param name="model">Computed model values from the perspective of the active player.</param>
         /// <param name="board">Target board state from the perspective of the white player (not inverted).</param>

@@ -8,7 +8,7 @@ namespace GammonX.Mars.Training.Sidecars;
 /// <param name="TurnIndex">The index of the turn in the game.</param>
 /// <param name="IsWhite">Indicates if the position is for the white player.</param>
 /// <param name="Features">The feature vector representing the position.</param>
-/// <param name="Prediction">The predicted values for the position.</param>
+/// <param name="Prediction">The recorded one-ply or searched outcome predictions for the position.</param>
 /// <param name="IsTerminal">Indicates if the position is terminal.</param>
 public sealed record TrajectoryPosition(
     int TurnIndex,

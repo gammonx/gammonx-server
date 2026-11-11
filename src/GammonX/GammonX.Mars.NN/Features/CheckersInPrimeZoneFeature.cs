@@ -36,18 +36,10 @@ namespace GammonX.Mars.NN.Features
             var checkers = 0;
             for (var index = start; index <= end; index++)
             {
-                var field = board.Fields[index];
-                if (isWhite && field < 0)
-                {
-                    checkers += field;
-                }
-                else if (!isWhite && field > 0)
-                {
-                    checkers += field;
-                }
+                checkers += FeatureBoardGeometry.OwnCount(board.Fields[index], isWhite);
             }
 
-            return isWhite ? Math.Abs(checkers) : checkers;
+            return checkers;
         }
     }
 }

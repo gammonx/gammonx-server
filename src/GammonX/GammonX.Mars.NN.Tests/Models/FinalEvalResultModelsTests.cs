@@ -10,16 +10,16 @@ namespace GammonX.Mars.NN.Tests.Models
     {
         private readonly FinalEvalResultModels _models = new FinalEvalResultModels(new FinalEvalResultModel[]
         {
-            new FinalEvalResultModel(10, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(1, 2), new MoveModel(1, 2)}}, new NormalizedEvalResultModel()),
-            new FinalEvalResultModel(11, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(2, 3), new MoveModel(2, 3)}}, new NormalizedEvalResultModel()),
-            new FinalEvalResultModel(15, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(3, 4), new MoveModel(3, 4)}}, new NormalizedEvalResultModel()),
-            new FinalEvalResultModel(20, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(4, 5), new MoveModel(4, 5)}}, new NormalizedEvalResultModel()),
-            new FinalEvalResultModel(30, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(5, 6), new MoveModel(5, 6)}}, new NormalizedEvalResultModel())
+            new FinalEvalResultModel(10, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(1, 2), new MoveModel(1, 2)}}, new NormalizedEvalResultModel()),
+            new FinalEvalResultModel(11, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(2, 3), new MoveModel(2, 3)}}, new NormalizedEvalResultModel()),
+            new FinalEvalResultModel(15, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(3, 4), new MoveModel(3, 4)}}, new NormalizedEvalResultModel()),
+            new FinalEvalResultModel(20, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(4, 5), new MoveModel(4, 5)}}, new NormalizedEvalResultModel()),
+            new FinalEvalResultModel(30, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(5, 6), new MoveModel(5, 6)}}, new NormalizedEvalResultModel())
         });
 
         private readonly FinalEvalResultModels _singleModel = new FinalEvalResultModels(new FinalEvalResultModel[]
         {
-            new FinalEvalResultModel(10, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(1, 2), new MoveModel(1, 2)}}, new NormalizedEvalResultModel()),
+            new FinalEvalResultModel(10, null, new MoveSequenceModel() {Moves = new List<MoveModel> {new MoveModel(1, 2), new MoveModel(1, 2)}}, new NormalizedEvalResultModel()),
         });
 
         [Fact]

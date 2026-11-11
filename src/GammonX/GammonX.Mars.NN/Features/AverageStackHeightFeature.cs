@@ -18,9 +18,10 @@ namespace GammonX.Mars.NN.Features
             var occupiedPointCount = 0;
             foreach (var field in board.Fields)
             {
-                if ((isWhite && field < 0) || (!isWhite && field > 0))
+                var count = FeatureBoardGeometry.OwnCount(field, isWhite);
+                if (count > 0)
                 {
-                    totalStackHeight += Math.Abs(field);
+                    totalStackHeight += count;
                     occupiedPointCount++;
                 }
             }

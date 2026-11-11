@@ -8,12 +8,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="NeuralNets\Backgammon\training_net.dat" />
-	  <None Remove="NeuralNets\Portes\training_net.dat" />
-	  <None Remove="NeuralNets\Tavla\training_net.dat" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="DotNetEnv" Version="$(DotNetEnvVersion)" />
 		<PackageReference Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="$(SerilogSinksConsoleVersion)" />

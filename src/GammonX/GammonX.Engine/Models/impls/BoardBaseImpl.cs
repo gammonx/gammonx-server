@@ -312,7 +312,7 @@ namespace GammonX.Engine.Models
 				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeWhite.End.Value, (i) => i < 0);
 				if (this is IHomeBarModel homeBar)
 				{
-					pipCount += homeBar.HomeBarCountWhite * 24;
+					pipCount += homeBar.HomeBarCountWhite * (Fields.Length + 1);
 				}
 			}
 			else
@@ -320,7 +320,7 @@ namespace GammonX.Engine.Models
 				pipCount += GetPipeCountForBoard(isWhite, Fields, HomeRangeBlack.End.Value, (i) => i > 0);
 				if (this is IHomeBarModel homeBar)
 				{
-					pipCount += homeBar.HomeBarCountBlack * 24;
+					pipCount += homeBar.HomeBarCountBlack * (Fields.Length + 1);
 				}
 			}
 

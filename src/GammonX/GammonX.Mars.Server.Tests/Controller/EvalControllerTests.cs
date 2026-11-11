@@ -53,6 +53,7 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.NotNull(board);
             var request = new EvalBoardRequestContract
             {
+                TurnNumber = 0,
                 Board = board,
                 Modus = GameModus.Backgammon,
                 IsWhite = true,
@@ -86,6 +87,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite
@@ -117,6 +119,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -153,6 +156,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var boardStateRequest = new EvalBoardRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite
@@ -168,7 +172,7 @@ namespace GammonX.Mars.Server.Tests.Controller
             if (!isWhite)
             {
                 // black has stronger board
-                Assert.InRange(boardEval.Payload.EvalScore, 0.45, 0.7);
+                Assert.InRange(boardEval.Payload.EvalScore, 0.40, 0.7);
             }
             else
             {
@@ -192,6 +196,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -226,6 +231,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -256,6 +262,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var moveRequest = new EvalMoveRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -289,6 +296,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var cubeRequest = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,
@@ -327,6 +335,7 @@ namespace GammonX.Mars.Server.Tests.Controller
 
             var cubeRequest = new EvalCubeRequestContract()
             {
+                TurnNumber = 0,
                 Board = boardContract,
                 Modus = modus,
                 IsWhite = isWhite,

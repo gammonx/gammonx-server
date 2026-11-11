@@ -52,7 +52,15 @@ public class SearchCancellationTests
         service.ReuseReplyBoard = reuseReplyBoard;
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.GetCandidatesByEvalAsync(
-            board, moves, true, EvalWeights.GetContactWeights(modus), moves.Length, level, cancellation.Token));
+            new FeatureEvalOptions
+            {
+                Candidates = moves,
+                IsWhite = true,
+                ContactWeights = EvalWeights.GetContactWeights(modus),
+                MaxCandidates = moves.Length,
+                BotLevel = level,
+                TurnNumber = 1,
+            }, board, cancellation.Token));
 
         Assert.True(board.Equals(original));
         Assert.Equal(history, board.History.Events.ToArray());

@@ -30,8 +30,8 @@ namespace GammonX.Mars.NN.Features
             var exposedPlayer = GetExposedCheckers(board, isWhite);
             // blots the player can hit
             var exposedOpp = GetExposedCheckers(board, !isWhite);
-            var playerInOppHome = HasCheckersInOpponentHome(board, !isWhite);
-            var oppInPlayerHome = HasCheckersInOpponentHome(board, isWhite);
+            var playerInOppHome = HasCheckersInOpponentHome(board, isWhite);
+            var oppInPlayerHome = HasCheckersInOpponentHome(board, !isWhite);
 
             int hitRolls1P = 0, hitRolls2P = 0, escRolls1P = 0, escRolls2P = 0;
             int hitRolls1O = 0, hitRolls2O = 0, escRolls1O = 0, escRolls2O = 0;
@@ -106,38 +106,29 @@ namespace GammonX.Mars.NN.Features
 
         private static bool HasCheckersInOpponentHome(IBoardModel board, bool isWhite)
         {
-            var fieldTuples = board.Fields.Index();
-
-            if (!isWhite)
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                // we want to check if white checkers are in black home
-                var whiteIndices = fieldTuples.Where(i => i.Item < 0).Select(i => i.Index);
-                return whiteIndices.Any(wi => board.IsInHomeOperator(isWhite, wi));
+                if (FeatureBoardGeometry.OwnCount(board.Fields[index], isWhite) > 0
+                    && board.IsInHomeOperator(!isWhite, index))
+                {
+                    return true;
+                }
             }
-            else
-            {
-                // we want to check if black checkers are in white home
-                var blackIndices = fieldTuples.Where(i => i.Item > 0).Select(i => i.Index);
-                return blackIndices.Any(wi => board.IsInHomeOperator(isWhite, wi));
-            }
+            return false;
         }
 
         private static HashSet<int> GetExposedCheckers(IBoardModel board, bool isWhite)
         {
-            if (isWhite)
+            var exposed = new HashSet<int>();
+            for (var index = 0; index < board.Fields.Length; index++)
             {
-                return board.Fields.Index()
-                .Where(i => i.Item == -1)
-                .Select(i => i.Index)
-                .ToHashSet();
+                // Preserve visible-singleton targets; this calculation does not filter pin state.
+                if (FeatureBoardGeometry.OwnCount(board.Fields[index], isWhite) == 1)
+                {
+                    exposed.Add(index);
+                }
             }
-            else
-            {
-                return board.Fields.Index()
-                .Where(i => i.Item == 1)
-                .Select(i => i.Index)
-                .ToHashSet();
-            }
+            return exposed;
         }
     }
 }

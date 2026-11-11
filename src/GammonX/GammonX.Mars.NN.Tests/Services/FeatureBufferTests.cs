@@ -48,12 +48,18 @@ public class FeatureBufferTests
             service.ReuseFeatureBuffers = reuse;
             return service;
         }
-        Task<double> Evaluate(BaseFeatureEvalServiceImpl service) =>
-            service.EvalBoardStateAsync(new EvalBoardRequestContract
+        async Task<double> Evaluate(BaseFeatureEvalServiceImpl service) =>
+            (await service.EvalBoardStateAsync(new FeatureEvalOptions
             {
-                Board = BoardServiceFactory.Create(modus).CreateBoard().ToContract(false),
-                IsWhite = white, Modus = modus, BotLevel = BotLevel.Expert
-            }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+                EvalBoardRequest = new EvalBoardRequestContract
+                {
+                    TurnNumber = 0,
+                    Board = BoardServiceFactory.Create(modus).CreateBoard().ToContract(false),
+                    IsWhite = white, Modus = modus, BotLevel = BotLevel.Expert
+                },
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = 0,
+            }, TestContext.Current.CancellationToken)).Equity;
     }
 
     [Theory]
@@ -77,6 +83,8 @@ public class FeatureBufferTests
             {
                 Array.Fill(fields, 2, 0, 6);
                 board.HomeBarCountWhite = 1;
+                board.BearOffCountWhite = 14;
+                board.BearOffCountBlack = 3;
             }
             else
             {
@@ -84,14 +92,20 @@ public class FeatureBufferTests
                 fields[23] = -1;
                 board.BearOffCountBlack = board.BearOffCountWhite = 14;
             }
-            var score = await service.EvalBoardStateAsync(new EvalBoardRequestContract
+            var score = await service.EvalBoardStateAsync(new FeatureEvalOptions
             {
-                Board = board, IsWhite = scenario != "pass",
-                Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-            }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+                EvalBoardRequest = new EvalBoardRequestContract
+                {
+                    TurnNumber = 0,
+                    Board = board, IsWhite = scenario != "pass",
+                    Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
+                },
+                ContactWeights = EvalWeights.DefaultContactWeights,
+                TurnNumber = 0,
+            }, TestContext.Current.CancellationToken);
             Assert.Equal(expectedRows, probe.Rows);
             if (reuse) Assert.InRange(probe.Buffers.Count, 0, 4);
-            return score;
+            return score.Equity;
         }
     }
 
@@ -103,11 +117,17 @@ public class FeatureBufferTests
         var probe = new Probe(GameModus.Backgammon) { Failure = cancel ? new OperationCanceledException() : new InvalidDataException() };
         var service = (BaseFeatureEvalServiceImpl)FeatureEvalServiceFactory.Create(GameModus.Backgammon, probe);
         service.ReuseReplyBoard = service.ReuseFeatureBuffers = true;
-        Task<double> Evaluate() => service.EvalBoardStateAsync(new EvalBoardRequestContract
+        Task<EvalResult> Evaluate() => service.EvalBoardStateAsync(new FeatureEvalOptions
         {
-            Board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard().ToContract(false),
-            IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
-        }, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
+            EvalBoardRequest = new EvalBoardRequestContract
+            {
+                TurnNumber = 0,
+                Board = BoardServiceFactory.Create(GameModus.Backgammon).CreateBoard().ToContract(false),
+                IsWhite = true, Modus = GameModus.Backgammon, BotLevel = BotLevel.Expert
+            },
+            ContactWeights = EvalWeights.DefaultContactWeights,
+            TurnNumber = 0,
+        }, TestContext.Current.CancellationToken);
         Assert.NotNull(await Record.ExceptionAsync(Evaluate));
         var failedRows = probe.Buffers.Select(row => (Row: row, Copy: row.ToArray())).ToArray();
         probe.Failure = null;

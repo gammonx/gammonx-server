@@ -16,7 +16,7 @@ namespace GammonX.Mars.NN.Tests.Performance;
 
 public partial class PerformanceTests
 {
-    [Theory]
+    [Theory(Skip = "PERFORMANCE")]
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
@@ -47,9 +47,16 @@ public partial class PerformanceTests
             for (var index = 0; index < moves.Length; index++)
             {
                 observer.Reset(ExpectedReplyGroups(boardService, board, moves[index], service.BatchAcrossRolls));
-                var result = await service.EvalMoveSequenceAsync(
-                    contract, false, moves[index], BotLevel.Expert, EvalWeights.DefaultContactWeights, TestContext.Current.CancellationToken);
-                Assert.True(double.IsFinite(result.Score));
+                var result = await service.EvalMoveSequenceAsync(new FeatureEvalOptions
+                {
+                    BoardContract = contract,
+                    IsWhite = false,
+                    Candidate = moves[index],
+                    BotLevel = BotLevel.Expert,
+                    ContactWeights = EvalWeights.DefaultContactWeights,
+                    TurnNumber = 0,
+                }, TestContext.Current.CancellationToken);
+                Assert.True(double.IsFinite(result.Equity));
                 Assert.Equal(observer.Rows, observer.Unique + observer.WithinBatchDuplicates + observer.CrossBatchDuplicates);
                 Assert.Equal(0, observer.RemainingGroups);
                 output.WriteLine(FormattableString.Invariant(

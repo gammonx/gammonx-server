@@ -1,6 +1,21 @@
 {
-  "FormatVersion": 1,
+  "FormatVersion": 2,
   "Modus": "Backgammon",
   "OutputMode": "MonotonicCumulative",
-  "Architecture": "B"
+  "Architecture": "B",
+  "Name": "training_net.td070.gen13-4-run3.dat",
+  "Training": {
+    "TrainCsvPath": "/home/hegi/sandbox/console-app/linux-x64/training_data-gen13-2/gen13.training_data.td070.sp.2ply.50k-2.csv",
+    "ValCsvPath": "/home/hegi/sandbox/console-app/linux-x64/training_data-gen13-2/gen13.training_data.td070.sp.2ply.50k-2.val.csv",
+    "OutputModelPath": "training_net.td070.gen13-4-run3.dat",
+    "InputModelPath": "/home/hegi/sandbox/console-app/linux-x64/training_net.td070.gen13-3.dat",
+    "Epochs": 50,
+    "BatchSize": 16384,
+    "ProducerCount": 32,
+    "QueueCapacity": 64,
+    "LearningRate": 0.0001,
+    "EarlyStoppingPatience": 8,
+    "MinimumDelta": 1E-05,
+    "ShuffleLabels": false
+  }
 }

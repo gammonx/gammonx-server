@@ -3,7 +3,7 @@ using GammonX.Engine.Models;
 
 namespace GammonX.Mars.NN.Services;
 
-internal readonly record struct PreparedPosition(float[]? Features, double TerminalScore = 0);
+internal readonly record struct PreparedPosition(float[]? Features, EvalResult? Terminal = null);
 
 internal sealed partial class TwoPlySearchEvaluator
 {
@@ -17,18 +17,17 @@ internal sealed partial class TwoPlySearchEvaluator
     /// <param name="cancellationToken">Cancels traversal and scoring without returning an incomplete expected score.</param>
     /// <returns>The evaluated score.</returns>
     /// <exception cref="InvalidDataException">Thrown when the input data is invalid.</exception>
-    /// <exception cref="OperationCanceledException">The cancellation token was cancelled.</exception>
-    internal async Task<double> EvaluatePreparedAsync(
+    internal async Task<EvalResult> EvalPreparedAsync(
         IBoardModel board, bool isWhite,
         Func<IBoardModel, bool, PreparedPosition> prepare,
-        Func<IReadOnlyList<PreparedPosition>, Task<double[]>> scoreAsync,
+        Func<IReadOnlyList<PreparedPosition>, Task<EvalResult[]>> scoreAsync,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var opponentIsWhite = !isWhite;
-        var bestByRoll = new double[21];
-        Array.Fill(bestByRoll, double.NegativeInfinity);
+        var bestByRoll = new EvalResult[21];
+        Array.Fill(bestByRoll, new EvalResult(double.NegativeInfinity, null));
         var positions = new List<PreparedPosition>(_maxBatchSize);
         var rollIndices = new int[_maxBatchSize];
         IBoardModel? working = null;
@@ -116,19 +115,7 @@ internal sealed partial class TwoPlySearchEvaluator
             }
         }
 
-        var expected = 0d;
-        rollIndex = 0;
-        for (var die1 = 1; die1 <= 6; die1++)
-        {
-            for (var die2 = die1; die2 <= 6; die2++)
-            {
-                expected -= (die1 == die2 ? 1d : 2d) * bestByRoll[rollIndex++] / 36d;
-            }
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return expected;
+        return AverageBestReplies(bestByRoll);
 
         void Add(PreparedPosition position)
         {
@@ -162,7 +149,10 @@ internal sealed partial class TwoPlySearchEvaluator
             for (var index = 0; index < scores.Length; index++)
             {
                 var roll = rollIndices[index];
-                bestByRoll[roll] = Math.Max(bestByRoll[roll], scores[index]);
+                if (scores[index].Equity > bestByRoll[roll].Equity)
+                {
+                    bestByRoll[roll] = scores[index];
+                }
             }
 
             ClearPending();

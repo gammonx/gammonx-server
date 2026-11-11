@@ -12,18 +12,14 @@ namespace GammonX.Mars.NN.Features
         // <inheritdoc />
         public double Eval(IBoardModel board, bool isWhite)
         {
-            var startIndex = isWhite
-                ? board.StartRangeWhite.Start.Value
-                : board.StartRangeBlack.Start.Value;
             var positions = new int[board.Fields.Length];
             var positionCount = 0;
 
             for (var index = 0; index < board.Fields.Length; index++)
             {
-                var field = board.Fields[index];
-                if ((isWhite && field < 0) || (!isWhite && field > 0))
+                if (FeatureBoardGeometry.OwnCount(board.Fields[index], isWhite) > 0)
                 {
-                    positions[positionCount++] = board.RecoverRollOperator(isWhite, startIndex, index);
+                    positions[positionCount++] = FeatureBoardGeometry.MovementPosition(board, isWhite, index);
                 }
             }
 
@@ -33,7 +29,7 @@ namespace GammonX.Mars.NN.Features
 
         /// <summary>
         /// Returns the average number of empty points between consecutive checker positions
-        /// when ordered by movement direction. Returns 0 when fewer than 2 checkers exist.
+        /// when ordered by movement direction. Returns 0 with fewer than two occupied points.
         /// </summary>
         private static double CalculateAverageGap(int[] sortedMovementPositions, int positionCount)
         {

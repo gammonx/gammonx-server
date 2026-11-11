@@ -27,8 +27,15 @@ public sealed record NetModelMetadata(
     GameOutcomeOutputMode OutputMode,
     NetArchitecture Architecture)
 {
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
     public const string MetadataSuffix = ".meta.json";
+
+    /// <summary>
+    /// Gets the model filename, including its extension.
+    /// </summary>
+    public string? Name { get; init; }
+
+    public NetTrainingMetadata? Training { get; init; }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -41,20 +48,8 @@ public sealed record NetModelMetadata(
     public static NetModelMetadata ReadOrLegacy(string modelPath, GameModus modus)
     {
         var metadataPath = GetPath(modelPath);
-        if (!File.Exists(metadataPath))
-        {
-            return LegacyFallback(modus);
-        }
-
-        try
-        {
-            using var stream = File.OpenRead(metadataPath);
-            return Read(stream, modus, metadataPath);
-        }
-        catch (JsonException exception)
-        {
-            throw new InvalidDataException($"Could not parse model metadata '{metadataPath}'.", exception);
-        }
+        using var stream = File.Exists(metadataPath) ? File.OpenRead(metadataPath) : null;
+        return ReadOrLegacy(stream, modus, metadataPath) with { Name = Path.GetFileName(modelPath) };
     }
 
     public static NetModelMetadata ReadOrLegacy(Stream? stream, GameModus modus, string sourceName)
@@ -74,10 +69,9 @@ public sealed record NetModelMetadata(
         }
     }
 
-    public static void Write(string modelPath, GameModus modus, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
+    internal void Write(string modelPath)
     {
-        var metadata = new NetModelMetadata(CurrentFormatVersion, modus, outputMode, architecture);
-        File.WriteAllText(GetPath(modelPath), JsonSerializer.Serialize(metadata, JsonOptions));
+        File.WriteAllText(GetPath(modelPath), JsonSerializer.Serialize(this, JsonOptions));
     }
 
     private static NetModelMetadata Read(Stream stream, GameModus modus, string sourceName)
@@ -85,32 +79,52 @@ public sealed record NetModelMetadata(
         var metadata = JsonSerializer.Deserialize<NetModelMetadata>(stream, JsonOptions)
             ?? throw new InvalidDataException($"Model metadata '{sourceName}' is empty.");
 
-        if (metadata.FormatVersion != CurrentFormatVersion)
+        if (metadata.FormatVersion is not (1 or CurrentFormatVersion))
         {
             throw new InvalidDataException($"Model metadata '{sourceName}' has unsupported format version {metadata.FormatVersion}; expected {CurrentFormatVersion}.");
         }
 
-        if (metadata.Modus != modus)
+        // Single-head models previously ignored architecture B and always constructed architecture A.
+        if (metadata.FormatVersion == 1 && metadata.Modus is GameModus.Plakoto or GameModus.Fevga && metadata.Architecture == NetArchitecture.B)
         {
-            throw new InvalidDataException($"Model metadata '{sourceName}' targets {metadata.Modus}, but {modus} was requested.");
+            metadata = metadata with { Architecture = NetArchitecture.A };
         }
 
-        if (!Enum.IsDefined(metadata.OutputMode))
+        metadata.Validate(modus, sourceName);
+        return metadata;
+    }
+
+    internal void Validate(GameModus modus, string sourceName)
+    {
+        if (!Enum.IsDefined(Modus))
         {
-            throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown output mode value {(int)metadata.OutputMode}.");
+            throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown game mode value {(int)Modus}.");
         }
 
-        if (!Enum.IsDefined(metadata.Architecture))
+        if (Modus != modus)
         {
-            throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown architecture value {(int)metadata.Architecture}.");
+            throw new InvalidDataException($"Model metadata '{sourceName}' targets {Modus}, but {modus} was requested.");
         }
 
-        if (modus is GameModus.Plakoto or GameModus.Fevga && metadata.OutputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
+        if (!Enum.IsDefined(OutputMode))
+        {
+            throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown output mode value {(int)OutputMode}.");
+        }
+
+        if (!Enum.IsDefined(Architecture))
+        {
+            throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown architecture value {(int)Architecture}.");
+        }
+
+        if (modus is GameModus.Plakoto or GameModus.Fevga && OutputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
         {
             throw new InvalidDataException($"Model metadata '{sourceName}' requests five-head output semantics for the single-head {modus} model.");
         }
 
-        return metadata;
+        if (modus is GameModus.Plakoto or GameModus.Fevga && Architecture != NetArchitecture.A)
+        {
+            throw new InvalidDataException($"Model metadata '{sourceName}' requests an unsupported architecture for the single-head {modus} model.");
+        }
     }
 
     private static NetModelMetadata LegacyFallback(GameModus modus) => new(0, modus, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A);
