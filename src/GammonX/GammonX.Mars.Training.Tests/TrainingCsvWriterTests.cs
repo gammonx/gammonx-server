@@ -10,7 +10,29 @@ namespace GammonX.Mars.Training.Tests;
 public sealed class TrainingCsvWriterTests
 {
     [Theory]
-    [InlineData(GameModus.Fevga, 1)]
+    [InlineData("f0,f1,pWin")]
+    [InlineData("f0,f1,pWin,pGammonLoss,pGammonWin")]
+    [InlineData("f0,f1,pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss")]
+    public void ThreeLabelReadersRejectIncompatibleHeaders(string header)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"gammonx-header-{Guid.NewGuid():N}.csv");
+        var binary = Path.ChangeExtension(path, ".bin");
+        try
+        {
+            File.WriteAllText(path, header + "\n");
+            Assert.Throws<InvalidDataException>(() => CsvBatchEnumerator.BuildRowIndex(path, 3));
+            Assert.Throws<InvalidDataException>(() => BinaryBatchEnumerator.ScanCsvAndConvertToBinary(path, binary, 3));
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(binary);
+        }
+    }
+
+    [Theory]
+    [InlineData(GameModus.Fevga, 3)]
+    [InlineData(GameModus.Plakoto, 3)]
     [InlineData(GameModus.Backgammon, 5)]
     public void WriteUsesInvariantCultureAndProducesReadableCsv(GameModus modus, int labelCount)
     {
@@ -23,9 +45,7 @@ public sealed class TrainingCsvWriterTests
         {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-DE");
-            var labels = labelCount == 1
-                ? new[] { 0.25f }
-                : new[] { 0.25f, 0.125f, 0.0625f, 0.1f, 0.05f };
+            var labels = new[] { 0.25f, 0.125f, 0f, 0.1f, 0f };
             var row = new TrainingDataRow(
                 Guid.NewGuid(),
                 new TrajectoryPosition(0, true, [1.5f, -2.25f], [0.5f, 0f, 0f, 0f, 0f], true),
@@ -37,6 +57,11 @@ public sealed class TrainingCsvWriterTests
             Assert.Equal(2 + labelCount, lines[1].Split(',').Length);
             Assert.Contains("1.5", lines[1]);
             Assert.Contains("0.25", lines[1]);
+            if (labelCount == 3)
+            {
+                Assert.EndsWith(",pWin,pGammonWin,pGammonLoss", lines[0]);
+                Assert.EndsWith(",0.25,0.125,0.1", lines[1]);
+            }
 
             var converted = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(csvPath, binaryPath, labelCount);
             Assert.Equal(2, converted.featureCount);

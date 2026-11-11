@@ -124,15 +124,13 @@ static INetModel CreateModelForTraining(GameModus modus, string? inputModelPath,
     if (!string.IsNullOrEmpty(inputModelPath))
         return NetModelFactory.CreateForModel(modus, inputModelPath, device);
 
-    var architecture = NetArchitecture.A;
-    var outputMode = GameOutcomeOutputMode.LegacyIndependentSigmoid;
-    if (modus is not (GameModus.Plakoto or GameModus.Fevga))
-    {
-        architecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
-        outputMode = promptOutputMode
-            ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
-            : GameOutcomeOutputMode.MonotonicCumulative;
-    }
+    // Architecture A for Fevga/Plakoto is retained only for inference of existing models.
+    var architecture = modus is GameModus.Fevga or GameModus.Plakoto
+        ? NetArchitecture.B
+        : PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+    var outputMode = promptOutputMode
+        ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
+        : GameOutcomeOutputMode.MonotonicCumulative;
 
     return NetModelFactory.CreateNew(modus, device, outputMode, architecture);
 }
@@ -236,8 +234,7 @@ static async Task RunBotServiceTournamentAsync()
 static void RunShuffleCsv()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: support 5 head output for Plakoto and Fevga
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     // we shuffle all inputs training data to create new CSV files which can be used for combined training
     Console.WriteLine();
@@ -287,6 +284,7 @@ static void RunShuffleCsv()
     foreach (var path in inputPaths)
     {
         var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        WellKnownCsvHeaders.ValidateTrainingHeader(rowIndex.header, labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
         if (header == null)
         {
             header = rowIndex.header;
@@ -488,8 +486,7 @@ static string GetGameMetadataPath(string csvPath)
 static void RunSelectRandomGames()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: support 5 head output for Plakoto and Fevga
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     Console.WriteLine();
     Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
@@ -590,6 +587,7 @@ static void RunSelectRandomGames()
     {
         var path = inputPaths[fileIndex];
         var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        WellKnownCsvHeaders.ValidateTrainingHeader(rowIndex.header, labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
         if (rowIndex.totalRows == 0)
             throw new InvalidDataException($"Input CSV '{path}' contains no data rows.");
 
@@ -915,7 +913,7 @@ static void RunRebuildTdTargets()
     var outputPath = PromptString("Output CSV path", "training_data.td.csv");
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
     var gamma = PromptFloat("TD-gamma", 1.0f);
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     if (!File.Exists(trainingCsvPath)
         || !File.Exists(validationCsvPath)
@@ -927,6 +925,11 @@ static void RunRebuildTdTargets()
         return;
     }
 
+    foreach (var csvPath in new[] { trainingCsvPath, validationCsvPath })
+    {
+        using var reader = new StreamReader(csvPath);
+        WellKnownCsvHeaders.ValidateTrainingHeader(reader.ReadLine() ?? "", labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
+    }
     var trainingRows = TrajectoryCsvReader.ReadRows(trainingCsvPath, trajectoryCsvPath, labelCount);
     var validationRows = TrajectoryCsvReader.ReadRows(validationCsvPath, validationTrajectoryCsvPath, labelCount);
 
@@ -936,7 +939,7 @@ static void RunRebuildTdTargets()
         games,
         lambda,
         gamma,
-        labelCount == 1 ? 1 : 5);
+        ForwardViewTdCalculator.FullHeadCount);
 
     var rebuiltTrainingRows = rebuiltRows.Take(trainingRows.Count).ToList();
     var rebuiltValidationRows = rebuiltRows.Skip(trainingRows.Count).ToList();

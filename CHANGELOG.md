@@ -2,6 +2,11 @@
 
 ## 11.11.2026
 - mars neural net changes
+	- update net architecture of Fevga and Plakoto
+	- give Fevga and Plakoto a three-head output
+
+## 11.11.2026
+- mars neural net changes
 	- turn input is properly passed
 	- introduced trailing count for feature vectory holding 4+ checkers
 	- fixed home board gammon/backgammon evaluation

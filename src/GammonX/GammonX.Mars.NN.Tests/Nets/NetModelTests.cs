@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using GammonX.Mars.NN.Nets;
+using GammonX.Mars.NN.Models;
 using GammonX.Models.Enums;
 
 using static TorchSharp.torch;
@@ -16,6 +17,10 @@ public sealed class NetModelTests
     [InlineData(GameModus.Portes, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A)]
     [InlineData(GameModus.Plakoto, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A)]
     [InlineData(GameModus.Fevga, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A)]
+    [InlineData(GameModus.Fevga, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B)]
+    [InlineData(GameModus.Plakoto, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B)]
+    [InlineData(GameModus.Fevga, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.B)]
+    [InlineData(GameModus.Plakoto, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.B)]
     public void SaveAndLoadPreserveMetadataAndPredictions(GameModus modus, GameOutcomeOutputMode outputMode, NetArchitecture architecture)
     {
         var modelPath = Path.Combine(Path.GetTempPath(), $"gammonx-{Guid.NewGuid():N}.dat");
@@ -67,6 +72,8 @@ public sealed class NetModelTests
     [Theory]
     [InlineData(GameModus.Backgammon, false, NetArchitecture.A)]
     [InlineData(GameModus.Backgammon, true, NetArchitecture.A)]
+    [InlineData(GameModus.Plakoto, false, NetArchitecture.A)]
+    [InlineData(GameModus.Fevga, false, NetArchitecture.A)]
     [InlineData(GameModus.Plakoto, true, NetArchitecture.B)]
     [InlineData(GameModus.Fevga, true, NetArchitecture.B)]
     public void SavingLegacyModelsUpgradesMetadataWithoutInventingTrainingSettings(GameModus modus, bool hasMetadata, NetArchitecture recordedArchitecture)
@@ -108,6 +115,34 @@ public sealed class NetModelTests
             File.Delete(modelPath);
             File.Delete(NetModelMetadata.GetPath(modelPath));
         }
+    }
+
+    [Theory]
+    [InlineData(GameModus.Fevga, 216, 384, 192, 96)]
+    [InlineData(GameModus.Plakoto, 266, 440, 220, 110)]
+    public void GammonArchitectureHasRequestedLayersAndConstrainedThreeHeadOutputs(
+        GameModus modus, int inputs, int hidden1, int hidden2, int hidden3)
+    {
+        using var model = NetModelFactory.CreateNew(modus, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B);
+        long[][] shapes = [[hidden1, inputs], [hidden1], [hidden2, hidden1], [hidden2], [hidden3, hidden2], [hidden3], [3, hidden3], [3]];
+        Assert.Equal(shapes, model.GetParameters().Select(p => p.shape));
+        using var noGradScope = no_grad();
+        foreach (var batchSize in new[] { 1, 7 })
+        {
+            using var input = randn([batchSize, inputs], device: CPU);
+            using var output = model.Forward(input);
+            Assert.Equal([batchSize, 3L], output.shape);
+            var values = output.data<float>().ToArray();
+            for (var row = 0; row < batchSize; row++)
+            {
+                var canonical = GameOutcomeModel.ToCanonical(values.AsSpan(row * 3, 3));
+                Assert.True(GameOutcomeConstraintValidator.Validate(canonical).IsValid);
+                Assert.Equal(0f, canonical[2]);
+                Assert.Equal(0f, canonical[4]);
+            }
+        }
+        Assert.Throws<InvalidDataException>(() => NetModelFactory.CreateNew(modus, CPU,
+            GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A));
     }
 
     [Fact]

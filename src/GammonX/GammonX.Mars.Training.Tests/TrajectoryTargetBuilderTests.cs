@@ -1,4 +1,6 @@
 using GammonX.Mars.Training.Sidecars;
+using GammonX.Mars.Training.Data;
+using GammonX.Mars.Training.Generator;
 using GammonX.Mars.Training.Validation;
 
 using GammonX.Models.Enums;
@@ -50,6 +52,45 @@ public sealed class TrajectoryTargetBuilderTests
             DeleteIfExists(trainingPath);
             DeleteIfExists(trajectoryPath);
             DeleteIfExists(gamesPath);
+        }
+    }
+
+    [Theory]
+    [InlineData(GameModus.Fevga, 0f)]
+    [InlineData(GameModus.Fevga, 0.5f)]
+    [InlineData(GameModus.Plakoto, 1f)]
+    public void ThreeLabelCsvRoundTripRebuildsCanonicalGammonTargets(GameModus modus, float lambda)
+    {
+        var trainingPath = CreateTempPath(".csv");
+        var trajectoryPath = CreateTempPath(".trajectory.csv");
+        try
+        {
+            var gameId = Guid.NewGuid();
+            TrajectoryPosition[] positions =
+            [
+                new(0, true, [0.1f, 0.2f], [0.5f, 0.2f, 0f, 0.1f, 0f]),
+                new(1, false, [0.2f, 0.3f], [0.4f, 0.1f, 0f, 0.2f, 0f]),
+                new(2, true, [0.3f, 0.4f], [1f, 1f, 0f, 0f, 0f], true)
+            ];
+            var trajectory = new GameTrajectory(gameId, positions, GameResult.Gammon, GameResult.LostGammon, true);
+            var targets = ForwardViewTdCalculator.Calculate(trajectory, lambda);
+            var rows = positions.Select((p, i) => new TrainingDataRow(gameId, p, targets[i])).ToArray();
+            TrainingCsvWriter.Write(trainingPath, modus, rows, 2);
+            TrajectoryCsvWriter.WritePositions(trajectoryPath, rows);
+            var loaded = TrajectoryCsvReader.ReadRows(trainingPath, trajectoryPath, 3);
+            var rebuilt = TrajectoryTargetBuilder.Recalculate(loaded, [trajectory.Metadata], lambda);
+            for (var row = 0; row < rows.Length; row++)
+            {
+                AssertVector(targets[row], loaded[row].Label);
+                AssertVector(targets[row], rebuilt[row].Label);
+                Assert.Equal(0f, rebuilt[row].Label[2]);
+                Assert.Equal(0f, rebuilt[row].Label[4]);
+            }
+        }
+        finally
+        {
+            DeleteIfExists(trainingPath);
+            DeleteIfExists(trajectoryPath);
         }
     }
 

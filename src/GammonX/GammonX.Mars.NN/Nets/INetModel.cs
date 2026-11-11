@@ -22,8 +22,10 @@ namespace GammonX.Mars.NN.Nets
     /// Encapsulates a neural network model that can be used for evaluation.
     /// </summary>
     /// <remarks>
-    /// Implementations accept and return TorchSharp tensors. For the five-head outcome models,
-    /// the output columns are ordered as win, win gammon, win backgammon, lose gammon, and lose backgammon.
+    /// Implementations accept and return TorchSharp tensors.
+    /// For the five-head outcome models, the output columns are ordered as win, win gammon, win backgammon, lose gammon, and lose backgammon.
+    /// For the three-head outcome models, the output columns are ordered as win, win gammon, lose gammon.
+    /// For the one-head outcome models, the output is only win.
     /// </remarks>
     public interface INetModel : IDisposable
     {

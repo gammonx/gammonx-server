@@ -80,7 +80,26 @@ public partial class TwoPlySearchEvaluatorTests
 
         Assert.Equal(-2d / 3d, result.Equity, 12);
         Assert.NotNull(result.Prediction);
-        Assert.Equal(1f / 3f, Assert.Single(result.Prediction), 6);
+        Assert.Equal(5, result.Prediction.Length);
+        Assert.Equal(1f / 3f, result.Prediction[0], 6);
+        Assert.All(result.Prediction.Skip(1), value => Assert.Equal(0f, value));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvertsGammonHeadsAndKeepsTerminalGammonReplies(bool prepared)
+    {
+        var harness = CreateHarness(rolls => [CreateSequence(rolls.Length == 4 ? 1 : 2)]);
+        var result = await EvaluatePredictions(harness, prepared, 4, marker => marker == 1
+            ? new EvalResult(2d, [1f, 1f, 0f, 0f, 0f])
+            : new EvalResult(0.125d, [0.5f, 0.25f, 0f, 0.125f, 0f]));
+
+        Assert.Equal(-7d / 16d, result.Equity, 12);
+        Assert.NotNull(result.Prediction);
+        float[] expected = [5f / 12f, 5f / 48f, 0f, 3f / 8f, 0f];
+        for (var head = 0; head < expected.Length; head++)
+            Assert.Equal(expected[head], result.Prediction[head], 6);
     }
 
     private static Task<EvalResult> EvaluatePredictions(

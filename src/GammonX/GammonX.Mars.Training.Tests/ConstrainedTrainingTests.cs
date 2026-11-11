@@ -12,9 +12,13 @@ namespace GammonX.Mars.Training.Tests;
 public sealed class ConstrainedTrainingTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ConstrainedTrainingWritesMetadataAndValidPredictions(bool resume)
+    [InlineData(GameModus.Backgammon, false)]
+    [InlineData(GameModus.Backgammon, true)]
+    [InlineData(GameModus.Fevga, false)]
+    [InlineData(GameModus.Fevga, true)]
+    [InlineData(GameModus.Plakoto, false)]
+    [InlineData(GameModus.Plakoto, true)]
+    public void ConstrainedTrainingWritesMetadataAndValidPredictions(GameModus modus, bool resume)
     {
         var stem = $"gammonx-{Guid.NewGuid():N}";
         var trainingPath = Path.Combine(Path.GetTempPath(), stem + "-train.csv");
@@ -26,10 +30,10 @@ public sealed class ConstrainedTrainingTests
 
         try
         {
-            WriteDataset(trainingPath);
-            WriteDataset(validationPath);
+            WriteDataset(trainingPath, modus);
+            WriteDataset(validationPath, modus);
 
-            using var trainingModel = NetModelFactory.CreateNew(GameModus.Backgammon, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B);
+            using var trainingModel = NetModelFactory.CreateNew(modus, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B);
             if (resume)
             {
                 trainingModel.Save(inputModelPath);
@@ -51,15 +55,16 @@ public sealed class ConstrainedTrainingTests
             Assert.True(File.Exists(modelPath));
             Assert.True(File.Exists(NetModelMetadata.GetPath(modelPath)));
 
-            var metadata = NetModelMetadata.ReadOrLegacy(modelPath, GameModus.Backgammon);
+            var metadata = NetModelMetadata.ReadOrLegacy(modelPath, modus);
             Assert.Equal(GameOutcomeOutputMode.MonotonicCumulative, metadata.OutputMode);
             Assert.Equal(NetArchitecture.B, metadata.Architecture);
             Assert.Equal(Path.GetFileName(modelPath), metadata.Name);
             Assert.Equal(training, metadata.Training);
 
-            using var model = NetModelFactory.CreateForModel(GameModus.Backgammon, modelPath, CPU);
+            using var model = NetModelFactory.CreateForModel(modus, modelPath, CPU);
             model.Eval();
-            using var input = tensor(new float[2 * 216], [2, 216], device: CPU);
+            var featureCount = modus == GameModus.Plakoto ? 266 : 216;
+            using var input = tensor(new float[2 * featureCount], [2, featureCount], device: CPU);
             using var noGradScope = no_grad();
             using var predictions = model.Forward(input);
             var metrics = new ConstraintMetricsAccumulator();
@@ -70,7 +75,7 @@ public sealed class ConstrainedTrainingTests
 
             if (resume)
             {
-                using var parent = NetModelFactory.CreateForModel(GameModus.Backgammon, inputModelPath, CPU);
+                using var parent = NetModelFactory.CreateForModel(modus, inputModelPath, CPU);
                 parent.Eval();
                 using var parentPredictions = parent.Forward(input);
                 Assert.Equal(parentPredictions.data<float>().ToArray(), predictions.data<float>().ToArray());
@@ -89,7 +94,18 @@ public sealed class ConstrainedTrainingTests
         }
     }
 
-    private static void WriteDataset(string path)
+    [Theory]
+    [InlineData(GameModus.Fevga)]
+    [InlineData(GameModus.Plakoto)]
+    public void LegacySingleHeadTrainingIsRejectedBeforeReadingDatasets(GameModus modus)
+    {
+        using var model = NetModelFactory.CreateNew(modus, CPU, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A);
+        model.ConfigureTraining(new NetTrainingMetadata("missing-train.csv", "missing-val.csv", "unused.dat"));
+        var error = Assert.Throws<InvalidOperationException>(() => NetTrainer.Train(model));
+        Assert.Contains("inference only", error.Message);
+    }
+
+    private static void WriteDataset(string path, GameModus modus)
     {
         var labels = new[]
         {
@@ -99,14 +115,16 @@ public sealed class ConstrainedTrainingTests
             new[] { 0.9f, 0.4f, 0.2f, 0.05f, 0.01f }
         };
 
+        var featureCount = modus == GameModus.Plakoto ? 266 : 216;
+        var labelCount = WellKnownCsvHeaders.LabelCount(modus);
         using var writer = new StreamWriter(path);
-        writer.WriteLine(string.Join(',', Enumerable.Range(0, 216).Select(index => $"f{index}")) + "," + WellKnownCsvHeaders.TrainingDataHeader);
+        writer.WriteLine(string.Join(',', Enumerable.Range(0, featureCount).Select(index => $"f{index}")) + "," + WellKnownCsvHeaders.TrainingHeader(labelCount));
         foreach (var row in labels)
         {
             writer.WriteLine(
-                string.Join(',', Enumerable.Repeat("0", 216))
+                string.Join(',', Enumerable.Repeat("0", featureCount))
                 + ","
-                + string.Join(',', row.Select(value => value.ToString("G9", System.Globalization.CultureInfo.InvariantCulture))));
+                + string.Join(',', (labelCount == 3 ? new[] { row[0], row[1], row[3] } : row).Select(value => value.ToString("G9", System.Globalization.CultureInfo.InvariantCulture))));
         }
     }
 }

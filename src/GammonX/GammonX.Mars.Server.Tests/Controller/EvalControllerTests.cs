@@ -100,7 +100,8 @@ namespace GammonX.Mars.Server.Tests.Controller
             Assert.NotNull(boardEval);
             Assert.Equal("OK", boardEval.Type);
             Assert.IsType<BoardEvalPayload>(boardEval.Payload);
-            Assert.InRange(boardEval.Payload.EvalScore, 0.4, 0.5);
+            // Legacy pWin is now expressed as cubeless equity: 2 * pWin - 1.
+            Assert.InRange(boardEval.Payload.EvalScore, -0.2, 0.0);
         }
 
         [Theory]
@@ -172,11 +173,11 @@ namespace GammonX.Mars.Server.Tests.Controller
             if (!isWhite)
             {
                 // black has stronger board
-                Assert.InRange(boardEval.Payload.EvalScore, 0.40, 0.7);
+                Assert.InRange(boardEval.Payload.EvalScore, -0.2, 0.4);
             }
             else
             {
-                Assert.InRange(boardEval.Payload.EvalScore, 0.2, 0.45);
+                Assert.InRange(boardEval.Payload.EvalScore, -0.6, -0.1);
             }
         }
 

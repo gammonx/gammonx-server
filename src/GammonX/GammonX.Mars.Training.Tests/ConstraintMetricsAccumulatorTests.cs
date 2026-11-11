@@ -7,6 +7,22 @@ namespace GammonX.Mars.Training.Tests;
 public sealed class ConstraintMetricsAccumulatorTests
 {
     [Fact]
+    public void ThreeHeadTensorReportsRawGammonViolationsWithoutBackgammonViolations()
+    {
+        using var predictions = tensor([0.7f, 0.2f, 0.1f, 0.4f, 0.6f, 0.9f], [2, 3], device: CPU);
+        var accumulator = new ConstraintMetricsAccumulator();
+        accumulator.Add(predictions);
+        var result = accumulator.Complete();
+        Assert.Equal(2, result.RowCount);
+        Assert.Equal(1, result.InvalidRowCount);
+        Assert.Equal(2, result.RuleViolationCount);
+        Assert.Equal(1, result.WinGammonHierarchyViolationRows);
+        Assert.Equal(1, result.LoseGammonComplementViolationRows);
+        Assert.Equal(0, result.WinBackgammonHierarchyViolationRows);
+        Assert.Equal(0, result.LoseBackgammonHierarchyViolationRows);
+    }
+
+    [Fact]
     public void AddRowCountsInvalidRowsAndRuleSeverity()
     {
         var accumulator = new ConstraintMetricsAccumulator();

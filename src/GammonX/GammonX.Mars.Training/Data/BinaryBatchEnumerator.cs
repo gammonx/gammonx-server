@@ -94,6 +94,9 @@ public sealed class BinaryBatchEnumerator : IEnumerable<(Tensor features, Tensor
             throw new ArgumentOutOfRangeException(nameof(labelCount), labelCount, "The label count must be greater than zero.");
         }
 
+        if (labelCount is 3 or 5)
+            WellKnownCsvHeaders.ValidateTrainingHeader(header, labelCount);
+
         var expectedColumnCount = header.Split(',').Length;
         if (expectedColumnCount < labelCount)
         {

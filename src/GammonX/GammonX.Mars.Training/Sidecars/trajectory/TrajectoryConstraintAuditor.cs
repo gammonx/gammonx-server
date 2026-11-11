@@ -1,6 +1,5 @@
-using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-
+using GammonX.Mars.NN.Services;
 using GammonX.Mars.Training.Validation;
 
 using GammonX.Models.Enums;
@@ -13,7 +12,7 @@ namespace GammonX.Mars.Training.Sidecars;
 /// Contains constraint metrics for the predictions stored in a trajectory and, optionally,
 /// predictions produced by a current model for the same positions.
 /// </summary>
-/// <param name="SourceModel">Metrics for the predictions stored in the trajectory sidecar, or <see langword="null"/> for a non-five-head mode.</param>
+/// <param name="SourceModel">Metrics for the canonical predictions stored in the trajectory sidecar.</param>
 /// <param name="CurrentModel">Metrics for the current model's predictions, or <see langword="null"/> when no model was audited.</param>
 public sealed record TrajectoryConstraintAuditResult(
     ConstraintMetricsResult? SourceModel,
@@ -23,10 +22,10 @@ public sealed record TrajectoryConstraintAuditResult(
 /// Compares game-outcome constraint violations in recorded trajectory predictions with a current model.
 /// </summary>
 /// <remarks>
-/// For five-head modes, the auditor always evaluates the predictions stored in the trajectory sidecar.
+/// The auditor evaluates canonical predictions stored in the trajectory sidecar for every mode.
 /// When a current model and training CSV are supplied, it also streams the matching feature rows,
-/// evaluates them in batches, and reports a second set of metrics. Plakoto and Fevga use a single
-/// output head, so constraint metrics are not collected for those modes.
+/// evaluates them in batches, and reports a second set of metrics. Three-head predictions are
+/// mapped to the canonical outcome order with zero backgammon probabilities before validation.
 /// </remarks>
 public static class TrajectoryConstraintAuditor
 {
@@ -55,8 +54,6 @@ public static class TrajectoryConstraintAuditor
         if (!File.Exists(trajectoryCsvPath))
             throw new FileNotFoundException("Trajectory sidecar was not found.", trajectoryCsvPath);
 
-        // Only the five-head outcome representation has the hierarchy constraints being audited.
-        var isFiveHeadModus = modus is not (GameModus.Plakoto or GameModus.Fevga);
         if (currentModelPath is not null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(trainingCsvPath);
@@ -69,8 +66,8 @@ public static class TrajectoryConstraintAuditor
         if (batchSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, "Batch size must be positive.");
 
-        var sourceMetrics = isFiveHeadModus ? new ConstraintMetricsAccumulator() : null;
-        var currentMetrics = isFiveHeadModus && currentModelPath is not null
+        var sourceMetrics = new ConstraintMetricsAccumulator();
+        var currentMetrics = currentModelPath is not null
             ? new ConstraintMetricsAccumulator()
             : null;
 
@@ -85,9 +82,20 @@ public static class TrajectoryConstraintAuditor
         else
         {
             var model = NetModelFactory.CreateForModel(modus, currentModelPath, device);
-            model.Eval();
             try
             {
+                if (model.Metadata.OutputCount != WellKnownCsvHeaders.LabelCount(modus))
+                {
+                    throw new InvalidOperationException("Current-model training audits require a three- or five-head model.");
+                }
+
+                using (var reader = new StreamReader(trainingCsvPath!))
+                    WellKnownCsvHeaders.ValidateTrainingHeader(
+                        reader.ReadLine() ?? "", 
+                        WellKnownCsvHeaders.LabelCount(modus),
+                        FeatureVectorExtractorFactory.Create(modus).FeatureCount);
+                
+                model.Eval();
                 using var noGradScope = no_grad();
                 var featureRows = new List<float[]>(batchSize);
                 var featureCount = 0;
@@ -96,30 +104,38 @@ public static class TrajectoryConstraintAuditor
                 foreach (var row in TrajectoryCsvReader.ReadRowsStreaming(
                     trainingCsvPath!,
                     trajectoryCsvPath,
-                    isFiveHeadModus ? GameOutcomeConstraintValidator.FullHeadCount : 1))
+                    WellKnownCsvHeaders.LabelCount(modus)))
                 {
                     sourceMetrics?.AddRow(row.Position.Prediction);
-                    if (!isFiveHeadModus)
-                        continue;
 
                     if (featureCount == 0)
+                    {
                         featureCount = row.Position.Features.Length;
+                    }
                     else if (row.Position.Features.Length != featureCount)
+                    {
                         throw new InvalidDataException("Trajectory audit rows contain inconsistent feature counts.");
+                    }
 
                     featureRows.Add(row.Position.Features);
                     if (featureRows.Count >= batchSize)
+                    {
                         EvaluateBatch(model, currentMetrics!, featureRows, featureCount, device);
+                    }
                 }
 
                 // Evaluate the final partial batch after the streaming loop completes.
                 if (featureRows.Count > 0)
+                {
                     EvaluateBatch(model, currentMetrics!, featureRows, featureCount, device);
+                }
             }
             finally
             {
                 if (model is IDisposable disposable)
+                {
                     disposable.Dispose();
+                }
             }
         }
 

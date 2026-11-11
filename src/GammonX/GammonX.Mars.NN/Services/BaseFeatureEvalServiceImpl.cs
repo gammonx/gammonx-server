@@ -78,7 +78,7 @@ namespace GammonX.Mars.NN.Services
 
             if (board is IDoublingCubeModel cubeModel)
             {
-                // TODO: Audit cube offer/take timing: training evaluates afterstates from the player who just moved.
+                // TODO: Audit cube offer/take timing: training evaluates after-states from the player who just moved.
                 // Pre-roll evaluation may need the previous mover's perspective and inverted outcome probabilities.
                 var eval = CalculateEvalModelWithDiagnostics(board, turnNumber, isWhite);
 
@@ -464,7 +464,7 @@ namespace GammonX.Mars.NN.Services
                         return prepared;
                     }, async positions =>
                     {
-                        var results = await EvalPreparedPositionsAsync(positions, board.Modus, _neuralEvalService, cancellationToken);
+                        var results = await EvalPreparedPositionsAsync(positions, _neuralEvalService, cancellationToken);
                         nextBuffer = 0;
                         return results;
                     }, cancellationToken);
@@ -501,7 +501,7 @@ namespace GammonX.Mars.NN.Services
             return new PreparedPosition(featureVectors, null);
         }
 
-        private static async Task<EvalResult[]> EvalPreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, GameModus modus, INeuralEvalService neural, CancellationToken cancellationToken)
+        private static async Task<EvalResult[]> EvalPreparedPositionsAsync(IReadOnlyList<PreparedPosition> positions, INeuralEvalService neural, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -541,7 +541,7 @@ namespace GammonX.Mars.NN.Services
 
             for (var row = 0; row < indices.Count; row++)
             {
-                evalResults[indices[row]] = ToEvalResult(modus, predictions[row]);
+                evalResults[indices[row]] = ToEvalResult(predictions[row]);
             }
 
             return evalResults;
@@ -570,7 +570,7 @@ namespace GammonX.Mars.NN.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return ToEvalResult(board.Modus, predictions);
+            return ToEvalResult(predictions);
         }
 
         private async Task<EvalResult[]> CalculatePositionBatchAsync(
@@ -626,21 +626,14 @@ namespace GammonX.Mars.NN.Services
 
             for (var row = 0; row < indices.Count; row++)
             {
-                evalResults[indices[row]] = ToEvalResult(boards[indices[row]].Modus, predictions[row]);
+                evalResults[indices[row]] = ToEvalResult(predictions[row]);
             }
 
             return evalResults;
         }
 
-        private static EvalResult ToEvalResult(GameModus modus, float[] predictions)
+        private static EvalResult ToEvalResult(float[] predictions)
         {
-            // TODO: support 5 head output for Plakoto and Fevga
-            if (modus == GameModus.Plakoto || modus == GameModus.Fevga)
-            {
-                // we currently have no proper way to calculate equity for plakoto or fevga
-                var falseEquity = predictions[0];
-                return new EvalResult(falseEquity, predictions);
-            }
             var equity = GameEquityModel.CalculateEquity(predictions);
             return new EvalResult(equity, predictions);
         }

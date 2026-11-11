@@ -44,6 +44,8 @@ public partial class BatchedNeuralEvalServiceTests
     {
         var seenInputs = new List<Tensor>();
         var net = new Mock<INetModel>();
+        net.SetupGet(model => model.Metadata).Returns(new NetModelMetadata(2, GameModus.Backgammon,
+            GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A));
         net.Setup(model => model.Forward(It.IsAny<Tensor>())).Returns((Tensor input) =>
         {
             Assert.Equal(featureCount, input.shape[1]);
@@ -114,6 +116,7 @@ public partial class BatchedNeuralEvalServiceTests
     [Theory]
     [InlineData(1, false)]
     [InlineData(1, true)]
+    [InlineData(3, false)]
     [InlineData(5, false)]
     public async Task MapsMixedSinglesAndGroupsWithoutSplittingOrReorderingRows(int width, bool flatOutput)
     {
@@ -124,7 +127,7 @@ public partial class BatchedNeuralEvalServiceTests
             seen.Add(markers.Length);
             var values = markers.SelectMany(marker => Enumerable.Range(0, width).Select(column => marker + column)).ToArray();
             return flatOutput ? tensor(values) : tensor(values, [markers.Length, width]);
-        });
+        }, width);
 
         await service.StartAsync(TestContext.Current.CancellationToken);
 
@@ -378,9 +381,12 @@ public partial class BatchedNeuralEvalServiceTests
         }
     }
 
-    private static BatchedNeuralEvalService CreateService(Func<Tensor, Tensor> forward)
+    private static BatchedNeuralEvalService CreateService(Func<Tensor, Tensor> forward, int width = 1)
     {
         var net = new Mock<INetModel>();
+        net.SetupGet(model => model.Metadata).Returns(new NetModelMetadata(2,
+            width == 5 ? GameModus.Backgammon : GameModus.Fevga,
+            GameOutcomeOutputMode.LegacyIndependentSigmoid, width == 3 ? NetArchitecture.B : NetArchitecture.A));
         net.Setup(model => model.Forward(It.IsAny<Tensor>())).Returns(forward);
         var extractor = new Mock<IFeatureVectorExtractor>();
         extractor.SetupGet(value => value.FeatureCount).Returns(1);
@@ -392,7 +398,12 @@ public partial class BatchedNeuralEvalServiceTests
     private static void AssertRow(float[] result, float marker, int width)
     {
         Assert.Equal(5, result.Length);
-        for (var column = 0; column < result.Length; column++)
-            Assert.Equal(column < width ? marker + column : 0f, result[column]);
+        float[] expected = width switch
+        {
+            1 => [marker, 0, 0, 0, 0],
+            3 => [marker, marker + 1, 0, marker + 2, 0],
+            _ => [marker, marker + 1, marker + 2, marker + 3, marker + 4]
+        };
+        Assert.Equal(expected, result);
     }
 }

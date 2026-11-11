@@ -58,6 +58,9 @@ public sealed class CsvBatchEnumerator : IEnumerable<(Tensor features, Tensor la
         using var reader = new StreamReader(stream, encoding);
 
         var header = reader.ReadLine()!;
+        if (labelCount is 3 or 5)
+            WellKnownCsvHeaders.ValidateTrainingHeader(header, labelCount);
+
         var featureCols = header.Split(',').Length - labelCount;
 
         var byteOffset = DetectBomLength(path) + encoding.GetByteCount(header) + newLineBytes;

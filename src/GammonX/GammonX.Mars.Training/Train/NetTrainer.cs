@@ -1,9 +1,7 @@
 ﻿using System.Diagnostics;
 
-using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
-
-using GammonX.Models.Enums;
+using GammonX.Mars.NN.Services;
 
 using TorchSharp;
 
@@ -30,8 +28,18 @@ public static class NetTrainer
 
         // TODO: usual batch sizes of 32/64/128?
 
-        // TODO: support 5 head output for Plakoto and Fevga
-        var labelCount = (modus == GameModus.Fevga || modus == GameModus.Plakoto) ? 1 : 5;
+        var labelCount = WellKnownCsvHeaders.LabelCount(modus);
+        if (model.Metadata.OutputCount != labelCount)
+        {
+            throw new InvalidOperationException("Legacy single-head models support inference only. Train a new architecture B model using three-label data.");
+        }
+
+        var expectedFeatureCount = FeatureVectorExtractorFactory.Create(modus).FeatureCount;
+        foreach (var csvPath in new[] { training.TrainCsvPath, training.ValCsvPath })
+        {
+            using var reader = new StreamReader(csvPath);
+            WellKnownCsvHeaders.ValidateTrainingHeader(reader.ReadLine() ?? "", labelCount, expectedFeatureCount);
+        }
 
         var device = cuda.is_available() ? CUDA : CPU;
 
@@ -181,7 +189,7 @@ public static class NetTrainer
     {
         using var metrics = new EpochMetricsAccumulator(
             outputCount,
-            collectConstraintMetrics: outputCount == GameOutcomeConstraintValidator.FullHeadCount);
+            collectConstraintMetrics: outputCount is 3 or 5);
         
         foreach (var (xBatch, yBatch) in batches)
         {
@@ -218,8 +226,8 @@ public static class NetTrainer
 
     private static string FormatOutputLosses(IReadOnlyList<float> losses, int outputCount)
     {
-        string[] names = outputCount == 1
-            ? ["pWin"]
+        string[] names = outputCount == 3
+            ? ["pWin", "pGW", "pGL"]
             : ["pWin", "pGW", "pBgW", "pGL", "pBgL"];
 
         return string.Join(", ", names.Zip(losses, (name, value) => $"{name}={value:F5}"));
