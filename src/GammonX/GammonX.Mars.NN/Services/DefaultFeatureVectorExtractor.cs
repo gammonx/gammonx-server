@@ -27,6 +27,7 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
         {
+            // we expect model scalars to already describe the active player.
             if (features.Length != FeatureCount)
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
@@ -34,7 +35,7 @@ namespace GammonX.Mars.NN.Services
 
             var featureIndex = 0;
 
-            // we always extract the feature vectors from active players perspective
+            // self-crafted structural features
             features[featureIndex++] = (float)model.MaxPrimeLengthPlayer;
             features[featureIndex++] = (float)model.MaxPrimeLengthOpp;
             features[featureIndex++] = (float)model.HomebarCountPlayer;
@@ -51,11 +52,14 @@ namespace GammonX.Mars.NN.Services
             features[featureIndex++] = (float)model.AverageGapSizeOpp;
             features[featureIndex++] = (float)model.CheckersInPrimeZonePlayer;
             features[featureIndex++] = (float)model.CheckersInPrimeZoneOpp;
+            // race features
             features[featureIndex++] = (float)model.PipToBearOff;
             features[featureIndex++] = (float)model.PipToBearOffOpp;
             features[featureIndex++] = (float)model.PipDifference;
+            // race feature flag
             features[featureIndex++] = model.Race ? 1f : 0f;
-            features[featureIndex++] = 0f;
+            // raw board feature tensors
+            features[featureIndex++] = 0f; // isWhite flag artifact, we only train from one perspective
             features[featureIndex++] = (isWhite ? board.BearOffCountWhite : board.BearOffCountBlack) / 15f;
             features[featureIndex++] = (isWhite ? board.BearOffCountBlack : board.BearOffCountWhite) / 15f;
             features[featureIndex++] = (float)model.TurnNumber;
