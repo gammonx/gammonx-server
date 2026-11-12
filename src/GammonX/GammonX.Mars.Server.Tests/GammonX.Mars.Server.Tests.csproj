@@ -37,7 +37,7 @@
     <None Include="..\GammonX.Mars.Server\NeuralNets\Fevga\training_net.dat" Link="Data\NeuralNets\Fevga\training_net.dat">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\training_net.dat.meta.json" Link="Data\NeuralNets\Plakoto\training_net.dat.meta.json" Condition="Exists('..\GammonX.Mars.Server\NeuralNets\Plakoto\training_net.dat.meta.json')">
+    <None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\training_net.dat.meta.json" Link="Data\NeuralNets\Plakoto\training_net.dat.meta.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="..\GammonX.Mars.Server\NeuralNets\Plakoto\README.md" Link="Data\NeuralNets\Plakoto\README.md" />
