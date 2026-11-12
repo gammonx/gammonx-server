@@ -103,6 +103,7 @@ static void RunTrainModel()
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
     var learningRate = PromptFloat("Learning rate", 1e-4f);
+    // TODO: make epoch count configurable
 
     using var model = CreateModelForTraining(modus, inputModelPath);
     model.ConfigureTraining(new NetTrainingMetadata(

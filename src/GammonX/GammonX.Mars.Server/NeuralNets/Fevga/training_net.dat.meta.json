@@ -1,0 +1,21 @@
+{
+  "FormatVersion": 2,
+  "Modus": "Fevga",
+  "OutputMode": "MonotonicCumulative",
+  "Architecture": "B",
+  "Name": "training_net.td070.gen10-5-run1.dat",
+  "Training": {
+    "TrainCsvPath": "/home/hegi/sandbox/console-app/linux-x64/gen10-5.training_data.td070.sp.1ply.100k.csv",
+    "ValCsvPath": "/home/hegi/sandbox/console-app/linux-x64/gen10-5.training_data.td070.sp.1ply.100k.val.csv",
+    "OutputModelPath": "training_net.td070.gen10-5-run1.dat",
+    "InputModelPath": "/home/hegi/sandbox/console-app/linux-x64/training_net.td070.gen10-4-run1.dat",
+    "Epochs": 50,
+    "BatchSize": 16384,
+    "ProducerCount": 32,
+    "QueueCapacity": 64,
+    "LearningRate": 0.0001,
+    "EarlyStoppingPatience": 8,
+    "MinimumDelta": 1E-05,
+    "ShuffleLabels": false
+  }
+}
