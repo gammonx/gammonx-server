@@ -1,4 +1,6 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Server.Bot;
+
+using GammonX.Engine.Services;
 
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
@@ -179,9 +181,9 @@ namespace GammonX.Server.Tests.Match
 			Assert.False(clone.NextGameAccepted);
 
 			var lastSeen = connection.LastSeenUtc.AddSeconds(1);
-			connection.SetConnectionId(Guid.Empty.ToString());
+			connection.SetConnectionId(WellKnownBotPlayers.ConnectionId);
 			connection.LastSeenUtc = lastSeen;
-			Assert.Equal(Guid.Empty.ToString(), player.ConnectionId);
+			Assert.Equal(WellKnownBotPlayers.ConnectionId, player.ConnectionId);
 			Assert.Equal(player.ConnectionId, clone.ConnectionId);
 			Assert.Equal(lastSeen, player.LastSeenUtc);
 			Assert.Equal(lastSeen, clone.LastSeenUtc);
@@ -953,10 +955,10 @@ namespace GammonX.Server.Tests.Match
 				var gameSessions = matchSession.GetGameSessions();
                 Assert.NotNull(gameSessions);
 				var connection1 = new PlayerConnection(Guid.NewGuid());
-				connection1.SetConnectionId(Guid.NewGuid().ToString());
+				connection1.SetConnectionId("human-" + Guid.NewGuid());
 				matchSession.JoinSession(connection1);
 				var connection2 = new PlayerConnection(Guid.NewGuid());
-				connection2.SetConnectionId(Guid.NewGuid().ToString());
+				connection2.SetConnectionId("human-" + Guid.NewGuid());
 				matchSession.JoinSession(connection2);
 				matchSession.Player1.AcceptNextGame();
 				matchSession.Player2.AcceptNextGame();

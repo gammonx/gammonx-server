@@ -1,5 +1,7 @@
 ﻿using GammonX.Models.Helpers;
 
+using GammonX.Server.Bot;
+
 namespace GammonX.Server.Models
 {
     /// <summary>
@@ -24,6 +26,11 @@ namespace GammonX.Server.Models
         /// Gets the web socket connection id of the player in the lobby.
         /// </summary>
         public string? ConnectionId { get; private set; }
+
+        /// <summary>
+        /// Gets whether this connection uses the reserved bot connection ID.
+        /// </summary>
+        public bool IsBot => string.Equals(ConnectionId, WellKnownBotPlayers.ConnectionId, StringComparison.Ordinal);
 		
 		/// <summary>
 		/// Gets the player id of the connection.

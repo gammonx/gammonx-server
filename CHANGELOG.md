@@ -1,5 +1,9 @@
 # Changelog
 
+## 15.11.2026
+- ranked matchmaking
+	- allow a matching bot as playing opponent if no human is found
+
 ## 14.11.2026
 - mars neural net changes
 	- update net architecture of Fevga and Plakoto

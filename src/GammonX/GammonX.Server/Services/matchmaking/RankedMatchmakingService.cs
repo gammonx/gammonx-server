@@ -1,5 +1,6 @@
 ﻿using GammonX.Models.Enums;
 
+using GammonX.Server.Bot;
 using GammonX.Server.Models;
 using GammonX.Server.Repository;
 
@@ -9,6 +10,10 @@ namespace GammonX.Server.Services
     internal class RankedMatchmakingService : MatchmakingServiceBaseImpl
     {
         private readonly IRepositoryClient _repoClient;
+
+        private readonly SemaphoreSlim _matchingLock = new(1, 1);
+
+        private static readonly BotLevel[] BotLevels = { BotLevel.Easy, BotLevel.Medium, BotLevel.Hard, BotLevel.Expert };
 
         // <inheritdoc />
         public override MatchModus Modus => MatchModus.Ranked;
@@ -36,104 +41,169 @@ namespace GammonX.Server.Services
             // use default glicko2 rating if player has no rating yet
             var relevantRating = ratingResponse?.Rating ?? 1200;
 
-            var entry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, relevantRating);
+            var entry = new QueueEntry(Guid.NewGuid(), playerId, queueKey with { BotLevel = BotLevel.Unknown }, DateTime.UtcNow, relevantRating);
+
             Enqueue(entry);
+
             return entry;
         }
 
         // <inheritdoc />
-        public override Task MatchQueuedPlayersAsync()
+        public override async Task MatchQueuedPlayersAsync()
         {
-            var queueEntriesByQueueKey = _modeQueues.Where(mq => mq.Key.MatchModus == Modus);
+            // Rating reads yield to other callers. Only one pass may claim opponents at a time.
+            await _matchingLock.WaitAsync();
 
-            foreach (var (queueKey, queue) in queueEntriesByQueueKey)
+            try
             {
-                while (queue.TryDequeue(out var idA))
+                var ratingsByKey = new Dictionary<QueueKey, (BotLevel Level, double Rating)[]>();
+
+                foreach (var (queueKey, queue) in _modeQueues.Where(mq => mq.Key.MatchModus == Modus))
                 {
-                    // we dequeue entry ids from the mode queue and do not readd them if no related entry is found
-                    if (!_queue.TryGetValue(idA, out var entryA))
-                        continue;
+                    var count = queue.Count;
 
-                    // try to find a partner
-                    if (!TryFindRankedPartner(queueKey, entryA, out var entryB))
+                    for (var i = 0; i < count && queue.TryDequeue(out var idA); i++)
                     {
-                        // couldn't match now > requeue
-                        queue.Enqueue(idA);
-                        break;
-                        // TODO: match all players which do not have an opponent with Hard/Expert bot
-                        // TODO: expert bot should appear in player ratings
-                    }
+                        if (!_queue.TryGetValue(idA, out var entryA))
+                        {
+                            continue;
+                        }
 
-                    var claimedA = false;
-                    var claimedB = false;
-                    // atomic claims
-                    if (_queue.TryRemove(entryA.Id, out var _))
-                    {
-                        claimedA = true;
-                    }
-                    if (_queue.TryRemove(entryB.Id, out var _))
-                    {
-                        claimedB = true;
-                    }
+                        // We first try to match to a human player
+                        if (TryFindRankedPartner(queueKey, entryA, out var entryB))
+                        {
+                            var claimedA = _queue.TryRemove(entryA.Id, out _);
+                            var claimedB = _queue.TryRemove(entryB.Id, out _);
+                            if (!claimedA || !claimedB)
+                            {
+                                if (claimedA)
+                                {
+                                    Enqueue(entryA);
+                                }
+                                if (claimedB)
+                                {
+                                    Enqueue(entryB);
+                                }
+                                continue;
+                            }
 
-                    // rollback if one couldn't be claimed
-                    if (!claimedA && !claimedB)
-                    {
-                        queue.Enqueue(idA);
-                    }
-                    else if (!claimedA)
-                    {
-                        // a could not be claimed > requeue b
-                        _queue.TryAdd(entryB.Id, entryB);
-                        queue.Enqueue(idA);
-                    }
-                    else if (!claimedB)
-                    {
-                        // b could not be claimed > requeue a
-                        _queue.TryAdd(entryA.Id, entryA);
-                        queue.Enqueue(idA);
-                    }
+                            var tmpQueueKey = queueKey with { BotLevel = BotLevel.Unknown };
+                            var player1Conn = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
+                            var player2Conn = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
+                            var matchId = Guid.NewGuid();
+                            var lobby = new MatchLobby(matchId, tmpQueueKey, player1Conn);
 
-                    if (claimedA && claimedB)
-                    {
-                        // create lobby
-                        var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                        var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
-                        var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
-                        lobby.Join(playerConnectionB);
-                        _matchLobbies[entryA] = lobby;
-                        _matchLobbies[entryB] = lobby;
+                            lobby.Join(player2Conn);
+                            _matchLobbies[entryA] = lobby;
+                            _matchLobbies[entryB] = lobby;
+
+                            continue;
+                        }
+
+                        var ratingKey = queueKey with { BotLevel = BotLevel.Unknown };
+
+                        // We try then to match the current searching player against a fitting bot opponent
+                        try
+                        {
+                            if (!ratingsByKey.TryGetValue(ratingKey, out var ratings))
+                            {
+                                // We update the cache bot level ranked ratings
+                                ratings = await GetBotRatingsAsync(ratingKey);
+                                ratingsByKey[ratingKey] = ratings;
+                            }
+
+                            var level = ratings.Length == 0
+                                ? GetFallbackBotLevel(entryA.CurrentRating)
+                                : ratings.OrderBy(rating => Math.Abs(rating.Rating - entryA.CurrentRating)).First().Level;
+
+                            // Cancellation and expiry can remove the entry while rating reads are in flight.
+                            if (!_queue.TryRemove(entryA.Id, out _))
+                            {
+                                continue;
+                            }
+
+                            var bot = _playerConnectionRepository.GetOrCreate(WellKnownBotPlayers.GetBotPlayerId(level));
+                            // We use an empty guid for the bot connection id as well known value
+                            bot.SetConnectionId(WellKnownBotPlayers.ConnectionId);
+                            var matchId = Guid.NewGuid();
+                            // We set the bot level for this ranked
+                            var tmpRatingKey = ratingKey with { BotLevel = level };
+                            var player1Conn =  _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
+                            var lobby = new MatchLobby(matchId, tmpRatingKey, player1Conn);
+
+                            lobby.Join(bot);
+                            _matchLobbies[entryA] = lobby;
+                        }
+                        catch
+                        {
+                            if (_queue.ContainsKey(entryA.Id))
+                            {
+                                queue.Enqueue(entryA.Id);
+                            }
+
+                            throw;
+                        }
                     }
                 }
             }
-
-            return Task.CompletedTask;
+            finally
+            {
+                _matchingLock.Release();
+            }
         }
+
+        private async Task<(BotLevel Level, double Rating)[]> GetBotRatingsAsync(QueueKey key)
+        {
+            var responses = await Task.WhenAll(BotLevels.Select(level =>
+            {
+                var botPlayerId = WellKnownBotPlayers.GetBotPlayerId(level);
+                return _repoClient.GetRatingAsync(botPlayerId, key.MatchVariant, key.MatchType, CancellationToken.None);
+            }));
+
+            // Preserve level order for equal-distance ties. Missing metadata from older APIs is not a recorded rating.
+            return responses.Select((response, index) => (Response: response, Level: BotLevels[index]))
+                .Where(value => value.Response?.HasRecordedRating == true && double.IsFinite(value.Response.Rating))
+                .Select(value => (value.Level, value.Response!.Rating))
+                .ToArray();
+        }
+
+        private static BotLevel GetFallbackBotLevel(double rating) => rating switch
+        {
+            < 1000 => BotLevel.Easy,
+            < 1200 => BotLevel.Medium,
+            < 1500 => BotLevel.Hard,
+            _ => BotLevel.Expert
+        };
 
         private bool TryFindRankedPartner(QueueKey key, QueueEntry entryA, out QueueEntry entryB)
         {
             entryB = null!;
 
             if (!_modeQueues.TryGetValue(key, out var queue))
+            {
                 return false;
+            }
 
-            while (queue.TryDequeue(out var entryId))
+            var count = queue.Count;
+            for (var i = 0; i < count && queue.TryDequeue(out var entryId); i++)
             {
                 if (!_queue.TryGetValue(entryId, out var candidate))
+                {
                     continue;
+                }
 
                 var diff = Math.Abs(entryA.CurrentRating - candidate.CurrentRating);
-                var allowed = Math.Min(GetAllowedRatingDifference(entryA), GetAllowedRatingDifference(candidate));
+                var allowedDiffA = GetAllowedRatingDifference(entryA);
+                var allowedDiffCanidate = GetAllowedRatingDifference(candidate);
+                var allowed = Math.Min(allowedDiffA, allowedDiffCanidate);
 
-                if (diff <= allowed)
+                if (candidate.PlayerId != entryA.PlayerId && diff <= allowed)
                 {
                     entryB = candidate;
                     return true;
                 }
-                else
-                {
-                    // we skip the potential opponent if the diff is to high
-                }
+
+                queue.Enqueue(entryId);
             }
 
             return false;

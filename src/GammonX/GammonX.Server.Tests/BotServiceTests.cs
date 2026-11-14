@@ -33,7 +33,7 @@ namespace GammonX.Server.Tests
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, type, matchFactory);
             var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
 
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
@@ -85,8 +85,8 @@ namespace GammonX.Server.Tests
             var gameSessionFactory = new GameSessionFactory(diceFactory);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player1.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
             Assert.True(matchSession.Player1.IsBot);
             Assert.True(matchSession.Player2.IsBot);
             var botPlayer1Id = matchSession.Player1.Id;
@@ -204,8 +204,8 @@ namespace GammonX.Server.Tests
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
             var cubeSession = matchSession as IDoubleCubeMatchSession;
             Assert.NotNull(cubeSession);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player1.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
             Assert.True(matchSession.Player1.IsBot);
             Assert.True(matchSession.Player2.IsBot);
 
@@ -410,7 +410,7 @@ namespace GammonX.Server.Tests
             var gameSessionFactory = new RandomGameSessionBoardFactory(diceFactory, modus, fields, bearOffBlack, bearOffWhite, barBlack, barWhite);
             var matchFactory = new MatchSessionFactory(gameSessionFactory);
             var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, MatchType.CashGame, matchFactory);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
 
             var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
 
@@ -462,8 +462,8 @@ namespace GammonX.Server.Tests
             var matchSession = SessionUtils.CreateMatchSessionWithTwoBots(variant, type, matchFactory);
             var cubeSession = matchSession as IDoubleCubeMatchSession;
             Assert.NotNull(cubeSession);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player1.ConnectionId);
-            Assert.Equal(Guid.Empty.ToString(), matchSession.Player2.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player1.ConnectionId);
+            Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
             Assert.True(matchSession.Player1.IsBot);
             Assert.True(matchSession.Player2.IsBot);
 

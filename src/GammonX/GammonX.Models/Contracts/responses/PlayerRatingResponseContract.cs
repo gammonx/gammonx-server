@@ -15,6 +15,13 @@ namespace GammonX.Models.Contracts
         public double Rating { get; set; } = 0;
 
         /// <summary>
+        /// Gets or sets whether the rating was read from a stored item rather than initialized for a new player.
+        /// Null indicates that the producer did not supply this information.
+        /// </summary>
+        [DataMember(Name = "HasRecordedRating", EmitDefaultValue = false)]
+        public bool? HasRecordedRating { get; set; }
+
+        /// <summary>
         /// Gets or sets the rating before the requested match, captured in that match's rating period.
         /// Null when no matchId was requested or its period has not been committed.
         /// </summary>

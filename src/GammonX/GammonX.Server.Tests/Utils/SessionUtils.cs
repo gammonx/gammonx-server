@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using GammonX.Server.Bot;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
 
@@ -38,7 +39,7 @@ namespace GammonX.Server.Tests.Utils
 			Assert.NotNull(session);
 			var player1 = CreatePlayerConnection();
 			var botPlayer = new PlayerConnection(Guid.NewGuid());
-			botPlayer.SetConnectionId(Guid.Empty.ToString());
+			botPlayer.SetConnectionId(WellKnownBotPlayers.ConnectionId);
 			session.JoinSession(player1);
 			session.JoinSession(botPlayer);
 			return session;
@@ -51,8 +52,8 @@ namespace GammonX.Server.Tests.Utils
 			Assert.NotNull(session);
 			var botPlayer2 = new PlayerConnection(Guid.NewGuid());
 			var botPlayer1 = new PlayerConnection(Guid.NewGuid());
-			botPlayer1.SetConnectionId(Guid.Empty.ToString());
-			botPlayer2.SetConnectionId(Guid.Empty.ToString());
+			botPlayer1.SetConnectionId(WellKnownBotPlayers.ConnectionId);
+			botPlayer2.SetConnectionId(WellKnownBotPlayers.ConnectionId);
 			session.JoinSession(botPlayer2);
 			session.JoinSession(botPlayer1);
 			return session;
@@ -77,7 +78,7 @@ namespace GammonX.Server.Tests.Utils
 		public static PlayerConnection CreatePlayerConnection()
 		{
 			var connection = new PlayerConnection(Guid.NewGuid());
-			connection.SetConnectionId(Guid.NewGuid().ToString());
+			connection.SetConnectionId("human-" + Guid.NewGuid());
 			return connection;
 		}
 	}

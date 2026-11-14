@@ -3,6 +3,7 @@
 
 ## Active
 - bot as ranked opponent
+- track bot profiles as "players"
 
 ## TODO
 - invite friend by link
@@ -30,8 +31,6 @@
 - play a match with pauses
 
 ## Open Points
-- track bot profiles as "players"
-- play-a-friend, invite by link
 - export matches to sgf/.mat format
 - tournament mode
 - Chat

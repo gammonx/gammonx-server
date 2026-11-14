@@ -25,13 +25,15 @@ namespace GammonX.Lambda.Tests.Sqs
     public class PlayerRatingUpdatedHandlerTests
     {
         [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task PairedRatingTransactionUsesMatchingPreMatchSnapshotsWhenOpponentChangesBetweenReads(bool concurrentUpdate)
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task PairedRatingTransactionUsesMatchingPreMatchSnapshotsWhenOpponentChangesBetweenReads(bool concurrentUpdate, bool botOpponent)
         {
             // Arrange: another match updates the loser after the winner calculation reads that opponent.
             var winnerId = Guid.Parse("cf0ab132-2279-43d3-911f-ed139ce5e7ba");
-            var loserId = Guid.Parse("e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
+            var loserId = Guid.Parse(botOpponent ? "5320200d-2c28-4d02-a2eb-e4e739ae0ac6" : "e51f307e-3bf6-4408-b4b7-5fabd41b57b8");
             var matchId = Guid.Parse("888a356e-e09f-4a0f-b909-581f1ffb167e");
             var history = await File.ReadAllTextAsync(Path.Combine("Data", "TavliMatchHistory.txt"), TestContext.Current.CancellationToken);
             var work = new RatingUpdateWorkContract
@@ -44,6 +46,7 @@ namespace GammonX.Lambda.Tests.Sqs
                         Result = player.Item2,
                         Variant = MatchVariant.Tavli,
                         Modus = MatchModus.Ranked,
+                        BotLevel = botOpponent ? BotLevel.Hard : BotLevel.Unknown,
                         Type = Models.Enums.MatchType.SevenPointGame,
                         Format = HistoryFormat.MAT,
                         MatchHistory = history
@@ -112,6 +115,8 @@ namespace GammonX.Lambda.Tests.Sqs
                 .Where(item => item["ItemType"].S == "RatingPeriod").ToArray();
             var winnerPeriod = Assert.Single(periods, item => item["PlayerId"].S == winnerId.ToString());
             var loserPeriod = Assert.Single(periods, item => item["PlayerId"].S == loserId.ToString());
+            Assert.Equal(loserId.ToString(), winnerPeriod["OpponentId"].S);
+            Assert.Equal(winnerId.ToString(), loserPeriod["OpponentId"].S);
             Assert.Equal(loserPeriod["PlayerRating"].N, winnerPeriod["OpponentRating"].N);
             Assert.Equal(winnerPeriod["PlayerRating"].N, loserPeriod["OpponentRating"].N);
             Assert.Equal(concurrentUpdate ? "1400" : "1200", loserPeriod["PlayerRating"].N);

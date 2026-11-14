@@ -140,7 +140,7 @@ namespace GammonX.Server.Tests.Bot.Mars
 
             var player = SessionUtils.CreatePlayerConnection();
             var botPlayer = new PlayerConnection(Guid.NewGuid());
-            botPlayer.SetConnectionId(Guid.Empty.ToString());
+            botPlayer.SetConnectionId(WellKnownBotPlayers.ConnectionId);
             matchSession.JoinSession(player);
             matchSession.JoinSession(botPlayer);
             matchSession.Player1.AcceptNextGame();

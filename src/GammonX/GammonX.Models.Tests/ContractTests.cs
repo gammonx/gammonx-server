@@ -10,6 +10,29 @@ namespace GammonX.Models.Tests
     public class ContractTests
     {
         [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        [InlineData(null)]
+        public void RecordedRatingMetadataSurvivesApiSerialization(bool? recorded)
+        {
+            // Arrange.
+            var response = new PlayerRatingResponseContract { Rating = 1200, HasRecordedRating = recorded };
+
+            // Act.
+            var json = JsonConvert.SerializeObject(response);
+            var restored = System.Text.Json.JsonSerializer.Deserialize<PlayerRatingResponseContract>(json);
+
+            // Assert: omitted metadata from older producers must remain unknown.
+            Assert.NotNull(restored);
+            Assert.Equal(recorded, restored.HasRecordedRating);
+            Assert.Equal(1200, restored.Rating);
+            if (recorded == null)
+            {
+                Assert.DoesNotContain("HasRecordedRating", json);
+            }
+        }
+
+        [Theory]
         [InlineData(50d)]
         [InlineData(-50d)]
         [InlineData(0d)]
