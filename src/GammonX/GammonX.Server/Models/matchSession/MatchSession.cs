@@ -12,8 +12,6 @@ namespace GammonX.Server.Models
 	// <inheritdoc />
 	public abstract class MatchSession : IMatchSessionModel
     {
-        private readonly SemaphoreSlim _stateMutex = new(1, 1);
-
         private readonly Func<IMatchSessionModel, bool> _isMatchOver;
 
 		protected GameModus[] Rounds { get; init; }
@@ -682,35 +680,6 @@ namespace GammonX.Server.Models
 		}
 
         #endregion Private Methods
-
-        #region State Mutex Impl
-
-        // <inheritdoc />
-        public async Task<IAsyncDisposable> AcquireStateAsync()
-        {
-            await _stateMutex.WaitAsync();
-            return new LockReleaser(_stateMutex);
-        }
-
-        // <inheritdoc />
-        private sealed class LockReleaser : IAsyncDisposable
-        {
-            private readonly SemaphoreSlim _stateMutex;
-
-            public LockReleaser(SemaphoreSlim stateMutex)
-			{
-                _stateMutex = stateMutex;
-            }
-
-            // <inheritdoc />
-            ValueTask IAsyncDisposable.DisposeAsync()
-            {
-                _stateMutex.Release();
-				return ValueTask.CompletedTask;
-            }
-        }
-
-        #endregion State Mutex Impl
 
 		#region ICloneable Impl
 
