@@ -10,6 +10,9 @@
 - added AGENTS.md
 - return rating gain/loss url after ranked
 - fixed some gaps in the rating and rating period calculation
+	- concurrent updates of winner/loser snapshots
+	- match strength calculation
+	- consider rating period inactivity 
 
 ## 11.11.2026
 - mars neural net changes
