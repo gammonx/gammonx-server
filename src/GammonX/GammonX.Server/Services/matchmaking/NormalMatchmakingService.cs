@@ -9,6 +9,9 @@ namespace GammonX.Server.Services
     /// </summary>
     internal class NormalMatchmakingService : MatchmakingServiceBaseImpl
     {
+        // <inheritdoc />
+        public override MatchModus Modus => MatchModus.Normal;
+
         public NormalMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
             : base(playerConnectionRepository)
         {
@@ -37,7 +40,9 @@ namespace GammonX.Server.Services
         // <inheritdoc />
         public override Task MatchQueuedPlayersAsync()
         {
-            foreach (var (queueKey, queue) in _modeQueues)
+            var queueEntriesByQueueKey = _modeQueues.Where(mq => mq.Key.MatchModus == Modus);
+
+            foreach (var (queueKey, queue) in queueEntriesByQueueKey)
             {
                 while (queue.TryDequeue(out var idA))
                 {

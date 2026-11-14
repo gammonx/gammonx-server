@@ -1,11 +1,20 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Models;
 
 namespace GammonX.Server.Services
 {
 	// <inheritdoc />
 	internal class UnknownMatchmakingService : MatchmakingServiceBaseImpl
 	{
-		public UnknownMatchmakingService(PlayerConnectionRepository playerConnectionRepository) : base(playerConnectionRepository) { }
+		// <inheritdoc />
+		public override MatchModus Modus => MatchModus.Unknown;
+
+		public UnknownMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
+			: base(playerConnectionRepository)
+		{
+			// pass
+		}
 
 		// <inheritdoc />
 		public override Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey)

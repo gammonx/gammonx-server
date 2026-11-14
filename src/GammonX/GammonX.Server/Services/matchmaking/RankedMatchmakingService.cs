@@ -10,6 +10,9 @@ namespace GammonX.Server.Services
     {
         private readonly IRepositoryClient _repoClient;
 
+        // <inheritdoc />
+        public override MatchModus Modus => MatchModus.Ranked;
+
         public RankedMatchmakingService(PlayerConnectionRepository playerConnectionRepository, IRepositoryClient client)
             : base(playerConnectionRepository)
         {
@@ -41,8 +44,9 @@ namespace GammonX.Server.Services
         // <inheritdoc />
         public override Task MatchQueuedPlayersAsync()
         {
-            // TODO: only handle ranked queue keys?
-            foreach (var (queueKey, queue) in _modeQueues)
+            var queueEntriesByQueueKey = _modeQueues.Where(mq => mq.Key.MatchModus == Modus);
+
+            foreach (var (queueKey, queue) in queueEntriesByQueueKey)
             {
                 while (queue.TryDequeue(out var idA))
                 {
@@ -85,7 +89,7 @@ namespace GammonX.Server.Services
                     }
                     else if (!claimedB)
                     {
-                        //b could not be claimed > requeue a
+                        // b could not be claimed > requeue a
                         _queue.TryAdd(entryA.Id, entryA);
                         queue.Enqueue(idA);
                     }

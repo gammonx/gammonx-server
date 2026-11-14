@@ -7,6 +7,9 @@ namespace GammonX.Server.Services
 	// <inheritdoc />
 	internal sealed class BotMatchmakingService : MatchmakingServiceBaseImpl
 	{
+		// <inheritdoc />
+        public override MatchModus Modus => MatchModus.Bot;
+
 		public BotMatchmakingService(PlayerConnectionRepository playerConnectionRepository)
 			: base(playerConnectionRepository) 
 		{
