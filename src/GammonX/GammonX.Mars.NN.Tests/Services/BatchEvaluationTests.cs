@@ -3,6 +3,7 @@ using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
+using GammonX.Mars.NN.Nets;
 using GammonX.Mars.NN.Services;
 using GammonX.Mars.NN.Tests.Performance;
 using GammonX.Mars.NN.Tests.Data;
@@ -18,6 +19,42 @@ namespace GammonX.Mars.NN.Tests.Services;
 [Collection(nameof(PerformanceTestCollection))]
 public class BatchEvaluationTests
 {
+    [Theory]
+    [InlineData(GameModus.Fevga)]
+    [InlineData(GameModus.Plakoto)]
+    public async Task GammonModelsAgreeAcrossInferenceServicesAndBatchSizes(GameModus modus)
+    {
+        using var model = NetModelFactory.CreateNew(modus, TorchSharp.torch.CPU,
+            GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B);
+        model.Eval();
+        var extractor = FeatureVectorExtractorFactory.Create(modus);
+        var serial = new NeuralEvalService(model, extractor, TorchSharp.torch.CPU);
+        using var batched = new BatchedNeuralEvalService(model, extractor, 4, TorchSharp.torch.CPU);
+        await batched.StartAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            foreach (var count in new[] { 1, 4, 2 })
+            {
+                var rows = Enumerable.Range(0, count).Select(i => Enumerable.Repeat(i / 10f, extractor.FeatureCount).ToArray()).ToArray();
+                var expected = await serial.PredictBatchAsync(rows, TestContext.Current.CancellationToken);
+                var actual = await batched.PredictBatchAsync(rows, TestContext.Current.CancellationToken);
+                for (var row = 0; row < count; row++)
+                {
+                    Assert.Equal(5, actual[row].Length);
+                    Assert.Equal(0f, actual[row][2]);
+                    Assert.Equal(0f, actual[row][4]);
+                    Assert.True(GameOutcomeConstraintValidator.Validate(actual[row]).IsValid);
+                    for (var head = 0; head < 5; head++)
+                        Assert.Equal(expected[row][head], actual[row][head], 6);
+                }
+            }
+        }
+        finally
+        {
+            await batched.StopAsync(CancellationToken.None);
+        }
+    }
+
     [Theory]
     [InlineData(GameModus.Backgammon)]
     [InlineData(GameModus.Portes)]
@@ -144,9 +181,7 @@ public class BatchEvaluationTests
                             // The scored reply belongs to the opponent's next turn.
                             TurnNumber = request.TurnNumber + 1,
                         }), positions[0], isWhite, TestContext.Current.CancellationToken);
-                    return new[] { new EvalResult(modus is GameModus.Fevga or GameModus.Plakoto
-                        ? predictions[0]
-                        : new GameEquityModel(new GameOutcomeModel(predictions)).Equity, predictions) };
+                    return new[] { new EvalResult(new GameEquityModel(new GameOutcomeModel(predictions)).Equity, predictions) };
                 }, maxBatchSize: 1).EvaluateAsync(board, true, TestContext.Current.CancellationToken);
             var batched = await service.EvalBoardStateAsync(new FeatureEvalOptions
             {

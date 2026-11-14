@@ -40,8 +40,11 @@ public sealed class TrajectoryConstraintAuditorTests
         }
     }
 
-    [Fact]
-    public void CurrentMonotonicModelReportsNoRawViolations()
+    [Theory]
+    [InlineData(GameModus.Backgammon)]
+    [InlineData(GameModus.Fevga)]
+    [InlineData(GameModus.Plakoto)]
+    public void CurrentMonotonicModelReportsNoRawViolations(GameModus modus)
     {
         var trajectoryPath = CreateTemporaryPath("trajectory.csv");
         var trainingPath = CreateTemporaryPath("training.csv");
@@ -49,15 +52,15 @@ public sealed class TrajectoryConstraintAuditorTests
         try
         {
             WriteTrajectory(trajectoryPath, [[0.7f, 0.2f, 0.05f, 0.1f, 0.02f]]);
-            WriteTraining(trainingPath);
+            WriteTraining(trainingPath, modus);
 
-            using (var model = new DefaultNet(CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.A))
+            using (var model = NetModelFactory.CreateNew(modus, CPU, GameOutcomeOutputMode.MonotonicCumulative, NetArchitecture.B))
             {
                 model.Save(modelPath);
             }
 
             var report = TrajectoryConstraintAuditor.Analyze(
-                GameModus.Backgammon,
+                modus,
                 trajectoryPath,
                 trainingPath,
                 modelPath,
@@ -79,22 +82,27 @@ public sealed class TrajectoryConstraintAuditorTests
         }
     }
 
-    [Fact]
-    public void SingleHeadModusDoesNotProduceFiveHeadMetrics()
+    [Theory]
+    [InlineData(GameModus.Plakoto)]
+    [InlineData(GameModus.Fevga)]
+    public void GammonModusReportsRawConstraintViolations(GameModus modus)
     {
         var trajectoryPath = CreateTemporaryPath("trajectory.csv");
         try
         {
-            WriteTrajectory(trajectoryPath, [[0.4f, 0.6f, 0.8f, 0.9f, 0.95f]]);
+            WriteTrajectory(trajectoryPath, [[0.4f, 0.6f, 0f, 0.9f, 0f]]);
 
             var report = TrajectoryConstraintAuditor.Analyze(
-                GameModus.Plakoto,
+                modus,
                 trajectoryPath,
                 null,
                 null,
                 CPU);
 
-            Assert.Null(report.SourceModel);
+            Assert.NotNull(report.SourceModel);
+            Assert.Equal(1, report.SourceModel.InvalidRowCount);
+            Assert.Equal(0, report.SourceModel.WinBackgammonHierarchyViolationRows);
+            Assert.Equal(0, report.SourceModel.LoseBackgammonHierarchyViolationRows);
             Assert.Null(report.CurrentModel);
         }
         finally
@@ -119,10 +127,12 @@ public sealed class TrajectoryConstraintAuditorTests
         }
     }
 
-    private static void WriteTraining(string path)
+    private static void WriteTraining(string path, GameModus modus)
     {
+        var count = modus == GameModus.Plakoto ? 266 : 216;
+        var labelCount = WellKnownCsvHeaders.LabelCount(modus);
         using var writer = new StreamWriter(path);
-        writer.WriteLine(string.Join(',', Enumerable.Range(0, 216).Select(index => $"f{index}")) + ",pWin,pGammonWin,pBackgammonWin,pGammonLoss,pBackgammonLoss");
-        writer.WriteLine(string.Join(',', Enumerable.Repeat("0", 216)) + ",0.5,0,0,0,0");
+        writer.WriteLine(string.Join(',', Enumerable.Range(0, count).Select(index => $"f{index}")) + "," + WellKnownCsvHeaders.TrainingHeader(labelCount));
+        writer.WriteLine(string.Join(',', Enumerable.Repeat("0", count)) + (labelCount == 3 ? ",0.5,0,0" : ",0.5,0,0,0,0"));
     }
 }

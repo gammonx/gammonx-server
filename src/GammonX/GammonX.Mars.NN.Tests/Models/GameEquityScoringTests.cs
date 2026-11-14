@@ -28,6 +28,21 @@ public sealed class GameEquityScoringTests
         Assert.Equal(expected, new GameEquityModel(new GameOutcomeModel(predictions)).Equity);
     }
 
+    [Theory]
+    [InlineData(1f, 1f, 0f, 2d)]
+    [InlineData(0f, 0f, 1f, -2d)]
+    [InlineData(0.5f, 0f, 0f, 0d)]
+    [InlineData(0.5f, 0.25f, 0.125f, 0.125d)]
+    public void ThreeHeadMappingPreservesGammonEquity(float win, float gammonWin, float gammonLoss, double expected)
+    {
+        var canonical = GameOutcomeModel.ToCanonical([win, gammonWin, gammonLoss]);
+        var outcome = new GameOutcomeModel(canonical);
+        Assert.Equal(0d, outcome.WinBackgammonP);
+        Assert.Equal(0d, outcome.LoseBackgammonP);
+        Assert.Equal(gammonLoss, outcome.LoseGammonP);
+        Assert.Equal(expected, GameEquityModel.CalculateEquity(canonical));
+    }
+
     [Fact]
     public void ScoreOnlyMatchesDiagnosticModelBitForBitWithoutMutatingPredictions()
     {

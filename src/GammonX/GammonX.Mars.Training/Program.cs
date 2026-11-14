@@ -13,7 +13,7 @@ using GammonX.Mars.Training.Validation;
 using GammonX.Models.Enums;
 
 using System.Diagnostics;
-
+using System.Globalization;
 using static TorchSharp.torch;
 
 Console.WriteLine("===========================================");
@@ -103,6 +103,7 @@ static void RunTrainModel()
     var producerCount = PromptInt("Producer threads", Environment.ProcessorCount * 2);
     var queueCapacity = PromptInt("Queue capacity", Environment.ProcessorCount * 4);
     var learningRate = PromptFloat("Learning rate", 1e-4f);
+    // TODO: make epoch count configurable
 
     using var model = CreateModelForTraining(modus, inputModelPath);
     model.ConfigureTraining(new NetTrainingMetadata(
@@ -124,15 +125,13 @@ static INetModel CreateModelForTraining(GameModus modus, string? inputModelPath,
     if (!string.IsNullOrEmpty(inputModelPath))
         return NetModelFactory.CreateForModel(modus, inputModelPath, device);
 
-    var architecture = NetArchitecture.A;
-    var outputMode = GameOutcomeOutputMode.LegacyIndependentSigmoid;
-    if (modus is not (GameModus.Plakoto or GameModus.Fevga))
-    {
-        architecture = PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
-        outputMode = promptOutputMode
-            ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
-            : GameOutcomeOutputMode.MonotonicCumulative;
-    }
+    // Architecture A for Fevga/Plakoto is retained only for inference of existing models.
+    var architecture = modus is GameModus.Fevga or GameModus.Plakoto
+        ? NetArchitecture.B
+        : PromptEnum("Net architecture", [NetArchitecture.A, NetArchitecture.B], NetArchitecture.A);
+    var outputMode = promptOutputMode
+        ? PromptEnum("Output mode", [GameOutcomeOutputMode.MonotonicCumulative, GameOutcomeOutputMode.LegacyIndependentSigmoid], GameOutcomeOutputMode.MonotonicCumulative)
+        : GameOutcomeOutputMode.MonotonicCumulative;
 
     return NetModelFactory.CreateNew(modus, device, outputMode, architecture);
 }
@@ -236,8 +235,7 @@ static async Task RunBotServiceTournamentAsync()
 static void RunShuffleCsv()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: enable full GAME equity predictions for plakoto/fevga
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     // we shuffle all inputs training data to create new CSV files which can be used for combined training
     Console.WriteLine();
@@ -287,6 +285,7 @@ static void RunShuffleCsv()
     foreach (var path in inputPaths)
     {
         var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        WellKnownCsvHeaders.ValidateTrainingHeader(rowIndex.header, labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
         if (header == null)
         {
             header = rowIndex.header;
@@ -488,8 +487,7 @@ static string GetGameMetadataPath(string csvPath)
 static void RunSelectRandomGames()
 {
     var modus = PromptEnum("Game modus", [GameModus.Plakoto, GameModus.Fevga, GameModus.Backgammon, GameModus.Tavla, GameModus.Portes], GameModus.Plakoto);
-    // TODO: enable full GAME equity predictions for plakoto/fevga
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     Console.WriteLine();
     Console.WriteLine("Enter input CSV paths one per line. Leave blank to finish:");
@@ -590,6 +588,7 @@ static void RunSelectRandomGames()
     {
         var path = inputPaths[fileIndex];
         var rowIndex = CsvBatchEnumerator.BuildRowIndex(path, labelCount);
+        WellKnownCsvHeaders.ValidateTrainingHeader(rowIndex.header, labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
         if (rowIndex.totalRows == 0)
             throw new InvalidDataException($"Input CSV '{path}' contains no data rows.");
 
@@ -732,7 +731,7 @@ static void RunAnalyzeExploration()
                  .OrderBy(pair => pair.Key.Modus)
                  .ThenBy(pair => pair.Key.AgainstBot)
                  .ThenBy(pair => pair.Key.EarlyPhase ? 0 : 1)
-                 .ThenBy(pair => pair.Key.CandidateBucket))
+                 .ThenBy(pair => pair.Key.CandidateBucket, StringComparer.InvariantCultureIgnoreCase))
     {
         var key = group.Key;
         Console.WriteLine();
@@ -915,7 +914,7 @@ static void RunRebuildTdTargets()
     var outputPath = PromptString("Output CSV path", "training_data.td.csv");
     var lambda = PromptFloat("TD-lambda", SelfPlayRecorder.DefaultLambda);
     var gamma = PromptFloat("TD-gamma", 1.0f);
-    var labelCount = modus is GameModus.Fevga or GameModus.Plakoto ? 1 : 5;
+    var labelCount = WellKnownCsvHeaders.LabelCount(modus);
 
     if (!File.Exists(trainingCsvPath)
         || !File.Exists(validationCsvPath)
@@ -927,6 +926,11 @@ static void RunRebuildTdTargets()
         return;
     }
 
+    foreach (var csvPath in new[] { trainingCsvPath, validationCsvPath })
+    {
+        using var reader = new StreamReader(csvPath);
+        WellKnownCsvHeaders.ValidateTrainingHeader(reader.ReadLine() ?? "", labelCount, GetFeatureVectorExtractor(modus).FeatureCount);
+    }
     var trainingRows = TrajectoryCsvReader.ReadRows(trainingCsvPath, trajectoryCsvPath, labelCount);
     var validationRows = TrajectoryCsvReader.ReadRows(validationCsvPath, validationTrajectoryCsvPath, labelCount);
 
@@ -936,7 +940,7 @@ static void RunRebuildTdTargets()
         games,
         lambda,
         gamma,
-        labelCount == 1 ? 1 : 5);
+        ForwardViewTdCalculator.FullHeadCount);
 
     var rebuiltTrainingRows = rebuiltRows.Take(trainingRows.Count).ToList();
     var rebuiltValidationRows = rebuiltRows.Skip(trainingRows.Count).ToList();
@@ -1400,7 +1404,7 @@ static float PromptFloat(string label, float defaultValue)
 {
     Console.Write($"{label} [{defaultValue}]: ");
     var input = Console.ReadLine()?.Trim();
-    return float.TryParse(input, out var v) ? v : defaultValue;
+    return float.TryParse(input, CultureInfo.InvariantCulture, out var v) ? v : defaultValue;
 }
 
 static int? PromptOptionalInt(string label)
@@ -1426,7 +1430,7 @@ static string PromptString(string label, string defaultValue)
 static bool PromptBool(string label, bool defaultValue)
 {
     Console.Write($"{label} yes/no [{(defaultValue ? "YES" : "NO")}]: ");
-    var input = Console.ReadLine()?.Trim().ToLower();
+    var input = Console.ReadLine()?.Trim().ToLower(CultureInfo.InvariantCulture);
     if (string.IsNullOrEmpty(input))
         return defaultValue;
     if (input == "y" || input == "yes")

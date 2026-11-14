@@ -41,6 +41,37 @@ The `.dat` weight format is unchanged. Keep the weights and their sidecar togeth
 copying or embedding a model. A save stages both files before replacing them, but the pair
 cannot be replaced atomically as a single filesystem operation.
 
+## Fevga and Plakoto outcomes
+
+New Fevga and Plakoto training uses architecture B with three physical outputs:
+`pWin,pGammonWin,pGammonLoss`. Fevga B is `216 > 384 > 192 > 96 > 3`;
+Plakoto B is `266 > 440 > 220 > 110 > 3`. Monotonic cumulative output is the
+training default; independent sigmoid output remains selectable. Monotonic heads
+satisfy `pGammonWin <= pWin` and `pGammonLoss <= 1 - pWin`.
+
+Architecture A retains the original single-output networks for inference and
+tournaments, including `.dat` files without metadata and historical version-1
+metadata. A cannot resume training with the new datasets. Train a new B model;
+there is no automatic weight or dataset conversion. B checkpoints must travel
+with their `.dat.meta.json` files, including when embedded in the server.
+
+Training CSVs contain 216 or 266 features followed by exactly the three labels
+above. Regenerate old single-label datasets; training, merging, and TD rebuilding
+validate the expected headers. No legacy CSV or sidecar fallback is provided.
+
+Inference, trajectory sidecars, and in-memory TD targets keep the shared order
+`[pWin, pGammonWin, pBackgammonWin, pGammonLoss, pBackgammonLoss]`, with both
+backgammon fields zero for these variants. CSV export selects indices 0, 1, 3;
+BCE trains only the three actual outputs. Training and trajectory audits report
+gammon hierarchy violations using the same constraint models as DefaultNet.
+
+Move selection and search use cubeless point equity:
+`2 * pWin - 1 + pGammonWin - pGammonLoss`. Legacy A models use `2 * pWin - 1`.
+This changes their former raw-probability score scale, including comparisons with
+terminal replies. Exploration and selective-search gap thresholds now measure
+points; review thresholds previously tuned to probability gaps (for legacy A,
+the corresponding non-terminal gap doubles). No empirical retuning is implied.
+
 ## Tournament evaluation
 
 Both tournament modes measure actual cubeless points per game from model A's perspective: singles are worth +/-1, gammons +/-2, backgammons +/-3, and genuine draws 0. Outcome types determine cubeless scores, independently of the doubling cube. The report leads with average points and an approximate 95% confidence interval. Win counts and decisive-game win rate remain secondary information.
@@ -53,11 +84,11 @@ Choose the tournament size before starting and use its final report for the deci
 
 ## Search-assisted TD
 
-Each recorded afterstate stores one outcome prediction: the played move's two-ply evaluation when searched, otherwise its one-ply evaluation. If no prediction is available, the recorder evaluates Model A directly. Model B supplies moves in dual-model games; Model A remains the teacher for those positions.
+Each recorded after state stores one outcome prediction: the played move's two-ply evaluation when searched, otherwise its one-ply evaluation. If no prediction is available, the recorder evaluates Model A directly. Model B supplies moves in dual-model games; Model A remains the teacher for those positions.
 
 All labels use ordinary TD(lambda), blending recorded future predictions with the final game result. Search improves those bootstrap estimates; the current position's prediction does not directly replace its label. With lambda = 1, labels depend only on terminal outcomes. Use lambda below one for searched predictions to affect labels.
 
-Trajectory sidecars store one prediction vector in the nine-column format. Older dual-prediction sidecars remain readable: their searched vector is used when present, otherwise their raw vector. Rebuilding applies TD(lambda) to that single recorded prediction. A raw-only comparison requires re-evaluating the teacher or generating one-ply data; no separate raw vector or search-assistance flag is retained. Prediction variance and constraint diagnostics describe the recorded evaluations.
+Trajectory sidecars store one canonical prediction vector in the nine-column format. Readers require this current format. Rebuilding applies TD(lambda) to that single recorded prediction. A raw-only comparison requires re-evaluating the teacher or generating one-ply data; no separate raw vector or search-assistance flag is retained. Prediction variance and constraint diagnostics describe the recorded evaluations.
 
 ## Validation Splits
 

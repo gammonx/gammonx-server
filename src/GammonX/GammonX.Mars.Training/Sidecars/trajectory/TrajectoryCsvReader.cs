@@ -1,4 +1,5 @@
 using System.Globalization;
+using GammonX.Mars.NN.Models;
 
 using GammonX.Mars.Training.Generator;
 
@@ -14,6 +15,7 @@ public static class TrajectoryCsvReader
     {
         using var reader = new StreamReader(path);
         var header = reader.ReadLine();
+        
         if (header != WellKnownCsvHeaders.GamesSidecarHeader)
         {
             throw new InvalidDataException($"Unexpected game metadata header in '{path}'.");
@@ -131,6 +133,8 @@ public static class TrajectoryCsvReader
         if (trajectoryHeader != WellKnownCsvHeaders.TrajectorySidecarHeader)
             throw new InvalidDataException($"Unexpected trajectory header in '{trajectoryCsvPath}'.");
 
+        WellKnownCsvHeaders.ValidateTrainingHeader(trainingHeader, labelCount);
+
         var trainingColumnCount = trainingHeader.Split(',').Length;
         if (trainingColumnCount <= labelCount)
             throw new InvalidDataException($"Training CSV '{trainingCsvPath}' does not contain features and labels.");
@@ -168,20 +172,26 @@ public static class TrajectoryCsvReader
             var isTerminal = ParseBoolean(trajectoryColumns[3], trajectoryCsvPath, lineNumber);
             var prediction = new float[ForwardViewTdCalculator.FullHeadCount];
             for (var head = 0; head < prediction.Length; head++)
+            {
                 prediction[head] = ParseFloat(trajectoryColumns[4 + head], trajectoryCsvPath, lineNumber);
+            }
 
             var features = new float[featureCount];
             for (var feature = 0; feature < featureCount; feature++)
+            {
                 features[feature] = ParseFloat(trainingColumns[feature], trainingCsvPath, lineNumber);
+            }
 
             var labels = new float[labelCount];
             for (var label = 0; label < labelCount; label++)
+            {
                 labels[label] = ParseFloat(trainingColumns[featureCount + label], trainingCsvPath, lineNumber);
+            }
 
             yield return new TrainingDataRow(
                 gameId,
                 new TrajectoryPosition(turnIndex, isWhite, features, prediction, isTerminal),
-                labels);
+                GameOutcomeModel.ToCanonical(labels));
         }
     }
 

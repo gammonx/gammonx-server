@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using System.Text.RegularExpressions;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
 
@@ -525,6 +526,8 @@ namespace GammonX.Server
                             _matchRepository.Commit(matchSessionClone);
                             if (IsBotPlayer(matchSessionClone, startingPlayerId))
                             {
+                                // we must send a fresh game state here because bot may offer double at game start
+                                await SendGameState(ServerEventTypes.GameStartedEvent, matchSessionClone);
                                 await PerformBotTurnAsync(matchSessionClone, startingPlayerId);
                             }
                             else
@@ -1165,6 +1168,8 @@ namespace GammonX.Server
             // check if this move won the game for the active player
             if (gameOver)
             {
+                // we send here a last game state in order to update the visual board for the client in the background
+                await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                 // check if this was the last move to win the last game and the match
                 if (matchSession.IsMatchOver())
                 {
@@ -1427,15 +1432,15 @@ namespace GammonX.Server
             // We await the call in order to ensure that the events are properly published
             await EnqueueResultsForProcessingAsync(match, serverEventName);
 
-            // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
-            // TODO: client requests last - 1 rating period and current rating > difference = rating gain
-
             var payloadPlayer1 = match.ToPayload(match.Player1.Id);
+            payloadPlayer1.AppendRatingUrl(match.Player1.Id, serverEventName);
             var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
             await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+
             if (match.Modus != MatchModus.Bot)
             {
                 var payloadPlayer2 = match.ToPayload(match.Player2.Id);
+                payloadPlayer2.AppendRatingUrl(match.Player2.Id, serverEventName);
                 var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
                 await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
             }
@@ -1552,6 +1557,7 @@ namespace GammonX.Server
             }
             catch (Exception e)
             {
+                // TODO: Failed publication can permanently lose a rating update.
                 var groupName = ConstructGroupName(match.Id);
                 await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", "An error occurred while processing the match result. Some match data may be lost.", groupName, e);
             }

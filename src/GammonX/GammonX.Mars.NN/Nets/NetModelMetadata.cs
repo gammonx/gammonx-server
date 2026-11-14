@@ -6,12 +6,12 @@ using GammonX.Models.Enums;
 namespace GammonX.Mars.NN.Nets;
 
 /// <summary>
-/// Defines how a five-head game-outcome network converts its sigmoid outputs into probabilities.
+/// Defines how a multi-head game-outcome network converts its sigmoid outputs into probabilities.
 /// </summary>
 public enum GameOutcomeOutputMode
 {
     /// <summary>
-    /// Keeps the five sigmoid outputs independent for compatibility with legacy models.
+    /// Keeps the sigmoid outputs independent for compatibility with legacy models.
     /// </summary>
     LegacyIndependentSigmoid = 0,
 
@@ -36,6 +36,14 @@ public sealed record NetModelMetadata(
     public string? Name { get; init; }
 
     public NetTrainingMetadata? Training { get; init; }
+
+    /// <summary>The physical output width; legacy Fevga/Plakoto A models remain scalar.</summary>
+    [JsonIgnore]
+    public int OutputCount => Modus is GameModus.Fevga or GameModus.Plakoto
+        // plakoto and fevga uses three-head output (legacy model still one-head output)
+        ? Architecture == NetArchitecture.A ? 1 : 3
+        // backgammon, portes, tavla use five-head output
+        : 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -116,15 +124,11 @@ public sealed record NetModelMetadata(
             throw new InvalidDataException($"Model metadata '{sourceName}' contains unknown architecture value {(int)Architecture}.");
         }
 
-        if (modus is GameModus.Plakoto or GameModus.Fevga && OutputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
+        if (OutputCount == 1 && OutputMode != GameOutcomeOutputMode.LegacyIndependentSigmoid)
         {
-            throw new InvalidDataException($"Model metadata '{sourceName}' requests five-head output semantics for the single-head {modus} model.");
+            throw new InvalidDataException($"Model metadata '{sourceName}' requests cumulative output semantics for the single-head {modus} model.");
         }
 
-        if (modus is GameModus.Plakoto or GameModus.Fevga && Architecture != NetArchitecture.A)
-        {
-            throw new InvalidDataException($"Model metadata '{sourceName}' requests an unsupported architecture for the single-head {modus} model.");
-        }
     }
 
     private static NetModelMetadata LegacyFallback(GameModus modus) => new(0, modus, GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A);

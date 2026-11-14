@@ -44,8 +44,8 @@ public sealed record ConstraintMetricsResult(
 /// Accumulates game-outcome constraint metrics from individual rows or prediction tensors.
 /// </summary>
 /// <remarks>
-/// Tensor inputs must have shape <c>[batch, 5]</c>, where the five heads are ordered as
-/// win, win gammon, win backgammon, lose gammon, and lose backgammon. The accumulator
+/// Tensor inputs have shape <c>[batch, 3]</c> (win, win gammon, lose gammon) or
+/// <c>[batch, 5]</c> (win, win gammon, win backgammon, lose gammon, lose backgammon). The accumulator
 /// is mutable and is intended to be completed after all batches have been added.
 /// </remarks>
 internal sealed class ConstraintMetricsAccumulator
@@ -78,14 +78,14 @@ internal sealed class ConstraintMetricsAccumulator
     /// <summary>
     /// Adds every row in a CPU or device tensor to the aggregate metrics.
     /// </summary>
-    /// <param name="predictions">A tensor with shape <c>[batch, 5]</c> containing model predictions.</param>
+    /// <param name="predictions">A tensor with shape <c>[batch, 3]</c> or <c>[batch, 5]</c> containing model predictions.</param>
     /// <exception cref="ArgumentException">Thrown when the tensor does not have the required shape.</exception>
     public void Add(Tensor predictions)
     {
         ArgumentNullException.ThrowIfNull(predictions);
-        if (predictions.shape.Length != 2 || predictions.shape[1] != GameOutcomeConstraintValidator.FullHeadCount)
+        if (predictions.shape.Length != 2 || predictions.shape[1] is not (3 or 5))
         {
-            throw new ArgumentException($"Expected prediction shape [batch, {GameOutcomeConstraintValidator.FullHeadCount}], but received [{string.Join(", ", predictions.shape)}].", nameof(predictions));
+            throw new ArgumentException($"Expected prediction shape [batch, 3] or [batch, 5], but received [{string.Join(", ", predictions.shape)}].", nameof(predictions));
         }
 
         // Copy detached values to the CPU once, then validate each row independently.
@@ -94,9 +94,8 @@ internal sealed class ConstraintMetricsAccumulator
         var batchSize = checked((int)predictions.shape[0]);
         for (var row = 0; row < batchSize; row++)
         {
-            var rowValues = new float[GameOutcomeConstraintValidator.FullHeadCount];
-            Array.Copy(values, row * rowValues.Length, rowValues, 0, rowValues.Length);
-            AddRow(rowValues);
+            var width = checked((int)predictions.shape[1]);
+            AddRow(GameOutcomeModel.ToCanonical(values.AsSpan(row * width, width)));
         }
     }
 

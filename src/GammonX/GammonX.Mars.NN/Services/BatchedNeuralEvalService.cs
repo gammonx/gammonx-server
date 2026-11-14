@@ -410,13 +410,13 @@ namespace GammonX.Mars.NN.Services
             var shape = output.shape;
             if (shape.Length != 1 && shape.Length != 2)
             {
-                throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                throw new InvalidDataException("Inference output must have one, three, or five values for every input row.");
             }
 
             var outputWidth = shape.Length == 1 ? 1 : checked((int)shape[^1]);
-            if (shape[0] != rowCount || (outputWidth != 1 && outputWidth != 5) || values.Length != rowCount * outputWidth)
+            if (shape[0] != rowCount || (outputWidth != _netModel.Metadata.OutputCount) || values.Length != rowCount * outputWidth)
             {
-                throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                throw new InvalidDataException("Inference output must have one, three, or five values for every input row.");
             }
 
             // Publish worker timings before completing requests so awaiting callers see all stage measurements.
@@ -432,9 +432,13 @@ namespace GammonX.Mars.NN.Services
                     request.Cancel(request.CancellationToken);
                     continue;
                 }
+
                 var results = new float[request.Count][];
                 for (var row = 0; row < results.Length; row++)
+                {
                     results[row] = ReadRow(offset++);
+                }
+                
                 request.Result.TrySetResult(results);
             }
 
@@ -442,11 +446,7 @@ namespace GammonX.Mars.NN.Services
 
             float[] ReadRow(int index)
             {
-                if (outputWidth == 1)
-                    return [values[index], 0f, 0f, 0f, 0f];
-                var result = new float[outputWidth];
-                Array.Copy(values, index * outputWidth, result, 0, outputWidth);
-                return result;
+                return GameOutcomeModel.ToCanonical(values.AsSpan(index * outputWidth, outputWidth));
             }
         }
 

@@ -1,5 +1,4 @@
 ﻿using GammonX.Engine.Models;
-using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
 
@@ -22,16 +21,14 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
         {
+            // we expect model scalars to already describe the active player.
             if (features.Length != FeatureCount)
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
             }
 
-            // Canonicalize the board to white; model scalars already describe the active player.
-            // White checkers stay negative. Preserve the opponent-first raw channel order.
-            var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
-
             var featureIndex = 0;
+
             // self-crafted structural features
             features[featureIndex++] = (float)model.MaxPrimeLengthPlayer;
             features[featureIndex++] = (float)model.MaxPrimeLengthOpp;
@@ -56,17 +53,18 @@ namespace GammonX.Mars.NN.Services
             // race feature flag
             features[featureIndex++] = model.Race ? 1f : 0f;
             // raw board feature tensors
-            features[featureIndex++] = 0f;
-            features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
-            features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
+            features[featureIndex++] = 0f; // isWhite flag artifact, we only train from one perspective
+            features[featureIndex++] = (isWhite ? board.BearOffCountWhite : board.BearOffCountBlack) / 15f;
+            features[featureIndex++] = (isWhite ? board.BearOffCountBlack : board.BearOffCountWhite) / 15f;
             features[featureIndex++] = (float)model.TurnNumber;
 
             // we add the raw board as input
-            var fields = boardClone.Fields;
-            for (var i = 0; i < boardClone.Fields.Length; i++)
+            var fields = board.Fields;
+            for (var i = 0; i < fields.Length; i++)
             {
-                // Canonical white view: own = negative, opponent = positive.
-                var v = fields[i];
+                // Both players move forward, blacks path starts halfway around the board.
+                // Canonical own checkers stay negative; opponent checkers are positive.
+                var v = isWhite ? fields[i] : -fields[(i + fields.Length / 2) % fields.Length];
                 features[featureIndex++] = v >= 1 ? 1f : 0f;                // opponent count >= 1
                 features[featureIndex++] = v >= 2 ? 1f : 0f;                // opponent count >= 2
                 features[featureIndex++] = v >= 3 ? 1f : 0f;                // opponent count >= 3

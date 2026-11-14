@@ -1,4 +1,5 @@
 using GammonX.Engine.Diagnostics;
+using GammonX.Mars.NN.Models;
 using GammonX.Engine.Models;
 
 using GammonX.Engine.Services;
@@ -178,10 +179,9 @@ namespace GammonX.Mars.NN.Services
 
         private static EvalResult AverageBestReplies(EvalResult[] bestByRoll)
         {
-            // we keep equity arithmetic unchanged and average only the selected replys distribution.
+            // we keep equity arithmetic unchanged and average only the selected replies distribution.
             var expectedEquity = 0d;
-            // TODO: Plakoto and Fevga 5 headoutput
-            var headCount = bestByRoll.Any(reply => reply.Prediction is { Length: 1 }) ? 1 : 5;
+            const int headCount = GameOutcomeConstraintValidator.FullHeadCount;
             
             var expectedPrediction = bestByRoll.All(reply => reply.Prediction != null)
                 ? new double[headCount]
@@ -195,20 +195,23 @@ namespace GammonX.Mars.NN.Services
                     var reply = bestByRoll[rollIndex++];
                     var weight = die1 == die2 ? 1d : 2d;
                     expectedEquity -= weight * reply.Equity / 36d;
-                    
-                    if (expectedPrediction == null)
-                        continue;
 
-                    var prediction = reply.Prediction!;
-                    expectedPrediction[0] += weight * (1d - prediction[0]) / 36d;
-                    if (headCount == 5)
+                    if (expectedPrediction == null)
                     {
-                        // we invert the prediction for the players perspective
-                        expectedPrediction[1] += weight * prediction[3] / 36d;
-                        expectedPrediction[2] += weight * prediction[4] / 36d;
-                        expectedPrediction[3] += weight * prediction[1] / 36d;
-                        expectedPrediction[4] += weight * prediction[2] / 36d;
+                        continue;
                     }
+
+                    var prediction = reply.Prediction!.Length == headCount
+                        ? reply.Prediction
+                        : GameOutcomeModel.ToCanonical(reply.Prediction);
+
+                    expectedPrediction[0] += weight * (1d - prediction[0]) / 36d;
+
+                    // Invert the canonical prediction to the player's perspective.
+                    expectedPrediction[1] += weight * prediction[3] / 36d;
+                    expectedPrediction[2] += weight * prediction[4] / 36d;
+                    expectedPrediction[3] += weight * prediction[1] / 36d;
+                    expectedPrediction[4] += weight * prediction[2] / 36d;
                 }
             }
 

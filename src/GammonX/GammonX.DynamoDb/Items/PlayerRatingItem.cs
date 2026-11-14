@@ -76,6 +76,15 @@ namespace GammonX.DynamoDb.Items
 		/// </remarks>
 		public int Revision { get; set; }
 
+        /// <summary>
+        /// Gets or sets the UTC time of the last committed rating calculation.
+        /// </summary>
+        /// <remarks>
+        /// Full 24-hour periods since this timestamp increase rating deviation on the next calculation.
+        /// Null for new or legacy items; inactivity tracking starts with their next rating update.
+        /// </remarks>
+        public DateTime? LastRatedAt { get; set; }
+
 		/// <summary>
 		/// Gets or sets the amount of matches played by the given player for the given variant, type and modus.
 		/// </summary>

@@ -1,7 +1,5 @@
 ﻿using GammonX.Engine.Models;
 
-using GammonX.Engine.Services;
-
 using GammonX.Mars.NN.Models;
 
 namespace GammonX.Mars.NN.Services
@@ -23,18 +21,16 @@ namespace GammonX.Mars.NN.Services
         // <inheritdoc />
         public void Extract(NormalizedEvalResultModel model, IBoardModel board, bool isWhite, Span<float> features)
         {
+            // we expect model scalars to already describe the active player.
             if (features.Length != FeatureCount)
             {
                 throw new ArgumentException("Incorrect feature buffer length.", nameof(features));
             }
 
-            // Canonicalize the board to white; model scalars already describe the active player.
-            // White checkers stay negative. Preserve the opponent-first raw channel order.
-            var boardClone = isWhite ? board.DeepClone() : board.InvertBoard();
-
-            var pinModel = (IPinModel)boardClone;
+            var pinModel = (IPinModel)board;
 
             var featureIndex = 0;
+
             // self-crafted pin features
             features[featureIndex++] = (float)model.PinCountOpp;
             features[featureIndex++] = (float)model.PinCountPlayer;
@@ -62,17 +58,18 @@ namespace GammonX.Mars.NN.Services
             // race feature flag
             features[featureIndex++] = model.Race ? 1f : 0f;
             // raw board feature tensors
-            features[featureIndex++] = 0f;
-            features[featureIndex++] = boardClone.BearOffCountWhite / 15f;
-            features[featureIndex++] = boardClone.BearOffCountBlack / 15f;
+            features[featureIndex++] = 0f; // isWhite flag artifact, we only train from one perspective
+            features[featureIndex++] = (isWhite ? board.BearOffCountWhite : board.BearOffCountBlack) / 15f;
+            features[featureIndex++] = (isWhite ? board.BearOffCountBlack : board.BearOffCountWhite) / 15f;
             features[featureIndex++] = (float)model.TurnNumber;
 
             // we add the raw board as input
-            var fields = boardClone.Fields;
-            for (var index = 0; index < boardClone.Fields.Length; index++)
+            var fields = board.Fields;
+            for (var index = 0; index < fields.Length; index++)
             {
-                // Canonical white view: own = negative, opponent = positive.
-                var v = fields[index];
+                // Reverse blacks point order and swap signs to canonical player ownership.
+                // Canonical own checkers stay negative, opponent checkers are positive.
+                var v = isWhite ? fields[index] : -fields[fields.Length - 1 - index];
                 features[featureIndex++] = v >= 1 ? 1f : 0f;                // opponent count >= 1
                 features[featureIndex++] = v >= 2 ? 1f : 0f;                // opponent count >= 2
                 features[featureIndex++] = v >= 3 ? 1f : 0f;                // opponent count >= 3
@@ -86,10 +83,10 @@ namespace GammonX.Mars.NN.Services
             }
             // we add the raw pinned fields as input
             var pinnedFields = pinModel.PinnedFields;
-            for (var index = 0; index < pinModel.PinnedFields.Length; index++)
+            for (var index = 0; index < pinnedFields.Length; index++)
             {
-                // Canonical white view: own = negative, opponent = positive.
-                var v = pinnedFields[index];
+                // Apply the same perspective transformation to pinned checker ownership.
+                var v = isWhite ? pinnedFields[index] : -pinnedFields[pinnedFields.Length - 1 - index];
                 features[featureIndex++] = v >= 1 ? 1f : 0f;  // opponent pinned
                 features[featureIndex++] = v <= -1 ? 1f : 0f; // player pinned
             }

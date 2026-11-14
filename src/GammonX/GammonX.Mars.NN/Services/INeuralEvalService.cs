@@ -41,7 +41,8 @@ namespace GammonX.Mars.NN.Services
         /// including cancellation completion. Queued work is cancelled by the worker;
         /// an executing native forward pass finishes before cancellation is acknowledged.
         /// Each result uses the same five-value format as <see cref="PredictAsync"/>.
-        /// Scalar models are normalized to [prediction, 0, 0, 0, 0].
+        /// Five-head models are normalized to [prediction, 0, 0, 0, 0].
+        /// Three-head models are normalized to [pWin, pGammonWin, 0, pGammonLoss, 0].
         /// </remarks>
         /// <param name="features">The batch of feature vectors to predict.</param>
         /// <param name="cancellationToken">Cancels evaluation without returning a partial result.</param>

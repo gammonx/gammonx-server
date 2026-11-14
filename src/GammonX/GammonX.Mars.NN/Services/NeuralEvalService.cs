@@ -154,17 +154,24 @@ namespace GammonX.Mars.NN.Services
                 using var output = _netModel.Forward(input);
                 using var cpuOutput = output.to(CPU);
                 var values = cpuOutput.data<float>().ToArray();
+
                 var shape = output.shape;
                 if (shape.Length != 1 && shape.Length != 2)
-                    throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                {
+                    throw new InvalidDataException("Inference output must have one, three, or five values for every input row.");
+                }
+
                 var width = shape.Length == 1 ? 1 : checked((int)shape[^1]);
-                if (shape[0] != features.Length || (width != 1 && width != 5) || values.Length != features.Length * width)
-                    throw new InvalidDataException("Inference output must have one or five values for every input row.");
+                if (shape[0] != features.Length || (width != _netModel.Metadata.OutputCount) || values.Length != features.Length * width)
+                {
+                    throw new InvalidDataException("Inference output must have one, three, or five values for every input row.");
+                }
+
                 var results = new float[features.Length][];
+
                 for (var index = 0; index < results.Length; index++)
                 {
-                    results[index] = new float[5];
-                    Array.Copy(values, index * width, results[index], 0, width);
+                    results[index] = GameOutcomeModel.ToCanonical(values.AsSpan(index * width, width));
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();

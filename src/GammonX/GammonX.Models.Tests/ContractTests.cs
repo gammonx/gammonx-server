@@ -9,6 +9,32 @@ namespace GammonX.Models.Tests
 {
     public class ContractTests
     {
+        [Theory]
+        [InlineData(50d)]
+        [InlineData(-50d)]
+        [InlineData(0d)]
+        public void PlayerRatingChangeSurvivesApiSerializationAndClientDeserialization(double change)
+        {
+            // Arrange: Lambda writes with Newtonsoft.Json; the repository client reads with System.Text.Json.
+            var response = new PlayerRatingResponseContract
+            {
+                Rating = 1200 + change,
+                PreviousRating = 1200,
+                RatingChange = change
+            };
+
+            // Act.
+            var json = JsonConvert.SerializeObject(response);
+            var restored = System.Text.Json.JsonSerializer.Deserialize<PlayerRatingResponseContract>(json,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            // Assert.
+            Assert.NotNull(restored);
+            Assert.Equal(response.Rating, restored.Rating);
+            Assert.Equal(response.PreviousRating, restored.PreviousRating);
+            Assert.Equal(response.RatingChange, restored.RatingChange);
+        }
+
         [Fact]
         public void PlayerRecordIsSerializedProperly()
         {

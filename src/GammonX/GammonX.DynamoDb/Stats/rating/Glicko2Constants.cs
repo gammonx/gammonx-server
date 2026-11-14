@@ -27,6 +27,11 @@
         public const double DefaultSigma = 0.06;
 
         /// <summary>
+        /// Gets the number of elapsed days counted as one inactive rating period.
+        /// </summary>
+        public const double InactivityPeriodDays = 1;
+
+        /// <summary>
         /// Convert between Glicko and Glicko-2 scales
         /// </summary>
         public const double Scale = 173.7178;

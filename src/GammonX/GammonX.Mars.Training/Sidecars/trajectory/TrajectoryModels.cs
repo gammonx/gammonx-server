@@ -58,7 +58,7 @@ public sealed record GameMetadata(
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="Position">The position in the trajectory.</param>
-/// <param name="Label">The label for the position.</param>
+/// <param name="Label">The five canonical outcome labels; CSV boundaries select the mode-specific training heads.</param>
 public sealed record TrainingDataRow(
     Guid GameId,
     TrajectoryPosition Position,

@@ -33,6 +33,8 @@ namespace GammonX.Server.Controllers
         {
             try
             {
+                // TODO: directly create match lobby for bot play.
+                // TODO: remove bot matchmaking background worker
                 var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, req.BotLevel ?? BotLevel.Unknown);
                 var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(queueKey.MatchModus);
                 var queueEntry = await matchMakingService.JoinQueueAsync(req.PlayerId, queueKey);

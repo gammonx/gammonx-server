@@ -19,6 +19,8 @@ public class NeuralEvalServiceCancellationTests
         using var release = new ManualResetEventSlim();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var net = new Mock<INetModel>();
+        net.SetupGet(model => model.Metadata).Returns(new NetModelMetadata(2, GammonX.Models.Enums.GameModus.Fevga,
+            GameOutcomeOutputMode.LegacyIndependentSigmoid, NetArchitecture.A));
         var calls = 0;
         net.Setup(value => value.Forward(It.IsAny<Tensor>())).Returns((Tensor input) =>
         {

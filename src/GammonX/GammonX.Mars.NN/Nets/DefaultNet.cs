@@ -45,11 +45,13 @@ namespace GammonX.Mars.NN.Nets
             }
 
             InitializeModelArchitecture(metadata.Architecture, device);
+
             // dropout temporarily switches off randomly selected hidden activations during training. 
             // With p = 0.1, each activation has a 10% chance of becoming zero on a training pass. 
-            // This discourages the network from relying too heavily on particular neurons and can reduce overfitting
-            // we currently disabled dropout because no overfitting is spotted
+            // This discourages the network from relying too heavily on particular neurons and can reduce over fitting
+            // we currently disabled dropout because no over fitting is spotted
             _drop = Dropout(p: 0.0);
+
             RegisterComponents();
         }
 
@@ -59,7 +61,7 @@ namespace GammonX.Mars.NN.Nets
             // Gen12 A/B (2026-11-07): A cut CPU inference latency by 6-33% with one thread;
             // 16-thread batching showed no reliable gain. In 20k one-ply games per matchup,
             // PLAYING STRENGTH:
-            // A lost 0.0587 points/game to B trained on the same data, and 0.5476 to pretrained gen12 B.
+            // A lost 0.0587 points/game to B trained on the same data, and 0.5476 to pre-trained gen12 B.
             if (architecture == NetArchitecture.A)
             {
                 _fc1 = Linear(216, 256, true, device);
