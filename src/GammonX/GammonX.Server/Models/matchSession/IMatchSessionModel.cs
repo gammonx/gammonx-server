@@ -204,5 +204,13 @@ namespace GammonX.Server.Models
 		/// </summary>
 		/// <returns>Returns an instance of <see cref="IMatchHistory"/>.</returns>
 		IMatchHistory GetHistory();
+
+		/// <summary>
+		/// Checks if the given server command is allowed for the given player id.
+		/// </summary>
+		/// <param name="callingPlayerId">Player to validate for.</param>
+		/// <param name="command">Command to check.</param>
+		/// <returns>Boolean indicating if the command can be executed.</returns>
+		bool IsAllowedCommand(Guid callingPlayerId, string command);
 	}
 }

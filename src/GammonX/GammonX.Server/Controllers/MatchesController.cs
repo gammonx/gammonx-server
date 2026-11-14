@@ -35,6 +35,8 @@ namespace GammonX.Server.Controllers
             {
                 var queueKey = new QueueKey(req.MatchVariant, req.MatchModus, req.MatchType, req.BotLevel ?? BotLevel.Unknown);
                 var matchMakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(queueKey.MatchModus);
+                // TODO: we have to check if the requesting player is already part of an active match
+                // if yes he may corrupt the player connection repository entry
                 var queueEntry = await matchMakingService.JoinQueueAsync(req.PlayerId, queueKey);
                 
                 RequestQueueEntryPayload payload;

@@ -517,6 +517,12 @@ namespace GammonX.Server.Models
 			return GameSessions;
 		}
 
+		// <inheritdoc />
+		public bool IsAllowedCommand(Guid callingPlayerId, string command)
+        {
+            return IsCommandCallValid(callingPlayerId, command);
+        }
+
 		#region Abstract Methods
 
 		/// <summary>
@@ -690,6 +696,6 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public abstract object Clone();
 
-		#endregion ICloneable Impl
+        #endregion ICloneable Impl
     }
 }

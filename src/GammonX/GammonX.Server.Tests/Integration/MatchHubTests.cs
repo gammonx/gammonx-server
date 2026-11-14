@@ -571,6 +571,14 @@ namespace GammonX.Server.Tests.Integration
             // Act.
             await hub.StartMatchAsync(fixture.Session.Id.ToString());
             var tied = _matchRepo.Get(fixture.Session.Id)!;
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = tied.Id, PlayerId = tied.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = tied.Id, PlayerId = tied.Player2.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
             await hub.StartMatchAsync(fixture.Session.Id.ToString());
 
             // Assert.
@@ -681,6 +689,56 @@ namespace GammonX.Server.Tests.Integration
                 Assert.True(match.Player2.NextGameAccepted);
                 Assert.Null(match.GetGameSession(match.GameRound));
             });
+
+            foreach (var player in new[] { fixture.Session.Player1, fixture.Session.Player2 })
+            {
+                Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = fixture.Session.Id, PlayerId = player.Id, Category = CancellationTokenCategory.Turn
+                }, out _));
+            }
+
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+            Assert.NotNull(_matchRepo.Get(fixture.Session.Id)!.StartedAt);
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = fixture.Session.Id, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+        }
+
+        [Theory]
+        [InlineData(ServerCommands.StartMatchCommand)]
+        [InlineData(ServerCommands.StartGameCommand)]
+        [InlineData(ServerCommands.AcceptDoubleCommand)]
+        [InlineData(ServerCommands.DeclineDoubleCommand)]
+        [InlineData(ServerCommands.OfferDoubleCommand)]
+        public async Task InvalidCommandPreservesTurnDeadline(string command)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            await fixture.Hub.RollAsync(fixture.Session.Id.ToString());
+            var key = new CancellationTokenKey
+            {
+                MatchId = fixture.Session.Id, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            };
+            using var timer = new CancellationTokenSource();
+            _cancellationTokenService.Store(key, timer);
+
+            // Act.
+            var id = fixture.Session.Id.ToString();
+            switch (command)
+            {
+                case ServerCommands.StartMatchCommand: await fixture.Hub.StartMatchAsync(id); break;
+                case ServerCommands.StartGameCommand: await fixture.Hub.StartGameAsync(id); break;
+                case ServerCommands.AcceptDoubleCommand: await fixture.Hub.AcceptDoubleAsync(id); break;
+                case ServerCommands.DeclineDoubleCommand: await fixture.Hub.DeclineDoubleAsync(id); break;
+                case ServerCommands.OfferDoubleCommand: await fixture.Hub.OfferDoubleAsync(id); break;
+            }
+
+            // Assert.
+            Assert.False(timer.IsCancellationRequested);
+            Assert.True(_cancellationTokenService.TryGet(key, out var current));
+            Assert.Same(timer, current);
         }
 
         [Fact]
