@@ -231,6 +231,7 @@ namespace GammonX.Server.Tests.Integration
         {
             // Arrange
             var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
             var playerId = fixture.Session.Player1.Id;
             var matchId = fixture.Session.Id;
             var connectionId = fixture.Session.Player1.ConnectionId!;
@@ -270,6 +271,80 @@ namespace GammonX.Server.Tests.Integration
         {
             var method = typeof(MatchLobbyHub).GetMethod("HandlePermanentDisconnectAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
             return (Task)method.Invoke(hub, [playerId, matchId, connectionId, timer])!;
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task PreStartTimeoutOrDisconnectRemovesLobbyWithoutRatingResult(bool disconnected)
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var matchId = fixture.Session.Id;
+            var playerId = fixture.Session.Player1.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+
+            // Act
+            if (disconnected)
+            {
+                fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+                var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+                Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+                await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, timer!);
+            }
+            else
+            {
+                await InvokeTurnTimeoutAsync(fixture.Hub, matchId, playerId);
+            }
+            await fixture.Hub.JoinMatchAsync(matchId.ToString(), playerId.ToString());
+
+            // Assert: the old lobby cannot recreate a session or award a no-show loss.
+            Assert.False(_rankedService.TryFindMatchLobby(matchId, out _));
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Null(_playerConnRepo.Get(playerId));
+            Assert.NotNull(_playerConnRepo.Get(fixture.Session.Player2.Id));
+            _workQueueService.Verify(value => value.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SecondLobbyPlayerJoiningFirstCancelsOnlyTheirJoinTimer()
+        {
+            // Arrange
+            var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame);
+            var entry = await _normalService.JoinQueueAsync(Guid.NewGuid(), key);
+            await _normalService.JoinQueueAsync(Guid.NewGuid(), key);
+            await _normalService.MatchQueuedPlayersAsync();
+            Assert.True(_normalService.TryFindMatchLobby(entry.Id, out var lobby));
+            using var firstTimer = new CancellationTokenSource();
+            using var secondTimer = new CancellationTokenSource();
+            _cancellationTokenService.Store(new CancellationTokenKey
+            {
+                MatchId = lobby!.MatchId, PlayerId = lobby.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, firstTimer);
+            _cancellationTokenService.Store(new CancellationTokenKey
+            {
+                MatchId = lobby.MatchId, PlayerId = lobby.Player2!.Id, Category = CancellationTokenCategory.Turn
+            }, secondTimer);
+            var clients = new Mock<IHubCallerClients>();
+            clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
+            var hub = new MatchLobbyHub(BuildServiceProvider(_normalService))
+            {
+                Clients = clients.Object,
+                Groups = new Mock<IGroupManager>().Object,
+                Context = new HubCallerContextStub("second", lobby.Player2.Id, lobby.MatchId)
+            };
+
+            // Act
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), lobby.Player2.Id.ToString());
+
+            // Assert
+            Assert.False(firstTimer.IsCancellationRequested);
+            Assert.True(secondTimer.IsCancellationRequested);
+            Assert.NotNull(_matchRepo.Get(lobby.MatchId));
+            await InvokeTurnTimeoutAsync(hub, lobby.MatchId, lobby.Player2.Id);
+            Assert.False(_normalService.TryFindMatchLobby(lobby.MatchId, out _));
         }
 
         [Fact]
@@ -1946,6 +2021,7 @@ namespace GammonX.Server.Tests.Integration
             services.AddSingleton(_workQueueService.Object);
             services.AddSingleton(matchmakingService);
             services.AddSingleton(_matchRepo);
+            services.AddSingleton<MatchLobbyCleanupService>();
             services.AddSingleton(diceFactory ?? _diceFactory);
             services.AddKeyedSingleton(WellKnownBotServices.WildBg, _wildBgBot);
             services.AddKeyedSingleton(WellKnownBotServices.Mars, botService ?? _marsBot);

@@ -38,6 +38,7 @@ namespace GammonX.Server
 
         private readonly IMatchmakingService _matchmakingService;
         private readonly MatchSessionRepository _matchRepository;
+        private readonly MatchLobbyCleanupService _lobbyCleanup;
         private readonly PlayerConnectionRepository _playerConnectionRepository;
         private readonly IDiceService _diceService;
         private readonly IServiceProvider _serviceProvider;
@@ -50,6 +51,7 @@ namespace GammonX.Server
             _workQueue = serviceProvider.GetRequiredService<IWorkQueueService>();
             _matchmakingService = serviceProvider.GetRequiredService<IMatchmakingService>();
             _matchRepository = serviceProvider.GetRequiredService<MatchSessionRepository>();
+            _lobbyCleanup = serviceProvider.GetRequiredService<MatchLobbyCleanupService>();
             _diceService = serviceProvider.GetRequiredService<IDiceServiceFactory>().Create(DiceServiceType.Crypto);
             _playerConnectionRepository = serviceProvider.GetRequiredService<PlayerConnectionRepository>();
             _cancellationTokenService = serviceProvider.GetRequiredService<ICancellationTokenService>();
@@ -299,6 +301,10 @@ namespace GammonX.Server
             }
 
             _cancellationTokenService.Cancel(tokenKey);
+            if (matchToResignClone?.StartedAt == null && await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock))
+            {
+                return;
+            }
             connection.DisconnectGracePeriod = TimeSpan.Zero;
             _playerConnectionRepository.TryRemove(playerId);
 
@@ -338,6 +344,7 @@ namespace GammonX.Server
         {
             try
             {
+                // TODO: we should compare the player id with the auth caller player id
                 if (!Guid.TryParse(matchId, out var matchGuid))
                     await SendErrorEventAsync("LOBBY_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
 
@@ -386,7 +393,7 @@ namespace GammonX.Server
 
                     if (matchLobby.Player2?.Id == playerIdGuid)
                     {
-                        CancelTimersFor(matchSessionClone.Id, matchLobby.Player1.Id, CancellationTokenCategory.Turn);
+                        CancelTimersFor(matchSessionClone.Id, matchLobby.Player2.Id, CancellationTokenCategory.Turn);
                         matchLobby.Player2.SetConnectionId(Context.ConnectionId);
                         ArgumentNullException.ThrowIfNull(matchLobby.Player2.ConnectionId, nameof(matchLobby.Player2.ConnectionId));
                         matchSessionClone.JoinSession(matchLobby.Player2);
@@ -1430,6 +1437,12 @@ namespace GammonX.Server
         private async Task HandleTurnTimeoutAsync(Guid matchId, Guid playerId)
         {
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
+            
+            if (await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock))
+            {
+                return;
+            }
+            
             var matchSessionClone = matchLock.Get();
             if (matchSessionClone != null && !matchSessionClone.IsMatchOver())
             {
@@ -1565,6 +1578,11 @@ namespace GammonX.Server
 
         private async Task CleanUpMatchAsync(MatchSessionLease matchLock, IMatchSessionModel match, string groupName)
         {
+            if (await _lobbyCleanup.TryCleanupUnstartedAsync(match.Id, matchLock))
+            {
+                return;
+            }
+            _matchmakingService.TryRemoveMatchLobby(match.Id);
             // clients can now safely disconnect from socket
             var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
             await SendToGroupAsync(groupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);

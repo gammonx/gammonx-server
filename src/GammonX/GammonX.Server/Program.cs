@@ -68,6 +68,8 @@ builder.Services.AddKeyedSingleton<IMatchmakingService, UnknownMatchmakingServic
 builder.Services.AddSingleton<IMatchmakingService, CompositeMatchmakingService>();
 builder.Services.AddHostedService<RankedMatchmakingWorker>();
 builder.Services.AddHostedService<NormalMatchmakingWorker>();
+builder.Services.AddHostedService<BotMatchmakingWorker>();
+builder.Services.AddSingleton<MatchLobbyCleanupService>();
 builder.Services.AddSingleton<MatchSessionRepository>();
 builder.Services.AddSingleton<PlayerConnectionRepository>();
 builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
