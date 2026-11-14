@@ -338,7 +338,9 @@ namespace GammonX.Server.Models
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
+			{
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
 
 			// other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
@@ -346,9 +348,11 @@ namespace GammonX.Server.Models
 			var points = CalculateResignGamePoints();
 			otherPlayer.Points += points;
 			var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
+			
 			activeSession.StopGame(result);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
+			
 			LastExecutedCommand = ServerCommands.ResignGameCommand;
 		}
 
