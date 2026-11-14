@@ -85,7 +85,7 @@ namespace GammonX.Server.Services
                     {
                         // a could not be claimed > requeue b
                         _queue.TryAdd(entryB.Id, entryB);
-                        queue.Enqueue(idA);
+                        queue.Enqueue(idB);
                     }
                     else if (!claimedB)
                     {
