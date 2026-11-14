@@ -41,6 +41,7 @@ namespace GammonX.Server.Services
         // <inheritdoc />
         public override Task MatchQueuedPlayersAsync()
         {
+            // TODO: only handle ranked queue keys?
             foreach (var (queueKey, queue) in _modeQueues)
             {
                 while (queue.TryDequeue(out var idA))
@@ -55,6 +56,8 @@ namespace GammonX.Server.Services
                         // couldn't match now > requeue
                         queue.Enqueue(idA);
                         break;
+                        // TODO: match all players which do not have an opponent with Hard/Expert bot
+                        // TODO: expert bot should appear in player ratings
                     }
 
                     var claimedA = false;

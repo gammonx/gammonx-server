@@ -30,6 +30,7 @@
 - play a match with pauses
 
 ## Open Points
+- track bot profiles as "players"
 - play-a-friend, invite by link
 - export matches to sgf/.mat format
 - tournament mode
