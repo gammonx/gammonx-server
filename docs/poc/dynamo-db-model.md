@@ -52,6 +52,44 @@ For example, if a match changes a player's rating from 1200 to 1250, its
 The difference is +50. Selecting the preceding match's period would use an older
 baseline and could include the change from that preceding match as well.
 
+Both players are read once per calculation attempt and both results are computed
+from those same snapshots. The transaction checks both rating revisions and
+inserts both periods conditionally. A revision conflict retries the complete
+calculation with fresh snapshots; neither player's calculation mutates the inputs
+used by the other player.
+
+### Match strength and normalized scores
+
+The winner starts with a normalized score of `0.75`. Strength bonuses use the
+winner's gammon count (`0.15` each), backgammon count (`0.30` each), pip difference
+(up to `0.10`), and point margin (`0.05` per point, capped at `0.10`). Pip bonuses
+are zero for equal pip averages and increase smoothly for a favorable difference.
+The combined bonus is multiplied by `min(1, gamesPlayed / 7)`.
+
+For a nonnegative combined bonus `b`, the winner's score is
+`0.75 + 0.25 * b / (1 + b)`. This leaves room for stronger results to increase
+the score without immediately clamping it to `1`. The loser's score is exactly
+`1 - winnerScore`, using the same winner statistics. These fractional scores
+are inputs to Glicko-2; rating changes also depend on the expected score against
+the opponent.
+
+### Inactivity
+
+`PlayerRating.LastRatedAt` stores the UTC processing time of the last committed
+rating calculation. On the next update, every full 24 hours since that timestamp
+counts as one inactive period. For `n` inactive periods, the effective pre-match
+deviation on the Glicko-2 scale is `sqrt(phi * phi + n * sigma * sigma)`, capped
+at an ordinary rating deviation of `350`. The rating and volatility stay unchanged
+while applying inactivity. This follows the no-game deviation update in the
+[Glicko-2 specification](https://www.glicko.net/glicko/glicko2.pdf).
+
+Both players' effective deviations are calculated at the same UTC time and
+captured in their pre-match periods before calculating the match result. The
+transaction stores the new `LastRatedAt` with the updated ratings. Duplicate
+messages do not advance it. Missing or null timestamps on older items preserve
+their existing deviation and start inactivity tracking with their next update.
+Future timestamps and gaps shorter than one full day add no inactive periods.
+
 ### Rating change URL
 
 Ranked match-end payloads include a player-specific `ratingUrl` relative to the
@@ -130,6 +168,7 @@ logical MAT content represented by the item model before persistence.
   "LowestRating": "{double}",
   "HighestRating": "{double}",
   "Revision": "{int}",
+  "LastRatedAt": "2026-11-14T12:00:00.0000000Z",
   "MatchesPlayed": "{int}"
 }
 ```

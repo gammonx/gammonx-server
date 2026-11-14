@@ -3,6 +3,7 @@
 using System.Globalization;
 
 using GammonX.Models.Enums;
+using GammonX.Models.Helpers;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
@@ -48,6 +49,10 @@ namespace GammonX.DynamoDb.Items
                     : 0,
                 MatchesPlayed = int.Parse(item["MatchesPlayed"].N, CultureInfo.InvariantCulture)
             };
+            if (item.TryGetValue("LastRatedAt", out var lastRatedAt) && lastRatedAt.NULL != true)
+            {
+                playerRatingItem.LastRatedAt = DateTimeHelper.ParseUtc(lastRatedAt.S);
+            }
             return playerRatingItem;
         }
 
@@ -72,6 +77,9 @@ namespace GammonX.DynamoDb.Items
                 { "HighestRating", new AttributeValue() { N = item.HighestRating.ToString(CultureInfo.InvariantCulture) } },
                 { "LowestRating", new AttributeValue() { N = item.LowestRating.ToString(CultureInfo.InvariantCulture) } },
                 { "Revision", new AttributeValue() { N = item.Revision.ToString(CultureInfo.InvariantCulture) } },
+                { "LastRatedAt", item.LastRatedAt.HasValue
+                    ? new AttributeValue(DateTimeHelper.FormatUtc(item.LastRatedAt.Value))
+                    : new AttributeValue { NULL = true } },
                 { "MatchesPlayed", new AttributeValue() { N = item.MatchesPlayed.ToString(CultureInfo.InvariantCulture) } }
             };
             return itemDict;

@@ -25,7 +25,7 @@ namespace GammonX.Models.Contracts
         /// Gets or sets Rating minus PreviousRating: positive for a gain, negative for a loss.
         /// Null when the baseline is unavailable. Includes later matches if they have updated Rating.
         /// </summary>
-        [DataMember(Name = "RatingGain", EmitDefaultValue = false)]
+        [DataMember(Name = "RatingChange", EmitDefaultValue = false)]
         public double? RatingChange { get; set; }
     }
 }

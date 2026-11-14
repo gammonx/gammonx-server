@@ -7,7 +7,7 @@ namespace GammonX.DynamoDb.Tests.Rating
     public class MatchScoreCalculatorTests
     {
         [Fact]
-        public void WinNoBonusesReturnsOne()
+        public void WinNoBonusesReservesHeadroomForStrengthBonuses()
         {
             var p = Guid.NewGuid();
             var winner = Win(p);
@@ -15,11 +15,11 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            Assert.Equal(1.0, score);
+            Assert.Equal(0.75, score);
         }
 
         [Fact]
-        public void LossNoBonusesReturnsZero()
+        public void LossNoBonusesComplementsBaseWinScore()
         {
             var p = Guid.NewGuid();
             var loser = Loss(p);
@@ -27,7 +27,7 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            Assert.Equal(0.0, score);
+            Assert.Equal(0.25, score);
         }
 
         [Fact]
@@ -39,9 +39,8 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            // strength pushes to greater than 1
-            // but clamp keeps it at 1
-            Assert.Equal(1.0, score);
+            var baseline = MatchScoreCalculator.Calculate(p, Win(p), loser);
+            Assert.True(score > baseline);
         }
 
         [Fact]
@@ -53,7 +52,8 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            Assert.Equal(1.0, score); // clamped to 1
+            var gammonScore = MatchScoreCalculator.Calculate(p, Win(p, gammons: 1), loser);
+            Assert.True(score > gammonScore);
         }
 
         [Fact]
@@ -67,8 +67,8 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            // positive bonus pushes over 1 and getting clamped
-            Assert.Equal(1.0, score);
+            var baseline = MatchScoreCalculator.Calculate(p, winner, Loss(loser.PlayerId));
+            Assert.True(score > baseline);
         }
 
         [Fact]
@@ -81,10 +81,9 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            // negative logistic bonus
-            Assert.True(score < 0.05);
-            // clamped
-            Assert.True(score >= 0.0);
+            var baseline = MatchScoreCalculator.Calculate(p, winner, Loss(p));
+            Assert.True(score < baseline);
+            Assert.True(score > 0.0);
         }
 
         [Fact]
@@ -97,8 +96,8 @@ namespace GammonX.DynamoDb.Tests.Rating
 
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
-            // clamps after bonus
-            Assert.Equal(1.0, score);
+            var baseline = MatchScoreCalculator.Calculate(p, Win(p, points: 1), loser);
+            Assert.True(score > baseline);
         }
 
         [Fact]
@@ -110,16 +109,13 @@ namespace GammonX.DynamoDb.Tests.Rating
             var loserShort = Loss(Guid.NewGuid(), length: 1);
 
             var scoreShort = MatchScoreCalculator.Calculate(p, winnerShort, loserShort);
-            // still clamp but will be lower before clamp
-            Assert.Equal(1.0, scoreShort);
 
             var winnerLong = Win(p, gammons: 1, length: 7);
             var loserLong = Loss(Guid.NewGuid(), length: 7);
 
             var scoreLong = MatchScoreCalculator.Calculate(p, winnerLong, loserLong);
 
-            // long match applies full bonus for stronger score
-            Assert.Equal(1.0, scoreLong);
+            Assert.True(scoreLong > scoreShort);
         }
 
         [Fact]
@@ -134,7 +130,7 @@ namespace GammonX.DynamoDb.Tests.Rating
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
             Assert.True(score >= 0.0);
-            Assert.True(score <= 0.2);
+            Assert.True(score < 0.25);
         }
 
         [Fact]
@@ -148,6 +144,23 @@ namespace GammonX.DynamoDb.Tests.Rating
             var score = MatchScoreCalculator.Calculate(p, winner, loser);
 
             Assert.InRange(score, 0.0, 1.0);
+            Assert.Equal(1.0, score + MatchScoreCalculator.Calculate(loser.PlayerId, winner, loser), 12);
+        }
+
+        [Fact]
+        public void StrengthBonusesRemainEffectiveForLargeWinCounts()
+        {
+            // Arrange.
+            var playerId = Guid.NewGuid();
+            var loser = Loss(Guid.NewGuid(), length: 7);
+
+            // Act.
+            var strong = MatchScoreCalculator.Calculate(playerId, Win(playerId, gammons: 50, length: 7), loser);
+            var stronger = MatchScoreCalculator.Calculate(playerId, Win(playerId, gammons: 100, length: 7), loser);
+
+            // Assert.
+            Assert.True(stronger > strong);
+            Assert.True(stronger < 1.0);
         }
 
         private static MatchScoreInput Win(

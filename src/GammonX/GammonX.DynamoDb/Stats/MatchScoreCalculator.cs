@@ -10,30 +10,11 @@ namespace GammonX.DynamoDb.Stats
         {
             var playersMatch = GetPlayersMatch(playerId, wonMatchItem, lostMatchItem);
             bool playerWon = playersMatch.Result == MatchResult.Won;
-            double baseScore = playerWon ? 1.0 : 0.0;
-
-            // we apply negative bonuses if player lostv
-            int sign = playerWon ? 1 : -1;
-
-            // calculate the win type bonus
-            double winTypeBonus = 0.0;
-            double gammonMultiplier = 0.15;
-            double backgammonMultiplier = 0.30;
-            switch (playersMatch.Result)
-            {
-                case MatchResult.Won:
-                    var gammonBonus = playersMatch.Gammons * gammonMultiplier;
-                    var backGammonsBonus = playersMatch.Backgammons * backgammonMultiplier;
-                    winTypeBonus = gammonBonus + backGammonsBonus;
-                    break;
-                case MatchResult.Lost:
-                    winTypeBonus = 0.00;
-                    break;
-            }
+            double winTypeBonus = wonMatchItem.Gammons * 0.15 + wonMatchItem.Backgammons * 0.30;
 
             // we calculate pip difference logistic (output between 0 and 0.10)
             var pipDifference = lostMatchItem.AvgPipesLeft - wonMatchItem.AvgPipesLeft;
-            double pipBonus = 0.10 * Sigmoid(pipDifference / 10.0);
+            double pipBonus = 0.10 * Math.Max(0.0, 2.0 * Sigmoid(pipDifference / 10.0) - 1.0);
 
             // we calculate point difference bonus. Typical matches have small effect
             var pointDifference = wonMatchItem.Points - lostMatchItem.Points;
@@ -41,15 +22,13 @@ namespace GammonX.DynamoDb.Stats
 
             // we calculate the match length dampening. Longer matches are more stable
             var matchLength = Math.Min(wonMatchItem.Length, lostMatchItem.Length);
-            double lengthFactor = Math.Min(1.0, matchLength / 7.0); // 7pt match gives full effect
+            double lengthFactor = Math.Clamp(matchLength / 7.0, 0.0, 1.0);
 
-            // we calculate the strength bonus
-            double strengthBonus = (winTypeBonus + pipBonus + pointBonus) * sign * lengthFactor;
-
-            // we clamp final score into [0, 1]
-            double finalScore = Math.Clamp(baseScore + strengthBonus, 0.0, 1.0);
-
-            return finalScore;
+            // Reserve headroom above a base win score, keeping bonuses effective without saturation.
+            // Both players use the winners performance so their normalized scores sum to one.
+            double strengthBonus = Math.Max(0.0, (winTypeBonus + pipBonus + pointBonus) * lengthFactor);
+            double winnerScore = 0.75 + 0.25 * strengthBonus / (1.0 + strengthBonus);
+            return playerWon ? winnerScore : 1.0 - winnerScore;
         }
 
         public static MatchScoreInput From(this MatchItem item)

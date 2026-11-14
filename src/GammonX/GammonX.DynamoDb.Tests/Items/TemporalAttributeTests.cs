@@ -13,6 +13,30 @@ namespace GammonX.DynamoDb.Tests.Items
     public class TemporalAttributeTests
     {
         [Fact]
+        public void PlayerRatingTimestampRoundTripsAndLegacyItemsRemainReadable()
+        {
+            // Arrange.
+            var factory = ItemFactoryCreator.Create<PlayerRatingItem>();
+            var rating = PlayerRatingItemFactory.CreateInitial(Guid.NewGuid(), MatchVariant.Backgammon, MatchType.SevenPointGame);
+            rating.LastRatedAt = new DateTime(2026, 11, 14, 12, 34, 56, DateTimeKind.Utc).AddTicks(1234567);
+
+            // Act.
+            var attributes = factory.CreateItem(rating);
+            var restored = factory.CreateItem(attributes);
+
+            // Assert.
+            AssertStringAttribute(attributes, "LastRatedAt", DateTimeHelper.FormatUtc(rating.LastRatedAt.Value));
+            Assert.Equal(rating.LastRatedAt, restored.LastRatedAt);
+            Assert.Equal(DateTimeKind.Utc, restored.LastRatedAt!.Value.Kind);
+            attributes.Remove("LastRatedAt");
+            Assert.Null(factory.CreateItem(attributes).LastRatedAt);
+            rating.LastRatedAt = null;
+            var initialAttributes = factory.CreateItem(rating);
+            Assert.True(initialAttributes["LastRatedAt"].NULL);
+            Assert.Null(factory.CreateItem(initialAttributes).LastRatedAt);
+        }
+
+        [Fact]
         public void FactoriesUseCanonicalTemporalAttributeTypes()
         {
             var player = ItemFactory.CreatePlayer();

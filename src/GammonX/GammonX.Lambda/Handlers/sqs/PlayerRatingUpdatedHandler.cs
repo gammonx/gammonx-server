@@ -108,14 +108,13 @@ namespace GammonX.Lambda.Handlers
                 () => GetRatingPeriodStateAsync(Repo, wonMatch.PlayerId, lostMatch.PlayerId, periodSk),
                 async () =>
                 {
-                    var winnerResult = await Repo.CalculatePlayerRatingAsync(wonMatch.PlayerId, wonMatchItem, lostMatchItem);
-                    var loserResult = await Repo.CalculatePlayerRatingAsync(lostMatch.PlayerId, wonMatchItem, lostMatchItem);
+                    var (winnerResult, loserResult) = await Repo.CalculateMatchRatingsAsync(wonMatchItem, lostMatchItem);
                     return
                     [
-                        CreateRatingPutOperation(winnerResult.Item1),
-                        DynamoDbPutOperation.Create(winnerResult.Item2, "attribute_not_exists(PK)"),
-                        CreateRatingPutOperation(loserResult.Item1),
-                        DynamoDbPutOperation.Create(loserResult.Item2, "attribute_not_exists(PK)")
+                        CreateRatingPutOperation(winnerResult.Rating),
+                        DynamoDbPutOperation.Create(winnerResult.Period, "attribute_not_exists(PK)"),
+                        CreateRatingPutOperation(loserResult.Rating),
+                        DynamoDbPutOperation.Create(loserResult.Period, "attribute_not_exists(PK)")
                     ];
                 },
                 operations => transactionWriter.TransactPutAsync(operations));

@@ -1557,6 +1557,7 @@ namespace GammonX.Server
             }
             catch (Exception e)
             {
+                // TODO: Failed publication can permanently lose a rating update.
                 var groupName = ConstructGroupName(match.Id);
                 await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", "An error occurred while processing the match result. Some match data may be lost.", groupName, e);
             }

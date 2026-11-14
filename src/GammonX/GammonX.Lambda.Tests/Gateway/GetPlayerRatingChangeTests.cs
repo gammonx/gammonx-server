@@ -12,7 +12,7 @@ using Xunit;
 
 namespace GammonX.Lambda.Tests.Gateway
 {
-    public class GetPlayerRatingGainTests
+    public class GetPlayerRatingChangeTests
     {
         [Theory]
         [InlineData(1250, true, 50d)]
