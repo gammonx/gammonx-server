@@ -9,11 +9,21 @@ namespace GammonX.Server.Services
     /// </summary>
     public sealed class MatchSessionRepository
     {
+		/// <summary>
+		/// Returns the given match session by its match id.
+		/// </summary>
         private readonly ConcurrentDictionary<Guid, IMatchSessionModel> _sessions = new();
-        private readonly IMatchSessionFactory _matchSessionFactory;
-        private readonly Dictionary<Guid, MatchLock> _matchLocks = new();
+        
+		private readonly IMatchSessionFactory _matchSessionFactory;
+        
+		/// <summary>
+		/// Returns the given match lock by its match id.
+		/// </summary>
+		private readonly Dictionary<Guid, MatchLock> _matchLocks = new();
 
-        /// <summary>Creates a repository using the supplied match factory.</summary>
+        /// <summary>
+		/// Creates a repository using the supplied match factory
+		/// .</summary>
         public MatchSessionRepository(IMatchSessionFactory matchSessionFactory)
         {
             _matchSessionFactory = matchSessionFactory;
@@ -31,6 +41,7 @@ namespace GammonX.Server.Services
         public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
         {
             MatchLock matchLock;
+
             lock (_matchLocks)
             {
                 if (!_matchLocks.TryGetValue(matchId, out matchLock!))
@@ -43,12 +54,18 @@ namespace GammonX.Server.Services
                 matchLock.Users++;
             }
 
+			// We lock the semaphore until the returned lease is disposed
             await matchLock.Semaphore.WaitAsync();
+
             return new MatchSessionLease(this, matchId, matchLock);
         }
 
-        /// <summary>Returns a detached snapshot for observation, or null if the match is absent.</summary>
-        /// <remarks>This snapshot cannot be committed. Use a lease to read state for an update.</remarks>
+        /// <summary>
+		/// Returns a detached snapshot for observation, or null if the match is absent.
+		/// </summary>
+        /// <remarks>
+		/// This snapshot cannot be committed. Use a lease to read state for an update.
+		/// </remarks>
         public IMatchSessionModel? Get(Guid matchId)
         {
             return _sessions.TryGetValue(matchId, out var session)
@@ -56,8 +73,12 @@ namespace GammonX.Server.Services
                 : null;
         }
 
-        /// <summary>Returns a detached snapshot of a player's match, or null if none exists.</summary>
-        /// <remarks>This snapshot cannot be committed. Use a lease to read state for an update.</remarks>
+        /// <summary>
+		/// Returns a detached snapshot of a players match, or null if none exists.
+		/// </summary>
+        /// <remarks>
+		/// This snapshot cannot be committed. Use a lease to read state for an update.
+		/// </remarks>
         public IMatchSessionModel? GetPlayersMatch(Guid playerId)
         {
             var session = _sessions.Values.FirstOrDefault(value =>
@@ -83,10 +104,13 @@ namespace GammonX.Server.Services
 
             private readonly MatchLock _matchLock;
 
-            private readonly object _gate = new();
+            private readonly Lock _gate = new();
 
             private IMatchSessionModel? _session;
 
+			/// <summary>
+			/// Indicates if the given session was already read from the repository.
+			/// </summary>
             private bool _loaded;
 
             private bool _disposed;
@@ -136,7 +160,7 @@ namespace GammonX.Server.Services
                     }
 
                     var session = _repository._matchSessionFactory.Create(_matchId, queueKey);
-                    // Store a separate snapshot so uncommitted caller changes remain isolated.
+                    // We store a separate snapshot so uncommitted caller changes remain isolated.
                     if (!_repository._sessions.TryAdd(_matchId, (IMatchSessionModel)session.Clone()))
                     {
                         throw new InvalidOperationException("Match session already exists.");
@@ -162,7 +186,7 @@ namespace GammonX.Server.Services
             }
 
             /// <summary>
-			/// Commits this lease's working snapshot, if one exists.
+			/// Commits this leases working snapshot, if one exists.
 			/// </summary>
             /// <returns>False if there is no working match or it has been removed.</returns>
             public bool Commit()
@@ -181,7 +205,7 @@ namespace GammonX.Server.Services
             }
 
             /// <summary>
-			/// Removes the leased match and discards this lease's working snapshot.
+			/// Removes the leased match and discards this leases working snapshot.
 			/// </summary>
             /// <returns>Whether the match existed.</returns>
             public bool TryRemove()
@@ -219,8 +243,10 @@ namespace GammonX.Server.Services
                     {
                         _disposed = true;
                         _session = null;
+
                         lock (_repository._matchLocks)
                         {
+							// we release the match session lease
                             _matchLock.Semaphore.Release();
                             if (--_matchLock.Users == 0)
                             {
