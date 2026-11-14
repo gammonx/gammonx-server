@@ -399,24 +399,55 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task RankedBotAutomaticallyRespondsToHumanDouble(bool accepts)
+        [InlineData(true, false, false)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        [InlineData(false, false, true)]
+        [InlineData(true, true, true)]
+        public async Task RankedBotAutomaticallyRespondsToHumanDouble(bool accepts, bool serviceFails, bool reconnect)
         {
             // Arrange.
             var bot = new Mock<IBotService>();
             bot.Setup(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(accepts);
+            if (serviceFails)
+            {
+                bot.Setup(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new HttpRequestException("Bot service unavailable."));
+            }
             var fixture = await CreatePersistenceFixture(modus: MatchModus.Ranked, botOpponent: true, botService: bot.Object);
+            if (reconnect)
+            {
+                await using var lease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+                var match = lease.Get()!;
+                Assert.IsAssignableFrom<IDoubleCubeMatchSession>(match).OfferDouble(match.Player1.Id);
+                Assert.True(lease.Commit());
+                fixture.Hub.Context = new HubCallerContextStub("player1", match.Player1.Id, match.Id);
+            }
 
             // Act.
-            await fixture.Hub.OfferDoubleAsync(fixture.Session.Id.ToString());
+            if (reconnect)
+            {
+                await fixture.Hub.OnConnectedAsync();
+            }
+            else
+            {
+                await fixture.Hub.OfferDoubleAsync(fixture.Session.Id.ToString());
+            }
 
             // Assert.
             bot.Verify(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), _player2Id, It.IsAny<CancellationToken>()), Times.Once);
             var stored = _matchRepo.Get(fixture.Session.Id)!;
             Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).IsDoubleOfferPending);
             Assert.Equal(accepts ? GamePhase.WaitingForRoll : GamePhase.GameOver, stored.GetGameSession(stored.GameRound)!.Phase);
+            if (accepts)
+            {
+                Assert.Equal(stored.Player1.Id, stored.GetGameSession(stored.GameRound)!.ActivePlayer);
+                Assert.Equal(2, Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).GetDoublingCubeValue());
+            }
+            bot.Verify(value => value.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            fixture.Client.Verify(value => value.SendCoreAsync(ServerEventTypes.ErrorEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
             Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
             {
                 MatchId = stored.Id, PlayerId = stored.Player1.Id, Category = CancellationTokenCategory.Turn
@@ -729,17 +760,22 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Theory]
-        [InlineData(MatchModus.Bot)]
-        [InlineData(MatchModus.Ranked)]
-        public async Task MatchHubCommitsBotMoveBeforeLaterBotFailure(MatchModus modus)
+        [InlineData(MatchModus.Bot, false)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Bot, true)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task MatchHubBotFallbackCompletesTurnAfterServiceFailure(MatchModus modus, bool failsImmediately)
         {
+            // Arrange
             var bot = new Mock<IBotService>();
             var requests = 0;
             IMatchSessionModel? expected = null;
+            bot.Setup(service => service.ShouldOfferDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException("Cube service unavailable."));
             bot.Setup(service => service.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .Returns((IMatchSessionModel match, Guid playerId, CancellationToken _) =>
                 {
-                    if (++requests > 1)
+                    if (++requests > 1 || failsImmediately)
                     {
                         return Task.FromException<MoveSequenceModel>(new InvalidOperationException("Bot service unavailable."));
                     }
@@ -764,21 +800,37 @@ namespace GammonX.Server.Tests.Integration
             await setupLease.DisposeAsync();
             var notifications = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.GameStateEvent);
 
+            // Act
             await fixture.Hub.EndTurnAsync(fixture.Session.Id.ToString());
 
-            Assert.Equal(2, requests);
-            Assert.Equal(2, notifications.Count);
-            Assert.NotNull(expected);
-            var expectedGame = expected.GetGameSession(expected.GameRound)!;
-            var notifiedGame = notifications.Last().GetGameSession(expected.GameRound)!;
-            var storedGame = _matchRepo.Get(fixture.Session.Id)!.GetGameSession(expected.GameRound)!;
-            Assert.Equal(expectedGame.BoardModel, notifiedGame.BoardModel);
-            Assert.Equal(expectedGame.BoardModel, storedGame.BoardModel);
-            Assert.Equal(expectedGame.BoardModel.History.ToString(), storedGame.BoardModel.History.ToString());
-            Assert.Equal(expectedGame.DiceRolls.Select(roll => (roll.Roll, roll.Used)),
-                storedGame.DiceRolls.Select(roll => (roll.Roll, roll.Used)));
-            Assert.Single(storedGame.DiceRolls, roll => roll.Used);
-            Assert.Equal(fixture.Session.Player2.Id, storedGame.ActivePlayer);
+            // Assert: preserve the successfully committed partial move, then finish with unused dice.
+            Assert.Equal(failsImmediately ? 1 : 2, requests);
+            if (!failsImmediately)
+            {
+                Assert.NotNull(expected);
+                var partial = Assert.Single(notifications, match =>
+                    match.GetGameSession(match.GameRound)!.DiceRolls.Count(roll => roll.Used) == 1);
+                Assert.Equal(expected.GetGameSession(expected.GameRound)!.BoardModel,
+                    partial.GetGameSession(partial.GameRound)!.BoardModel);
+            }
+            var completedTurn = Assert.Single(notifications, match =>
+                match.GetGameSession(match.GameRound)!.DiceRolls.Count(roll => roll.Used) == 2);
+            Assert.Equal(GamePhase.WaitingForEndTurn, completedTurn.GetGameSession(completedTurn.GameRound)!.Phase);
+            var stored = _matchRepo.Get(fixture.Session.Id)!;
+            var storedGame = stored.GetGameSession(stored.GameRound)!;
+            Assert.Equal(GamePhase.WaitingForRoll, storedGame.Phase);
+            Assert.Equal(stored.Player1.Id, storedGame.ActivePlayer);
+            Assert.Equal(completedTurn.GetGameSession(completedTurn.GameRound)!.BoardModel, storedGame.BoardModel);
+            Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).IsDoubleOfferPending);
+            if (modus == MatchModus.Ranked)
+            {
+                Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = stored.Id, PlayerId = stored.Player1.Id, Category = CancellationTokenCategory.Turn
+                }, out _));
+            }
+            fixture.Client.Verify(value => value.SendCoreAsync(ServerEventTypes.ErrorEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
+            await fixture.Hub.ResignMatchAsync(stored.Id.ToString());
         }
 
         [Theory]

@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Services;
+using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
 
@@ -101,23 +102,8 @@ namespace GammonX.Server
                             {
                                 // The player is reconnecting. Bot requests use the players ConnectionAborted token,
                                 // so their disconnect may have canceled a bot action after its preceding state was committed.
-                                if (matchSessionClone is IDoubleCubeMatchSession { IsDoubleOfferPending: true })
-                                {
-                                    // The players double offer was committed, but the bots response is still pending.
-                                    if (await PerformShouldBotAcceptsDoubleAsync(matchSessionClone, activeGameSession.ActivePlayer))
-                                    {
-                                        await PerformAcceptDoubleAsync(matchLock, matchSessionClone, activeGameSession.ActivePlayer);
-                                    }
-                                    else
-                                    {
-                                        await PerformDeclineDoubleAsync(matchLock, matchSessionClone, activeGameSession.ActivePlayer);
-                                    }
-                                }
-                                else
-                                {
-                                    // Resume the bots interrupted turn from the committed game state.
-                                    await PerformBotTurnAsync(matchLock, matchSessionClone, activeGameSession.ActivePlayer);
-                                }
+                                // Resume the bots interrupted turn from the committed game state.
+                                await PerformBotTurnAsync(matchLock, matchSessionClone, activeGameSession.ActivePlayer);
                             }
                             else if (activeGameSession.Phase != GamePhase.GameOver)
                             {
@@ -1107,15 +1093,7 @@ namespace GammonX.Server
 
                 if (IsBotPlayer(matchSession, offeredPlayerId))
                 {
-                    var shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, offeredPlayerId);
-                    if (shouldAccept)
-                    {
-                        await PerformAcceptDoubleAsync(matchLock, matchSession, offeredPlayerId);
-                    }
-                    else
-                    {
-                        await PerformDeclineDoubleAsync(matchLock, matchSession, offeredPlayerId);
-                    }
+                    await PerformBotTurnAsync(matchLock, matchSession, offeredPlayerId);
                 }
                 else
                 {
@@ -1261,33 +1239,87 @@ namespace GammonX.Server
         {
             try
             {
-                // 1) we first check if the bot would offer a double
-                if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
+                if (matchSession is IDoubleCubeMatchSession cubeSession)
                 {
-                    var botService = GetBotService();
-                    var httpContext = this.Context.GetHttpContext();    
-                    var shouldOffer = await botService.ShouldOfferDouble(matchSession, botPlayerId, Context.ConnectionAborted);
-                    if (shouldOffer)
+                    // 1) we first check if the bot would offer a double
+                    if (cubeSession.CanOfferDouble(botPlayerId))
                     {
-                        await PerformOfferDoubleAsync(matchLock, matchSession, botPlayerId);
-                        // the bot turn ends here, waiting for the player to accept or decline the double
-                        return;
+                        var botService = GetBotService();
+                        var httpContext = this.Context.GetHttpContext();
+                        // we dont offer a double by default if the bot service has an issue answering
+                        var shouldOffer = false;
+                        try
+                        {
+                            shouldOffer = await botService.ShouldOfferDouble(matchSession, botPlayerId, Context.ConnectionAborted);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                        }
+
+                        if (shouldOffer)
+                        {
+                            await PerformOfferDoubleAsync(matchLock, matchSession, botPlayerId);
+                            // the bot turn ends here, waiting for the player to accept or decline the double
+                            return;
+                        }
+                    }
+                    // 2) we then check if there is a pending doube offer for the bot to accept
+                    else if (cubeSession.IsDoubleOfferPending)
+                    {
+                        // we let the bot accept the double by default if the bot service has an issue answering
+                        var shouldAccept = true;
+                        try
+                        {
+                            shouldAccept = await PerformShouldBotAcceptsDoubleAsync(matchSession, botPlayerId);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                        }
+
+                        if (shouldAccept)
+                        {
+                            await PerformAcceptDoubleAsync(matchLock, matchSession, botPlayerId);
+                            return;
+                        }
+                        else
+                        {
+                            await PerformDeclineDoubleAsync(matchLock, matchSession, botPlayerId);
+                            return;
+                        }
                     }
                 }
 
                 var game = matchSession.GetGameSession(matchSession.GameRound);
-                // 2) we then check if the bot has to roll his dices
-                if (game?.Phase == GamePhase.WaitingForRoll)
+
+                if (game == null)
+                {
+                    throw new InvalidOperationException("game session must not be null while executing a bot turn");    
+                }
+
+                // 3) we then check if the bot has to roll his dices
+                if (game.Phase == GamePhase.WaitingForRoll)
                 {
                     await PerformRollAsync(matchLock, matchSession, botPlayerId);
                 }
 
-                // 3) we then check if the bos has to move his checkers
-                bool canMove = false;
-                do
+                // 4) we then check if the bos has to move his checkers
+                bool canMove = game.Phase == GamePhase.Rolling || game.Phase == GamePhase.Moving;
+                while (canMove)
                 {
-                    var botService = GetBotService();
-                    var nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId, Context.ConnectionAborted);
+                    MoveSequenceModel nextMoves;
+                    try
+                    {
+                        var botService = GetBotService();
+                        nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId, Context.ConnectionAborted);
+                    }
+                    catch(Exception ex)
+                    {
+                        Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_MOVE_ERROR", "An Error occurred while move sequence eval.");
+                        // we randomly select a valid move by default if the bot service has an issue answering
+                        nextMoves = game.MoveSequences.FirstOrDefault() ?? new MoveSequenceModel();
+                    }
 
                     if (nextMoves == null)
                     {
@@ -1299,9 +1331,9 @@ namespace GammonX.Server
                         canMove = await PerformMoveAsync(matchLock, matchSession, botPlayerId, nextMove.From, nextMove.To);
                     }
                 }
-                while (canMove);
+                
 
-                // 4) we then check if the bot can end his turn and pass over to the player
+                // 5) we then check if the bot can end his turn and pass over to the player
                 if (matchSession.CanEndTurn(botPlayerId))
                 {
                     // if we cannot end the current turn, the match/game is probably over
