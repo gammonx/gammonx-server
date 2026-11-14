@@ -37,8 +37,42 @@ unique.
 ```
 
 ## Rating Period
-The Glicko2 rating algorithm uses recent rating periods for a player. The
-variant, type, modus, and match ID are all part of the sort key.
+Each Ranked match creates one rating period per player. The Glicko2 calculation
+uses that match's period, whose sort key includes the variant, type, modus, and
+match ID.
+
+The period stores the player's and opponent's rating, deviation, and volatility
+**before** applying that match's result. The updated rating is stored separately
+in the `PlayerRating` item. Both players' updated ratings and periods are committed
+in one transaction. A period belonging to a finished match therefore contains
+the pre-match rating, even though it is persisted after the match finishes.
+
+For example, if a match changes a player's rating from 1200 to 1250, its
+`RatingPeriod.PlayerRating` is 1200 and the current `PlayerRating.Rating` is 1250.
+The difference is +50. Selecting the preceding match's period would use an older
+baseline and could include the change from that preceding match as well.
+
+### Rating change URL
+
+Ranked match-end payloads include a player-specific `ratingUrl` relative to the
+API base URL:
+
+```text
+players/{playerId}/rating/{variant}/{type}?matchId={finishedMatchId}
+```
+
+The endpoint reads stored ratings; requesting it does not trigger a rating
+update. With `matchId`, it returns the current `Rating`, the selected period's
+pre-match `PreviousRating`, and `RatingChange = Rating - PreviousRating`.
+Positive changes are gains, negative changes are losses, and zero is a valid
+completed result. Without `matchId`, it returns only the current rating.
+
+Rating updates run asynchronously. Until the requested match's period is
+committed, `PreviousRating` and `RatingChange` remain null; the client can retry
+the same URL after a delay. Once available, the comparison uses the latest
+current rating. If later matches have already updated that rating, the difference
+also includes those updates; it is not a frozen historical delta for the selected
+match.
 
 ```json
 {

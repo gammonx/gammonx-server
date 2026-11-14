@@ -2,10 +2,9 @@
 - see changelog 
 
 ## Active
-- 
+- bot as ranked opponent
 
 ## TODO
-- bot as ranked opponent
 - invite friend by link
 - leaderboard lambda?
 - make game service stateless
@@ -44,3 +43,6 @@
 - analytics hook
 - blunder database > quiz (subscription)
 - hide pip count (option and in ranked mode)
+
+## Functional Gap in Client
+- rating change url for match ended event

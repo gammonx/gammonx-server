@@ -45,5 +45,30 @@ namespace GammonX.Server.Contracts
 
 		[DataMember(Name = "player2", IsRequired = true)]
 		public PlayerContract? Player2 { get; set; }
+
+		/// <summary>
+		/// Gets or sets the relative API URL for comparing the current rating to this match's pre-match rating.
+		/// </summary>
+        /// <remarks>
+        /// Present for Ranked match-end events. The endpoint reads stored data; the client can retry
+        /// after a delay while PreviousRating and RatingChange are null because processing is pending.
+        /// The comparison includes later matches if they have already updated the current rating.
+        /// </remarks>
+        [DataMember(Name = "ratingUrl", IsRequired = false, EmitDefaultValue = false)]
+        public string? RatingUrl { get; set; }
+
+		/// <summary>
+		/// Appends a rating comparison URL for this player when a Ranked match ends.
+		/// </summary>
+		/// <param name="playerId">Player whose current and pre-match ratings will be compared.</param>
+		/// <param name="serverEventType">Match state payload type.</param>
+		public void AppendRatingUrl(Guid playerId, string serverEventType)
+		{
+			if (serverEventType.Equals(ServerEventTypes.MatchEndedEvent) && Modus == MatchModus.Ranked)
+			{
+				// This match's stored period supplies the pre-match baseline; the request does not update ratings.
+				RatingUrl = $"players/{playerId}/rating/{Variant}/{Type}?matchId={Id}";
+			}
+		}
     }
 }

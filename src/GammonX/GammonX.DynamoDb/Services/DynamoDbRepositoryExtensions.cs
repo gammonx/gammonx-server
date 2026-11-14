@@ -15,6 +15,8 @@ namespace GammonX.DynamoDb.Services
         /// <remarks>
         /// The rating is not persisted yet to the database. Instead it just returns the updated rating instance.
         /// Both players must first be evaluated before their rating period item can be committed.
+        /// The returned period retains both players pre-match rating inputs. Only the returned
+        /// player rating item contains this matchs updated rating.
         /// </remarks>
         /// <param name="repo">Repo to operate on.</param>
         /// <param name="playerId">Player rating to update.</param>
@@ -55,7 +57,7 @@ namespace GammonX.DynamoDb.Services
             var lostMatchInput = lostMatch.From();
             var matchScore = MatchScoreCalculator.Calculate(playerId, wonMatchInput, lostMatchInput);
 
-            // we create a rating period for the current match
+            // Snapshot the pre-match inputs before updating the player rating below.
             var currentRatingPeriod = new RatingPeriodItem()
             {
                 MatchId = wonMatch.Id,

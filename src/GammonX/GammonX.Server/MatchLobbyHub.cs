@@ -1432,29 +1432,21 @@ namespace GammonX.Server
             // We await the call in order to ensure that the events are properly published
             await EnqueueResultsForProcessingAsync(match, serverEventName);
 
-            var includeRatingRequest = match.Modus == MatchModus.Ranked
-                && serverEventName.Equals(ServerEventTypes.MatchEndedEvent);
             var payloadPlayer1 = match.ToPayload(match.Player1.Id);
-            if (includeRatingRequest)
-            {
-                payloadPlayer1.RatingUrl = $"players/{match.Player1.Id}/rating/{match.Variant}/{match.Type}?matchId={match.Id}";
-            }
+            payloadPlayer1.AppendRatingUrl(match.Player1.Id, serverEventName);
             var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
             await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+
             if (match.Modus != MatchModus.Bot)
             {
                 var payloadPlayer2 = match.ToPayload(match.Player2.Id);
-                if (includeRatingRequest)
-                {
-                    payloadPlayer2.RatingUrl = $"players/{match.Player2.Id}/rating/{match.Variant}/{match.Type}?matchId={match.Id}";
-                }
+                payloadPlayer2.AppendRatingUrl(match.Player2.Id, serverEventName);
                 var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
                 await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
             }
 
             if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
             {
-                // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
                 await CleanUpMatchAsync(match, payloadPlayer1.GroupName);
             }
             else if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))

@@ -18,6 +18,12 @@ namespace GammonX.Lambda.Handlers
     /// <summary>
     /// GET /players/{id}/rating/{variant}/{type} > Lambda: GetPlayerRatingHandler
     /// </summary>
+    /// <remarks>
+    /// The optional matchId query parameter selects that matchs stored pre-match rating as the
+    /// comparison baseline. PreviousRating and RatingChange remain null until its period is committed.
+    /// RatingChange is the current rating minus that baseline, so it includes any later rating updates.
+    /// This endpoint reads stored data and does not trigger rating processing.
+    /// </remarks>
     public class GetPlayerRatingHandler : LambdaHandlerBaseImpl, IApiLambdaHandler
     {
         public GetPlayerRatingHandler(IDynamoDbRepository repo) : base(repo)
@@ -48,14 +54,42 @@ namespace GammonX.Lambda.Handlers
                 var typeStr = request.PathParameters["type"];
                 var type = Enum.Parse<MatchType>(typeStr);
 
+                RatingPeriodItem? previousPeriod = null;
+                // This matchs period stores its pre-match rating. Selecting an earlier match would go back too far.
+                var calcRatingChange = request.QueryStringParameters?.ContainsKey("matchId") == true;
+                if (calcRatingChange)
+                {
+                    var matchId = Guid.Parse(request.QueryStringParameters!["matchId"]);
+                    var periodFactory = ItemFactoryCreator.Create<RatingPeriodItem>();
+                    var periodSk = string.Format(periodFactory.SKFormat, variant, type, MatchModus.Ranked, matchId);
+                    var periods = Repo is IDynamoDbConsistentReader periodReader
+                        ? await periodReader.GetItemsConsistentlyAsync<RatingPeriodItem>(playerId, periodSk)
+                        : await Repo.GetItemsAsync<RatingPeriodItem>(playerId, periodSk);
+                    previousPeriod = periods.SingleOrDefault();
+                }
+
                 var playerRatingFactory = ItemFactoryCreator.Create<PlayerRatingItem>();
                 var sk = string.Format(playerRatingFactory.SKFormat, variant, type);
-                var ratings = await Repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
+                var ratings = calcRatingChange && Repo is IDynamoDbConsistentReader ratingReader
+                    ? await ratingReader.GetItemsConsistentlyAsync<PlayerRatingItem>(playerId, sk)
+                    : await Repo.GetItemsAsync<PlayerRatingItem>(playerId, sk);
 
                 if (ratings.Count() == 1)
                 {
                     var ratingItem =  ratings.First();
-                    return ratingItem.ToResponse();
+                    var response = ratingItem.ToResponse();
+
+                    if (previousPeriod != null)
+                    {
+                        response.PreviousRating = previousPeriod.PlayerRating;
+                        response.RatingChange = ratingItem.Rating - previousPeriod.PlayerRating;
+                    }
+                    else if (calcRatingChange && previousPeriod == null)
+                    {
+                        context.Logger.LogWarning($"Calculating the rating change for Player '{playerId}' was requested but not yet executable.");
+                    }
+                    
+                    return response;
                 }
                 else if (!ratings.Any())
                 {

@@ -8,6 +8,7 @@
 	- allow multiple input training csv
 	- allow concurrent training on same csv
 - added AGENTS.md
+- return rating gain/loss url after ranked
 
 ## 11.11.2026
 - mars neural net changes

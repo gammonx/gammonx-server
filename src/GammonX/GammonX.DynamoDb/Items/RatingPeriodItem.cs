@@ -6,6 +6,13 @@ using GammonX.Models.Enums;
 
 namespace GammonX.DynamoDb.Items
 {
+    /// <summary>
+    /// Stores one matchs result and both players rating inputs before that result is applied.
+    /// </summary>
+    /// <remarks>
+    /// The period is committed with the updated player rating, but retains the pre-match values.
+    /// Use this matchs period as the baseline when comparing its pre-match rating to the current rating.
+    /// </remarks>
     public class RatingPeriodItem
     {
         /// <summary>
@@ -50,12 +57,12 @@ namespace GammonX.DynamoDb.Items
         public double MatchScore { get; set; } = 0;
 
         /// <summary>
-        /// Gets or sets the ordinary rating of the player for the given variant/modus/type.
+        /// Gets or sets the players ordinary rating before applying this matchs result.
         /// </summary>
         public double PlayerRating { get; set; } = Glicko2Constants.DefaultRating;
 
         /// <summary>
-        /// Gets or sets the rating deviation of the player for the given variant/modus/type.
+        /// Gets or sets the players rating deviation before applying this matchs result.
         /// </summary>
         /// <remarks>
         /// Asks on how uncertain is the rating?
@@ -68,7 +75,7 @@ namespace GammonX.DynamoDb.Items
         public double PlayerRatingDeviation { get; set; } = Glicko2Constants.DefaultRD;
 
         /// <summary>
-        /// Gets or sets the volatility of the player for the given variant/modus/type.
+        /// Gets or sets the players volatility before applying this matchs result.
         /// </summary>
 		/// <remarks>
 		/// Asks on how How swingy is the player?
@@ -79,12 +86,12 @@ namespace GammonX.DynamoDb.Items
         public double PlayerSigma { get; set; } = Glicko2Constants.DefaultSigma;
 
         /// <summary>
-        /// Gets or sets the ordinary rating of the opponent for the given variant/modus/type.
+        /// Gets or sets the opponents ordinary rating before applying this matchs result.
         /// </summary>
         public double OpponentRating { get; set; } = Glicko2Constants.DefaultRating;
 
         /// <summary>
-        /// Gets or sets the rating deviation of the opponent for the given variant/modus/type.
+        /// Gets or sets the opponents rating deviation before applying this matchs result.
         /// </summary>
         /// <remarks>
         /// Asks on how uncertain is the rating?
@@ -97,7 +104,7 @@ namespace GammonX.DynamoDb.Items
         public double OpponentRatingDeviation { get; set; } = Glicko2Constants.DefaultRD;
 
         /// <summary>
-        /// Gets or sets the volatility of the opponent for the given variant/modus/type.
+        /// Gets or sets the opponents volatility before applying this matchs result.
         /// </summary>
 		/// <remarks>
 		/// Asks on how How swingy is the player?
