@@ -166,6 +166,182 @@ namespace GammonX.Server.Tests.Integration
             await fixture.Hub.ResignMatchAsync(session.Id.ToString());
         }
 
+        [Fact]
+        public async Task OldSocketDisconnectAfterReconnectPreservesCurrentTimersAndConnection()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var oldConnectionId = fixture.Session.Player1.ConnectionId!;
+            fixture.Hub.Context = new HubCallerContextStub("replacement", playerId, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            var connection = _playerConnRepo.Get(playerId)!;
+            var lastSeen = connection.LastSeenUtc;
+            var remainingGrace = connection.DisconnectGracePeriod;
+            var turnKey = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Turn };
+            Assert.True(_cancellationTokenService.TryGet(turnKey, out var turnTimer));
+
+            // Act
+            fixture.Hub.Context = new HubCallerContextStub(oldConnectionId, playerId, matchId);
+            await fixture.Hub.OnDisconnectedAsync(null);
+
+            // Assert
+            Assert.Equal("replacement", connection.ConnectionId);
+            Assert.Equal(lastSeen, connection.LastSeenUtc);
+            Assert.Equal(remainingGrace, connection.DisconnectGracePeriod);
+            Assert.True(_cancellationTokenService.TryGet(turnKey, out var currentTurnTimer));
+            Assert.Same(turnTimer, currentTurnTimer);
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect
+            }, out _));
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task ExpiryWaitingForMatchLeaseCannotForfeitReplacementConnection()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var oldConnectionId = fixture.Session.Player1.ConnectionId!;
+            using var timer = new CancellationTokenSource();
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            _cancellationTokenService.Store(key, timer);
+            var lease = await _matchRepo.AcquireStateAsync(matchId);
+
+            // Act: expiry has already fired but must wait for the current match operation.
+            var expiry = InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, oldConnectionId, timer);
+            Assert.False(expiry.IsCompleted);
+            _playerConnRepo.AddOrUpdate(playerId, "replacement");
+            await lease.DisposeAsync();
+            await expiry.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal("replacement", _playerConnRepo.Get(playerId)!.ConnectionId);
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task OldExpiryCannotCancelSecondDisconnectAndCurrentExpiryStillForfeits()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+            fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var oldTimer));
+            fixture.Hub.Context = new HubCallerContextStub("replacement", playerId, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var currentTimer));
+            var connection = _playerConnRepo.Get(playerId)!;
+            var remainingGrace = connection.DisconnectGracePeriod;
+            var lastSeen = connection.LastSeenUtc;
+
+            // Act
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, oldTimer!);
+            // Duplicate callbacks must not restart the current grace period either.
+            await fixture.Hub.OnDisconnectedAsync(null);
+
+            // Assert
+            Assert.True(_cancellationTokenService.TryGet(key, out var registered));
+            Assert.Same(currentTimer, registered);
+            Assert.False(currentTimer!.IsCancellationRequested);
+            Assert.Equal(remainingGrace, connection.DisconnectGracePeriod);
+            Assert.Equal(lastSeen, connection.LastSeenUtc);
+            Assert.NotNull(_matchRepo.Get(matchId));
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, "replacement", currentTimer);
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Null(_playerConnRepo.Get(playerId));
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
+                It.Is<IMatchSessionModel>(match => match.Id == matchId), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        private static Task InvokeDisconnectExpiryAsync(MatchLobbyHub hub, Guid playerId, Guid matchId,
+            string connectionId, CancellationTokenSource timer)
+        {
+            var method = typeof(MatchLobbyHub).GetMethod("HandlePermanentDisconnectAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (Task)method.Invoke(hub, [playerId, matchId, connectionId, timer])!;
+        }
+
+        [Fact]
+        public async Task UnregisteredExpiryCannotConsumeCurrentTimerEvenWithSameConnectionId()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            using var staleTimer = new CancellationTokenSource();
+            using var currentTimer = new CancellationTokenSource();
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            _cancellationTokenService.Store(key, currentTimer);
+
+            // Act
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, fixture.Session.Player1.ConnectionId!, staleTimer);
+
+            // Assert
+            Assert.True(_cancellationTokenService.TryGet(key, out var registered));
+            Assert.Same(currentTimer, registered);
+            Assert.NotNull(_playerConnRepo.Get(playerId));
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task HumanMatchExpiryResignsOnlyTheSpecifiedMatch()
+        {
+            // Arrange
+            var other = await CreatePersistenceFixture();
+            var fixture = await CreatePersistenceFixture();
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+            _playerConnRepo.AddOrUpdate(playerId, connectionId);
+            fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+
+            // Act
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, timer!);
+
+            // Assert
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.False(_matchRepo.Get(other.Session.Id)!.IsMatchOver());
+            Assert.False(_cancellationTokenService.TryGet(key, out _));
+        }
+
+        [Fact]
+        public async Task NonparticipantDisconnectAndExpiryCannotChangeMatchOrConnection()
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture();
+            var playerId = Guid.NewGuid();
+            var matchId = fixture.Session.Id;
+            _playerConnRepo.AddOrUpdate(playerId, "unrelated");
+            fixture.Hub.Context = new HubCallerContextStub("unrelated", playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+
+            // Act / Assert: the socket callback must not start a timer.
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.False(_cancellationTokenService.TryGet(key, out _));
+            using var timer = new CancellationTokenSource();
+            _cancellationTokenService.Store(key, timer);
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, "unrelated", timer);
+            Assert.NotNull(_playerConnRepo.Get(playerId));
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

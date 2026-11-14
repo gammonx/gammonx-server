@@ -71,7 +71,15 @@ namespace GammonX.Server
                     var tokenKey = ConstructTokenKey(playerId.Value, matchId.Value, CancellationTokenCategory.Disconnect);
                     if (_cancellationTokenService.TryGet(tokenKey, out var cts) && cts != null)
                     {
-                        await cts.CancelAsync();
+                        // Charge the completed absence before AddOrUpdate changes LastSeenUtc.
+                        // The canceled timer must not mutate connection state later.
+                        var disconnectedPlayer = _playerConnectionRepository.Get(playerId.Value);
+                        if (disconnectedPlayer != null && !cts.IsCancellationRequested)
+                        {
+                            var elapsed = DateTime.UtcNow - disconnectedPlayer.LastSeenUtc;
+                            disconnectedPlayer.DisconnectGracePeriod = (disconnectedPlayer.DisconnectGracePeriod - elapsed).Max(TimeSpan.Zero);
+                        }
+                        _cancellationTokenService.Cancel(tokenKey);
                     }
 
                     var connectionId = Context.ConnectionId;
@@ -88,6 +96,7 @@ namespace GammonX.Server
                             var payload = new EventMatchLobbyPayload(matchSessionClone.Id, matchSessionClone.Player1.Id, matchSessionClone.Player2.Id, ServerCommands.GameStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                             await SendToGroupAsync(ConstructGroupName(matchSessionClone.Id), ServerEventTypes.PlayerConnectedEvent, contract);
+                            // we try to resume the game flow after the player disconnected and the bot is at its turn
                             if (activeGameSession.Phase != GamePhase.GameOver && IsBotPlayer(matchSessionClone, activeGameSession.ActivePlayer))
                             {
                                 // The player is reconnecting. Bot requests use the players ConnectionAborted token,
@@ -127,13 +136,15 @@ namespace GammonX.Server
                         }
                         else
                         {
+                            // we handle a first time connect on before match has started
                             var payload = new EventMatchLobbyPayload(matchSessionClone.Id, matchSessionClone.Player1.Id, matchSessionClone.Player2.Id, ServerCommands.MatchStateCommand);
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                             await SendToGroupAsync(ConstructGroupName(matchSessionClone.Id), ServerEventTypes.PlayerConnectedEvent, contract);
+
                             if (matchSessionClone.Player1.Claimed && matchSessionClone.Player2.Claimed && !matchSessionClone.IsMatchOver())
                             {
                                 // Both seats are assigned, but the first game has not started. Restore player start deadlines;
-                                // the bot's opening roll and acceptance are supplied when the player starts the match.
+                                // the bots opening roll and acceptance are supplied when the player starts the match.
                                 StartTurnTimer(matchSessionClone.Modus, matchSessionClone.Id, matchSessionClone.Player1.Id);
                                 if (!IsBotPlayer(matchSessionClone, matchSessionClone.Player2.Id))
                                 {
@@ -193,15 +204,29 @@ namespace GammonX.Server
                 if (playerId.HasValue && matchId.HasValue)
                 {
                     await using var matchLock = await _matchRepository.AcquireStateAsync(matchId.Value);
-                    // we reset all turn timers on disconnect
-                    CancelTimersFor(matchId.Value, CancellationTokenCategory.Turn);
-
                     var playerConnection = _playerConnectionRepository.Get(playerId.Value);
-                    if (playerConnection != null)
+
+                    // SignalR can deliver the old sockets callback after its replacement connected.
+                    var sameConnection = string.Equals(playerConnection?.ConnectionId, Context.ConnectionId, StringComparison.Ordinal);
+                    if (playerConnection != null && !playerConnection.IsBot && sameConnection)
                     {
-                        playerConnection.LastSeenUtc = DateTime.UtcNow;
+                        var disconnectKey = ConstructTokenKey(playerId.Value, matchId.Value, CancellationTokenCategory.Disconnect);
+                        // We check if a disconnected timer already runs for the given player and match
+                        if (_cancellationTokenService.TryGet(disconnectKey, out _))
+                        {
+                            return;
+                        }
 
                         var matchSessionClone = matchLock.Get();
+                        var participant = matchSessionClone?.Player1.Id == playerId.Value || matchSessionClone?.Player2.Id == playerId.Value;
+                        if (matchSessionClone != null && !participant)
+                        {
+                            return;
+                        }
+
+                        CancelTimersFor(matchId.Value, CancellationTokenCategory.Turn);
+                        playerConnection.LastSeenUtc = DateTime.UtcNow;
+
                         if (matchSessionClone != null)
                         {
                             var otherPlayerId = GetOtherPlayerId(matchSessionClone, playerId.Value);
@@ -222,10 +247,7 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        Log.Debug(
-                            "Ignoring disconnect for player {playerId} in match {matchId}; the player connection was already removed.",
-                            playerId.Value,
-                            matchId.Value);
+                        Log.Debug("Ignoring disconnect for player {playerId} in match {matchId}; the connection is no longer current.", playerId.Value, matchId.Value);
                         return;
                     }
                 }
@@ -247,33 +269,53 @@ namespace GammonX.Server
 
             var newCts = new CancellationTokenSource();
             _cancellationTokenService.Store(tokenKey, newCts);
+            var connectionId = playerConnection.ConnectionId!;
+            var gracePeriod = playerConnection.DisconnectGracePeriod;
 
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(playerConnection.DisconnectGracePeriod, newCts.Token);
-                    if (!newCts.Token.IsCancellationRequested)
-                    {
-                        playerConnection.DisconnectGracePeriod = TimeSpan.Zero;
-                        _cancellationTokenService.Cancel(tokenKey);
-                        await HandlePermanentDisconnectAsync(playerConnection.Id, matchId);
-                    }
+                    await Task.Delay(gracePeriod, newCts.Token);
+                    await HandlePermanentDisconnectAsync(playerConnection.Id, matchId, connectionId, newCts);
                 }
                 catch (OperationCanceledException)
                 {
-                    var disconnectDuration = DateTime.UtcNow - playerConnection.LastSeenUtc;
-                    playerConnection.DisconnectGracePeriod = (playerConnection.DisconnectGracePeriod - disconnectDuration).Max(TimeSpan.Zero);
-                    _cancellationTokenService.Cancel(tokenKey);
+                    // Reconnection accounts for elapsed grace under the match lease. In particular,
+                    // an old task must not cancel a replacement timer registered under the same key.
                 }
-            }, newCts.Token);
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "An error occurred while handling disconnect expiry for match {matchId}.", matchId);
+                }
+            });
         }
 
-        private async Task HandlePermanentDisconnectAsync(Guid playerId, Guid matchId)
+        private async Task HandlePermanentDisconnectAsync(Guid playerId, Guid matchId, string connectionId, CancellationTokenSource timer)
         {
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
-            _playerConnectionRepository.TryRemove(playerId);
+            var tokenKey = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Disconnect);
+            var connection = _playerConnectionRepository.Get(playerId);
+            // Expiry may have queued behind a reconnect or a new disconnect. Validate its generation
+            // only after acquiring the lease, before removing connections or changing the match.
+            var sameConnection = string.Equals(connection?.ConnectionId, connectionId, StringComparison.Ordinal);
+            var sameTimer = _cancellationTokenService.TryGet(tokenKey, out var currentTimer) && ReferenceEquals(timer, currentTimer);
+            if (timer.IsCancellationRequested || !sameTimer || connection == null || connection.IsBot || !sameConnection)
+            {
+                return;
+            }
+
             var matchToResignClone = matchLock.Get();
+            var participant = matchToResignClone?.Player1.Id == playerId || matchToResignClone?.Player2.Id == playerId;
+            if (matchToResignClone != null && !participant)
+            {
+                return;
+            }
+
+            _cancellationTokenService.Cancel(tokenKey);
+            connection.DisconnectGracePeriod = TimeSpan.Zero;
+            _playerConnectionRepository.TryRemove(playerId);
+
             if (matchToResignClone != null && !matchToResignClone.IsMatchOver())
             {
                 // first player to expire the grace period loses the match
@@ -1219,6 +1261,7 @@ namespace GammonX.Server
         {
             try
             {
+                // 1) we first check if the bot would offer a double
                 if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.CanOfferDouble(botPlayerId))
                 {
                     var botService = GetBotService();
@@ -1233,11 +1276,13 @@ namespace GammonX.Server
                 }
 
                 var game = matchSession.GetGameSession(matchSession.GameRound);
+                // 2) we then check if the bot has to roll his dices
                 if (game?.Phase == GamePhase.WaitingForRoll)
                 {
                     await PerformRollAsync(matchLock, matchSession, botPlayerId);
                 }
 
+                // 3) we then check if the bos has to move his checkers
                 bool canMove = false;
                 do
                 {
@@ -1256,9 +1301,10 @@ namespace GammonX.Server
                 }
                 while (canMove);
 
-                // if we cannot end the current turn, the match/game is probably over
+                // 4) we then check if the bot can end his turn and pass over to the player
                 if (matchSession.CanEndTurn(botPlayerId))
                 {
+                    // if we cannot end the current turn, the match/game is probably over
                     matchSession.EndTurn(botPlayerId);
                     matchLock.Commit();
                     await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
@@ -1268,6 +1314,7 @@ namespace GammonX.Server
             }
             catch (Exception ex)
             {
+                // TODO: implement a bot turn recovery.
                 Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_TURN_ERROR", "An Error occurred while executing the bot turn");
                 throw new BotServiceException(WellKnownBotServices.Mars, "An error occurred while executing the bot turn", ex);
             }
@@ -1583,6 +1630,7 @@ namespace GammonX.Server
             catch (Exception e)
             {
                 // TODO: Failed publication can permanently lose a rating update.
+                // TODO: Implement a peristent outbox pattern for guaranteed delivery
                 var groupName = ConstructGroupName(match.Id);
                 await SendErrorEventToGroupAsync("PROCESS_MATCH_RESULT_ERROR", "An error occurred while processing the match result. Some match data may be lost.", groupName, e);
             }

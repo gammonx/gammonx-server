@@ -18,7 +18,7 @@
                 }
                 _tokenSources[key] = cts;
                 // the token removes itself from the registry
-                cts.Token.Register(() => RemoveToken(key));
+                cts.Token.Register(() => RemoveToken(key, cts));
             }
         }
 
@@ -75,11 +75,11 @@
             }
         }
 
-        private void RemoveToken(CancellationTokenKey key)
+        private void RemoveToken(CancellationTokenKey key, CancellationTokenSource expected)
         {
             lock (_lock)
             {
-                if (_tokenSources.TryGetValue(key, out var cts))
+                if (_tokenSources.TryGetValue(key, out var cts) && ReferenceEquals(cts, expected))
                 {
                     _tokenSources.Remove(key);
                 }
