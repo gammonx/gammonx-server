@@ -1,4 +1,5 @@
-﻿using GammonX.Engine.Services;
+﻿using System.Text.RegularExpressions;
+using GammonX.Engine.Services;
 
 using GammonX.Models.Enums;
 
@@ -525,6 +526,8 @@ namespace GammonX.Server
                             _matchRepository.Commit(matchSessionClone);
                             if (IsBotPlayer(matchSessionClone, startingPlayerId))
                             {
+                                // we must send a fresh game state here because bot may offer double at game start
+                                await SendGameState(ServerEventTypes.GameStartedEvent, matchSessionClone);
                                 await PerformBotTurnAsync(matchSessionClone, startingPlayerId);
                             }
                             else
@@ -1165,6 +1168,8 @@ namespace GammonX.Server
             // check if this move won the game for the active player
             if (gameOver)
             {
+                // we send here a last game state in order to update the visual board for the client in the background
+                await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                 // check if this was the last move to win the last game and the match
                 if (matchSession.IsMatchOver())
                 {
@@ -1427,21 +1432,29 @@ namespace GammonX.Server
             // We await the call in order to ensure that the events are properly published
             await EnqueueResultsForProcessingAsync(match, serverEventName);
 
-            // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
-            // TODO: client requests last - 1 rating period and current rating > difference = rating gain
-
+            var includeRatingRequest = match.Modus == MatchModus.Ranked
+                && serverEventName.Equals(ServerEventTypes.MatchEndedEvent);
             var payloadPlayer1 = match.ToPayload(match.Player1.Id);
+            if (includeRatingRequest)
+            {
+                payloadPlayer1.RatingUrl = $"players/{match.Player1.Id}/rating/{match.Variant}/{match.Type}?matchId={match.Id}";
+            }
             var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
             await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
             if (match.Modus != MatchModus.Bot)
             {
                 var payloadPlayer2 = match.ToPayload(match.Player2.Id);
+                if (includeRatingRequest)
+                {
+                    payloadPlayer2.RatingUrl = $"players/{match.Player2.Id}/rating/{match.Variant}/{match.Type}?matchId={match.Id}";
+                }
                 var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
                 await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
             }
 
             if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
             {
+                // TODO: client side timer (e.g. 10s) try to fetch rating change from lambda function)
                 await CleanUpMatchAsync(match, payloadPlayer1.GroupName);
             }
             else if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))

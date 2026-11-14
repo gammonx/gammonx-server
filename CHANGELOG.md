@@ -1,9 +1,13 @@
 # Changelog
 
-## 11.11.2026
+## 14.11.2026
 - mars neural net changes
 	- update net architecture of Fevga and Plakoto
 	- give Fevga and Plakoto a three-head output
+- mars training
+	- allow multiple input training csv
+	- allow concurrent training on same csv
+- added AGENTS.md
 
 ## 11.11.2026
 - mars neural net changes

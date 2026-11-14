@@ -48,6 +48,7 @@ public static class NetTrainer
         var trainStopwatch = Stopwatch.StartNew();
 
         // TODO: make file names unique for concurrent training
+        // TODO: allow multiple .csv files for input without shuffling
         // we convert the csv files to a binary format for faster training, and build an index of row offsets for random access
         var trainBinaryPath = $"{Path.GetFileNameWithoutExtension(training.TrainCsvPath)}.bin";
         var (trainFeatureCount, trainRowCount, _) = BinaryBatchEnumerator.ScanCsvAndConvertToBinary(training.TrainCsvPath, trainBinaryPath, labelCount);

@@ -2,18 +2,11 @@
 - see changelog 
 
 ## Active
-- beta bug fixes
-- expert (2ply) mode optimizations
-    - performance > enable selective 2-ply search?
-    - max candidates based on 1-ply search?
-    - consider 10s timeout for mars move eval requests
-    - add resilience patterns for mars requests (retry/timeouts)
+- 
 
 ## TODO
-- update nn arch of plakoto/fevga to > 5
-    - create proper training pipeline/architecture similalr to default model
-    - train models for both variants
-- bots in different difficult grades as ranked fallback
+- bot as ranked opponent
+- invite friend by link
 - leaderboard lambda?
 - make game service stateless
     - or sticky sessions for clients?
@@ -32,6 +25,10 @@
     - match equity/stats after match :: win percentage to user
 - enable dead letter queue
 - fifo queue for stats update
+- tavla hit and run rule?
+- hedge hog as default net benchmark
+- risk averse training policy (pwin, gwin, bgwin)
+- play a match with pauses
 
 ## Open Points
 - play-a-friend, invite by link
