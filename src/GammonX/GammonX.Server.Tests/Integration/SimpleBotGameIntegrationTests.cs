@@ -1,4 +1,3 @@
-﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Models.Contracts;
@@ -9,236 +8,192 @@ using GammonX.Server.Contracts;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Stubs;
-using GammonX.Server.Tests.Utils;
 
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Newtonsoft.Json;
 
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
+using System.Threading.Channels;
 
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Integration
 {
-	public class SimpleBotGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
-	{
-		private readonly WebApplicationFactory<Program> _factory;
+    public class SimpleBotGameIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+    {
+        private readonly WebApplicationFactory<Program> _factory;
 
-		public SimpleBotGameIntegrationTests(WebApplicationFactory<Program> factory)
-		{
-			_factory = factory.WithWebHostBuilder(builder =>
-			{
-				builder.ConfigureServices(services =>
-				{
-					var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IGameSessionFactory));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					services.AddSingleton<IGameSessionFactory>(new TavliStartGameSessionFactoryStub());
-					descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDiceServiceFactory));
-					if (descriptor != null)
-					{
-						services.Remove(descriptor);
-					}
-					services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
-					var botDescriptors = services.Where	(d => d.ServiceType == typeof(IBotService));
-					if (botDescriptors != null && botDescriptors.Any())
-					{
-						foreach (var botDescriptor in botDescriptors.ToList())
-						{
-							services.Remove(botDescriptor);
-						}
-					}
-					services.AddKeyedSingleton(WellKnownBotServices.Mars, new SimpleBotService());
-                    services.AddKeyedSingleton(WellKnownBotServices.WildBg, new SimpleBotService());
+        public SimpleBotGameIntegrationTests(WebApplicationFactory<Program> factory)
+        {
+            _factory = factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureServices(services =>
+                {
+                    services.RemoveAll<IGameSessionFactory>();
+                    services.AddSingleton<IGameSessionFactory>(new TavliStartGameSessionFactoryStub());
+                    services.RemoveAll<IDiceServiceFactory>();
+                    services.AddSingleton<IDiceServiceFactory>(new StartDiceServiceFactoryStub());
+                    services.RemoveAll<IBotService>();
+                    services.AddKeyedSingleton<IBotService>(WellKnownBotServices.Mars, new SimpleBotService());
+                    services.AddKeyedSingleton<IBotService>(WellKnownBotServices.WildBg, new SimpleBotService());
                 });
-			});
-		}
-
-		[Fact]
-		public async Task StartSimpleBotMatch()
-		{
-			var client = _factory.CreateClient();
-			var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
-
-			var player1 = new JoinRequest(Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45"), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame, BotLevel.Hard);
-			
-			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
-			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-			var joinResponse1 = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson1);
-			var joinPayload1 = joinResponse1?.Payload;
-			Assert.NotNull(joinPayload1);
-			var player1Connection = new HubConnectionBuilder()
-				.WithUrl($"{serverUri}/matchhub", options =>
-				{
-					options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
-				})
-				.Build();
-
-			Assert.NotNull(joinPayload1.QueueId);
-			RequestQueueEntryPayload? result1 = null;
-			do
-			{
-				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, MatchModus.Bot);
-			}
-			while (result1.Status == QueueEntryStatus.WaitingForOpponent);
-
-			Assert.NotNull(result1);
-			var matchId = result1.MatchId;
-
-			player1Connection.On<object>(ServerEventTypes.ErrorEvent, _ =>
-			{
-				Assert.Fail();
-			});
-
-			player1Connection.On<object>(ServerEventTypes.MatchLobbyWaitingEvent, _ =>
-			{
-                // we must not wait if opponent is a bot
-                Assert.Fail();
-			});
-
-			player1Connection.On<object>(ServerEventTypes.GameWaitingEvent, _ =>
-			{
-				// we must not wait if opponent is a bot
-				Assert.Fail();
-			});
-
-            player1Connection.On<object>(ServerEventTypes.MatchWaitingEvent, _ =>
-            {
-                // we must not wait if opponent is a bot
-                Assert.Fail();
             });
+        }
 
-            player1Connection.On<object>(ServerEventTypes.MatchLobbyFoundEvent, response =>
-            {
-                Assert.NotNull(response);
-                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchLobbyPayload>>(response.ToString() ?? "");
-                if (contract?.Payload is EventMatchLobbyPayload payload)
+        [Fact]
+        public async Task StartSimpleBotMatch()
+        {
+            // Arrange.
+            using var client = _factory.CreateClient();
+            var serverUri = client.BaseAddress!.ToString().TrimEnd('/');
+            var cancellationToken = TestContext.Current.CancellationToken;
+            var player = new JoinRequest(Guid.NewGuid(), MatchVariant.Tavli, MatchModus.Bot, MatchType.CashGame, BotLevel.Hard);
+            var botId = WellKnownBotPlayers.GetBotPlayerId(BotLevel.Hard);
+
+            using var response = await client.PostAsJsonAsync("/game/api/matches/join", player, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            var resultJson = await response.Content.ReadAsStringAsync(cancellationToken);
+            var joinResponse = JsonConvert.DeserializeObject<ResponseContract<RequestQueueEntryPayload>>(resultJson);
+            var joinPayload = Assert.IsType<RequestQueueEntryPayload>(joinResponse?.Payload);
+
+            // Bot matchmaking creates a lobby immediately; there is no queue to poll.
+            Assert.Equal(QueueEntryStatus.OpponentFound, joinPayload.Status);
+            Assert.Null(joinPayload.QueueId);
+            Assert.NotNull(joinPayload.MatchId);
+            var matchId = joinPayload.MatchId.Value;
+
+            await using var connection = new HubConnectionBuilder()
+                .WithUrl($"{serverUri}/matchhub", options =>
                 {
-					Assert.True(payload.MatchFound);
-					Assert.Equal(matchId, payload.Id);
-					// we expect the static bot player id as opponent
-					Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2);
-					Assert.Empty(payload.AllowedCommands);
-                }
-            });
+                    options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler();
+                })
+                .Build();
 
-            player1Connection.On<object>(ServerEventTypes.MatchWaitingForStartEvent, response =>
+            var unexpectedEvents = new ConcurrentQueue<string>();
+            foreach (var eventName in new[]
             {
-				Assert.NotNull(response);
-                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchStatePayload>>(response.ToString() ?? "");
-                if (contract?.Payload is EventMatchStatePayload payload)
-                {
-					Assert.Equal(3, payload.AllowedCommands.Length);
-					Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
-                    Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
-                    Assert.Contains(ServerCommands.StartMatchCommand, payload.AllowedCommands);
-					Assert.Equal(matchId, payload.Id);
-					Assert.Equal($"match_{matchId}", payload.GroupName);
-                    Assert.Equal(1, payload.GameRound);
-					Assert.Null(payload.Winner);
-					Assert.Null(payload.WinnerPoints);
-					Assert.Null(payload.Loser);
-					Assert.Null(payload.LoserPoints);
-					Assert.Equal(MatchModus.Bot, payload.Modus);
-					Assert.NotNull(payload.Player1);
-					Assert.NotNull(payload.Player2);
-                    Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2.Id);
-                    Assert.Null(payload.Player1.UserName);
-                    Assert.Null(payload.Player2.UserName);
-                    // we should not have opening dices before the match is started
-                    Assert.Null(payload.Player1.StartDiceRoll);
-                    Assert.Null(payload.Player2.StartDiceRoll);
-                }
-            });
-
-            player1Connection.On<object>(ServerEventTypes.MatchStartedEvent, response =>
+                ServerEventTypes.ErrorEvent,
+                ServerEventTypes.MatchLobbyWaitingEvent,
+                ServerEventTypes.GameWaitingEvent,
+                ServerEventTypes.MatchWaitingEvent
+            })
             {
-                Assert.NotNull(response);
-                var contract = JsonConvert.DeserializeObject<EventResponseContract<EventMatchStatePayload>>(response.ToString() ?? "");
-                if (contract?.Payload is EventMatchStatePayload payload)
-                {
-                    Assert.Equal(3, payload.AllowedCommands.Length);
-                    Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
-                    Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
-					// starting player can directly move with the opening dices
-                    Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
-                    Assert.Equal(matchId, payload.Id);
-                    Assert.Equal(1, payload.GameRound);
-                    Assert.Null(payload.Winner);
-                    Assert.Null(payload.WinnerPoints);
-                    Assert.Null(payload.Loser);
-                    Assert.Null(payload.LoserPoints);
-                    Assert.Equal(MatchModus.Bot, payload.Modus);
-                    Assert.NotNull(payload.Player1);
-                    Assert.NotNull(payload.Player2);
-                    Assert.Equal(Guid.Parse("7d7f63ca-112a-4d92-9881-36ee1a66aeb6"), payload.Player2.Id);
-                    Assert.Null(payload.Player1.UserName);
-                    Assert.Null(payload.Player2.UserName);
-                    // we should now have opening dices for both players
-                    Assert.NotNull(payload.Player1.StartDiceRoll);
-                    Assert.NotNull(payload.Player2.StartDiceRoll);
-                }
+                connection.On<object>(eventName, _ => unexpectedEvents.Enqueue(eventName));
+            }
+
+            var lobbyFound = Subscribe(connection, ServerEventTypes.MatchLobbyFoundEvent);
+            var waitingForStart = Subscribe(connection, ServerEventTypes.MatchWaitingForStartEvent);
+            var matchStarted = Subscribe(connection, ServerEventTypes.MatchStartedEvent);
+            var gameStarted = Subscribe(connection, ServerEventTypes.GameStartedEvent);
+            var gameStates = Subscribe(connection, ServerEventTypes.GameStateEvent);
+
+            // Act: join and start the match, then play a complete human turn.
+            await connection.StartAsync(cancellationToken);
+            await connection.InvokeAsync(ServerCommands.JoinMatchCommand, matchId.ToString(), player.PlayerId.ToString(), cancellationToken);
+
+            var lobby = await ReadPayloadAsync<EventMatchLobbyPayload>(lobbyFound);
+            Assert.True(lobby.MatchFound);
+            Assert.Equal(matchId, lobby.Id);
+            Assert.Equal(player.PlayerId, lobby.Player1);
+            Assert.Equal(botId, lobby.Player2);
+            Assert.Empty(lobby.AllowedCommands);
+
+            var waiting = await ReadPayloadAsync<EventMatchStatePayload>(waitingForStart);
+            AssertMatchState(waiting, matchId, player.PlayerId, botId);
+            Assert.Equal(3, waiting.AllowedCommands.Length);
+            Assert.Contains(ServerCommands.StartMatchCommand, waiting.AllowedCommands);
+            Assert.Null(waiting.Player1!.StartDiceRoll);
+            Assert.Null(waiting.Player2!.StartDiceRoll);
+
+            await connection.InvokeAsync(ServerCommands.StartMatchCommand, matchId.ToString(), cancellationToken);
+
+            var started = await ReadPayloadAsync<EventMatchStatePayload>(matchStarted);
+            AssertMatchState(started, matchId, player.PlayerId, botId);
+            Assert.Equal(3, started.AllowedCommands.Length);
+            Assert.Contains(ServerCommands.MoveCommand, started.AllowedCommands);
+            Assert.Equal(6, started.Player1!.StartDiceRoll);
+            Assert.Equal(1, started.Player2!.StartDiceRoll);
+
+            var game = await ReadPayloadAsync<EventGameStatePayload>(gameStarted);
+            Assert.Equal(matchId, game.MatchId);
+            Assert.Equal(player.PlayerId, game.ActiveTurn);
+            Assert.Equal(1, game.TurnNumber);
+            Assert.Equal(GamePhase.Rolling, game.Phase);
+            Assert.NotEmpty(game.MoveSequences);
+
+            // Use a legal sequence, since the two opening dice can require different moves.
+            foreach (var move in game.MoveSequences.First().Moves)
+            {
+                await connection.InvokeAsync(ServerCommands.MoveCommand, matchId.ToString(), move.From, move.To, cancellationToken);
+                game = await ReadPayloadAsync<EventGameStatePayload>(gameStates);
+                Assert.Equal(player.PlayerId, game.ActiveTurn);
+            }
+            Assert.Contains(ServerCommands.EndTurnCommand, game.AllowedCommands);
+
+            await connection.InvokeAsync(ServerCommands.EndTurnCommand, matchId.ToString(), cancellationToken);
+
+            // Assert: the bot completed its turn and handed control back to the human.
+            do
+            {
+                game = await ReadPayloadAsync<EventGameStatePayload>(gameStates);
+                Assert.Equal(matchId, game.MatchId);
+            }
+            while (game.ActiveTurn != player.PlayerId || game.TurnNumber != 3);
+
+            Assert.Equal(GamePhase.WaitingForRoll, game.Phase);
+            Assert.Contains(ServerCommands.RollCommand, game.AllowedCommands);
+
+            await connection.InvokeAsync(ServerCommands.RollCommand, matchId.ToString(), cancellationToken);
+            game = await ReadPayloadAsync<EventGameStatePayload>(gameStates);
+            Assert.Equal(player.PlayerId, game.ActiveTurn);
+            Assert.Equal(3, game.TurnNumber);
+            Assert.Equal(GamePhase.Rolling, game.Phase);
+            Assert.NotEmpty(game.MoveSequences);
+            Assert.Empty(unexpectedEvents);
+        }
+
+        private static void AssertMatchState(EventMatchStatePayload payload, Guid matchId, Guid playerId, Guid botId)
+        {
+            Assert.Equal(matchId, payload.Id);
+            Assert.Equal($"match_{matchId}", payload.GroupName);
+            Assert.Equal(1, payload.GameRound);
+            Assert.Equal(MatchModus.Bot, payload.Modus);
+            Assert.Null(payload.Winner);
+            Assert.Null(payload.WinnerPoints);
+            Assert.Null(payload.Loser);
+            Assert.Null(payload.LoserPoints);
+            Assert.NotNull(payload.Player1);
+            Assert.NotNull(payload.Player2);
+            Assert.Equal(playerId, payload.Player1.Id);
+            Assert.Equal(botId, payload.Player2.Id);
+            Assert.Null(payload.Player1.UserName);
+            Assert.Null(payload.Player2.UserName);
+            Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
+            Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
+        }
+
+        private static ChannelReader<object> Subscribe(HubConnection connection, string eventName)
+        {
+            var channel = Channel.CreateUnbounded<object>();
+            connection.On<object>(eventName, response =>
+            {
+                channel.Writer.TryWrite(response);
             });
+            return channel.Reader;
+        }
 
-            MoveModel? nextMove = null;
-			player1Connection.On<object>(ServerEventTypes.GameStartedEvent, response =>
-			{
-				Assert.NotNull(response);
-				var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
-				if (contract?.Payload is EventGameStatePayload payload)
-				{
-					nextMove = payload.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
-					Assert.Equal(matchId, payload.MatchId);
-					if (payload.Phase == GamePhase.WaitingForOpponent)
-					{
-						Assert.Equal(2, payload.TurnNumber);
-						Assert.NotEqual(player1.PlayerId, payload.ActiveTurn);
-					}
-
-					if (payload.AllowedCommands.Contains(ServerCommands.RollCommand))
-					{
-						Assert.Equal(player1.PlayerId, payload.ActiveTurn);
-					}
-				}
-			});
-
-			await player1Connection.StartAsync(TestContext.Current.CancellationToken);
-
-			// join the match
-			await player1Connection.SendAsync(ServerCommands.JoinMatchCommand, matchId, player1.PlayerId.ToString(), TestContext.Current.CancellationToken);
-
-			// start the game
-			await player1Connection.SendAsync(ServerCommands.StartMatchCommand, matchId, cancellationToken: TestContext.Current.CancellationToken);
-
-			// player 1 can directly move with the initial rolled dices
-			// await player1Connection.SendAsync(ServerCommands.RollCommand, matchId);
-
-			while (nextMove == null)
-			{
-				await Task.Delay(250, TestContext.Current.CancellationToken);
-			}
-
-			// player 1 moves first checker
-			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To, TestContext.Current.CancellationToken);
-
-			// player 1 moves second checker
-			await player1Connection.SendAsync(ServerCommands.MoveCommand, matchId, nextMove.From, nextMove.To, TestContext.Current.CancellationToken);
-
-			// player 1 ends his turn
-			await player1Connection.SendAsync(ServerCommands.EndTurnCommand, matchId, TestContext.Current.CancellationToken);
-
-			// bot has its turn
-
-			// player 1 rolls for his second turn
-			await player1Connection.SendAsync(ServerCommands.RollCommand, matchId, TestContext.Current.CancellationToken);
-
-			await player1Connection.DisposeAsync();
-			client.Dispose();
-		}
-	}
+        private static async Task<T> ReadPayloadAsync<T>(ChannelReader<object> events) where T : EventPayloadBase
+        {
+            // Assert on the test task: SignalR catches exceptions thrown by event handlers.
+            var response = await events.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+            var contract = JsonConvert.DeserializeObject<EventResponseContract<T>>(response.ToString() ?? "");
+            Assert.NotNull(contract);
+            return Assert.IsType<T>(contract.Payload);
+        }
+    }
 }
