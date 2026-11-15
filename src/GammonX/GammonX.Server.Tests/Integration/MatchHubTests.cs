@@ -395,6 +395,130 @@ namespace GammonX.Server.Tests.Integration
             Assert.False(_cancellationTokenService.TryGet(key, out _));
         }
 
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task BothDisconnectedWaitForBothDeadlinesOrSurvivingReconnect(bool reverseOrder, bool reconnect)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var first = reverseOrder ? fixture.Session.Player2 : fixture.Session.Player1;
+            var second = reverseOrder ? fixture.Session.Player1 : fixture.Session.Player2;
+            foreach (var player in new[] { first, second })
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+            }
+            var firstKey = new CancellationTokenKey { MatchId = matchId, PlayerId = first.Id, Category = CancellationTokenCategory.Disconnect };
+            var secondKey = new CancellationTokenKey { MatchId = matchId, PlayerId = second.Id, Category = CancellationTokenCategory.Disconnect };
+            Assert.NotNull(_matchRepo.Get(matchId));
+            Assert.True(_cancellationTokenService.TryGet(firstKey, out var firstTimer));
+            Assert.True(_cancellationTokenService.TryGet(secondKey, out var secondTimer));
+
+            // Act.
+            await InvokeDisconnectExpiryAsync(fixture.Hub, first.Id, matchId, first.ConnectionId, firstTimer!);
+            Assert.NotNull(_matchRepo.Get(matchId));
+            Assert.Empty(_completedMatches);
+            // The expired player cannot revive their seat while the other still has grace.
+            fixture.Hub.Context = new HubCallerContextStub("too-late", first.Id, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            Assert.Equal(first.ConnectionId, _playerConnRepo.Get(first.Id)!.ConnectionId);
+            Assert.True(_cancellationTokenService.TryGet(firstKey, out _));
+            if (reconnect)
+            {
+                fixture.Hub.Context = new HubCallerContextStub("returned", second.Id, matchId);
+                await fixture.Hub.OnConnectedAsync();
+            }
+            else
+            {
+                await InvokeDisconnectExpiryAsync(fixture.Hub, second.Id, matchId, second.ConnectionId, secondTimer!);
+            }
+
+            // Assert.
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.False(_cancellationTokenService.TryGet(firstKey, out _));
+            Assert.False(_cancellationTokenService.TryGet(secondKey, out _));
+            if (reconnect)
+            {
+                Assert.Single(_completedMatches);
+            }
+            else
+            {
+                Assert.Empty(_completedMatches);
+            }
+        }
+
+        [Fact]
+        public async Task BothHumansCanReconnectWithinGrace()
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var players = new[] { fixture.Session.Player1, fixture.Session.Player2 };
+            foreach (var player in players)
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+            }
+
+            // Act.
+            foreach (var player in players)
+            {
+                fixture.Hub.Context = new HubCallerContextStub(Guid.NewGuid().ToString(), player.Id, matchId);
+                await fixture.Hub.OnConnectedAsync();
+            }
+
+            // Assert.
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            Assert.Empty(_completedMatches);
+            foreach (var player in players)
+            {
+                Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = matchId, PlayerId = player.Id, Category = CancellationTokenCategory.Disconnect
+                }, out _));
+            }
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task BothElapsedDeadlinesAreInconclusiveBeforeSecondCallback(bool reverseOrder)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var players = new[] { fixture.Session.Player1, fixture.Session.Player2 };
+            foreach (var player in players)
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+                _playerConnRepo.Get(player.Id)!.LastSeenUtc = DateTime.UtcNow - TimeSpan.FromMinutes(1);
+            }
+            var first = players[reverseOrder ? 1 : 0];
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = first.Id, Category = CancellationTokenCategory.Disconnect };
+            Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+
+            // Act.
+            await InvokeDisconnectExpiryAsync(fixture.Hub, first.Id, matchId, first.ConnectionId, timer!);
+
+            // Assert.
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Empty(_completedMatches);
+            Assert.All(players, player => Assert.Null(_playerConnRepo.Get(player.Id)));
+        }
+
         [Fact]
         public async Task NonparticipantDisconnectAndExpiryCannotChangeMatchOrConnection()
         {

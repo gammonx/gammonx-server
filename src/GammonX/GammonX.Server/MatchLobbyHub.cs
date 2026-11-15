@@ -72,6 +72,7 @@ namespace GammonX.Server
                 {
                     await using var matchLock = await _matchRepository.AcquireStateAsync(matchId.Value);
                     var tokenKey = ConstructTokenKey(playerId.Value, matchId.Value, CancellationTokenCategory.Disconnect);
+                    // We check if the connecting player has a disconnect timer running
                     if (_cancellationTokenService.TryGet(tokenKey, out var cts) && cts != null)
                     {
                         // Charge the completed absence before AddOrUpdate changes LastSeenUtc.
@@ -80,6 +81,14 @@ namespace GammonX.Server
                         if (disconnectedPlayer != null && !cts.IsCancellationRequested)
                         {
                             var elapsed = DateTime.UtcNow - disconnectedPlayer.LastSeenUtc;
+                            if (elapsed >= disconnectedPlayer.DisconnectGracePeriod)
+                            {
+                                // An expired absence cannot be rescued while we wait for the other deadline.
+                                await ResolveDisconnectExpiryAsync(matchLock, playerId.Value, matchId.Value, disconnectedPlayer.ConnectionId!, cts);
+                                var payload = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
+                                await SendToClientAsync(Context.ConnectionId, ServerEventTypes.ForceDisconnectEvent, payload);
+                                return;
+                            }
                             disconnectedPlayer.DisconnectGracePeriod = (disconnectedPlayer.DisconnectGracePeriod - elapsed).Max(TimeSpan.Zero);
                         }
                         _cancellationTokenService.Cancel(tokenKey);
@@ -92,6 +101,33 @@ namespace GammonX.Server
                     if (matchSession != null)
                     {
                         await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchSession.Id));
+                        var otherPlayerId = GetOtherPlayerId(matchSession, playerId.Value);
+                        var otherKey = ConstructTokenKey(otherPlayerId, matchSession.Id, CancellationTokenCategory.Disconnect);
+                        // We check if the other player has a disconnect timer running
+                        if (_cancellationTokenService.TryGet(otherKey, out var otherTimer) && otherTimer != null)
+                        {
+                            var otherConnection = _playerConnectionRepository.Get(otherPlayerId);
+                            // We check if the other player surpassed their grace period
+                            if (otherConnection != null && DateTime.UtcNow - otherConnection.LastSeenUtc >= otherConnection.DisconnectGracePeriod)
+                            {
+                                await ResolveDisconnectExpiryAsync(matchLock, otherPlayerId, matchSession.Id, otherConnection.ConnectionId!, otherTimer);
+                            }
+                            else if (otherConnection != null)
+                            {
+                                var stateCommand = matchSession.GetGameSession(matchSession.GameRound) == null ? ServerCommands.MatchStateCommand : ServerCommands.GameStateCommand;
+                                var connectedPayload = new EventMatchLobbyPayload(matchSession.Id, matchSession.Player1.Id, matchSession.Player2.Id, stateCommand);
+                                var connectedResponse = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, connectedPayload);
+                                // We send to group that the player reconnected
+                                await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.PlayerConnectedEvent, connectedResponse);
+                                // We send to player that the other player is still disconnected
+                                var otherDisconnectPayload = EventDisconnectedPayload.From(otherConnection);
+                                var otherDisconnectResponse = new EventResponseContract<EventDisconnectedPayload>(ServerEventTypes.PlayerDisconnectedEvent, otherDisconnectPayload);
+                                await SendToClientAsync(connectionId, ServerEventTypes.PlayerDisconnectedEvent, otherDisconnectResponse);
+                            }
+                            // We keep turn deadlines paused until the other human returns or forfeits.
+                            return;
+                        }
+
                         // we try to reconnect to an existing match and resend the state
                         var activeGameSession = matchSession.GetGameSession(matchSession.GameRound);
                         if (activeGameSession != null)
@@ -215,19 +251,6 @@ namespace GammonX.Server
                         CancelTimersFor(matchId.Value, CancellationTokenCategory.Turn);
                         playerConnection.LastSeenUtc = DateTime.UtcNow;
 
-                        if (matchSession != null)
-                        {
-                            var otherPlayerId = GetOtherPlayerId(matchSession, playerId.Value);
-                            var tokenKey = ConstructTokenKey(otherPlayerId, matchId.Value, CancellationTokenCategory.Disconnect);
-                            // we check if the other player is already disconnected
-                            if (_cancellationTokenService.TryGet(tokenKey, out _))
-                            {
-                                // both players left before the grace period expired. We end the match as inconclusive, clean it up.
-                                await CleanUpMatchAsync(matchLock, matchSession, ConstructGroupName(matchId.Value));
-                                return;
-                            }
-                        }
-
                         StartDisconnectGraceTimer(playerConnection, matchId.Value);
                         var payload = EventDisconnectedPayload.From(playerConnection);
                         var contract = new EventResponseContract<EventDisconnectedPayload>(ServerEventTypes.PlayerDisconnectedEvent, payload);
@@ -282,6 +305,11 @@ namespace GammonX.Server
         private async Task HandlePermanentDisconnectAsync(Guid playerId, Guid matchId, string connectionId, CancellationTokenSource timer)
         {
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
+            await ResolveDisconnectExpiryAsync(matchLock, playerId, matchId, connectionId, timer);
+        }
+
+        private async Task ResolveDisconnectExpiryAsync(MatchSessionLease matchLock, Guid playerId, Guid matchId, string connectionId, CancellationTokenSource timer)
+        {
             var tokenKey = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Disconnect);
             var connection = _playerConnectionRepository.Get(playerId);
             // Expiry may have queued behind a reconnect or a new disconnect. Validate its generation
@@ -300,17 +328,36 @@ namespace GammonX.Server
                 return;
             }
 
+            connection.DisconnectGracePeriod = TimeSpan.Zero;
+
+            if (matchToResignClone != null)
+            {
+                var otherPlayerId = GetOtherPlayerId(matchToResignClone, playerId);
+                var otherKey = ConstructTokenKey(otherPlayerId, matchId, CancellationTokenCategory.Disconnect);
+                // We check if the other player is also disconnected
+                if (_cancellationTokenService.TryGet(otherKey, out _))
+                {
+                    var otherConnection = _playerConnectionRepository.Get(otherPlayerId);
+                    if (otherConnection != null && DateTime.UtcNow - otherConnection.LastSeenUtc >= otherConnection.DisconnectGracePeriod)
+                    {
+                        // Both deadlines elapsed, no winner or rated result, regardless of callback order.
+                        await CleanUpMatchAsync(matchLock, matchToResignClone, ConstructGroupName(matchId));
+                    }
+                    // Retain this registration as the disconnected marker until the other player resolves.
+                    return;
+                }
+            }
+
+            // We see that the player surpassed their grace period and the other player wins
             _cancellationTokenService.Cancel(tokenKey);
             if (matchToResignClone?.StartedAt == null && await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock))
             {
                 return;
             }
-            connection.DisconnectGracePeriod = TimeSpan.Zero;
             _playerConnectionRepository.TryRemove(playerId);
 
             if (matchToResignClone != null && !matchToResignClone.IsMatchOver())
             {
-                // first player to expire the grace period loses the match
                 matchToResignClone.ResignMatch(playerId);
                 matchLock.Commit();
                 matchLock.TryRemove();
