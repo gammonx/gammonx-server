@@ -12,8 +12,6 @@ namespace GammonX.Server.Models
 	// <inheritdoc />
 	public abstract class MatchSession : IMatchSessionModel
     {
-        private readonly SemaphoreSlim _stateMutex = new(1, 1);
-
         private readonly Func<IMatchSessionModel, bool> _isMatchOver;
 
 		protected GameModus[] Rounds { get; init; }
@@ -340,17 +338,21 @@ namespace GammonX.Server.Models
 
 			var activeSession = GetGameSession(GameRound);
 			if (activeSession == null)
+			{
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
+			}
 
 			// other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			var points = CalculateResignGamePoints();
+			var points = CalculateResignGamePoints(otherPlayerId, activeSession);
 			otherPlayer.Points += points;
 			var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
+			
 			activeSession.StopGame(result);
 			Player1.ActiveGameOver();
 			Player2.ActiveGameOver();
+			
 			LastExecutedCommand = ServerCommands.ResignGameCommand;
 		}
 
@@ -379,7 +381,7 @@ namespace GammonX.Server.Models
                         gameSession ??= GetOrCreateGameSession(i + 1);
 						// we need to award the other player at least 1 more point than the resigning player
 						var minDifference = activePlayer.Points + 1 - otherPlayer.Points;
-						var resignGamePoints = CalculateResignGamePoints();
+						var resignGamePoints = CalculateResignGamePoints(otherPlayerId, gameSession);
 						var pointsToAward = Math.Max(resignGamePoints, minDifference);
                         var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, pointsToAward);
                         gameSession.StopGame(result);
@@ -515,6 +517,12 @@ namespace GammonX.Server.Models
 			return GameSessions;
 		}
 
+		// <inheritdoc />
+		public bool IsAllowedCommand(Guid callingPlayerId, string command)
+        {
+            return IsCommandCallValid(callingPlayerId, command);
+        }
+
 		#region Abstract Methods
 
 		/// <summary>
@@ -527,8 +535,10 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Calculates the amount of points for the score of the non-resigning player.
 		/// </summary>
+		/// <param name="winnerId">The non-resigning player.</param>
+		/// <param name="gameSession">The game whose current board determines the score.</param>
 		/// <returns>Amount of points/score.</returns>
-		protected abstract int CalculateResignGamePoints();
+		protected abstract int CalculateResignGamePoints(Guid winnerId, IGameSessionModel gameSession);
 
 		/// <summary>
 		/// Gets the amount and order of the max playable game modus
@@ -683,40 +693,11 @@ namespace GammonX.Server.Models
 
         #endregion Private Methods
 
-        #region State Mutex Impl
-
-        // <inheritdoc />
-        public async Task<IAsyncDisposable> AcquireStateAsync()
-        {
-            await _stateMutex.WaitAsync();
-            return new LockReleaser(_stateMutex);
-        }
-
-        // <inheritdoc />
-        private sealed class LockReleaser : IAsyncDisposable
-        {
-            private readonly SemaphoreSlim _stateMutex;
-
-            public LockReleaser(SemaphoreSlim stateMutex)
-			{
-                _stateMutex = stateMutex;
-            }
-
-            // <inheritdoc />
-            ValueTask IAsyncDisposable.DisposeAsync()
-            {
-                _stateMutex.Release();
-				return ValueTask.CompletedTask;
-            }
-        }
-
-        #endregion State Mutex Impl
-
 		#region ICloneable Impl
 
 		// <inheritdoc />
 		public abstract object Clone();
 
-		#endregion ICloneable Impl
+        #endregion ICloneable Impl
     }
 }

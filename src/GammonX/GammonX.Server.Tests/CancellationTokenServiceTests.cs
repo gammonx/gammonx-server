@@ -20,6 +20,27 @@ namespace GammonX.Server.Tests
         #region Basic Operations
 
         [Fact]
+        public void OldCancellationCallbackCannotRemoveReplacementTimer()
+        {
+            // Arrange
+            var key = CreateKey(Guid.NewGuid(), Guid.NewGuid(), CancellationTokenCategory.Disconnect);
+            using var oldTimer = new CancellationTokenSource();
+            using var replacement = new CancellationTokenSource();
+            _service.Store(key, oldTimer);
+            // Cancellation callbacks run in reverse registration order. Install the replacement
+            // before the old timer's registry-removal callback gets its turn.
+            using var registration = oldTimer.Token.Register(() => _service.Store(key, replacement));
+
+            // Act
+            oldTimer.Cancel();
+
+            // Assert
+            Assert.True(_service.TryGet(key, out var current));
+            Assert.Same(replacement, current);
+            Assert.False(replacement.IsCancellationRequested);
+        }
+
+        [Fact]
         public void StoreShouldStoreAndRetrieveToken()
         {
             var playerId = Guid.NewGuid();

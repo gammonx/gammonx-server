@@ -135,13 +135,25 @@ namespace GammonX.DynamoDb.Tests.Rating
         }
 
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task FirstMatchInitializesRatingAndPreservesPreMatchInputs(bool playerWon)
+        [InlineData(true, null)]
+        [InlineData(false, null)]
+        [InlineData(true, "3ab8c995-d304-4680-a106-fbc4c56d4e99")]
+        [InlineData(false, "3ab8c995-d304-4680-a106-fbc4c56d4e99")]
+        [InlineData(true, "94c286c5-ee56-4991-8da0-83e2cb21c440")]
+        [InlineData(false, "94c286c5-ee56-4991-8da0-83e2cb21c440")]
+        [InlineData(true, "5320200d-2c28-4d02-a2eb-e4e739ae0ac6")]
+        [InlineData(false, "5320200d-2c28-4d02-a2eb-e4e739ae0ac6")]
+        [InlineData(true, "43557e28-09c4-4625-8c29-9001f0b61ea6")]
+        [InlineData(false, "43557e28-09c4-4625-8c29-9001f0b61ea6")]
+        public async Task FirstMatchInitializesRatingAndPreservesPreMatchInputs(bool playerWon, string? botId)
         {
             // Arrange.
             var player = ItemFactory.CreatePlayer();
             var opponent = ItemFactory.CreatePlayer();
+            if (botId != null)
+            {
+                opponent.Id = Guid.Parse(botId);
+            }
             var matchId = Guid.NewGuid();
             var winner = playerWon ? player : opponent;
             var loser = playerWon ? opponent : player;
@@ -153,12 +165,19 @@ namespace GammonX.DynamoDb.Tests.Rating
                 .ReturnsAsync(Array.Empty<PlayerRatingItem>());
 
             // Act.
-            var (rating, period) = await repository.Object.CalculatePlayerRatingAsync(player.Id, wonMatch, lostMatch);
+            var pair = await repository.Object.CalculateMatchRatingsAsync(wonMatch, lostMatch);
+            var (rating, period) = playerWon ? pair.Winner : pair.Loser;
+            var opponentResult = playerWon ? pair.Loser : pair.Winner;
             var factory = ItemFactoryCreator.Create<RatingPeriodItem>();
             var persistedPeriod = factory.CreateItem(factory.CreateItem(period));
 
             // Assert.
             Assert.Equal(player.Id, rating.PlayerId);
+            Assert.Equal(opponent.Id, opponentResult.Rating.PlayerId);
+            Assert.Equal(opponent.Id, opponentResult.Period.PlayerId);
+            Assert.Equal(player.Id, opponentResult.Period.OpponentId);
+            Assert.Equal(1, opponentResult.Rating.MatchesPlayed);
+            Assert.Equal(!playerWon, opponentResult.Rating.Rating > 1200);
             Assert.Equal(MatchModus.Ranked, rating.Modus);
             Assert.Equal(1, rating.MatchesPlayed);
             Assert.Equal(1, rating.Revision);

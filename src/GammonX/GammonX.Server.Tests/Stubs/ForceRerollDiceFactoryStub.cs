@@ -4,15 +4,18 @@ namespace GammonX.Server.Tests.Stubs
 {
     internal class ForceRerollDiceFactoryStub : IDiceServiceFactory
     {
+        // Keep the sequence across hub invocations without sharing it between test hosts.
+        private readonly IDiceService _diceService = new ForceRerollDiceServiceStub();
+
         public IDiceService Create(DiceServiceType type)
         {
-            return new ForceRerollDiceServiceStub();
+            return _diceService;
         }
     }
 
     internal class ForceRerollDiceServiceStub : IDiceService
     {
-        private static int _rollCount = 0;
+        private int _rollCount = 0;
 
         public int[] Roll(int numberOfDice, int sidesPerDie)
         {

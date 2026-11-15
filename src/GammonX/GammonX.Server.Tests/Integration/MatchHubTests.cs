@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Models;
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Models;
@@ -80,10 +80,831 @@ namespace GammonX.Server.Tests.Integration
             _hub = new MatchLobbyHub(BuildServiceProvider(compositeService));
         }
 
+        [Theory]
+        [InlineData(MatchModus.Bot, false)]
+        [InlineData(MatchModus.Bot, true)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task BotLobbyStartsAndPublishesRatingsOnlyWhenRanked(MatchModus modus, bool botStarts)
+        {
+            // Arrange.
+            var fixture = await CreateBotLobbyFixture(modus, botStarts);
+            var id = fixture.Session.Id;
+
+            // Act.
+            await fixture.Hub.StartMatchAsync(id.ToString());
+
+            // Assert.
+            var started = _matchRepo.Get(id)!;
+            Assert.True(started.Player2.IsBot);
+            Assert.Equal(WellKnownBotPlayers.GetBotPlayerId(BotLevel.Hard), started.Player2.Id);
+            Assert.Equal(modus, started.Modus);
+            Assert.Equal(BotLevel.Hard, started.BotLevel);
+            Assert.NotNull(started.StartedAt);
+            Assert.Equal(started.Player1.Id, started.GetGameSession(started.GameRound)!.ActivePlayer);
+            Assert.False(started.Player1.IsBot);
+            fixture.Clients.Verify(value => value.Client(started.Player1.ConnectionId), Times.AtLeastOnce);
+            fixture.Clients.Verify(value => value.Client(WellKnownBotPlayers.ConnectionId), Times.Never);
+
+            await fixture.Hub.ResignMatchAsync(id.ToString());
+            Assert.Null(_matchRepo.Get(id));
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
+                It.Is<IMatchSessionModel>(match => match.Id == id && match.Player2.Id == started.Player2.Id),
+                It.IsAny<CancellationToken>()), modus == MatchModus.Ranked ? Times.Once() : Times.Never());
+            Assert.NotNull(_playerConnRepo.Get(started.Player2.Id));
+        }
+
+        [Fact]
+        public async Task RankedBotCleanupPreservesOtherMatchUsingSameBot()
+        {
+            // Arrange.
+            var first = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var second = await CreateBotLobbyFixture(MatchModus.Ranked);
+            await first.Hub.StartMatchAsync(first.Session.Id.ToString());
+            await second.Hub.StartMatchAsync(second.Session.Id.ToString());
+            var botConnection = _playerConnRepo.Get(first.Session.Player2.Id);
+
+            // Act.
+            await first.Hub.ResignMatchAsync(first.Session.Id.ToString());
+
+            // Assert.
+            Assert.Same(botConnection, _playerConnRepo.Get(second.Session.Player2.Id));
+            var surviving = _matchRepo.Get(second.Session.Id)!;
+            Assert.False(surviving.IsMatchOver());
+            Assert.Equal(0, surviving.Player2.Points);
+            await second.Hub.ResignMatchAsync(second.Session.Id.ToString());
+            Assert.Null(_matchRepo.Get(second.Session.Id));
+            Assert.Same(botConnection, _playerConnRepo.Get(second.Session.Player2.Id));
+        }
+
+        [Fact]
+        public async Task RankedBotReconnectResumesInterruptedTurn()
+        {
+            // Arrange: persist the handoff to the bot without running its turn.
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            var session = setupLease.Get()!;
+            var game = session.GetGameSession(session.GameRound)!;
+            foreach (var move in game.MoveSequences.First().Moves.ToArray())
+            {
+                session.MoveCheckers(session.Player1.Id, move.From, move.To);
+            }
+            session.EndTurn(session.Player1.Id);
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
+            fixture.Hub.Context = new HubCallerContextStub("reconnected-human", session.Player1.Id, session.Id);
+
+            // Act.
+            await fixture.Hub.OnConnectedAsync();
+
+            // Assert.
+            var resumed = _matchRepo.Get(session.Id)!;
+            Assert.Equal("reconnected-human", resumed.Player1.ConnectionId);
+            Assert.Equal(resumed.Player1.Id, resumed.GetGameSession(resumed.GameRound)!.ActivePlayer);
+            fixture.Clients.Verify(value => value.Client(WellKnownBotPlayers.ConnectionId), Times.Never);
+            await fixture.Hub.ResignMatchAsync(session.Id.ToString());
+        }
+
+        [Fact]
+        public async Task OldSocketDisconnectAfterReconnectPreservesCurrentTimersAndConnection()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var oldConnectionId = fixture.Session.Player1.ConnectionId!;
+            fixture.Hub.Context = new HubCallerContextStub("replacement", playerId, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            var connection = _playerConnRepo.Get(playerId)!;
+            var lastSeen = connection.LastSeenUtc;
+            var remainingGrace = connection.DisconnectGracePeriod;
+            var turnKey = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Turn };
+            Assert.True(_cancellationTokenService.TryGet(turnKey, out var turnTimer));
+
+            // Act
+            fixture.Hub.Context = new HubCallerContextStub(oldConnectionId, playerId, matchId);
+            await fixture.Hub.OnDisconnectedAsync(null);
+
+            // Assert
+            Assert.Equal("replacement", connection.ConnectionId);
+            Assert.Equal(lastSeen, connection.LastSeenUtc);
+            Assert.Equal(remainingGrace, connection.DisconnectGracePeriod);
+            Assert.True(_cancellationTokenService.TryGet(turnKey, out var currentTurnTimer));
+            Assert.Same(turnTimer, currentTurnTimer);
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect
+            }, out _));
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task ExpiryWaitingForMatchLeaseCannotForfeitReplacementConnection()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var oldConnectionId = fixture.Session.Player1.ConnectionId!;
+            using var timer = new CancellationTokenSource();
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            _cancellationTokenService.Store(key, timer);
+            var lease = await _matchRepo.AcquireStateAsync(matchId);
+
+            // Act: expiry has already fired but must wait for the current match operation.
+            var expiry = InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, oldConnectionId, timer);
+            Assert.False(expiry.IsCompleted);
+            _playerConnRepo.AddOrUpdate(playerId, "replacement");
+            await lease.DisposeAsync();
+            await expiry.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Equal("replacement", _playerConnRepo.Get(playerId)!.ConnectionId);
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task OldExpiryCannotCancelSecondDisconnectAndCurrentExpiryStillForfeits()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+            fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var oldTimer));
+            fixture.Hub.Context = new HubCallerContextStub("replacement", playerId, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var currentTimer));
+            var connection = _playerConnRepo.Get(playerId)!;
+            var remainingGrace = connection.DisconnectGracePeriod;
+            var lastSeen = connection.LastSeenUtc;
+
+            // Act
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, oldTimer!);
+            // Duplicate callbacks must not restart the current grace period either.
+            await fixture.Hub.OnDisconnectedAsync(null);
+
+            // Assert
+            Assert.True(_cancellationTokenService.TryGet(key, out var registered));
+            Assert.Same(currentTimer, registered);
+            Assert.False(currentTimer!.IsCancellationRequested);
+            Assert.Equal(remainingGrace, connection.DisconnectGracePeriod);
+            Assert.Equal(lastSeen, connection.LastSeenUtc);
+            Assert.NotNull(_matchRepo.Get(matchId));
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, "replacement", currentTimer);
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Null(_playerConnRepo.Get(playerId));
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
+                It.Is<IMatchSessionModel>(match => match.Id == matchId), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        private static Task InvokeDisconnectExpiryAsync(MatchLobbyHub hub, Guid playerId, Guid matchId,
+            string connectionId, CancellationTokenSource timer)
+        {
+            var method = typeof(MatchLobbyHub).GetMethod("HandlePermanentDisconnectAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            return (Task)method.Invoke(hub, [playerId, matchId, connectionId, timer])!;
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task PreStartTimeoutOrDisconnectRemovesLobbyWithoutRatingResult(bool disconnected)
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var matchId = fixture.Session.Id;
+            var playerId = fixture.Session.Player1.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+
+            // Act
+            if (disconnected)
+            {
+                fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+                var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+                Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+                await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, timer!);
+            }
+            else
+            {
+                await InvokeTurnTimeoutAsync(fixture.Hub, matchId, playerId);
+            }
+            await fixture.Hub.JoinMatchAsync(matchId.ToString(), playerId.ToString());
+
+            // Assert: the old lobby cannot recreate a session or award a no-show loss.
+            Assert.False(_rankedService.TryFindMatchLobby(matchId, out _));
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Null(_playerConnRepo.Get(playerId));
+            Assert.NotNull(_playerConnRepo.Get(fixture.Session.Player2.Id));
+            _workQueueService.Verify(value => value.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(MatchModus.Normal, false)]
+        [InlineData(MatchModus.Normal, true)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task ConnectingAfterOpponentJoinedReceivesJoinInstruction(MatchModus modus, bool secondLobbyPlayerJoinedFirst)
+        {
+            // Arrange.
+            var matchmaking = GetService(modus);
+            var key = new QueueKey(MatchVariant.Backgammon, modus, MatchType.SevenPointGame);
+            var entry = await matchmaking.JoinQueueAsync(_player1Id, key);
+            await matchmaking.JoinQueueAsync(_player2Id, key);
+            await matchmaking.MatchQueuedPlayersAsync();
+            Assert.True(matchmaking.TryFindMatchLobby(entry.Id, out var lobby));
+            Assert.NotNull(lobby);
+            Assert.NotNull(lobby.Player2);
+            var first = secondLobbyPlayerJoinedFirst ? lobby.Player2 : lobby.Player1;
+            var second = secondLobbyPlayerJoinedFirst ? lobby.Player1 : lobby.Player2;
+            var client = new Mock<ISingleClientProxy>();
+            var clients = new Mock<IHubCallerClients>();
+            clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
+            clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
+            var groups = new Mock<IGroupManager>();
+            var hub = new MatchLobbyHub(BuildServiceProvider(matchmaking))
+            {
+                Clients = clients.Object,
+                Groups = groups.Object,
+                Context = new HubCallerContextStub("first", first.Id, lobby.MatchId)
+            };
+            await hub.OnConnectedAsync();
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), first.Id.ToString());
+            Assert.False(_matchRepo.Get(lobby.MatchId)!.Player2.Claimed);
+            client.Invocations.Clear();
+
+            // Act.
+            hub.Context = new HubCallerContextStub("second", second.Id, lobby.MatchId);
+            await hub.OnConnectedAsync();
+
+            // Assert.
+            client.Verify(value => value.SendCoreAsync(ServerEventTypes.PlayerConnectedEvent,
+                It.Is<object[]>(args => ((EventResponseContract<EventMatchLobbyPayload>)args[0]).Payload.AllowedCommands.Contains(ServerCommands.JoinMatchCommand)),
+                It.IsAny<CancellationToken>()), Times.Once);
+            groups.Verify(value => value.AddToGroupAsync("second", lobby.GroupName, It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = lobby.MatchId, PlayerId = second.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), second.Id.ToString());
+            var session = _matchRepo.Get(lobby.MatchId)!;
+            Assert.Equal(first.Id, session.Player1.Id);
+            Assert.Equal(second.Id, session.Player2.Id);
+            _cancellationTokenService.CancelForMatch(lobby.MatchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task SecondLobbyPlayerJoiningFirstCancelsOnlyTheirJoinTimer()
+        {
+            // Arrange
+            var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.SevenPointGame);
+            var entry = await _normalService.JoinQueueAsync(Guid.NewGuid(), key);
+            await _normalService.JoinQueueAsync(Guid.NewGuid(), key);
+            await _normalService.MatchQueuedPlayersAsync();
+            Assert.True(_normalService.TryFindMatchLobby(entry.Id, out var lobby));
+            using var firstTimer = new CancellationTokenSource();
+            using var secondTimer = new CancellationTokenSource();
+            _cancellationTokenService.Store(new CancellationTokenKey
+            {
+                MatchId = lobby!.MatchId, PlayerId = lobby.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, firstTimer);
+            _cancellationTokenService.Store(new CancellationTokenKey
+            {
+                MatchId = lobby.MatchId, PlayerId = lobby.Player2!.Id, Category = CancellationTokenCategory.Turn
+            }, secondTimer);
+            var clients = new Mock<IHubCallerClients>();
+            clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
+            var hub = new MatchLobbyHub(BuildServiceProvider(_normalService))
+            {
+                Clients = clients.Object,
+                Groups = new Mock<IGroupManager>().Object,
+                Context = new HubCallerContextStub("second", lobby.Player2.Id, lobby.MatchId)
+            };
+
+            // Act
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), lobby.Player2.Id.ToString());
+
+            // Assert
+            Assert.False(firstTimer.IsCancellationRequested);
+            Assert.True(secondTimer.IsCancellationRequested);
+            Assert.NotNull(_matchRepo.Get(lobby.MatchId));
+            await InvokeTurnTimeoutAsync(hub, lobby.MatchId, lobby.Player2.Id);
+            Assert.False(_normalService.TryFindMatchLobby(lobby.MatchId, out _));
+        }
+
+        [Fact]
+        public async Task UnregisteredExpiryCannotConsumeCurrentTimerEvenWithSameConnectionId()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            using var staleTimer = new CancellationTokenSource();
+            using var currentTimer = new CancellationTokenSource();
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+            _cancellationTokenService.Store(key, currentTimer);
+
+            // Act
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, fixture.Session.Player1.ConnectionId!, staleTimer);
+
+            // Assert
+            Assert.True(_cancellationTokenService.TryGet(key, out var registered));
+            Assert.Same(currentTimer, registered);
+            Assert.NotNull(_playerConnRepo.Get(playerId));
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task HumanMatchExpiryResignsOnlyTheSpecifiedMatch()
+        {
+            // Arrange
+            var other = await CreatePersistenceFixture();
+            var fixture = await CreatePersistenceFixture();
+            var playerId = fixture.Session.Player1.Id;
+            var matchId = fixture.Session.Id;
+            var connectionId = fixture.Session.Player1.ConnectionId!;
+            _playerConnRepo.AddOrUpdate(playerId, connectionId);
+            fixture.Hub.Context = new HubCallerContextStub(connectionId, playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+
+            // Act
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, connectionId, timer!);
+
+            // Assert
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.False(_matchRepo.Get(other.Session.Id)!.IsMatchOver());
+            Assert.False(_cancellationTokenService.TryGet(key, out _));
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task BothDisconnectedWaitForBothDeadlinesOrSurvivingReconnect(bool reverseOrder, bool reconnect)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var first = reverseOrder ? fixture.Session.Player2 : fixture.Session.Player1;
+            var second = reverseOrder ? fixture.Session.Player1 : fixture.Session.Player2;
+            foreach (var player in new[] { first, second })
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+            }
+            var firstKey = new CancellationTokenKey { MatchId = matchId, PlayerId = first.Id, Category = CancellationTokenCategory.Disconnect };
+            var secondKey = new CancellationTokenKey { MatchId = matchId, PlayerId = second.Id, Category = CancellationTokenCategory.Disconnect };
+            Assert.NotNull(_matchRepo.Get(matchId));
+            Assert.True(_cancellationTokenService.TryGet(firstKey, out var firstTimer));
+            Assert.True(_cancellationTokenService.TryGet(secondKey, out var secondTimer));
+
+            // Act.
+            await InvokeDisconnectExpiryAsync(fixture.Hub, first.Id, matchId, first.ConnectionId, firstTimer!);
+            Assert.NotNull(_matchRepo.Get(matchId));
+            Assert.Empty(_completedMatches);
+            // The expired player cannot revive their seat while the other still has grace.
+            fixture.Hub.Context = new HubCallerContextStub("too-late", first.Id, matchId);
+            await fixture.Hub.OnConnectedAsync();
+            Assert.Equal(first.ConnectionId, _playerConnRepo.Get(first.Id)!.ConnectionId);
+            Assert.True(_cancellationTokenService.TryGet(firstKey, out _));
+            if (reconnect)
+            {
+                fixture.Hub.Context = new HubCallerContextStub("returned", second.Id, matchId);
+                await fixture.Hub.OnConnectedAsync();
+            }
+            else
+            {
+                await InvokeDisconnectExpiryAsync(fixture.Hub, second.Id, matchId, second.ConnectionId, secondTimer!);
+            }
+
+            // Assert.
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.False(_cancellationTokenService.TryGet(firstKey, out _));
+            Assert.False(_cancellationTokenService.TryGet(secondKey, out _));
+            if (reconnect)
+            {
+                Assert.Single(_completedMatches);
+            }
+            else
+            {
+                Assert.Empty(_completedMatches);
+            }
+        }
+
+        [Fact]
+        public async Task BothHumansCanReconnectWithinGrace()
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var players = new[] { fixture.Session.Player1, fixture.Session.Player2 };
+            foreach (var player in players)
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+            }
+
+            // Act.
+            foreach (var player in players)
+            {
+                fixture.Hub.Context = new HubCallerContextStub(Guid.NewGuid().ToString(), player.Id, matchId);
+                await fixture.Hub.OnConnectedAsync();
+            }
+
+            // Assert.
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            Assert.Empty(_completedMatches);
+            foreach (var player in players)
+            {
+                Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = matchId, PlayerId = player.Id, Category = CancellationTokenCategory.Disconnect
+                }, out _));
+            }
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task ReconnectRestoresOnlyPendingNextGameAcceptanceDeadline(bool player2Accepted, bool acceptedPlayerReconnects)
+        {
+            // Arrange.
+            var (session, hub1, hub2, _, _) = await SetupPlayerVsPlayerMatchSession(
+                MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame, _player1Id, _player2Id);
+            var matchId = session.Id;
+            await hub1.ResignGameAsync(matchId.ToString());
+            var accepted = player2Accepted ? session.Player2 : session.Player1;
+            var pending = player2Accepted ? session.Player1 : session.Player2;
+            var acceptingHub = player2Accepted ? hub2 : hub1;
+            var pendingHub = player2Accepted ? hub1 : hub2;
+            await acceptingHub.StartGameAsync(matchId.ToString());
+            var acceptedKey = new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = accepted.Id, Category = CancellationTokenCategory.Turn
+            };
+            Assert.False(_cancellationTokenService.TryGet(acceptedKey, out _));
+            var reconnecting = acceptedPlayerReconnects ? accepted : pending;
+            var reconnectingHub = acceptedPlayerReconnects ? acceptingHub : pendingHub;
+            reconnectingHub.Context = new HubCallerContextStub(reconnecting.ConnectionId, reconnecting.Id, matchId);
+            await reconnectingHub.OnDisconnectedAsync(null);
+
+            // Act.
+            reconnectingHub.Context = new HubCallerContextStub("replacement", reconnecting.Id, matchId);
+            await reconnectingHub.OnConnectedAsync();
+
+            // Assert.
+            Assert.False(_cancellationTokenService.TryGet(acceptedKey, out _));
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = pending.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await pendingHub.StartGameAsync(matchId.ToString());
+            Assert.Equal(2, _matchRepo.Get(matchId)!.GameRound);
+            Assert.Empty(_completedMatches);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Disconnect);
+        }
+
+        [Theory]
+        [InlineData(MatchType.CashGame, true, 2)]
+        [InlineData(MatchType.SevenPointGame, true, 2)]
+        [InlineData(MatchType.CashGame, false, 6)]
+        [InlineData(MatchType.SevenPointGame, false, 6)]
+        public async Task CubeTimeoutPassesButExplicitResignationUsesBoard(MatchType type, bool timeout, int expected)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture(type: type);
+            var id = fixture.Session.Id;
+            await using (var lease = await _matchRepo.AcquireStateAsync(id))
+            {
+                var session = lease.Get()!;
+                var board = Assert.IsAssignableFrom<IDoublingCubeModel>(session.GetGameSession(session.GameRound)!.BoardModel);
+                board.AcceptDoublingCubeOffer(true);
+                Assert.IsAssignableFrom<IDoubleCubeMatchSession>(session).OfferDouble(session.Player1.Id);
+                Assert.True(lease.Commit());
+            }
+
+            // Act.
+            if (timeout)
+            {
+                await InvokeTurnTimeoutAsync(fixture.Hub, id, fixture.Session.Player2.Id);
+            }
+            else
+            {
+                fixture.Hub.Context = new HubCallerContextStub(fixture.Session.Player2.ConnectionId);
+                await fixture.Hub.ResignGameAsync(id.ToString());
+            }
+
+            // Assert.
+            var result = _matchRepo.Get(id) ?? _completedMatches[id];
+            Assert.Equal(expected, result.Player1.Points);
+            Assert.Equal(timeout ? GameResult.DoubleDeclined : GameResult.Resign, result.GetGameSession(1)!.Result.WinnerResult);
+            Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(result).IsDoubleOfferPending);
+            Assert.Equal(type == MatchType.CashGame, result.IsMatchOver());
+            _cancellationTokenService.CancelForMatch(id, CancellationTokenCategory.Turn);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task BothElapsedDeadlinesAreInconclusiveBeforeSecondCallback(bool reverseOrder)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            var matchId = fixture.Session.Id;
+            var players = new[] { fixture.Session.Player1, fixture.Session.Player2 };
+            foreach (var player in players)
+            {
+                _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
+                fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
+                await fixture.Hub.OnDisconnectedAsync(null);
+                _playerConnRepo.Get(player.Id)!.LastSeenUtc = DateTime.UtcNow - TimeSpan.FromMinutes(1);
+            }
+            var first = players[reverseOrder ? 1 : 0];
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = first.Id, Category = CancellationTokenCategory.Disconnect };
+            Assert.True(_cancellationTokenService.TryGet(key, out var timer));
+
+            // Act.
+            await InvokeDisconnectExpiryAsync(fixture.Hub, first.Id, matchId, first.ConnectionId, timer!);
+
+            // Assert.
+            Assert.Null(_matchRepo.Get(matchId));
+            Assert.Empty(_completedMatches);
+            Assert.All(players, player => Assert.Null(_playerConnRepo.Get(player.Id)));
+        }
+
+        [Fact]
+        public async Task NonparticipantDisconnectAndExpiryCannotChangeMatchOrConnection()
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture();
+            var playerId = Guid.NewGuid();
+            var matchId = fixture.Session.Id;
+            _playerConnRepo.AddOrUpdate(playerId, "unrelated");
+            fixture.Hub.Context = new HubCallerContextStub("unrelated", playerId, matchId);
+            var key = new CancellationTokenKey { MatchId = matchId, PlayerId = playerId, Category = CancellationTokenCategory.Disconnect };
+
+            // Act / Assert: the socket callback must not start a timer.
+            await fixture.Hub.OnDisconnectedAsync(null);
+            Assert.False(_cancellationTokenService.TryGet(key, out _));
+            using var timer = new CancellationTokenSource();
+            _cancellationTokenService.Store(key, timer);
+            await InvokeDisconnectExpiryAsync(fixture.Hub, playerId, matchId, "unrelated", timer);
+            Assert.NotNull(_playerConnRepo.Get(playerId));
+            Assert.False(_matchRepo.Get(matchId)!.IsMatchOver());
+            _cancellationTokenService.Cancel(key);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task RankedBotReconnectWhileWaitingForHumanAcceptanceRestoresOnlyHumanTimer(bool betweenGames)
+        {
+            // Arrange.
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            if (betweenGames)
+            {
+                await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+                await fixture.Hub.ResignGameAsync(fixture.Session.Id.ToString());
+            }
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            var session = setupLease.Get()!;
+            _cancellationTokenService.CancelForMatch(session.Id, CancellationTokenCategory.Turn);
+            await setupLease.DisposeAsync();
+            fixture.Hub.Context = new HubCallerContextStub("reconnected-human", session.Player1.Id, session.Id);
+
+            // Act.
+            await fixture.Hub.OnConnectedAsync();
+
+            // Assert.
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = session.Id, PlayerId = session.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = session.Id, PlayerId = session.Player2.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            if (!betweenGames)
+            {
+                await fixture.Hub.StartMatchAsync(session.Id.ToString());
+            }
+            await fixture.Hub.ResignMatchAsync(session.Id.ToString());
+        }
+
+        [Fact]
+        public async Task RankedBotHumanTimeoutPublishesRatingResult()
+        {
+            // Arrange.
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+
+            // Act.
+            await InvokeTurnTimeoutAsync(fixture.Hub, fixture.Session.Id, fixture.Session.Player1.Id);
+            var timedOutGame = _matchRepo.Get(fixture.Session.Id)!;
+            Assert.Equal(GamePhase.GameOver, timedOutGame.GetGameSession(timedOutGame.GameRound)!.Phase);
+            await InvokeTurnTimeoutAsync(fixture.Hub, fixture.Session.Id, fixture.Session.Player1.Id);
+
+            // Assert.
+            Assert.Null(_matchRepo.Get(fixture.Session.Id));
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
+                It.Is<IMatchSessionModel>(match => match.Id == fixture.Session.Id), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true, false, false)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, true)]
+        [InlineData(false, false, true)]
+        [InlineData(true, true, true)]
+        public async Task RankedBotAutomaticallyRespondsToHumanDouble(bool accepts, bool serviceFails, bool reconnect)
+        {
+            // Arrange.
+            var bot = new Mock<IBotService>();
+            bot.Setup(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(accepts);
+            if (serviceFails)
+            {
+                bot.Setup(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new HttpRequestException("Bot service unavailable."));
+            }
+            var fixture = await CreatePersistenceFixture(modus: MatchModus.Ranked, botOpponent: true, botService: bot.Object);
+            if (reconnect)
+            {
+                await using var lease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+                var match = lease.Get()!;
+                Assert.IsAssignableFrom<IDoubleCubeMatchSession>(match).OfferDouble(match.Player1.Id);
+                Assert.True(lease.Commit());
+                fixture.Hub.Context = new HubCallerContextStub("player1", match.Player1.Id, match.Id);
+            }
+
+            // Act.
+            if (reconnect)
+            {
+                await fixture.Hub.OnConnectedAsync();
+            }
+            else
+            {
+                await fixture.Hub.OfferDoubleAsync(fixture.Session.Id.ToString());
+            }
+
+            // Assert.
+            bot.Verify(value => value.ShouldTakeDouble(It.IsAny<IMatchSessionModel>(), _player2Id, It.IsAny<CancellationToken>()), Times.Once);
+            var stored = _matchRepo.Get(fixture.Session.Id)!;
+            Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).IsDoubleOfferPending);
+            Assert.Equal(accepts ? GamePhase.WaitingForRoll : GamePhase.GameOver, stored.GetGameSession(stored.GameRound)!.Phase);
+            if (accepts)
+            {
+                Assert.Equal(stored.Player1.Id, stored.GetGameSession(stored.GameRound)!.ActivePlayer);
+                Assert.Equal(2, Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).GetDoublingCubeValue());
+            }
+            bot.Verify(value => value.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            fixture.Client.Verify(value => value.SendCoreAsync(ServerEventTypes.ErrorEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = stored.Id, PlayerId = stored.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = stored.Id, PlayerId = stored.Player2.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await fixture.Hub.ResignMatchAsync(stored.Id.ToString());
+        }
+
+        [Fact]
+        public async Task RankedBotAcceptsNextGameAutomatically()
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture(modus: MatchModus.Ranked, botOpponent: true, botService: new SimpleBotService());
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
+            fixture.Session.ResignGame(fixture.Session.Player2.Id);
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
+
+            // Act.
+            await fixture.Hub.StartGameAsync(fixture.Session.Id.ToString());
+
+            // Assert.
+            Assert.Equal(2, _matchRepo.Get(fixture.Session.Id)!.GameRound);
+            await fixture.Hub.ResignMatchAsync(fixture.Session.Id.ToString());
+        }
+
+        [Fact]
+        public async Task RankedBotTiedOpeningRollsCanBeRetried()
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture(startMatch: false, modus: MatchModus.Ranked,
+                botOpponent: true, botService: new SimpleBotService());
+            var dice = new Mock<IDiceService>();
+            dice.SetupSequence(value => value.Roll(1, 6)).Returns([3]).Returns([3]).Returns([6]).Returns([1]);
+            var factory = new Mock<IDiceServiceFactory>();
+            factory.Setup(value => value.Create(It.IsAny<DiceServiceType>())).Returns(dice.Object);
+            var hub = new MatchLobbyHub(BuildServiceProvider(_rankedService, factory.Object, new SimpleBotService()))
+            {
+                Clients = fixture.Hub.Clients, Groups = fixture.Hub.Groups, Context = fixture.Hub.Context
+            };
+
+            // Act.
+            await hub.StartMatchAsync(fixture.Session.Id.ToString());
+            var tied = _matchRepo.Get(fixture.Session.Id)!;
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = tied.Id, PlayerId = tied.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = tied.Id, PlayerId = tied.Player2.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await hub.StartMatchAsync(fixture.Session.Id.ToString());
+
+            // Assert.
+            Assert.Equal(3, tied.Player1.StartDiceRoll);
+            Assert.Equal(3, tied.Player2.StartDiceRoll);
+            Assert.Null(tied.StartedAt);
+            Assert.NotNull(_matchRepo.Get(fixture.Session.Id)!.StartedAt);
+            await hub.ResignMatchAsync(fixture.Session.Id.ToString());
+        }
+
+        private async Task<(IMatchSessionModel Session, MatchLobbyHub Hub, Mock<IHubCallerClients> Clients)> CreateBotLobbyFixture(
+            MatchModus modus, bool botStarts = false)
+        {
+            var playerId = Guid.NewGuid();
+            var service = GetService(modus);
+            var entry = await service.JoinQueueAsync(playerId, new QueueKey(MatchVariant.Backgammon, modus, MatchType.SevenPointGame, BotLevel.Hard));
+            await service.MatchQueuedPlayersAsync();
+            Assert.True(service.TryFindMatchLobby(entry.Id, out var lobby));
+            var dice = new Mock<IDiceService>();
+            dice.SetupSequence(value => value.Roll(1, 6)).Returns([botStarts ? 1 : 6]).Returns([botStarts ? 6 : 1]);
+            var factory = new Mock<IDiceServiceFactory>();
+            factory.Setup(value => value.Create(It.IsAny<DiceServiceType>())).Returns(dice.Object);
+            var clients = new Mock<IHubCallerClients>();
+            var client = new Mock<ISingleClientProxy>();
+            clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
+            clients.Setup(value => value.Caller).Returns(client.Object);
+            clients.Setup(value => value.Group(It.IsAny<string>())).Returns(client.Object);
+            var hub = new MatchLobbyHub(BuildServiceProvider(service, factory.Object, new SimpleBotService()))
+            {
+                Clients = clients.Object,
+                Groups = new Mock<IGroupManager>().Object,
+                // A human connection may be GUID-shaped; only the reserved marker identifies bots.
+                Context = new HubCallerContextStub(Guid.NewGuid().ToString())
+            };
+            await hub.JoinMatchAsync(lobby!.MatchId.ToString(), playerId.ToString());
+            var session = _matchRepo.Get(lobby.MatchId)!;
+            Assert.True(session.Player2.IsBot);
+            return (session, hub, clients);
+        }
+
+        [Fact]
+        public async Task MatchHubWaitsForRepositoryLockBeforeReadingStartingState()
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture(startMatch: false);
+            var id = fixture.Session.Id;
+            var lease = await _matchRepo.AcquireStateAsync(id);
+
+            // Act
+            var start = fixture.Hub.StartMatchAsync(id.ToString());
+            Assert.False(start.IsCompleted);
+            var latest = lease.Get()!;
+            latest.Player2.AcceptNextGame();
+            Assert.True(lease.Commit());
+            await lease.DisposeAsync();
+            await start.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.True(_matchRepo.Get(id)!.Player2.NextGameAccepted);
+        }
+
         [Fact]
         public async Task MatchHubCommitsStartingRollBeforeWaitingNotification()
         {
-            var fixture = CreatePersistenceFixture(startMatch: false);
+            var fixture = await CreatePersistenceFixture(startMatch: false);
             var waiting = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.MatchWaitingEvent);
 
             await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
@@ -109,10 +930,13 @@ namespace GammonX.Server.Tests.Integration
         [Fact]
         public async Task MatchHubCommitsTiedStartingRollsBeforeWaitingNotification()
         {
-            var fixture = CreatePersistenceFixture(startMatch: false);
+            var fixture = await CreatePersistenceFixture(startMatch: false);
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             fixture.Session.Player2.SetStartDiceRoll(2);
             fixture.Session.Player2.AcceptNextGame();
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var waiting = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.MatchWaitingForStartEvent);
 
             await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
@@ -126,14 +950,67 @@ namespace GammonX.Server.Tests.Integration
                 Assert.True(match.Player2.NextGameAccepted);
                 Assert.Null(match.GetGameSession(match.GameRound));
             });
+
+            foreach (var player in new[] { fixture.Session.Player1, fixture.Session.Player2 })
+            {
+                Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = fixture.Session.Id, PlayerId = player.Id, Category = CancellationTokenCategory.Turn
+                }, out _));
+            }
+
+            await fixture.Hub.StartMatchAsync(fixture.Session.Id.ToString());
+            Assert.NotNull(_matchRepo.Get(fixture.Session.Id)!.StartedAt);
+            Assert.False(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = fixture.Session.Id, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+        }
+
+        [Theory]
+        [InlineData(ServerCommands.StartMatchCommand)]
+        [InlineData(ServerCommands.StartGameCommand)]
+        [InlineData(ServerCommands.AcceptDoubleCommand)]
+        [InlineData(ServerCommands.DeclineDoubleCommand)]
+        [InlineData(ServerCommands.OfferDoubleCommand)]
+        public async Task InvalidCommandPreservesTurnDeadline(string command)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture();
+            await fixture.Hub.RollAsync(fixture.Session.Id.ToString());
+            var key = new CancellationTokenKey
+            {
+                MatchId = fixture.Session.Id, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
+            };
+            using var timer = new CancellationTokenSource();
+            _cancellationTokenService.Store(key, timer);
+
+            // Act.
+            var id = fixture.Session.Id.ToString();
+            switch (command)
+            {
+                case ServerCommands.StartMatchCommand: await fixture.Hub.StartMatchAsync(id); break;
+                case ServerCommands.StartGameCommand: await fixture.Hub.StartGameAsync(id); break;
+                case ServerCommands.AcceptDoubleCommand: await fixture.Hub.AcceptDoubleAsync(id); break;
+                case ServerCommands.DeclineDoubleCommand: await fixture.Hub.DeclineDoubleAsync(id); break;
+                case ServerCommands.OfferDoubleCommand: await fixture.Hub.OfferDoubleAsync(id); break;
+            }
+
+            // Assert.
+            Assert.False(timer.IsCancellationRequested);
+            Assert.True(_cancellationTokenService.TryGet(key, out var current));
+            Assert.Same(timer, current);
         }
 
         [Fact]
         public async Task MatchHubCommitsNextGameAcceptanceBeforeWaitingNotification()
         {
-            var fixture = CreatePersistenceFixture();
+            var fixture = await CreatePersistenceFixture();
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             fixture.Session.ResignGame(fixture.Session.Player1.Id);
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var waiting = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.GameWaitingEvent);
 
             await fixture.Hub.StartGameAsync(fixture.Session.Id.ToString());
@@ -155,10 +1032,13 @@ namespace GammonX.Server.Tests.Integration
         [InlineData(true)]
         public async Task MatchHubCommitsMoveBeforeGameStateNotification(bool player2Starts)
         {
-            var fixture = CreatePersistenceFixture(player2Starts: player2Starts);
+            var fixture = await CreatePersistenceFixture(player2Starts: player2Starts);
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             var game = fixture.Session.GetGameSession(fixture.Session.GameRound)!;
             game.SetDiceRolls([2, 1], !player2Starts);
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var move = game.MoveSequences.First().Moves.First();
             var expected = (IMatchSessionModel)fixture.Session.Clone();
             expected.MoveCheckers(game.ActivePlayer, move.From, move.To);
@@ -185,10 +1065,13 @@ namespace GammonX.Server.Tests.Integration
         [Fact]
         public async Task MatchHubRejectedMovePreservesCommittedState()
         {
-            var fixture = CreatePersistenceFixture();
+            var fixture = await CreatePersistenceFixture();
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             var game = fixture.Session.GetGameSession(fixture.Session.GameRound)!;
             game.SetDiceRolls([2, 1], true);
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var notifications = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.GameStateEvent);
 
             await fixture.Hub.MoveAsync(fixture.Session.Id.ToString(), -99, -98);
@@ -207,7 +1090,9 @@ namespace GammonX.Server.Tests.Integration
         [InlineData(true)]
         public async Task MatchHubCommitsWinningMoveBeforeResultPublication(bool concludesMatch)
         {
-            var fixture = CreatePersistenceFixture(type: concludesMatch ? MatchType.CashGame : MatchType.SevenPointGame);
+            var fixture = await CreatePersistenceFixture(type: concludesMatch ? MatchType.CashGame : MatchType.SevenPointGame);
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             var game = fixture.Session.GetGameSession(fixture.Session.GameRound)!;
             var fields = new int[24];
             fields[23] = -1;
@@ -216,7 +1101,8 @@ namespace GammonX.Server.Tests.Integration
             game.BoardModel.BearOffChecker(true, 14);
             game.BoardModel.BearOffChecker(false, 14);
             game.SetDiceRolls([1, 2], true);
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var move = game.MoveSequences.First().Moves.First();
             IMatchSessionModel? published = null;
             _workQueueService.Setup(service => service.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -233,20 +1119,25 @@ namespace GammonX.Server.Tests.Integration
             Assert.Equal(concludesMatch, _matchRepo.Get(fixture.Session.Id) == null);
         }
 
-        [Fact]
-        public async Task MatchHubCommitsBotDoubleOfferBeforeNotification()
+        [Theory]
+        [InlineData(MatchModus.Bot)]
+        [InlineData(MatchModus.Ranked)]
+        public async Task MatchHubCommitsBotDoubleOfferBeforeNotification(MatchModus modus)
         {
             var bot = new Mock<IBotService>();
             bot.Setup(service => service.ShouldOfferDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
-            var fixture = CreatePersistenceFixture(modus: MatchModus.Bot, botService: bot.Object);
+            var fixture = await CreatePersistenceFixture(modus: modus, botService: bot.Object, botOpponent: true);
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             var game = fixture.Session.GetGameSession(fixture.Session.GameRound)!;
             game.SetDiceRolls([2, 1], true);
             foreach (var move in game.MoveSequences.First().Moves.ToArray())
             {
                 fixture.Session.MoveCheckers(fixture.Session.Player1.Id, move.From, move.To);
             }
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var notifications = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.DoubleOfferedEvent);
 
             await fixture.Hub.EndTurnAsync(fixture.Session.Id.ToString());
@@ -262,16 +1153,23 @@ namespace GammonX.Server.Tests.Integration
             bot.Verify(service => service.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
-        [Fact]
-        public async Task MatchHubCommitsBotMoveBeforeLaterBotFailure()
+        [Theory]
+        [InlineData(MatchModus.Bot, false)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Bot, true)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task MatchHubBotFallbackCompletesTurnAfterServiceFailure(MatchModus modus, bool failsImmediately)
         {
+            // Arrange
             var bot = new Mock<IBotService>();
             var requests = 0;
             IMatchSessionModel? expected = null;
+            bot.Setup(service => service.ShouldOfferDouble(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException("Cube service unavailable."));
             bot.Setup(service => service.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .Returns((IMatchSessionModel match, Guid playerId, CancellationToken _) =>
                 {
-                    if (++requests > 1)
+                    if (++requests > 1 || failsImmediately)
                     {
                         return Task.FromException<MoveSequenceModel>(new InvalidOperationException("Bot service unavailable."));
                     }
@@ -280,7 +1178,9 @@ namespace GammonX.Server.Tests.Integration
                     expected.MoveCheckers(playerId, move.From, move.To);
                     return Task.FromResult(new MoveSequenceModel { Moves = [move] });
                 });
-            var fixture = CreatePersistenceFixture(modus: MatchModus.Bot, botService: bot.Object);
+            var fixture = await CreatePersistenceFixture(modus: modus, botService: bot.Object, botOpponent: true);
+            await using var setupLease = await _matchRepo.AcquireStateAsync(fixture.Session.Id);
+            fixture.Session = setupLease.Get()!;
             var game = fixture.Session.GetGameSession(fixture.Session.GameRound)!;
             game.SetDiceRolls([2, 1], true);
             foreach (var move in game.MoveSequences.First().Moves.ToArray())
@@ -290,24 +1190,41 @@ namespace GammonX.Server.Tests.Integration
             var dice = new Mock<IDiceService>();
             dice.Setup(service => service.Roll(It.IsAny<int>(), It.IsAny<int>())).Returns([2, 1]);
             game.InjectDiceServiceMock(dice.Object);
-            Assert.True(_matchRepo.Commit(fixture.Session));
+            Assert.True(setupLease.Commit());
+            await setupLease.DisposeAsync();
             var notifications = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.GameStateEvent);
 
+            // Act
             await fixture.Hub.EndTurnAsync(fixture.Session.Id.ToString());
 
-            Assert.Equal(2, requests);
-            Assert.Equal(2, notifications.Count);
-            Assert.NotNull(expected);
-            var expectedGame = expected.GetGameSession(expected.GameRound)!;
-            var notifiedGame = notifications.Last().GetGameSession(expected.GameRound)!;
-            var storedGame = _matchRepo.Get(fixture.Session.Id)!.GetGameSession(expected.GameRound)!;
-            Assert.Equal(expectedGame.BoardModel, notifiedGame.BoardModel);
-            Assert.Equal(expectedGame.BoardModel, storedGame.BoardModel);
-            Assert.Equal(expectedGame.BoardModel.History.ToString(), storedGame.BoardModel.History.ToString());
-            Assert.Equal(expectedGame.DiceRolls.Select(roll => (roll.Roll, roll.Used)),
-                storedGame.DiceRolls.Select(roll => (roll.Roll, roll.Used)));
-            Assert.Single(storedGame.DiceRolls, roll => roll.Used);
-            Assert.Equal(fixture.Session.Player2.Id, storedGame.ActivePlayer);
+            // Assert: preserve the successfully committed partial move, then finish with unused dice.
+            Assert.Equal(failsImmediately ? 1 : 2, requests);
+            if (!failsImmediately)
+            {
+                Assert.NotNull(expected);
+                var partial = Assert.Single(notifications, match =>
+                    match.GetGameSession(match.GameRound)!.DiceRolls.Count(roll => roll.Used) == 1);
+                Assert.Equal(expected.GetGameSession(expected.GameRound)!.BoardModel,
+                    partial.GetGameSession(partial.GameRound)!.BoardModel);
+            }
+            var completedTurn = Assert.Single(notifications, match =>
+                match.GetGameSession(match.GameRound)!.DiceRolls.Count(roll => roll.Used) == 2);
+            Assert.Equal(GamePhase.WaitingForEndTurn, completedTurn.GetGameSession(completedTurn.GameRound)!.Phase);
+            var stored = _matchRepo.Get(fixture.Session.Id)!;
+            var storedGame = stored.GetGameSession(stored.GameRound)!;
+            Assert.Equal(GamePhase.WaitingForRoll, storedGame.Phase);
+            Assert.Equal(stored.Player1.Id, storedGame.ActivePlayer);
+            Assert.Equal(completedTurn.GetGameSession(completedTurn.GameRound)!.BoardModel, storedGame.BoardModel);
+            Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(stored).IsDoubleOfferPending);
+            if (modus == MatchModus.Ranked)
+            {
+                Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+                {
+                    MatchId = stored.Id, PlayerId = stored.Player1.Id, Category = CancellationTokenCategory.Turn
+                }, out _));
+            }
+            fixture.Client.Verify(value => value.SendCoreAsync(ServerEventTypes.ErrorEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
+            await fixture.Hub.ResignMatchAsync(stored.Id.ToString());
         }
 
         [Theory]
@@ -315,7 +1232,7 @@ namespace GammonX.Server.Tests.Integration
         [InlineData(true)]
         public async Task MatchHubCommitsDoubleOfferBeforeNotification(bool failSend)
         {
-            var fixture = CreatePersistenceFixture();
+            var fixture = await CreatePersistenceFixture();
             var notifications = CaptureStoredSessions(fixture.Client, fixture.Session.Id, ServerEventTypes.DoubleOfferedEvent, failSend);
 
             await fixture.Hub.OfferDoubleAsync(fixture.Session.Id.ToString());
@@ -356,6 +1273,8 @@ namespace GammonX.Server.Tests.Integration
             var hub2 = result.Item3;
             var matchIdStr = matchSession.Id.ToString();
 
+            await using var setupLease = await _matchRepo.AcquireStateAsync(matchSession.Id);
+            matchSession = setupLease.Get()!;
             var gameSession = matchSession.GetGameSession(matchSession.GameRound);
             Assert.NotNull(gameSession);
 
@@ -365,7 +1284,8 @@ namespace GammonX.Server.Tests.Integration
                 gameSession.BoardModel.SetFields(BoardMocks.WhiteCannotMoveWithRoll);
                 // we need to clear the dice rolls from the match hub start and its initial roll
                 gameSession.DiceRolls.Clear();
-                _matchRepo.Commit(matchSession);
+                setupLease.Commit();
+                await setupLease.DisposeAsync();
                 await hub1.RollAsync(matchIdStr);
                 matchSession = _matchRepo.Get(matchSession.Id);
                 Assert.NotNull(matchSession);
@@ -381,7 +1301,8 @@ namespace GammonX.Server.Tests.Integration
                 gameSession.BoardModel.SetFields(BoardMocks.BlackCannotMoveWithRoll);
                 // we need to clear the dice rolls from the match hub start and its initial roll
                 gameSession.DiceRolls.Clear();
-                _matchRepo.Commit(matchSession);
+                setupLease.Commit();
+                await setupLease.DisposeAsync();
                 await hub2.RollAsync(matchIdStr);
                 matchSession = _matchRepo.Get(matchSession.Id);
                 Assert.NotNull(matchSession);
@@ -947,7 +1868,7 @@ namespace GammonX.Server.Tests.Integration
             var mockClients = new Mock<IHubCallerClients>();
             var mockGroup = new Mock<IClientProxy>();
             _hub.Clients = mockClients.Object;
-            _hub.Context = new HubCallerContextStub(Guid.NewGuid().ToString());
+            _hub.Context = new HubCallerContextStub("human-" + Guid.NewGuid());
             _hub.Groups = new Mock<IGroupManager>().Object;
             mockClients.Setup(c => c.Group(groupName)).Returns(mockGroup.Object);
             mockClients.Setup(mc => mc.Client(It.IsAny<string>())).Returns(new Mock<ISingleClientProxy>().Object);
@@ -1261,7 +2182,7 @@ namespace GammonX.Server.Tests.Integration
             diceFactory.Setup(factory => factory.Create(It.IsAny<DiceServiceType>())).Returns(dice.Object);
 
             // client 1
-            var player1ConnectionId = Guid.NewGuid().ToString();
+            var player1ConnectionId = "human-" + Guid.NewGuid();
             var context1 = new HubCallerContextStub(player1ConnectionId);
             var hub1 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object))
             {
@@ -1271,7 +2192,7 @@ namespace GammonX.Server.Tests.Integration
             };
 
             // client 2
-            var player2ConnectionId = Guid.NewGuid().ToString();
+            var player2ConnectionId = "human-" + Guid.NewGuid();
             var context2 = new HubCallerContextStub(player2ConnectionId);
             var hub2 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object))
             {
@@ -1360,18 +2281,20 @@ namespace GammonX.Server.Tests.Integration
             return lobby1.MatchId;
         }
 
-        private (IMatchSessionModel Session, MatchLobbyHub Hub, Mock<ISingleClientProxy> Client) CreatePersistenceFixture(
+        private async Task<(IMatchSessionModel Session, MatchLobbyHub Hub, Mock<ISingleClientProxy> Client)> CreatePersistenceFixture(
             bool startMatch = true,
             bool player2Starts = false,
             MatchModus modus = MatchModus.Normal,
             IBotService? botService = null,
-            MatchType type = MatchType.SevenPointGame)
+            MatchType type = MatchType.SevenPointGame,
+            bool botOpponent = false)
         {
-            var session = _matchRepo.Create(Guid.NewGuid(), new QueueKey(MatchVariant.Backgammon, modus, type, BotLevel.Hard));
+            await using var setupLease = await _matchRepo.AcquireStateAsync(Guid.NewGuid());
+            var session = setupLease.Create(new QueueKey(MatchVariant.Backgammon, modus, type, BotLevel.Hard));
             var player1 = new PlayerConnection(_player1Id);
             player1.SetConnectionId("player1");
             var player2 = new PlayerConnection(_player2Id);
-            player2.SetConnectionId(modus == MatchModus.Bot ? Guid.Empty.ToString() : "player2");
+            player2.SetConnectionId(modus == MatchModus.Bot || botOpponent ? WellKnownBotPlayers.ConnectionId : "player2");
             session.JoinSession(player1);
             session.JoinSession(player2);
             if (startMatch)
@@ -1382,7 +2305,7 @@ namespace GammonX.Server.Tests.Integration
                 session.Player2.AcceptNextGame();
                 session.StartMatch(player2Starts ? player2.Id : player1.Id);
             }
-            Assert.True(_matchRepo.Commit(session));
+            Assert.True(setupLease.Commit());
 
             var dice = new Mock<IDiceService>();
             dice.SetupSequence(service => service.Roll(1, 6)).Returns([2]).Returns([1]);
@@ -1417,6 +2340,7 @@ namespace GammonX.Server.Tests.Integration
             services.AddSingleton(_workQueueService.Object);
             services.AddSingleton(matchmakingService);
             services.AddSingleton(_matchRepo);
+            services.AddSingleton<MatchLobbyCleanupService>();
             services.AddSingleton(diceFactory ?? _diceFactory);
             services.AddKeyedSingleton(WellKnownBotServices.WildBg, _wildBgBot);
             services.AddKeyedSingleton(WellKnownBotServices.Mars, botService ?? _marsBot);
@@ -1446,17 +2370,26 @@ namespace GammonX.Server.Tests.Integration
         public class HubCallerContextStub : HubCallerContext
         {
             private readonly string _connectionId;
+            private readonly ClaimsPrincipal? _user;
 
-            public HubCallerContextStub(string connectionId)
+            public HubCallerContextStub(string connectionId, Guid? playerId = null, Guid? matchId = null)
             {
                 _connectionId = connectionId;
+                if (playerId.HasValue && matchId.HasValue)
+                {
+                    _user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                    {
+                        new Claim("playerId", playerId.Value.ToString()),
+                        new Claim("matchId", matchId.Value.ToString())
+                    }));
+                }
             }
 
             public override string ConnectionId => _connectionId;
 
             public override string? UserIdentifier => null;
 
-            public override ClaimsPrincipal? User => null;
+            public override ClaimsPrincipal? User => _user;
 
             public override IDictionary<object, object?> Items => new Dictionary<object, object?>();
 

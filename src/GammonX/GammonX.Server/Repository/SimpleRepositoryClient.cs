@@ -14,7 +14,7 @@ namespace GammonX.Server.Repository
         // <inheritdoc />
         public Task<PlayerRatingResponseContract?> GetRatingAsync(Guid playerId, MatchVariant variant, MatchType type, CancellationToken cancellationToken)
         {
-            var dummyRating = new PlayerRatingResponseContract { Rating = 1200 };
+            var dummyRating = new PlayerRatingResponseContract { Rating = 1200, HasRecordedRating = false };
             return Task.FromResult<PlayerRatingResponseContract?>(dummyRating);
         }
 

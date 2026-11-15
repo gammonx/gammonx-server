@@ -1,136 +1,268 @@
-﻿using GammonX.Server.Models;
+using GammonX.Server.Models;
 
 using System.Collections.Concurrent;
 
 namespace GammonX.Server.Services
 {
-	/// <summary>
-	/// Single match session repository that manages match sessions by their IDs.
-	/// TODO: extract repository into dynamo db in order to make game server stateless
-	/// TODO: repository reads need to be concurrency save and atmoic
-	/// TODO: provide an interface for the repository
-	/// </summary>
-	public sealed class MatchSessionRepository
-	{
-        private readonly ConcurrentDictionary<Guid, Lazy<IMatchSessionModel>> _sessions = new();
-        private readonly IMatchSessionFactory _matchSessionFactory;
-
-		public MatchSessionRepository(IMatchSessionFactory matchSessionFactory)
-		{
-			_matchSessionFactory = matchSessionFactory;
-		}
-
+    /// <summary>
+    /// Stores match snapshots and provides exclusive leases for changing them.
+    /// </summary>
+    public sealed class MatchSessionRepository
+    {
 		/// <summary>
-		/// Commits the given match session to the repository.
+		/// Returns the given match session by its match id.
 		/// </summary>
-		/// <param name="matchSession">The match session to commit.</param>
-		/// <returns>Boolean indicating if the commit was successful.</returns>
-		/// <exception cref="ArgumentNullException">Thrown if the provided match session is null.</exception>
-		public bool Commit(IMatchSessionModel matchSession)
-		{
-			if (matchSession == null)
-			{
-				throw new ArgumentNullException(nameof(matchSession));
-			}
-
-			if (!_sessions.ContainsKey(matchSession.Id))
-			{
-				return false;
-			}
-
-			var snapshot = (IMatchSessionModel)matchSession.Clone();
-			_sessions[matchSession.Id] = new Lazy<IMatchSessionModel>(() => snapshot);
-			return true;
-		}
-
+        private readonly ConcurrentDictionary<Guid, IMatchSessionModel> _sessions = new();
+        
+		private readonly IMatchSessionFactory _matchSessionFactory;
+        
 		/// <summary>
-		/// Creates a new match session with the given match ID and queue key.
+		/// Returns the given match lock by its match id.
 		/// </summary>
-		/// <remarks>
-		/// The returned match session instance is a clone. Use <see cref="Commit(IMatchSessionModel)"/> to persist changes.
+		private readonly Dictionary<Guid, MatchLock> _matchLocks = new();
+
+        /// <summary>
+		/// Creates a repository using the supplied match factory
+		/// .</summary>
+        public MatchSessionRepository(IMatchSessionFactory matchSessionFactory)
+        {
+            _matchSessionFactory = matchSessionFactory;
+        }
+
+        /// <summary>
+        /// Acquires exclusive access to a match, including creation and removal.
+        /// </summary>
+        /// <remarks>
+        /// The lease owns its working snapshot. Pass the lease to helpers instead of acquiring it again;
+        /// acquisition is not reentrant. Do not share a lease or its mutable snapshot between operations.
+        /// </remarks>
+        /// <param name="matchId">The match to synchronize.</param>
+        /// <returns>A lease that releases access when disposed.</returns>
+        public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
+        {
+            MatchLock matchLock;
+
+            lock (_matchLocks)
+            {
+                if (!_matchLocks.TryGetValue(matchId, out matchLock!))
+                {
+                    matchLock = new MatchLock();
+                    _matchLocks.Add(matchId, matchLock);
+                }
+
+                // Include waiters so removing a session cannot split its lock identity.
+                matchLock.Users++;
+            }
+
+			// We lock the semaphore until the returned lease is disposed
+            await matchLock.Semaphore.WaitAsync();
+
+            return new MatchSessionLease(this, matchId, matchLock);
+        }
+
+        /// <summary>
+		/// Returns a detached snapshot for observation, or null if the match is absent.
+		/// </summary>
+        /// <remarks>
+		/// This snapshot cannot be committed. Use a lease to read state for an update.
 		/// </remarks>
-		/// <param name="matchId">The ID of the match to create.</param>
-		/// <param name="queueKey">The queue key associated with the match.</param>
-		/// <returns>The created match session.</returns>
-		/// <exception cref="InvalidOperationException"></exception>
-		public IMatchSessionModel Create(Guid matchId, QueueKey queueKey)
-		{
-            var lazy = new Lazy<IMatchSessionModel>(() => _matchSessionFactory.Create(matchId, queueKey));
-
-            if (_sessions.TryAdd(matchId, lazy))
-			{
-				return (IMatchSessionModel)lazy.Value.Clone();
-			}
-			throw new InvalidOperationException("match session already exists");
-
+        public IMatchSessionModel? Get(Guid matchId)
+        {
+            return _sessions.TryGetValue(matchId, out var session)
+                ? (IMatchSessionModel)session.Clone()
+                : null;
         }
 
-		/// <summary>
-		/// Retrieves the match session with the given match ID.
+        /// <summary>
+		/// Returns a detached snapshot of a players match, or null if none exists.
 		/// </summary>
-		/// <remarks>
-		/// The returned match session instance is a clone. Use <see cref="Commit(IMatchSessionModel)"/> to persist changes.
+        /// <remarks>
+		/// This snapshot cannot be committed. Use a lease to read state for an update.
 		/// </remarks>
-		/// <param name="matchId">The ID of the match to retrieve.</param>
-		/// <returns>The match session if found; otherwise, null.</returns>
-		public IMatchSessionModel? Get(Guid matchId)
-		{
-			if (_sessions.TryGetValue(matchId, out var lazy))
-			{
-				return (IMatchSessionModel)lazy.Value.Clone();
-			}
-			else
-			{
-				return null;
-			}
-		}
-
-		/// <summary>
-		/// Retrieves the match session for the given player ID, if any.
-		/// </summary>
-		/// <remarks>
-		/// The returned match session instance is a clone. Use <see cref="Commit(IMatchSessionModel)"/> to persist changes.
-		/// </remarks>
-		/// <param name="playerId">The ID of the player whose match session is to be retrieved.</param>
-		/// <returns>The match session if found; otherwise, null.</returns>
-		public IMatchSessionModel? GetPlayersMatch(Guid playerId)
-		{
-			var playersMatch = _sessions.Values
-				.Select(lazy => lazy.Value)
-				.FirstOrDefault(matchSession =>
-					matchSession.Player1.Id == playerId ||
-					matchSession.Player2.Id == playerId);
-			return (IMatchSessionModel?)playersMatch?.Clone();
+        public IMatchSessionModel? GetPlayersMatch(Guid playerId)
+        {
+            var session = _sessions.Values.FirstOrDefault(value =>
+                value.Player1.Id == playerId || value.Player2.Id == playerId);
+            return (IMatchSessionModel?)session?.Clone();
         }
 
-		/// <summary>
-		/// Retrieves the match session for the given match ID, creating it if it does not exist.
-		/// </summary>
-		/// <param name="matchId">The ID of the match to retrieve or create.</param>
-		/// <param name="queueKey">The queue key associated with the match.</param>
-		/// <returns>The match session.</returns>
-		public IMatchSessionModel GetOrCreate(Guid matchId, QueueKey queueKey)
-		{
-            var lazy = _sessions.GetOrAdd(
-                matchId,
-                _ => new Lazy<IMatchSessionModel>(
-                    () => _matchSessionFactory.Create(matchId, queueKey),
-                    LazyThreadSafetyMode.ExecutionAndPublication));
+        internal sealed class MatchLock
+        {
+            public readonly SemaphoreSlim Semaphore = new(1, 1);
 
-            return (IMatchSessionModel)lazy.Value.Clone();
+            public int Users;
         }
 
-		public bool TryRemove(Guid matchId)
-		{
-			return _sessions.TryRemove(matchId, out var _);
-        }
+        /// <summary>
+        /// Exclusive access to one matchs working snapshot and persistence operations.
+        /// </summary>
+        public sealed class MatchSessionLease : IAsyncDisposable
+        {
+            private readonly MatchSessionRepository _repository;
 
-		public void Remove(Guid matchId)
-		{
-			if (!_sessions.TryRemove(matchId, out var _))
-			{
-				throw new KeyNotFoundException($"No match session found for matchId: '{matchId}'");
-			}
-		}
-	}
+            private readonly Guid _matchId;
+
+            private readonly MatchLock _matchLock;
+
+            private readonly Lock _gate = new();
+
+            private IMatchSessionModel? _session;
+
+			/// <summary>
+			/// Indicates if the given session was already read from the repository.
+			/// </summary>
+            private bool _loaded;
+
+            private bool _disposed;
+
+            internal MatchSessionLease(MatchSessionRepository repository, Guid matchId, MatchLock matchLock)
+            {
+                _repository = repository;
+                _matchId = matchId;
+                _matchLock = matchLock;
+            }
+
+            /// <summary>
+			/// Returns this leases working snapshot, or null if no match exists.
+			/// </summary>
+            /// <remarks>
+			/// Repeated reads return the same working snapshot until removal or creation.
+			/// </remarks>
+			/// <returns>The match session instance.</returns>
+            public IMatchSessionModel? Get()
+            {
+                lock (_gate)
+                {
+                    ThrowIfDisposed();
+                    if (!_loaded)
+                    {
+                        _session = _repository.Get(_matchId);
+                        _loaded = true;
+                    }
+                    return _session;
+                }
+            }
+
+            /// <summary>
+			/// Creates the leased match and returns its working snapshot.
+			/// </summary>
+			/// <param name="queueKey">The queue key to search for.</param>
+			/// <returns>The match session instance.</returns>
+            /// <exception cref="InvalidOperationException">The match already exists.</exception>
+            public IMatchSessionModel Create(QueueKey queueKey)
+            {
+                lock (_gate)
+                {
+                    ThrowIfDisposed();
+                    if (_repository._sessions.ContainsKey(_matchId))
+                    {
+                        throw new InvalidOperationException("Match session already exists.");
+                    }
+
+                    var session = _repository._matchSessionFactory.Create(_matchId, queueKey);
+                    // We store a separate snapshot so uncommitted caller changes remain isolated.
+                    if (!_repository._sessions.TryAdd(_matchId, (IMatchSessionModel)session.Clone()))
+                    {
+                        throw new InvalidOperationException("Match session already exists.");
+                    }
+                    _session = session;
+                    _loaded = true;
+                    return session;
+                }
+            }
+
+            /// <summary>
+			/// Returns the working snapshot, creating the leased match if necessary.
+			/// </summary>
+			/// <param name="queueKey">The queue key to search for.</param>
+			/// <returns>The match session instance.</returns>
+            public IMatchSessionModel GetOrCreate(QueueKey queueKey)
+            {
+                lock (_gate)
+                {
+                    ThrowIfDisposed();
+                    return Get() ?? Create(queueKey);
+                }
+            }
+
+            /// <summary>
+			/// Commits this leases working snapshot, if one exists.
+			/// </summary>
+            /// <returns>False if there is no working match or it has been removed.</returns>
+            public bool Commit()
+            {
+                lock (_gate)
+                {
+                    ThrowIfDisposed();
+                    if (_session == null || !_repository._sessions.TryGetValue(_matchId, out var current))
+                    {
+                        return false;
+                    }
+
+                    var snapshot = (IMatchSessionModel)_session.Clone();
+                    return _repository._sessions.TryUpdate(_matchId, snapshot, current);
+                }
+            }
+
+            /// <summary>
+			/// Removes the leased match and discards this leases working snapshot.
+			/// </summary>
+            /// <returns>Whether the match existed.</returns>
+            public bool TryRemove()
+            {
+                lock (_gate)
+                {
+                    ThrowIfDisposed();
+                    var removed = _repository._sessions.TryRemove(_matchId, out _);
+                    _session = null;
+                    _loaded = true;
+                    return removed;
+                }
+            }
+
+            /// <summary>
+			/// Removes the leased match.
+			/// </summary>
+            /// <exception cref="KeyNotFoundException">No match exists.</exception>
+            public void Remove()
+            {
+                if (!TryRemove())
+                {
+                    throw new KeyNotFoundException($"No match session found for matchId: '{_matchId}'");
+                }
+            }
+
+            /// <summary>
+			/// Releases exclusive access. Further lease operations are rejected.
+			/// </summary>
+            public ValueTask DisposeAsync()
+            {
+                lock (_gate)
+                {
+                    if (!_disposed)
+                    {
+                        _disposed = true;
+                        _session = null;
+
+                        lock (_repository._matchLocks)
+                        {
+							// we release the match session lease
+                            _matchLock.Semaphore.Release();
+                            if (--_matchLock.Users == 0)
+                            {
+                                _repository._matchLocks.Remove(_matchId);
+                                _matchLock.Semaphore.Dispose();
+                            }
+                        }
+                    }
+                }
+                return ValueTask.CompletedTask;
+            }
+
+            private void ThrowIfDisposed()
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+            }
+        }
+    }
 }

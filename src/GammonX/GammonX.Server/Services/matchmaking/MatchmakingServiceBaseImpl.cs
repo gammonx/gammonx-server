@@ -1,4 +1,6 @@
-﻿using GammonX.Server.Models;
+﻿using GammonX.Models.Enums;
+
+using GammonX.Server.Models;
 
 using System.Collections.Concurrent;
 
@@ -8,6 +10,8 @@ namespace GammonX.Server.Services
 	internal abstract class MatchmakingServiceBaseImpl : IMatchmakingService
 	{
 		// TODO: extract the different queue dictionaries into dynamo db to make game server stateless
+		
+		public abstract MatchModus Modus { get; }
 
 		protected readonly PlayerConnectionRepository _playerConnectionRepository;
 
@@ -32,57 +36,59 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
-        // <inheritdoc />
-        public Task LeaveQueueAsync(QueueEntry entry)
-        {
-            LeaveQueue(entry);
-			return Task.FromResult(0);
-        }
-
-        public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
+		// <inheritdoc />
+		public Task LeaveQueueAsync(QueueEntry entry)
 		{
-            _playerConnectionRepository = playerConnectionRepository;
+			LeaveQueue(entry);
+			return Task.FromResult(0);
+		}
 
-        }
+		public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
+		{
+			_playerConnectionRepository = playerConnectionRepository;
 
-        // <inheritdoc />
-        public void TouchQueueEntry(Guid queueEntryId)
-        {
-            if (_queue.TryGetValue(queueEntryId, out var entry))
-            {
-                entry.LastSeenUtc = DateTime.UtcNow;
-            }
-        }
+		}
 
-        // <inheritdoc />
-        public void CleanupExpiredQueueEntries(TimeSpan timeout)
-        {
-            var now = DateTime.UtcNow;
-            foreach (var (queueId, entry) in _queue)
-            {
-                if (now - entry.LastSeenUtc <= timeout)
-                    continue;
+		// <inheritdoc />
+		public void TouchQueueEntry(Guid queueEntryId)
+		{
+			if (_queue.TryGetValue(queueEntryId, out var entry))
+			{
+				entry.LastSeenUtc = DateTime.UtcNow;
+			}
+		}
 
-                // double-check at removal time
-                if (_queue.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
-                {
-                    _queue.TryRemove(queueId, out _);
-                }
-            }
-        }
+		// <inheritdoc />
+		public void CleanupExpiredQueueEntries(TimeSpan timeout)
+		{
+			var now = DateTime.UtcNow;
+			foreach (var (queueId, entry) in _queue)
+			{
+				if (now - entry.LastSeenUtc <= timeout)
+					continue;
 
-        // <inheritdoc />
-        public abstract Task MatchQueuedPlayersAsync();
+				// double-check at removal time
+				if (_queue.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
+				{
+					_queue.TryRemove(queueId, out _);
+				}
+			}
+		}
+
+		// <inheritdoc />
+		public abstract Task MatchQueuedPlayersAsync();
 
 		// <inheritdoc />
 		public virtual bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry)
 		{
 			var queueEntry = _queue.GetValueOrDefault(queueId);
+
 			if (queueEntry == null)
 			{
 				entry = null;
 				return false;
 			}
+
 			entry = queueEntry;
 			return true;
 		}
@@ -92,11 +98,13 @@ namespace GammonX.Server.Services
 		{
 			var kvp = _matchLobbies.FirstOrDefault(q => q.Value.MatchId == matchOrQueueId || q.Key.Id == matchOrQueueId);
 			var queueEntry = kvp.Key;
+			
 			if (queueEntry == default)
 			{
 				matchLobby = null;
 				return false;
 			}
+			
 			matchLobby = kvp.Value;
 			return true;
 		}
@@ -115,29 +123,29 @@ namespace GammonX.Server.Services
 			return found;
 		}
 
-        // <inheritdoc />
-        public virtual MatchLobby[] GetMatchLobbies()
-        {
-            return _matchLobbies.Values.ToArray();
-        }
+		// <inheritdoc />
+		public virtual MatchLobby[] GetMatchLobbies()
+		{
+			return _matchLobbies.Values.ToArray();
+		}
 
-        // <inheritdoc />
-        public virtual QueueEntry[] GetQueueEntries()
-        {
-            return _queue.Values.ToArray();
-        }
+		// <inheritdoc />
+		public virtual QueueEntry[] GetQueueEntries()
+		{
+			return _queue.Values.ToArray();
+		}
 
-        protected virtual internal void Enqueue(QueueEntry entry)
-        {
-            _queue[entry.Id] = entry;
-            var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
-            modeQueue.Enqueue(entry.Id);
-        }
+		protected virtual internal void Enqueue(QueueEntry entry)
+		{
+			_queue[entry.Id] = entry;
+			var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
+			modeQueue.Enqueue(entry.Id);
+		}
 
 		protected virtual internal void LeaveQueue(QueueEntry entry)
 		{
 			_queue.TryRemove(entry.Id, out _);
 			// the mode queue is automatically cleanup while matching opponents for match lobbies
-        }
-    }
+		}
+	}
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 15.11.2026
+- ranked matchmaking
+	- allow a matching bot as playing opponent if no human is found
+- signalr hub improvements
+	- made match session repo thread safe (lock leases)
+	- made connect/disconnect handling more robust
+	- reset double cube on game resignation
+	- clean up match lobbies
+	- improvements to disconnect timers
+	- align points awarded on resign game with official rules
+
 ## 14.11.2026
 - mars neural net changes
 	- update net architecture of Fevga and Plakoto

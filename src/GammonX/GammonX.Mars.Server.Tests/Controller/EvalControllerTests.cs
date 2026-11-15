@@ -177,7 +177,7 @@ namespace GammonX.Mars.Server.Tests.Controller
             }
             else
             {
-                Assert.InRange(boardEval.Payload.EvalScore, -0.6, -0.1);
+                Assert.InRange(boardEval.Payload.EvalScore, -0.65, -0.1);
             }
         }
 

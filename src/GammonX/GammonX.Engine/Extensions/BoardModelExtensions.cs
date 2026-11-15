@@ -69,6 +69,25 @@ namespace GammonX.Engine.Extensions
             if (bearOffCountPlayer != board.WinConditionCount)
                 throw new InvalidOperationException("Player 1 cannot win the game, because not all checkers are borne off.");
 
+            return ScoreWin(board, winnerId, isWhite);
+        }
+
+        /// <summary>
+        /// Scores a resignation from the losers current board position, including the accepted cube value.
+        /// Unlike a played-out win, the winner need not have borne off all checkers.
+        /// </summary>
+        /// <param name="board">Current board.</param>
+        /// <param name="winnerId">The non-resigning player.</param>
+        /// <param name="isWhite">Whether the winner plays white.</param>
+        /// <returns>A resignation result with the board-derived score.</returns>
+        public static GameResultModel ToResignationResult(this IBoardModel board, Guid winnerId, bool isWhite)
+        {
+            var result = ScoreWin(board, winnerId, isWhite);
+            return new GameResultModel(winnerId, GameResult.Resign, GameResult.LostResign, result.Points);
+        }
+
+        private static GameResultModel ScoreWin(IBoardModel board, Guid winnerId, bool isWhite)
+        {
             // we support backgammon, gammon and doubling cubes (e.g. in game modus backgammon)
             if (board is IDoublingCubeModel cubeModel && board is IHomeBarModel homeBarModel)
             {

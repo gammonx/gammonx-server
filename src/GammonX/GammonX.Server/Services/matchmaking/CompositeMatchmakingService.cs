@@ -8,7 +8,11 @@ namespace GammonX.Server.Services
 	internal class CompositeMatchmakingService : MatchmakingServiceBaseImpl
 	{
 		private readonly Dictionary<MatchModus, IMatchmakingService> _services;
+
 		private readonly IServiceProvider? _serviceProvider;
+
+		// <inheritdoc />
+        public override MatchModus Modus => MatchModus.Unknown;
 
 		public CompositeMatchmakingService(IServiceProvider serviceProvider, PlayerConnectionRepository playerConnectionRepository)
 			: base(playerConnectionRepository)

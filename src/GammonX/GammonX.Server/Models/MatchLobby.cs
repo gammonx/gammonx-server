@@ -4,6 +4,16 @@ namespace GammonX.Server.Models
 {
 	public class MatchLobby
 	{
+        /// <summary>
+		/// Maximum lifetime of a lobby before its first game starts.
+		/// </summary>
+        public static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+		/// Creation time used for expiry, independent of polling or socket activity.
+		/// </summary>
+        public DateTime CreatedAtUtc { get; } = DateTime.UtcNow;
+
 		public MatchLobby(Guid matchId, QueueKey queueKey, PlayerConnection player1)
 		{
 			MatchId = matchId;

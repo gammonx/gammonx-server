@@ -11,6 +11,57 @@ namespace GammonX.Engine.Tests;
 public class BoardGameResultTests
 {
     [Theory]
+    [InlineData(GameModus.Backgammon, true, 0, 12)]
+    [InlineData(GameModus.Backgammon, false, 0, 12)]
+    [InlineData(GameModus.Backgammon, true, 1, 4)]
+    [InlineData(GameModus.Backgammon, false, 1, 4)]
+    [InlineData(GameModus.Tavla, true, 0, 2)]
+    [InlineData(GameModus.Tavla, false, 1, 1)]
+    [InlineData(GameModus.Portes, true, 0, 2)]
+    [InlineData(GameModus.Portes, false, 1, 1)]
+    [InlineData(GameModus.Plakoto, true, 0, 2)]
+    [InlineData(GameModus.Plakoto, false, 1, 1)]
+    [InlineData(GameModus.Fevga, true, 0, 2)]
+    [InlineData(GameModus.Fevga, false, 1, 1)]
+    public void ResignationScoresUnfinishedBoard(GameModus modus, bool winnerIsWhite, int loserBorneOff, int expected)
+    {
+        // Arrange.
+        var fields = new int[24];
+        fields[winnerIsWhite ? 23 : 0] = winnerIsWhite ? 15 - loserBorneOff : -(15 - loserBorneOff);
+        var board = BoardServiceFactory.Create(modus).CreateBoard(new BoardModelContract
+        {
+            Fields = fields,
+            BearOffCountWhite = winnerIsWhite ? 0 : loserBorneOff,
+            BearOffCountBlack = winnerIsWhite ? loserBorneOff : 0,
+            DoublingCubeValue = 4
+        });
+        var winnerId = Guid.NewGuid();
+
+        // Act.
+        var result = board.ToResignationResult(winnerId, winnerIsWhite);
+
+        // Assert.
+        Assert.Equal(new GameResultModel(winnerId, GameResult.Resign, GameResult.LostResign, expected), result);
+    }
+
+    [Theory]
+    [InlineData(true, 0, 8)]
+    [InlineData(false, 0, 8)]
+    [InlineData(true, 1, 12)]
+    [InlineData(false, 1, 12)]
+    public void ResignationDistinguishesGammonFromBarBackgammon(bool winnerIsWhite, int loserBar, int expected)
+    {
+        // Arrange.
+        var board = CreateWonBoard(winnerIsWhite, 12, cubeValue: 4, loserBarCount: loserBar);
+
+        // Act.
+        var result = board.ToResignationResult(Guid.NewGuid(), winnerIsWhite);
+
+        // Assert.
+        Assert.Equal(expected, result.Points);
+    }
+
+    [Theory]
     [InlineData(true, 18)]
     [InlineData(true, 19)]
     [InlineData(true, 20)]

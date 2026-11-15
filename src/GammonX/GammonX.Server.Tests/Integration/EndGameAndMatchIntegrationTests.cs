@@ -438,10 +438,7 @@ namespace GammonX.Server.Tests.Integration
 					Assert.Empty(payload.AllowedCommands);
 				}
 				Assert.Equal(HubConnectionState.Connected, player1Connection.State);
-				player1Connection.StopAsync().ContinueWith(_ =>
-				{
-					player1MustDisconnect = true;
-				});
+				player1MustDisconnect = true;
 			});
 
 			var player2MustDisconnect = false;
@@ -454,10 +451,7 @@ namespace GammonX.Server.Tests.Integration
 					Assert.Empty(payload.AllowedCommands);
 				}
 				Assert.Equal(HubConnectionState.Connected, player2Connection.State);
-				player2Connection.StopAsync().ContinueWith(_ =>
-				{
-					player2MustDisconnect = true;
-				});
+				player2MustDisconnect = true;
 			});
 
 			await player1Connection.StartAsync(TestContext.Current.CancellationToken);
@@ -524,6 +518,10 @@ namespace GammonX.Server.Tests.Integration
 			{
 				await Task.Delay(200, TestContext.Current.CancellationToken);
 			}
+
+			// Let the winning move invocation complete before closing its transport.
+			await player1Connection.StopAsync(TestContext.Current.CancellationToken);
+			await player2Connection.StopAsync(TestContext.Current.CancellationToken);
 
 			Assert.Equal(HubConnectionState.Disconnected, player1Connection.State);
 			Assert.Equal(HubConnectionState.Disconnected, player2Connection.State);

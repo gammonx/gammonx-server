@@ -78,6 +78,7 @@ namespace GammonX.Lambda.Handlers
                 {
                     var ratingItem =  ratings.First();
                     var response = ratingItem.ToResponse();
+                    response.HasRecordedRating = true;
 
                     if (previousPeriod != null)
                     {
@@ -96,7 +97,9 @@ namespace GammonX.Lambda.Handlers
                     context.Logger.LogInformation($"Create new player rating for Player: '{playerId}' Variant: '{variant}' Type: '{type}'");
                     // the player has no rating yet, we create one
                     var newRating = PlayerRatingItemFactory.CreateInitial(playerId, variant, type);
-                    return newRating.ToResponse();
+                    var response = newRating.ToResponse();
+                    response.HasRecordedRating = false;
+                    return response;
                 }
                 else
                 {

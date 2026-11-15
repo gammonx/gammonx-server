@@ -28,7 +28,7 @@ namespace GammonX.Server.Models
     /// <param name="MatchVariant">Match variant.</param>
     /// <param name="MatchModus">Match type.</param>
     /// <param name="MatchType">Match type to play.</param>
-    /// <param name="BotLevel">Bot level to play against. Only relevant for bot queues, ignored otherwise.</param>
+    /// <param name="BotLevel">Bot opponents level, including server-selected ranked opponents. Unknown for human opponents.</param>
     public record QueueKey(MatchVariant MatchVariant, MatchModus MatchModus, MatchType MatchType, BotLevel BotLevel = BotLevel.Unknown);
 
     /// <summary>

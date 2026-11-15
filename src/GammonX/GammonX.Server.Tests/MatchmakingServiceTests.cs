@@ -380,25 +380,17 @@ namespace GammonX.Server.Tests
             var lobbies = matcher.GetMatchLobbies();
             var ratingDiff = Math.Abs(rating1 - rating2);
 
-            // we check if match was made based on rating difference and wait time
-            if (secondsWaiting < 5 && ratingDiff > 50)
-                Assert.Empty(lobbies); // should not match
-            else if (secondsWaiting < 15 && ratingDiff > 100)
-                Assert.Empty(lobbies); // should not match
-            else if (secondsWaiting < 30 && ratingDiff > 200)
-                Assert.Empty(lobbies); // should not match
+            var allowed = secondsWaiting switch { < 5 => 50, < 15 => 100, < 30 => 200, _ => 400 };
+            Assert.Equal(2, lobbies.Length);
+            if (ratingDiff <= allowed)
+            {
+                Assert.Single(lobbies.Select(lobby => lobby.MatchId).Distinct());
+                Assert.All(lobbies, lobby => Assert.False(lobby.Player2!.IsBot));
+            }
             else
             {
-                if (ratingDiff <= 400)
-                {
-                    Assert.Equal(2, lobbies.Length); // should match
-                    var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
-                    Assert.Single(matchIds);
-                }
-                else
-                {
-                    Assert.Empty(lobbies);
-                }
+                Assert.Equal(2, lobbies.Select(lobby => lobby.MatchId).Distinct().Count());
+                Assert.All(lobbies, lobby => Assert.True(lobby.Player2!.IsBot));
             }
         }
 
@@ -423,10 +415,9 @@ namespace GammonX.Server.Tests
             await matcher.MatchQueuedPlayersAsync();
 
             var lobbies = matcher.GetMatchLobbies();
-            // old player's search radius is 400, so should match despite 500 rating diff
-            // new player's search radius is 50, so should NOT match
-            // the condition requires both to be within allowed diff, so this should not match
-            Assert.Empty(lobbies);
+            // Both humans must meet the radius requirement; otherwise each receives a bot.
+            Assert.Equal(2, lobbies.Select(lobby => lobby.MatchId).Distinct().Count());
+            Assert.All(lobbies, lobby => Assert.True(lobby.Player2!.IsBot));
         }
 
         [Fact]

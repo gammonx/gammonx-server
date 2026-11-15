@@ -92,10 +92,13 @@ namespace GammonX.Server.Tests
 			Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 			Assert.NotNull(joinResponse);
 			Assert.Equal("OK", joinResponse.Type);
-			Assert.NotNull(joinResponse.Payload.QueueId);
+			// we directly match lobbies for bot join requests
+			Assert.Null(joinResponse.Payload.QueueId);
+			Assert.NotNull(joinResponse.Payload.MatchId);
+			Assert.True(joinResponse.Payload.Status == QueueEntryStatus.OpponentFound);
 
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Bot);
-			Assert.True(matchmakingService.TryFindMatchLobby(joinResponse.Payload.QueueId.Value, out var lobby));
+			Assert.True(matchmakingService.TryFindMatchLobby(joinResponse.Payload.MatchId.Value, out var lobby));
 			Assert.NotNull(lobby);
 			Assert.Equal(request.PlayerId, lobby.Player1.Id);
 			Assert.Equal(botLevel, lobby.QueueKey.BotLevel);

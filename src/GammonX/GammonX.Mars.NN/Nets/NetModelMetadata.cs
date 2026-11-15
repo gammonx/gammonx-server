@@ -28,6 +28,7 @@ public sealed record NetModelMetadata(
     NetArchitecture Architecture)
 {
     public const int CurrentFormatVersion = 2;
+
     public const string MetadataSuffix = ".meta.json";
 
     /// <summary>
@@ -37,7 +38,9 @@ public sealed record NetModelMetadata(
 
     public NetTrainingMetadata? Training { get; init; }
 
-    /// <summary>The physical output width; legacy Fevga/Plakoto A models remain scalar.</summary>
+    /// <summary>
+    /// The physical output width; legacy Fevga/Plakoto A models remain scalar.
+    /// </summary>
     [JsonIgnore]
     public int OutputCount => Modus is GameModus.Fevga or GameModus.Plakoto
         // plakoto and fevga uses three-head output (legacy model still one-head output)

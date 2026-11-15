@@ -1,15 +1,15 @@
-﻿using Amazon.Runtime;
+using Amazon.Runtime;
 using Amazon.SQS;
 
 using DotNetEnv;
 
 using GammonX.Engine.Services;
 
-using GammonX.Models;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
+using GammonX.Server.Bot;
 using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
@@ -177,8 +177,10 @@ namespace GammonX.Server.Tests.Queue
                 Times.Never);
         }
 
-        [Fact]
-        public async Task EnqueueRatingProcessingPublishesOneCompositeMessage()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EnqueueRatingProcessingPublishesOneCompositeMessage(bool botOpponent)
         {
             var queue = new Mock<IWorkQueue>();
             queue
@@ -189,13 +191,15 @@ namespace GammonX.Server.Tests.Queue
             services.AddKeyedSingleton(WorkQueueType.RatingUpdated, queue.Object);
             
             var service = new WorkQueueService(services.BuildServiceProvider());
-            var match = CreateAndCompleteSimpleMatch();
+            var match = CreateAndCompleteSimpleMatch(botOpponent);
 
             await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
 
             queue.Verify(
                 value => value.EnqueueAsync(
-                    It.Is<RatingUpdateWorkContract>(work => work.Records.Length == 2),
+                    It.Is<RatingUpdateWorkContract>(work => work.Records.Length == 2
+                        && work.Records.All(record => record.Modus == MatchModus.Ranked && record.BotLevel == BotLevel.Hard)
+                        && work.Records.Any(record => record.PlayerId == match.Player2.Id)),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
             queue.Verify(
@@ -274,10 +278,10 @@ namespace GammonX.Server.Tests.Queue
 
             var player1Id = Guid.Parse("b08e895f-a397-4b44-89cc-2372e9b54657");
             var player1 = new PlayerConnection(player1Id);
-            player1.SetConnectionId(Guid.NewGuid().ToString());
+            player1.SetConnectionId("human-" + Guid.NewGuid());
             var player2Id = Guid.Parse("d8e1f3b4-6120-4c16-acf2-b2b8d03f14aa");
             var player2 = new PlayerConnection(player2Id);
-            player2.SetConnectionId(Guid.NewGuid().ToString());
+            player2.SetConnectionId("human-" + Guid.NewGuid());
 
             match.JoinSession(player1);
             match.JoinSession(player2);
@@ -290,7 +294,7 @@ namespace GammonX.Server.Tests.Queue
             return match;
         }
 
-        private static IMatchSessionModel CreateAndCompleteSimpleMatch()
+        private static IMatchSessionModel CreateAndCompleteSimpleMatch(bool botOpponent = false)
         {
             var diceFactory = new DiceServiceFactory();
             var gameFactory = new GameSessionFactory(diceFactory);
@@ -298,9 +302,9 @@ namespace GammonX.Server.Tests.Queue
             var queueKey = new QueueKey(MatchVariant.Tavli, MatchModus.Ranked, MatchType.SevenPointGame, BotLevel.Hard);
             var match = factory.Create(Guid.NewGuid(), queueKey);
             var player1 = new PlayerConnection(Guid.NewGuid());
-            player1.SetConnectionId(Guid.NewGuid().ToString());
-            var player2 = new PlayerConnection(Guid.NewGuid());
-            player2.SetConnectionId(Guid.NewGuid().ToString());
+            player1.SetConnectionId("human-" + Guid.NewGuid());
+            var player2 = new PlayerConnection(botOpponent ? WellKnownBotPlayers.GetBotPlayerId(BotLevel.Hard) : Guid.NewGuid());
+            player2.SetConnectionId(botOpponent ? WellKnownBotPlayers.ConnectionId : "human-" + Guid.NewGuid());
             match.JoinSession(player1);
             match.JoinSession(player2);
             match.StartMatch(player1.Id);

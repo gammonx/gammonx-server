@@ -43,9 +43,9 @@
 		/// Gets a boolean indicating if the given player is a bot.
 		/// </summary>
 		/// <remarks>
-		/// A player is identified as a bot if their connection id equals to an empty guid.
+		/// A player is identified as a bot by the reserved bot connection ID.
 		/// </remarks>
-		public bool IsBot => ConnectionId.Equals(Guid.Empty.ToString());
+		public bool IsBot => _playerConnection.IsBot;
 
 		/// <summary>
 		/// Gets a boolean indicating if the given player is claimed by a client.

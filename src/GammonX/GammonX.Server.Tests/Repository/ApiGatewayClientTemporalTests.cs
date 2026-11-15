@@ -11,10 +11,13 @@ namespace GammonX.Server.Tests.Repository
 {
     public class ApiGatewayClientTemporalTests
     {
-        [Fact]
-        public async Task GetRatingIncludesMatchTypeInRequestPath()
+        [Theory]
+        [InlineData("{\"Rating\":1200,\"HasRecordedRating\":true}", true)]
+        [InlineData("{\"Rating\":1200,\"HasRecordedRating\":false}", false)]
+        [InlineData("{\"Rating\":1200}", null)]
+        public async Task GetRatingIncludesMatchTypeInRequestPath(string response, bool? recorded)
         {
-            var handler = new StubHandler("""{"Rating":1200}""");
+            var handler = new StubHandler(response);
             using (var client = new HttpClient(handler))
             {
                 client.BaseAddress = new Uri("https://repository.test/");
@@ -28,6 +31,7 @@ namespace GammonX.Server.Tests.Repository
                     CancellationToken.None);
 
                 Assert.NotNull(result);
+                Assert.Equal(recorded, result.HasRecordedRating);
                 Assert.Equal(
                     $"https://repository.test/players/{playerId}/rating/Backgammon/FivePointGame",
                     handler.RequestUri?.ToString());

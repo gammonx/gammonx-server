@@ -18,6 +18,38 @@ namespace GammonX.Server.Tests.Match
 		private static readonly IGameSessionFactory _gameSessionFactory = new GameSessionFactory(_diceServiceFactory);
 		private static readonly IMatchSessionFactory _matchSessionFactory = new MatchSessionFactory(_gameSessionFactory);
 
+        [Theory]
+        [InlineData(true, false, 0, 4)]
+        [InlineData(false, false, 0, 4)]
+        [InlineData(true, true, 0, 6)]
+        [InlineData(false, true, 0, 6)]
+        [InlineData(true, true, 1, 2)]
+        [InlineData(false, true, 1, 2)]
+        public void ResignationUsesBoardAndAcceptedCube(bool loserIsWhite, bool inWinnerHome, int borneOff, int expected)
+        {
+            // Arrange.
+            var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, MatchType.SevenPointGame, _matchSessionFactory);
+            session.Player1.AcceptNextGame();
+            session.Player2.AcceptNextGame();
+            var game = session.StartMatch(session.Player1.Id);
+            var cube = Assert.IsAssignableFrom<IDoubleCubeMatchSession>(session);
+            cube.OfferDouble(session.Player1.Id);
+            cube.AcceptDouble(session.Player2.Id);
+            var fields = new int[24];
+            fields[inWinnerHome ? (loserIsWhite ? 0 : 23) : 12] = (loserIsWhite ? -1 : 1) * (15 - borneOff);
+            game.BoardModel.SetFields(fields);
+            game.BoardModel.BearOffChecker(loserIsWhite, borneOff);
+
+            // Act.
+            session.ResignGame(loserIsWhite ? session.Player1.Id : session.Player2.Id);
+
+            // Assert.
+            Assert.Equal(expected, game.Result.Points);
+            Assert.Equal(expected, (loserIsWhite ? session.Player2 : session.Player1).Points);
+            Assert.Equal(GameResult.Resign, game.Result.WinnerResult);
+            Assert.False(cube.IsDoubleOfferPending);
+        }
+
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]

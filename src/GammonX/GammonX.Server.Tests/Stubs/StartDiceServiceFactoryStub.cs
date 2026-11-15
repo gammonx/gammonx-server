@@ -4,15 +4,18 @@ namespace GammonX.Server.Tests.Stubs
 {
 	internal class StartDiceServiceFactoryStub : IDiceServiceFactory
 	{
+		// Hub instances are transient, but opening rolls belong to the same test host.
+		private readonly IDiceService _diceService = new StartDiceServiceStub();
+
 		public IDiceService Create(DiceServiceType type)
 		{
-			return new StartDiceServiceStub();
+			return _diceService;
 		}
 	}
 
 	internal class StartDiceServiceStub : IDiceService
 	{
-		private static int _rollCount = 0;
+		private int _rollCount = 0;
 
 		public int[] Roll(int numberOfDice, int sidesPerDie)
 		{
