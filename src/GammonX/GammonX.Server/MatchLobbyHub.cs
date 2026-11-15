@@ -98,7 +98,8 @@ namespace GammonX.Server
                     _playerConnectionRepository.AddOrUpdate(playerId.Value, connectionId);
 
                     var matchSession = matchLock.Get();
-                    if (matchSession != null)
+                    // The opponent may have created the session before this lobby player joined it.
+                    if (matchSession != null && (matchSession.Player1.Id == playerId.Value || matchSession.Player2.Id == playerId.Value))
                     {
                         await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchSession.Id));
                         var otherPlayerId = GetOtherPlayerId(matchSession, playerId.Value);
@@ -150,9 +151,13 @@ namespace GammonX.Server
                             }
                             else if (!matchSession.IsMatchOver())
                             {
-                                // Between games, players must accept the next game. The bot accepts automatically.
-                                StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
-                                if (!matchSession.Player2.IsBot)
+                                // Restore deadlines only for outstanding acceptances. The bot accepts automatically.
+                                if (!matchSession.Player1.NextGameAccepted)
+                                {
+                                    StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
+                                }
+
+                                if (!matchSession.Player2.IsBot && !matchSession.Player2.NextGameAccepted)
                                 {
                                     StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
                                 }

@@ -308,6 +308,60 @@ namespace GammonX.Server.Tests.Integration
             _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Theory]
+        [InlineData(MatchModus.Normal, false)]
+        [InlineData(MatchModus.Normal, true)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task ConnectingAfterOpponentJoinedReceivesJoinInstruction(MatchModus modus, bool secondLobbyPlayerJoinedFirst)
+        {
+            // Arrange.
+            var matchmaking = GetService(modus);
+            var key = new QueueKey(MatchVariant.Backgammon, modus, MatchType.SevenPointGame);
+            var entry = await matchmaking.JoinQueueAsync(_player1Id, key);
+            await matchmaking.JoinQueueAsync(_player2Id, key);
+            await matchmaking.MatchQueuedPlayersAsync();
+            Assert.True(matchmaking.TryFindMatchLobby(entry.Id, out var lobby));
+            Assert.NotNull(lobby);
+            Assert.NotNull(lobby.Player2);
+            var first = secondLobbyPlayerJoinedFirst ? lobby.Player2 : lobby.Player1;
+            var second = secondLobbyPlayerJoinedFirst ? lobby.Player1 : lobby.Player2;
+            var client = new Mock<ISingleClientProxy>();
+            var clients = new Mock<IHubCallerClients>();
+            clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
+            clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
+            var groups = new Mock<IGroupManager>();
+            var hub = new MatchLobbyHub(BuildServiceProvider(matchmaking))
+            {
+                Clients = clients.Object,
+                Groups = groups.Object,
+                Context = new HubCallerContextStub("first", first.Id, lobby.MatchId)
+            };
+            await hub.OnConnectedAsync();
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), first.Id.ToString());
+            Assert.False(_matchRepo.Get(lobby.MatchId)!.Player2.Claimed);
+            client.Invocations.Clear();
+
+            // Act.
+            hub.Context = new HubCallerContextStub("second", second.Id, lobby.MatchId);
+            await hub.OnConnectedAsync();
+
+            // Assert.
+            client.Verify(value => value.SendCoreAsync(ServerEventTypes.PlayerConnectedEvent,
+                It.Is<object[]>(args => ((EventResponseContract<EventMatchLobbyPayload>)args[0]).Payload.AllowedCommands.Contains(ServerCommands.JoinMatchCommand)),
+                It.IsAny<CancellationToken>()), Times.Once);
+            groups.Verify(value => value.AddToGroupAsync("second", lobby.GroupName, It.IsAny<CancellationToken>()), Times.Once);
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = lobby.MatchId, PlayerId = second.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await hub.JoinMatchAsync(lobby.MatchId.ToString(), second.Id.ToString());
+            var session = _matchRepo.Get(lobby.MatchId)!;
+            Assert.Equal(first.Id, session.Player1.Id);
+            Assert.Equal(second.Id, session.Player2.Id);
+            _cancellationTokenService.CancelForMatch(lobby.MatchId, CancellationTokenCategory.Turn);
+        }
+
         [Fact]
         public async Task SecondLobbyPlayerJoiningFirstCancelsOnlyTheirJoinTimer()
         {
@@ -488,6 +542,50 @@ namespace GammonX.Server.Tests.Integration
                 MatchId = matchId, PlayerId = fixture.Session.Player1.Id, Category = CancellationTokenCategory.Turn
             }, out _));
             _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task ReconnectRestoresOnlyPendingNextGameAcceptanceDeadline(bool player2Accepted, bool acceptedPlayerReconnects)
+        {
+            // Arrange.
+            var (session, hub1, hub2, _, _) = await SetupPlayerVsPlayerMatchSession(
+                MatchVariant.Backgammon, MatchModus.Ranked, MatchType.SevenPointGame, _player1Id, _player2Id);
+            var matchId = session.Id;
+            await hub1.ResignGameAsync(matchId.ToString());
+            var accepted = player2Accepted ? session.Player2 : session.Player1;
+            var pending = player2Accepted ? session.Player1 : session.Player2;
+            var acceptingHub = player2Accepted ? hub2 : hub1;
+            var pendingHub = player2Accepted ? hub1 : hub2;
+            await acceptingHub.StartGameAsync(matchId.ToString());
+            var acceptedKey = new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = accepted.Id, Category = CancellationTokenCategory.Turn
+            };
+            Assert.False(_cancellationTokenService.TryGet(acceptedKey, out _));
+            var reconnecting = acceptedPlayerReconnects ? accepted : pending;
+            var reconnectingHub = acceptedPlayerReconnects ? acceptingHub : pendingHub;
+            reconnectingHub.Context = new HubCallerContextStub(reconnecting.ConnectionId, reconnecting.Id, matchId);
+            await reconnectingHub.OnDisconnectedAsync(null);
+
+            // Act.
+            reconnectingHub.Context = new HubCallerContextStub("replacement", reconnecting.Id, matchId);
+            await reconnectingHub.OnConnectedAsync();
+
+            // Assert.
+            Assert.False(_cancellationTokenService.TryGet(acceptedKey, out _));
+            Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
+            {
+                MatchId = matchId, PlayerId = pending.Id, Category = CancellationTokenCategory.Turn
+            }, out _));
+            await pendingHub.StartGameAsync(matchId.ToString());
+            Assert.Equal(2, _matchRepo.Get(matchId)!.GameRound);
+            Assert.Empty(_completedMatches);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Turn);
+            _cancellationTokenService.CancelForMatch(matchId, CancellationTokenCategory.Disconnect);
         }
 
         [Theory]
