@@ -345,7 +345,7 @@ namespace GammonX.Server.Models
 			// other player gets the points for his score
 			var otherPlayerId = GetOtherPlayerId(callingPlayerId);
 			var otherPlayer = GetPlayer(otherPlayerId);
-			var points = CalculateResignGamePoints();
+			var points = CalculateResignGamePoints(otherPlayerId, activeSession);
 			otherPlayer.Points += points;
 			var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, points);
 			
@@ -381,7 +381,7 @@ namespace GammonX.Server.Models
                         gameSession ??= GetOrCreateGameSession(i + 1);
 						// we need to award the other player at least 1 more point than the resigning player
 						var minDifference = activePlayer.Points + 1 - otherPlayer.Points;
-						var resignGamePoints = CalculateResignGamePoints();
+						var resignGamePoints = CalculateResignGamePoints(otherPlayerId, gameSession);
 						var pointsToAward = Math.Max(resignGamePoints, minDifference);
                         var result = new GameResultModel(otherPlayerId, GameResult.Resign, GameResult.LostResign, pointsToAward);
                         gameSession.StopGame(result);
@@ -535,8 +535,10 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Calculates the amount of points for the score of the non-resigning player.
 		/// </summary>
+		/// <param name="winnerId">The non-resigning player.</param>
+		/// <param name="gameSession">The game whose current board determines the score.</param>
 		/// <returns>Amount of points/score.</returns>
-		protected abstract int CalculateResignGamePoints();
+		protected abstract int CalculateResignGamePoints(Guid winnerId, IGameSessionModel gameSession);
 
 		/// <summary>
 		/// Gets the amount and order of the max playable game modus

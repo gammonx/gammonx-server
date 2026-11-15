@@ -1523,8 +1523,18 @@ namespace GammonX.Server
                 var gameSession = matchSession.GetGameSession(matchSession.GameRound);
                 if (gameSession != null && !gameSession.Result.IsConcluded)
                 {
-                    matchSession.ResignGame(playerId);
+                    if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.IsDoubleOfferPending && gameSession.ActivePlayer == playerId)
+                    {
+                        // Missing a cube response passes the offer at the already accepted cube value.
+                        cubeSession.DeclineDouble(playerId);
+                    }
+                    else
+                    {
+                        matchSession.ResignGame(playerId);
+                    }
+
                     matchLock.Commit();
+
                     if (matchSession.IsMatchOver())
                     {
                         await SendMatchState(matchLock, ServerEventTypes.MatchEndedEvent, matchSession);

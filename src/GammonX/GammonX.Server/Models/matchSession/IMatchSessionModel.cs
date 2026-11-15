@@ -136,7 +136,8 @@ namespace GammonX.Server.Models
 		void EndTurn(Guid callingPlayerId);
 
 		/// <summary>
-		/// The calling player resigns the game resulting in a variant specific amount of points for the other player.
+		/// The calling player resigns the game. The opponent receives the board-derived single, gammon or
+		/// backgammon score supported by the variant, multiplied by the accepted cube value when applicable.
 		/// </summary>
 		/// <remarks>
 		/// The player who resigns the game must not be the active player. Resigning is possible at any time.

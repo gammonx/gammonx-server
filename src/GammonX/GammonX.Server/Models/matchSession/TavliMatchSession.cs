@@ -45,10 +45,10 @@ namespace GammonX.Server.Models
         }
 
 		// <inheritdoc />
-		protected override int CalculateResignGamePoints()
+		protected override int CalculateResignGamePoints(Guid winnerId, IGameSessionModel gameSession)
 		{
-			// wins with a gammon
-			return 2;
+			// Use this variant's existing board scoring without a doubling cube.
+			return gameSession.BoardModel.ToResignationResult(winnerId, IsWhite(winnerId)).Points;
 		}
 
 		// <inheritdoc />

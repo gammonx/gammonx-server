@@ -491,6 +491,45 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Theory]
+        [InlineData(MatchType.CashGame, true, 2)]
+        [InlineData(MatchType.SevenPointGame, true, 2)]
+        [InlineData(MatchType.CashGame, false, 6)]
+        [InlineData(MatchType.SevenPointGame, false, 6)]
+        public async Task CubeTimeoutPassesButExplicitResignationUsesBoard(MatchType type, bool timeout, int expected)
+        {
+            // Arrange.
+            var fixture = await CreatePersistenceFixture(type: type);
+            var id = fixture.Session.Id;
+            await using (var lease = await _matchRepo.AcquireStateAsync(id))
+            {
+                var session = lease.Get()!;
+                var board = Assert.IsAssignableFrom<IDoublingCubeModel>(session.GetGameSession(session.GameRound)!.BoardModel);
+                board.AcceptDoublingCubeOffer(true);
+                Assert.IsAssignableFrom<IDoubleCubeMatchSession>(session).OfferDouble(session.Player1.Id);
+                Assert.True(lease.Commit());
+            }
+
+            // Act.
+            if (timeout)
+            {
+                await InvokeTurnTimeoutAsync(fixture.Hub, id, fixture.Session.Player2.Id);
+            }
+            else
+            {
+                fixture.Hub.Context = new HubCallerContextStub(fixture.Session.Player2.ConnectionId);
+                await fixture.Hub.ResignGameAsync(id.ToString());
+            }
+
+            // Assert.
+            var result = _matchRepo.Get(id) ?? _completedMatches[id];
+            Assert.Equal(expected, result.Player1.Points);
+            Assert.Equal(timeout ? GameResult.DoubleDeclined : GameResult.Resign, result.GetGameSession(1)!.Result.WinnerResult);
+            Assert.False(Assert.IsAssignableFrom<IDoubleCubeMatchSession>(result).IsDoubleOfferPending);
+            Assert.Equal(type == MatchType.CashGame, result.IsMatchOver());
+            _cancellationTokenService.CancelForMatch(id, CancellationTokenCategory.Turn);
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task BothElapsedDeadlinesAreInconclusiveBeforeSecondCallback(bool reverseOrder)

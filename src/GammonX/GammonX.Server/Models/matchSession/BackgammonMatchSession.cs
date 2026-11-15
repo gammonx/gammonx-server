@@ -67,12 +67,12 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		protected override int CalculateResignGamePoints()
+		protected override int CalculateResignGamePoints(Guid winnerId, IGameSessionModel gameSession)
 		{
 			// we have to reset the current double cube offer on a resign game
 			_doubleCubeOfferPlayerId = null;
-			// wins with a back-gammon
-			return 3;
+			// Score the current position using the accepted cube, not a pending offer.
+			return gameSession.BoardModel.ToResignationResult(winnerId, IsWhite(winnerId)).Points;
 		}
 
 		// <inheritdoc />
