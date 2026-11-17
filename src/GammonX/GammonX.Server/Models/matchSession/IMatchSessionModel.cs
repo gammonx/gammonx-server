@@ -176,6 +176,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns the game session for the given <paramref name="gameRound"/>.
 		/// </summary>
+        /// <remarks>
+        /// Completed rounds may be shared wrappers that copy their state on mutable access.
+        /// </remarks>
 		/// <param name="gameRound">Game round. 1-based index.</param>
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
@@ -183,6 +186,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns all game sessions of this match session.
 		/// </summary>
+        /// <remarks>
+        /// Completed rounds may be shared wrappers that copy their state on mutable access.
+        /// </remarks>
 		/// <returns>An array of <see cref="IGameSessionModel"/> instances.</returns>
 		IGameSessionModel?[] GetGameSessions();
 

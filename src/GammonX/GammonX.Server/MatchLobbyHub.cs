@@ -102,7 +102,7 @@ namespace GammonX.Server
                     if (matchSession != null && (matchSession.Player1.Id == playerId.Value || matchSession.Player2.Id == playerId.Value))
                     {
                         await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchSession.Id));
-                        var otherPlayerId = GetOtherPlayerId(matchSession, playerId.Value);
+                        var otherPlayerId = matchLock.GetOtherPlayerId(playerId.Value);
                         var otherKey = ConstructTokenKey(otherPlayerId, matchSession.Id, CancellationTokenCategory.Disconnect);
                         // We check if the other player has a disconnect timer running
                         if (_cancellationTokenService.TryGet(otherKey, out var otherTimer) && otherTimer != null)
@@ -137,7 +137,7 @@ namespace GammonX.Server
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                             await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.PlayerConnectedEvent, contract);
                             // we try to resume the game flow after the player disconnected and the bot is at its turn
-                            if (activeGameSession.Phase != GamePhase.GameOver && IsBotPlayer(matchSession, activeGameSession.ActivePlayer))
+                            if (activeGameSession.Phase != GamePhase.GameOver && matchLock.IsBotPlayer(activeGameSession.ActivePlayer))
                             {
                                 // The player is reconnecting. Bot requests use the players ConnectionAborted token,
                                 // so their disconnect may have canceled a bot action after its preceding state was committed.
@@ -175,7 +175,7 @@ namespace GammonX.Server
                                 // Both seats are assigned, but the first game has not started. Restore player start deadlines;
                                 // the bots opening roll and acceptance are supplied when the player starts the match.
                                 StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
-                                if (!IsBotPlayer(matchSession, matchSession.Player2.Id))
+                                if (!matchLock.IsBotPlayer(matchSession.Player2.Id))
                                 {
                                     StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
                                 }
@@ -337,7 +337,7 @@ namespace GammonX.Server
 
             if (matchToResignClone != null)
             {
-                var otherPlayerId = GetOtherPlayerId(matchToResignClone, playerId);
+                var otherPlayerId = matchLock.GetOtherPlayerId(playerId);
                 var otherKey = ConstructTokenKey(otherPlayerId, matchId, CancellationTokenCategory.Disconnect);
                 // We check if the other player is also disconnected
                 if (_cancellationTokenService.TryGet(otherKey, out _))
@@ -460,7 +460,7 @@ namespace GammonX.Server
                         await SendMatchState(matchLock, ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                         // we set a timeout for the players to start the match
                         StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
-                        if (!IsBotPlayer(matchSession, matchSession.Player2.Id))
+                        if (!matchLock.IsBotPlayer( matchSession.Player2.Id))
                         {
                             StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
                         }
@@ -510,7 +510,7 @@ namespace GammonX.Server
                 {
                     var player1 = matchSession.Player1;
                     var player2 = matchSession.Player2;
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     
                     if(!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartMatchCommand))
                     {
@@ -568,7 +568,7 @@ namespace GammonX.Server
                                 // A retry can resolve the starting roll tie while the opponent still has a reroll timer.
                                 CancelTimersFor(matchSession.Id, CancellationTokenCategory.Turn);
 
-                                var isWhite = IsWhite(matchSession, startingPlayerId);
+                                var isWhite = matchLock.IsWhite(startingPlayerId);
                                 // we set the opening dice rolls for the starting player
                                 gameSession.SetDiceRolls([player1.StartDiceRoll.Value, player2.StartDiceRoll.Value], isWhite);
 
@@ -577,7 +577,7 @@ namespace GammonX.Server
                                 await SendMatchState(matchLock, ServerEventTypes.MatchStartedEvent, matchSession);
                                 await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
 
-                                if (IsBotPlayer(matchSession, startingPlayerId))
+                                if (matchLock.IsBotPlayer(startingPlayerId))
                                 {
                                     await PerformBotTurnAsync(matchLock, matchSession, startingPlayerId);
                                 }
@@ -639,7 +639,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     if(!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartGameCommand))
                     {
                         await SendErrorEventAsync("START_GAME_ERROR", "You cannot start the next game at this moment.", Context.ConnectionId);
@@ -669,7 +669,7 @@ namespace GammonX.Server
                         var startingPlayerId = GetStartingPlayerId(matchSession);
                         matchSession.StartNextGame(startingPlayerId);
                         matchLock.Commit();
-                        if (IsBotPlayer(matchSession, startingPlayerId))
+                        if (matchLock.IsBotPlayer(startingPlayerId))
                         {
                             // we must send a fresh game state here because bot may offer double at game start
                             await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
@@ -685,7 +685,7 @@ namespace GammonX.Server
                     else
                     {
                         matchLock.Commit();
-                        callingPlayerId = GetCallingPlayerId(matchSession);
+                        callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                         var matchPayload = matchSession.ToPayload(callingPlayerId);
                         var matchContract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.GameWaitingEvent, matchPayload);
                         await SendToCallerAsync(ServerEventTypes.GameWaitingEvent, matchContract);
@@ -731,7 +731,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     await PerformRollAsync(matchLock, matchSession, callingPlayerId);
                 }
                 else
@@ -775,8 +775,8 @@ namespace GammonX.Server
                 if (matchSession != null)
                 {
                     // calling and active player must be the same
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
-                    var isWhite = IsWhite(matchSession, callingPlayerId);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
+                    var isWhite = matchLock.IsWhite(callingPlayerId);
                     if (!isWhite)
                     {
                         // we need to invert the from/to move back for black checkers
@@ -819,7 +819,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
 
                     if (!matchSession.CanUndoLastMove(callingPlayerId))
                     {
@@ -864,8 +864,8 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
-                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
+                    var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
 
                     if (!matchSession.CanEndTurn(callingPlayerId))
                     {
@@ -877,7 +877,7 @@ namespace GammonX.Server
                     matchSession.EndTurn(callingPlayerId);
                     matchLock.Commit();
 
-                    if (IsBotPlayer(matchSession, otherPlayerId))
+                    if (matchLock.IsBotPlayer(otherPlayerId))
                     {
                         await PerformBotTurnAsync(matchLock, matchSession, otherPlayerId);
                     }
@@ -921,7 +921,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     matchSession.ResignMatch(callingPlayerId);
                     matchLock.Commit();
                     await SendMatchState(matchLock, ServerEventTypes.MatchEndedEvent, matchSession);
@@ -956,7 +956,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     matchSession.ResignGame(callingPlayerId);
                     matchLock.Commit();
                     // check if this was the last game round of the match
@@ -991,10 +991,12 @@ namespace GammonX.Server
                 }
 
                 await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
-                var matchSession = matchLock.Get();
-                if (matchSession != null)
+                var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
+                var payload = matchLock.ReadGameState(callingPlayerId);
+                if (payload != null)
                 {
-                    await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
+                    var contract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameStateEvent, payload);
+                    await SendToClientAsync(Context.ConnectionId, ServerEventTypes.GameStateEvent, contract);
                 }
                 else
                 {
@@ -1018,10 +1020,13 @@ namespace GammonX.Server
                 }
 
                 await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
-                var matchSession = matchLock.Get();
-                if (matchSession != null)
+                var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
+                var payload = matchLock.ReadMatchState(callingPlayerId);
+                if (payload != null)
                 {
-                    await SendMatchState(matchLock, ServerEventTypes.MatchStateEvent, matchSession);
+                    payload.AppendRatingUrl(callingPlayerId, ServerEventTypes.MatchStateEvent);
+                    var contract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.MatchStateEvent, payload);
+                    await SendToClientAsync(Context.ConnectionId, ServerEventTypes.MatchStateEvent, contract);
                 }
                 else
                 {
@@ -1055,7 +1060,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
 
                     if (!doubleCubeSession.CanOfferDouble(callingPlayerId))
                     {
@@ -1064,8 +1069,8 @@ namespace GammonX.Server
                     }
 
                     await PerformOfferDoubleAsync(matchLock, matchSession, callingPlayerId);
-                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
-                    if (!IsBotPlayer(matchSession, otherPlayerId))
+                    var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
+                    if (!matchLock.IsBotPlayer(otherPlayerId))
                     {
                         StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
                     }
@@ -1104,11 +1109,11 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     await PerformAcceptDoubleAsync(matchLock, matchSession, callingPlayerId);
 
-                    var otherPlayerId = GetOtherPlayerId(matchSession, callingPlayerId);
-                    if (!IsBotPlayer(matchSession, otherPlayerId))
+                    var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
+                    if (!matchLock.IsBotPlayer(otherPlayerId))
                     {
                         StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
                     }
@@ -1147,7 +1152,7 @@ namespace GammonX.Server
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
-                    var callingPlayerId = GetCallingPlayerId(matchSession);
+                    var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                     await PerformDeclineDoubleAsync(matchLock, matchSession, callingPlayerId);
                 }
                 else
@@ -1170,9 +1175,9 @@ namespace GammonX.Server
                 CancelTimersFor(matchSession.Id, offeringPlayerId, CancellationTokenCategory.Turn);
                 
                 matchLock.Commit();                
-                var offeredPlayerId = GetOtherPlayerId(matchSession, offeringPlayerId);
+                var offeredPlayerId = matchLock.GetOtherPlayerId(offeringPlayerId);
 
-                if (IsBotPlayer(matchSession, offeredPlayerId))
+                if (matchLock.IsBotPlayer(offeredPlayerId))
                 {
                     await PerformBotTurnAsync(matchLock, matchSession, offeredPlayerId);
                 }
@@ -1181,15 +1186,15 @@ namespace GammonX.Server
                     // the player who is offering the double is waiting for a response
                     var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
                     var callingPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, callingPlayerGameSession);
-                    var callingConnectionId = GetPlayerConnectionId(matchSession, offeringPlayerId);
+                    var callingConnectionId = matchLock.GetPlayerConnectionId(offeringPlayerId);
                     await SendToClientAsync(callingConnectionId, ServerEventTypes.DoubleOfferedEvent, callingPlayerContract);
 
                     // the player who got the double offered has to accept or decline it
                     var otherPlayerGameSession = matchSession.GetGameState(offeredPlayerId);
                     var otherPlayerContract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.DoubleOfferedEvent, otherPlayerGameSession);
-                    var otherPlayerConnectionId = GetPlayerConnectionId(matchSession, offeredPlayerId);
+                    var otherPlayerConnectionId = matchLock.GetPlayerConnectionId(offeredPlayerId);
                     await SendToClientAsync(otherPlayerConnectionId, ServerEventTypes.DoubleOfferedEvent, otherPlayerContract);
-                    if (IsBotPlayer(matchSession, offeringPlayerId))
+                    if (matchLock.IsBotPlayer(offeringPlayerId))
                     {
                         StartTurnTimer(matchSession.Modus, matchSession.Id, offeredPlayerId);
                     }
@@ -1208,10 +1213,10 @@ namespace GammonX.Server
                 doubleCubeSession.AcceptDouble(offeredPlayerId);
                 CancelTimersFor(matchSession.Id, offeredPlayerId, CancellationTokenCategory.Turn);
                 
-                var offeringPlayerId = GetOtherPlayerId(matchSession, offeredPlayerId);
+                var offeringPlayerId = matchLock.GetOtherPlayerId(offeredPlayerId);
                 matchLock.Commit();
                 
-                if (IsBotPlayer(matchSession, offeringPlayerId))
+                if (matchLock.IsBotPlayer(offeringPlayerId))
                 {
                     // the bot offered the double and the player player accepted it
                     // bot executes the next turn
@@ -1222,7 +1227,7 @@ namespace GammonX.Server
                     // doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
                     // Therefore, the next command must be the roll command
                     await SendGameState(ServerEventTypes.DoubleAcceptedEvent, matchSession);
-                    if (IsBotPlayer(matchSession, offeredPlayerId))
+                    if (matchLock.IsBotPlayer(offeredPlayerId))
                     {
                         StartTurnTimer(matchSession.Modus, matchSession.Id, offeringPlayerId);
                     }
@@ -1426,7 +1431,7 @@ namespace GammonX.Server
                     matchSession.EndTurn(botPlayerId);
                     matchLock.Commit();
                     await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
-                    var humanPlayerId = GetOtherPlayerId(matchSession, botPlayerId);
+                    var humanPlayerId = matchLock.GetOtherPlayerId(botPlayerId);
                     StartTurnTimer(matchSession.Modus, matchSession.Id, humanPlayerId);
                 }
             }
@@ -1658,7 +1663,7 @@ namespace GammonX.Server
                 CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
                 // we set a timeout for the players to start the next game
                 StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
-                if (!IsBotPlayer(match, match.Player2.Id))
+                if (!matchLock.IsBotPlayer(match.Player2.Id))
                 {
                     StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
                 }
@@ -1818,32 +1823,6 @@ namespace GammonX.Server
             return ex;
         }
 
-        private Guid GetCallingPlayerId(IMatchSessionModel matchSession)
-        {
-            if (matchSession.Player1.ConnectionId == Context.ConnectionId)
-            {
-                return matchSession.Player1.Id;
-            }
-            if (matchSession.Player2.ConnectionId == Context.ConnectionId)
-            {
-                return matchSession.Player2.Id;
-            }
-            throw new InvalidOperationException("The calling player is not part of the match session.");
-        }
-
-        private static Guid GetOtherPlayerId(IMatchSessionModel matchSession, Guid callingPlayerId)
-        {
-            if (matchSession.Player1.Id.Equals(callingPlayerId))
-            {
-                return matchSession.Player2.Id;
-            }
-            if (matchSession.Player2.Id.Equals(callingPlayerId))
-            {
-                return matchSession.Player1.Id;
-            }
-            throw new InvalidOperationException("The calling player is not part of the match session.");
-        }
-
         private void SetStartRollForPlayer(IMatchSessionModel matchSession, int startDiceRoll)
         {
             if (matchSession.Player1.ConnectionId == Context.ConnectionId)
@@ -1860,49 +1839,15 @@ namespace GammonX.Server
             }
         }
 
-        private static bool IsWhite(IMatchSessionModel matchSession, Guid callingPlayerId)
-        {
-            // player 1 plays always with white checkers
-            if (matchSession.Player1.Id.Equals(callingPlayerId))
-            {
-                return true;
-            }
-            // player 2 plays always with black checkers
-            else if (matchSession.Player2.Id.Equals(callingPlayerId))
-            {
-                return false;
-            }
-            throw new InvalidOperationException("Player is not part of this match session.");
-        }
-
         private static (int, int) InvertFromToMove(IMatchSessionModel matchSession, int from, int to)
         {
             var gameModus = matchSession.GetGameModus();
             return BoardBroker.InvertFromToMove(gameModus, from, to);
         }
 
-        private static bool IsBotPlayer(IMatchSessionModel matchSession, Guid playerId)
-        {
-            return (matchSession.Player1.Id == playerId && matchSession.Player1.IsBot)
-                || (matchSession.Player2.Id == playerId && matchSession.Player2.IsBot);
-        }
-
         private IBotService GetBotService()
         {
             return _serviceProvider.GetRequiredKeyedService<IBotService>(WellKnownBotServices.Mars);
-        }
-
-        private static string GetPlayerConnectionId(IMatchSessionModel matchSession, Guid playerId)
-        {
-            if (matchSession.Player1.Id.Equals(playerId))
-            {
-                return matchSession.Player1.ConnectionId;
-            }
-            else if (matchSession.Player2.Id.Equals(playerId))
-            {
-                return matchSession.Player2.ConnectionId;
-            }
-            throw new InvalidOperationException("The calling player is not part of the match session.");
         }
 
         private async Task SendToCallerAsync<T>(string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase

@@ -123,11 +123,23 @@ public class BoardPositionSnapshotTests
 
     private static long AllocatedForSnapshots(BoardBaseImpl board)
     {
-        GC.KeepAlive(board.CreatePositionSnapshot());
-        var before = GC.GetAllocatedBytesForCurrentThread();
         for (var iteration = 0; iteration < 100; iteration++)
+        {
             GC.KeepAlive(board.CreatePositionSnapshot());
-        return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+
+        // Use the smallest batch to exclude one-time runtime/JIT allocations on this thread.
+        var minimum = long.MaxValue;
+        for (var batch = 0; batch < 3; batch++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var iteration = 0; iteration < 100; iteration++)
+            {
+                GC.KeepAlive(board.CreatePositionSnapshot());
+            }
+            minimum = Math.Min(minimum, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        return minimum;
     }
 
     private static BoardBaseImpl CreateBoard(IBoardService service)

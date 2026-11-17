@@ -1,7 +1,13 @@
 ﻿using GammonX.Engine.Services;
+using GammonX.Engine.History;
+
 using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+
+using Moq;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Repository
@@ -10,9 +16,181 @@ namespace GammonX.Server.Tests.Repository
     {
         private readonly QueueKey _defaultKey = new(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame);
 
+        [Theory]
+        [InlineData(MatchVariant.Backgammon)]
+        [InlineData(MatchVariant.Tavla)]
+        [InlineData(MatchVariant.Tavli)]
+        public async Task CompletedRoundsAreSharedUntilExplicitlyAccessed(MatchVariant variant)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var historyEvent = new Mock<IHistoryEvent>();
+            var cloneable = historyEvent.As<ICloneable>();
+            cloneable.Setup(value => value.Clone()).Returns(historyEvent.Object);
+            await using (var lease = await repo.AcquireStateAsync(id))
+            {
+                var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(match.Player1.Id);
+                ((IEditableBoardHistory)round.BoardModel.History).Add(historyEvent.Object);
+                match.ResignGame(match.Player2.Id);
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                match.StartNextGame(match.Player1.Id);
+                Assert.True(lease.Commit());
+            }
+            cloneable.Invocations.Clear();
+
+            // Act
+            await using (var lease = await repo.AcquireStateAsync(id))
+            {
+                Assert.NotNull(lease.Get());
+                Assert.True(lease.Commit());
+            }
+
+            // Assert
+            cloneable.Verify(value => value.Clone(), Times.Never);
+            var snapshot = repo.Get(id)!;
+            var completed = snapshot.GetGameSession(1)!;
+            var completedBoard = completed.BoardModel;
+            cloneable.Verify(value => value.Clone(), Times.Once);
+            completedBoard.Fields[0] = 99;
+            completedBoard.History.Events.Clear();
+            Assert.NotEqual(99, repo.Get(id)!.GetGameSession(1)!.BoardModel.Fields[0]);
+            Assert.Single(repo.Get(id)!.GetGameSession(1)!.BoardModel.History.Events);
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, false)]
+        [InlineData(MatchVariant.Backgammon, true)]
+        [InlineData(MatchVariant.Tavla, false)]
+        [InlineData(MatchVariant.Tavla, true)]
+        [InlineData(MatchVariant.Tavli, false)]
+        [InlineData(MatchVariant.Tavli, true)]
+        public async Task StateQueriesDoNotCloneMatchAndReturnDetachedPayloads(MatchVariant variant, bool completed)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var playerId = Guid.NewGuid();
+            await using (var lease = await repo.AcquireStateAsync(id))
+            {
+                var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
+                match.JoinSession(new PlayerConnection(playerId, "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(match.Player1.Id);
+                round.SetDiceRolls([2, 3], true);
+                var historyEvent = new Mock<IHistoryEvent>();
+                historyEvent.As<ICloneable>().Setup(value => value.Clone()).Returns(historyEvent.Object);
+                ((IEditableBoardHistory)round.BoardModel.History).Add(historyEvent.Object);
+                if (completed)
+                {
+                    round.StopGame(GammonX.Models.GameResultModel.Draw());
+                }
+                Assert.True(lease.Commit());
+                historyEvent.As<ICloneable>().Setup(value => value.Clone()).Throws(new InvalidOperationException("Query cloned history"));
+            }
+
+            // Act
+            await using var query = await repo.AcquireStateAsync(id);
+            var game = query.ReadGameState(playerId)!;
+            var matchState = query.ReadMatchState(playerId)!;
+            var originalField = game.BoardState.Fields[0];
+            var originalMove = game.MoveSequences[0].Moves[0].From;
+            game.BoardState.Fields[0] = 99;
+            game.DiceRolls[0].Used = true;
+            game.MoveSequences[0].Moves[0].From = 99;
+            matchState.GameRounds![0].Points = 99;
+
+            // Assert
+            var reread = query.ReadGameState(playerId)!;
+            Assert.Equal(originalField, reread.BoardState.Fields[0]);
+            Assert.False(reread.DiceRolls[0].Used);
+            Assert.Equal(originalMove, reread.MoveSequences[0].Moves[0].From);
+            Assert.NotEqual(99, query.ReadMatchState(playerId)!.GameRounds![0].Points);
+            Assert.False(query.Commit()); // A state query never loads a working match.
+        }
+
         private static MatchSessionRepository CreateRepo()
         {
             return new MatchSessionRepository(new MatchSessionFactory(new GameSessionFactory(new DiceServiceFactory())));
+        }
+
+        [Fact]
+        public async Task PlayerHelpersObserveWorkingStateAndRejectDisposedLeases()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var player1 = Guid.NewGuid();
+            var player2 = Guid.NewGuid();
+            await using (var setup = await repo.AcquireStateAsync(id))
+            {
+                var match = setup.Create(_defaultKey);
+                match.JoinSession(new PlayerConnection(player1, "one"));
+                match.JoinSession(new PlayerConnection(player2, "two"));
+                Assert.True(setup.Commit());
+            }
+
+            // Act: scalar reads do not load a working copy; subsequent updates are visible.
+            var lease = await repo.AcquireStateAsync(id);
+            Assert.Equal(player1, lease.GetCallingPlayerId("one"));
+            Assert.Equal(player2, lease.GetOtherPlayerId(player1));
+            Assert.Equal("two", lease.GetPlayerConnectionId(player2));
+            Assert.True(lease.IsWhite(player1));
+            Assert.False(lease.IsWhite(player2));
+            Assert.False(lease.IsBotPlayer(player2));
+            Assert.False(lease.Commit());
+            Assert.True(lease.TryRemove());
+            Assert.Throws<InvalidOperationException>(() => lease.GetCallingPlayerId("one"));
+            Assert.Throws<InvalidOperationException>(() => lease.GetOtherPlayerId(player1));
+            Assert.Throws<InvalidOperationException>(() => lease.IsBotPlayer(player2));
+            await lease.DisposeAsync();
+
+            // Assert
+            Assert.Throws<ObjectDisposedException>(() => lease.GetCallingPlayerId("one"));
+            Assert.Throws<ObjectDisposedException>(() => lease.GetOtherPlayerId(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.GetPlayerConnectionId(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.IsWhite(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.IsBotPlayer(player1));
+            Assert.Null(repo.Get(id));
+        }
+
+        [Fact]
+        public async Task CompletedMatchQueriesDoNotSetStoredEndTime()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var player = Guid.NewGuid();
+            await using (var setup = await repo.AcquireStateAsync(id))
+            {
+                var match = setup.Create(_defaultKey);
+                match.JoinSession(new PlayerConnection(player, "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(player);
+                round.StopGame(GammonX.Models.GameResultModel.Draw());
+                match.Player1.Points = 5;
+                Assert.True(setup.Commit());
+            }
+
+            // Act
+            await using (var query = await repo.AcquireStateAsync(id))
+            {
+                Assert.NotNull(query.ReadGameState(player));
+                Assert.NotNull(query.ReadMatchState(player));
+            }
+
+            // Assert
+            Assert.Null(repo.Get(id)!.EndedAt);
         }
 
         [Fact]

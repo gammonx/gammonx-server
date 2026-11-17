@@ -339,6 +339,11 @@ namespace GammonX.Server.Models
 		{
 			var activeSession = GetGameSession(GameRound);
 
+            if (activeSession?.Phase != GamePhase.WaitingForRoll)
+            {
+                return false;
+            }
+
 			if (activeSession?.BoardModel is not IDoublingCubeModel doublingCubeModel)
 			{
 				return false;
@@ -386,7 +391,7 @@ namespace GammonX.Server.Models
         public override object Clone()
         {
             var restoredQueueKey = new QueueKey(this.Variant, this.Modus, this.Type, this.BotLevel);
-			var gameSessionClones = this.GameSessions.Select(gs => (IGameSessionModel?)((ICloneable?)gs)?.Clone()).ToArray();
+			var gameSessionClones = this.GameSessions.Select(GameSessionSnapshot.CloneSession).ToArray();
 
             return new BackgammonMatchSession(this.Id, restoredQueueKey, _gameSessionFactory)
 			{

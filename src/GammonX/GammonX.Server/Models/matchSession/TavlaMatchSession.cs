@@ -79,7 +79,7 @@ namespace GammonX.Server.Models
         public override object Clone()
         {
             var restoredQueueKey = new QueueKey(this.Variant, this.Modus, this.Type, this.BotLevel);
-			var gameSessionClones = this.GameSessions.Select(gs => (IGameSessionModel?)((ICloneable?)gs)?.Clone()).ToArray();
+			var gameSessionClones = this.GameSessions.Select(GameSessionSnapshot.CloneSession).ToArray();
 
             return new TavlaMatchSession(this.Id, restoredQueueKey, _gameSessionFactory)
 			{

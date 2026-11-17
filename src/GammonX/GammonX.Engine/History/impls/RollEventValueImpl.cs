@@ -7,7 +7,7 @@
 
 		public RollEventValueImpl(params int[] rolls)
 		{
-			_rolls = rolls;
+			_rolls = rolls.ToArray();
 		}
 	
 		// <inheritdoc />
@@ -19,7 +19,7 @@
         // <inheritdoc />
         public object GetValue()
 		{
-			return _rolls;
+			return _rolls.ToArray();
 		}
 
 		/// <summary>

@@ -880,6 +880,36 @@ namespace GammonX.Server.Tests.Integration
             return (session, hub, clients);
         }
 
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task StateQueryRespondsOnlyToCallingPlayer(bool matchState, bool player2Calls)
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture(player2Starts: player2Calls);
+            var clients = Mock.Get(fixture.Hub.Clients);
+            clients.Invocations.Clear();
+            fixture.Client.Invocations.Clear();
+            var eventName = matchState ? ServerEventTypes.MatchStateEvent : ServerEventTypes.GameStateEvent;
+
+            // Act
+            if (matchState)
+            {
+                await fixture.Hub.MatchStateAsync(fixture.Session.Id.ToString());
+            }
+            else
+            {
+                await fixture.Hub.GameStateAsync(fixture.Session.Id.ToString());
+            }
+
+            // Assert
+            clients.Verify(value => value.Client(player2Calls ? "player2" : "player1"), Times.Once);
+            clients.Verify(value => value.Client(player2Calls ? "player1" : "player2"), Times.Never);
+            fixture.Client.Verify(value => value.SendCoreAsync(eventName, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         [Fact]
         public async Task MatchHubWaitsForRepositoryLockBeforeReadingStartingState()
         {

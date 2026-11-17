@@ -1,5 +1,9 @@
 # Changelog
 
+## 17.11.2026
+- Load Test findings
+	- reduce unused board/history allocations on hot paths
+
 ## 15.11.2026
 - ranked matchmaking
 	- allow a matching bot as playing opponent if no human is found

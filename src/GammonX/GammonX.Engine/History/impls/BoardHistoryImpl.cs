@@ -39,11 +39,19 @@ namespace GammonX.Engine.History
 		{
 			return _history.TryPeek(out lastEvent);
 		}
-		
+
 		// <inheritdoc />
 		public object Clone()
 		{
-			var historyClone = _history.Select(e => (IHistoryEvent)((ICloneable)e).Clone()).Reverse();
+			// Built-in event values are immutable; only the stack needs its own storage.
+			// Preserve defensive cloning for custom event implementations.
+			var historyClone = _history.Select(e => e is HistoryEventImpl
+                {
+                    Value: RollEventValueImpl or MoveEventValueImpl or HitEventValueImpl or CubeEventValueImpl
+                }
+                ? e
+                : (IHistoryEvent)((ICloneable)e).Clone()).Reverse();
+
 			return new BoardHistoryImpl()
 			{
 				_history = new Stack<IHistoryEvent>(historyClone)

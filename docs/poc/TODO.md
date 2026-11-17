@@ -2,8 +2,7 @@
 - see changelog 
 
 ## Active
-- bot as ranked opponent
-- track bot profiles as "players"
+- load test findings
 
 ## TODO
 - invite friend by link

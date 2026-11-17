@@ -48,8 +48,8 @@ namespace GammonX.Engine.Tests
 			Assert.Equal(2, clonedEvents.Length);
 			for (var eventIndex = 0; eventIndex < originalEvents.Length; eventIndex++)
 			{
-				Assert.NotSame(originalEvents[eventIndex], clonedEvents[eventIndex]);
-				Assert.NotSame(originalEvents[eventIndex].Value, clonedEvents[eventIndex].Value);
+				Assert.Same(originalEvents[eventIndex], clonedEvents[eventIndex]);
+				Assert.Same(originalEvents[eventIndex].Value, clonedEvents[eventIndex].Value);
 				Assert.Equal(originalEvents[eventIndex].ToString(), clonedEvents[eventIndex].ToString());
 			}
 			var clonedRolls = Assert.IsType<int[]>(clonedEvents[0].Value.GetValue());

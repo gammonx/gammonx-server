@@ -8,6 +8,43 @@ namespace GammonX.Engine.Tests
 {
 	public class BoardHistoryTests
 	{
+        [Fact]
+        public void BoardHistoryCloneStillCopiesCustomEventValues()
+        {
+            // Arrange
+            var customValue = new Moq.Mock<IHistoryEventValue>();
+            customValue.Setup(value => value.Clone()).Returns(() => new RollEventValueImpl(2, 3));
+            var historyEvent = new HistoryEventImpl(HistoryEventType.Roll, customValue.Object, true);
+            var history = new BoardHistoryImpl();
+            history.Add(historyEvent);
+
+            // Act
+            var clone = (BoardHistoryImpl)history.Clone();
+
+            // Assert
+            var clonedEvent = Assert.Single(clone.Events);
+            Assert.NotSame(historyEvent, clonedEvent);
+            Assert.NotSame(customValue.Object, clonedEvent.Value);
+            customValue.Verify(value => value.Clone(), Moq.Times.Once);
+        }
+
+        [Fact]
+        public void HistoryValuesDefensivelyCopyInputAndOutputArrays()
+        {
+            var rolls = new[] { 2, 3 };
+            var moves = new[] { Tuple.Create(0, 2) };
+            var rollValue = new RollEventValueImpl(rolls);
+            var moveValue = new MoveEventValueImpl(moves);
+
+            rolls[0] = 6;
+            moves[0] = Tuple.Create(9, 10);
+            ((int[])rollValue.GetValue())[0] = 5;
+            ((Tuple<int, int>[])moveValue.GetValue())[0] = Tuple.Create(10, 11);
+
+            Assert.Equal(new[] { 2, 3 }, (int[])rollValue.GetValue());
+            Assert.Equal(new[] { Tuple.Create(0, 2) }, (Tuple<int, int>[])moveValue.GetValue());
+        }
+
 		[Theory]
 		[InlineData(1, 2)]
 		[InlineData(6, 6)]
@@ -81,7 +118,7 @@ namespace GammonX.Engine.Tests
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]
-		public void BoardHistoryClonePreservesOrderAndCopiesEvents(bool isWhite)
+		public void BoardHistoryClonePreservesOrderAndSharesImmutableEvents(bool isWhite)
 		{
 			var history = new BoardHistoryImpl();
 			history.Add(HistoryEventFactory.CreateRollEvent(isWhite, 2, 3));
@@ -103,11 +140,11 @@ namespace GammonX.Engine.Tests
 			{
 				var originalEvent = originalEvents[eventIndex];
 				var clonedEvent = clonedEvents[eventIndex];
-				Assert.NotSame(originalEvent, clonedEvent);
+				Assert.Same(originalEvent, clonedEvent);
 				Assert.Equal(originalEvent.GetType(), clonedEvent.GetType());
 				Assert.Equal(originalEvent.Type, clonedEvent.Type);
 				Assert.Equal(originalEvent.IsWhite, clonedEvent.IsWhite);
-				Assert.NotSame(originalEvent.Value, clonedEvent.Value);
+				Assert.Same(originalEvent.Value, clonedEvent.Value);
 				Assert.Equal(originalEvent.Value.GetType(), clonedEvent.Value.GetType());
 				Assert.Equal(originalEvent.ToString(), clonedEvent.ToString());
 			}

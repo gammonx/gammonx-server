@@ -1,5 +1,7 @@
 ﻿using GammonX.Server.Models;
 
+using GammonX.Server.Services;
+
 namespace GammonX.Server
 {
     /// <summary>
@@ -146,7 +148,7 @@ namespace GammonX.Server
             // we check if the active game session is over
             if (game != null && game.Phase == GamePhase.GameOver)
             {
-                if (match.IsMatchOver())
+                if (match.Type.GetMatchOverFunc()(match))
                 {
                     return Array.Empty<string>();
                 }
@@ -186,7 +188,7 @@ namespace GammonX.Server
                         {
                             if (game.Phase == GamePhase.GameOver)
                             {
-                                if (match.IsMatchOver())
+                                if (match.Type.GetMatchOverFunc()(match))
                                 {
                                     return Array.Empty<string>();
                                 }

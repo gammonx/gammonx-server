@@ -9,13 +9,13 @@ namespace GammonX.Engine.History
 
 		public MoveEventValueImpl(params Tuple<int, int>[] moves)
 		{
-			_moves = moves;
+			_moves = moves.ToArray();
 		}
 
 		// <inheritdoc />
 		public object GetValue()
 		{
-			return _moves;
+			return _moves.ToArray();
 		}
 
 		/// <summary>

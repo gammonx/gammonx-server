@@ -3,6 +3,9 @@
 	/// <summary>
 	/// Provides the capabilities to handle different kind of game history event values.
 	/// </summary>
+	/// <remarks>
+	/// The history event value should be immutable.
+	/// </remarks>
 	public interface IHistoryEventValue
 	{
 		/// <summary>

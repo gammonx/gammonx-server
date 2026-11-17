@@ -47,7 +47,14 @@ namespace GammonX.Server.Tests.Match
 				Assert.NotNull(originalGame);
 				Assert.NotNull(clonedGame);
 				Assert.NotSame(originalGame, clonedGame);
-				Assert.Equal(originalGame.GetType(), clonedGame.GetType());
+				if (originalGame.Phase == GamePhase.GameOver)
+                {
+                    Assert.IsType<GameSessionSnapshot>(clonedGame);
+                }
+                else
+                {
+                    Assert.Equal(originalGame.GetType(), clonedGame.GetType());
+                }
 				Assert.Equal(originalGame.Id, clonedGame.Id);
 				Assert.Equal(originalGame.Modus, clonedGame.Modus);
 				Assert.Equal(originalGame.Result, clonedGame.Result);

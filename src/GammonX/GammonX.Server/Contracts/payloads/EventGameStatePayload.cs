@@ -53,6 +53,13 @@ namespace GammonX.Server.Contracts
 
 		public static EventGameStatePayload Create(IGameSessionModel model, bool inverted, params string[] allowedCommands)
 		{
+			var boardState = model.BoardModel.ToContract(inverted);
+            // Responses may outlive the repository read; never expose stored arrays.
+            if (!inverted)
+            {
+                boardState.Fields = boardState.Fields.ToArray();
+                boardState.PinnedFields = boardState.PinnedFields?.ToArray();
+            }
 			return new EventGameStatePayload(allowedCommands)
 			{
 				Modus = model.Modus,
@@ -61,9 +68,11 @@ namespace GammonX.Server.Contracts
 				Phase = model.Phase,
 				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
-				DiceRolls = model.DiceRolls.ToArray(),
-				MoveSequences = model.MoveSequences.ToContract(inverted, model.Modus),
-				BoardState = model.BoardModel.ToContract(inverted),
+				DiceRolls = ((DiceRollsModel)model.DiceRolls.Clone()).ToArray(),
+				MoveSequences = inverted
+                    ? model.MoveSequences.ToContract(true, model.Modus)
+                    : model.MoveSequences.Select(sequence => sequence.DeepClone()).ToArray(),
+				BoardState = boardState,
 			};
 		}
 	}
