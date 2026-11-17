@@ -37,12 +37,19 @@ namespace GammonX.Server
         private readonly ICancellationTokenService _cancellationTokenService;
 
         private readonly IMatchmakingService _matchmakingService;
+        
         private readonly MatchSessionRepository _matchRepository;
+        
         private readonly MatchLobbyCleanupService _lobbyCleanup;
+        
         private readonly PlayerConnectionRepository _playerConnectionRepository;
+        
         private readonly IDiceService _diceService;
+        
         private readonly IServiceProvider _serviceProvider;
+        
         private readonly IWorkQueueService _workQueue;
+        
         private readonly IHubContext<MatchLobbyHub> _hubContext;
 
         public MatchLobbyHub(IServiceProvider serviceProvider)

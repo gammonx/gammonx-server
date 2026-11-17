@@ -201,7 +201,14 @@ namespace GammonX.Server.Models
 
                 // we recalculate the remaining move for the given unused dices
                 var remainingRolls = DiceRolls.GetRemainingRolls();
-                CalculateLegalMoveSequences(isWhite, remainingRolls);
+                if (remainingRolls != null && remainingRolls.Count() > 0)
+				{
+					CalculateLegalMoveSequences(isWhite, remainingRolls);
+				}
+				else
+				{
+					MoveSequences = new MoveSequences();
+				}
 
                 // if dices left
                 if (MoveSequences.CanMove)

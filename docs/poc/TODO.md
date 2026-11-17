@@ -2,7 +2,7 @@
 - see changelog 
 
 ## Active
-- load test findings
+- ?
 
 ## TODO
 - invite friend by link
