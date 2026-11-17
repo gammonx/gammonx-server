@@ -1169,6 +1169,86 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Theory]
+        [InlineData("match-ended", false)]
+        [InlineData("force-disconnect", false)]
+        [InlineData("group-removal", false)]
+        [InlineData("publication-error", false)]
+        [InlineData("force-disconnect", true)]
+        public async Task CompletedMatchCleanupSurvivesExternalFailures(string failure, bool botOpponent)
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture(botOpponent: botOpponent);
+            var match = fixture.Session;
+            _playerConnRepo.AddOrUpdate(match.Player1.Id, match.Player1.ConnectionId);
+            _playerConnRepo.AddOrUpdate(match.Player2.Id, match.Player2.ConnectionId);
+            var groups = Mock.Get(fixture.Hub.Groups);
+            var failedEvent = failure switch
+            {
+                "match-ended" => ServerEventTypes.MatchEndedEvent,
+                "force-disconnect" => ServerEventTypes.ForceDisconnectEvent,
+                "publication-error" => ServerEventTypes.ErrorEvent,
+                _ => null
+            };
+            if (failedEvent != null)
+            {
+                fixture.Client.Setup(client => client.SendCoreAsync(failedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new InvalidOperationException("Notification failed."));
+            }
+            if (failure == "group-removal")
+            {
+                groups.Setup(group => group.RemoveFromGroupAsync(match.Player1.ConnectionId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new InvalidOperationException("Group removal failed."));
+            }
+            if (failure == "publication-error")
+            {
+                _workQueueService.Setup(queue => queue.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                    .ThrowsAsync(new InvalidOperationException("Publication failed."));
+            }
+            var keys = new[] { match.Player1.Id, match.Player2.Id }.SelectMany(player =>
+                new[] { CancellationTokenCategory.Turn, CancellationTokenCategory.Disconnect }.Select(category =>
+                    new CancellationTokenKey { MatchId = match.Id, PlayerId = player, Category = category })).ToArray();
+            var timers = keys.Select(_ => new CancellationTokenSource()).ToArray();
+            try
+            {
+                for (var index = 0; index < keys.Length; index++)
+                {
+                    _cancellationTokenService.Store(keys[index], timers[index]);
+                }
+
+                // Act
+                var operation = fixture.Hub.ResignMatchAsync(match.Id.ToString());
+                if (failure == "publication-error")
+                {
+                    await Assert.ThrowsAsync<InvalidOperationException>(() => operation);
+                }
+                else
+                {
+                    await operation;
+                }
+
+                // Assert
+                Assert.Null(_matchRepo.Get(match.Id));
+                Assert.Null(_playerConnRepo.Get(match.Player1.Id));
+                Assert.Equal(botOpponent, _playerConnRepo.Get(match.Player2.Id) != null);
+                Assert.All(timers, timer => Assert.True(timer.IsCancellationRequested));
+                Assert.All(keys, key => Assert.False(_cancellationTokenService.TryGet(key, out _)));
+                var groupName = $"match_{match.Id}";
+                groups.Verify(group => group.RemoveFromGroupAsync(match.Player1.ConnectionId, groupName, It.IsAny<CancellationToken>()), Times.Once);
+                groups.Verify(group => group.RemoveFromGroupAsync(match.Player2.ConnectionId, groupName, It.IsAny<CancellationToken>()),
+                    botOpponent ? Times.Never() : Times.Once());
+                await using var nextLease = await _matchRepo.AcquireStateAsync(match.Id).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                Assert.Null(nextLease.Get());
+            }
+            finally
+            {
+                foreach (var timer in timers)
+                {
+                    timer.Dispose();
+                }
+            }
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task MatchHubCommitsWinningMoveBeforeResultPublication(bool concludesMatch)

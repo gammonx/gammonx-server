@@ -1636,36 +1636,43 @@ namespace GammonX.Server
 
         private async Task SendMatchState(MatchSessionLease matchLock, string serverEventName, IMatchSessionModel match)
         {
-            // we put the results in the work queue if applicable
-            // We await the call in order to ensure that the events are properly published
-            await EnqueueResultsForProcessingAsync(match, serverEventName);
-
-            var payloadPlayer1 = match.ToPayload(match.Player1.Id);
-            payloadPlayer1.AppendRatingUrl(match.Player1.Id, serverEventName);
-            var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
-            await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
-
-            if (!match.Player2.IsBot)
+            try
             {
-                var payloadPlayer2 = match.ToPayload(match.Player2.Id);
-                payloadPlayer2.AppendRatingUrl(match.Player2.Id, serverEventName);
-                var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
-                await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
-            }
+                // we put the results in the work queue if applicable
+                // We await the call in order to ensure that the events are properly published
+                await EnqueueResultsForProcessingAsync(match, serverEventName);
 
-            if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
-            {
-                await CleanUpMatchAsync(matchLock, match, payloadPlayer1.GroupName);
-            }
-            else if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
-            {
-                // we do not know for sure which turn it was, so we cancel all active turn timers
-                CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
-                // we set a timeout for the players to start the next game
-                StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
-                if (!matchLock.IsBotPlayer(match.Player2.Id))
+                var payloadPlayer1 = match.ToPayload(match.Player1.Id);
+                payloadPlayer1.AppendRatingUrl(match.Player1.Id, serverEventName);
+                var contractPlayer1 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer1);
+                await SendToClientAsync(match.Player1.ConnectionId, serverEventName, contractPlayer1);
+
+                if (!match.Player2.IsBot)
                 {
-                    StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
+                    var payloadPlayer2 = match.ToPayload(match.Player2.Id);
+                    payloadPlayer2.AppendRatingUrl(match.Player2.Id, serverEventName);
+                    var contractPlayer2 = new EventResponseContract<EventMatchStatePayload>(serverEventName, payloadPlayer2);
+                    await SendToClientAsync(match.Player2.ConnectionId, serverEventName, contractPlayer2);
+                }
+
+                if (serverEventName.Equals(ServerEventTypes.GameEndedEvent))
+                {
+                    // we do not know for sure which turn it was, so we cancel all active turn timers
+                    CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
+                    // we set a timeout for the players to start the next game
+                    StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
+                    if (!matchLock.IsBotPlayer(match.Player2.Id))
+                    {
+                        StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
+                    }
+                }
+            }
+            finally
+            {
+                // Completed matches must not remain stored when publication or notification fails.
+                if (serverEventName.Equals(ServerEventTypes.MatchEndedEvent))
+                {
+                    await CleanUpMatchAsync(matchLock, match, ConstructGroupName(match.Id));
                 }
             }
         }
@@ -1676,24 +1683,52 @@ namespace GammonX.Server
             {
                 return;
             }
-            _matchmakingService.TryRemoveMatchLobby(match.Id);
-            // clients can now safely disconnect from socket
-            var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-            await SendToGroupAsync(groupName, ServerEventTypes.ForceDisconnectEvent, emptyResponse);
-            await RemoveFromGroupAsync(match.Player1.ConnectionId, groupName);
-            await RemoveFromGroupAsync(match.Player2.ConnectionId, groupName);
-            // we clean up the repositories
-            matchLock.TryRemove();
-            if (!match.Player1.IsBot)
+
+            try
             {
-                _playerConnectionRepository.TryRemove(match.Player1.Id);
+                try
+                {
+                    var response = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
+                    await SendToGroupAsync(groupName, ServerEventTypes.ForceDisconnectEvent, response);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unable to notify completed match {matchId}.", match.Id);
+                }
+
+                foreach (var player in new[] { match.Player1, match.Player2 })
+                {
+                    if (!player.IsBot && !string.IsNullOrEmpty(player.ConnectionId))
+                    {
+                        try
+                        {
+                            await RemoveFromGroupAsync(player.ConnectionId, groupName);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Unable to remove a connection from completed match {matchId}.", match.Id);
+                        }
+                    }
+                }
             }
-            if (!match.Player2.IsBot)
+            finally
             {
-                _playerConnectionRepository.TryRemove(match.Player2.Id);
+                _matchmakingService.TryRemoveMatchLobby(match.Id);
+                matchLock.TryRemove();
+
+                if (!match.Player1.IsBot)
+                {
+                    _playerConnectionRepository.TryRemove(match.Player1.Id);
+                }
+                
+                if (!match.Player2.IsBot)
+                {
+                    _playerConnectionRepository.TryRemove(match.Player2.Id);
+                }
+                
+                CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
+                CancelTimersFor(match.Id, CancellationTokenCategory.Disconnect);
             }
-            CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
-            CancelTimersFor(match.Id, CancellationTokenCategory.Disconnect);
         }
 
         private async Task EnqueueResultsForProcessingAsync(IMatchSessionModel match, string serverEventName)
