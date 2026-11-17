@@ -38,6 +38,9 @@ namespace GammonX.Server.Contracts
         [DataMember(Name = "diceRolls")]
 		public DiceRollContract[] DiceRolls { get; set; }
 
+        /// <summary>
+        /// Gets or sets legal move sequences for the recipient. Empty for a waiting player.
+        /// </summary>
 		[DataMember(Name = "moveSequences")]
 		public MoveSequenceModel[] MoveSequences { get; set; }
 
@@ -51,15 +54,30 @@ namespace GammonX.Server.Contracts
 			BoardState = new BoardModelContract();
 		}
 
-		public static EventGameStatePayload Create(IGameSessionModel model, bool inverted, params string[] allowedCommands)
+        internal static EventGameStatePayload Create(
+			IGameSessionModel model, 
+			bool inverted, 
+			bool activePlayer, 
+			params string[] allowedCommands)
 		{
 			var boardState = model.BoardModel.ToContract(inverted);
-            // Responses may outlive the repository read; never expose stored arrays.
+            
+			// Responses may outlive the repository read; never expose stored arrays.
             if (!inverted)
             {
                 boardState.Fields = boardState.Fields.ToArray();
                 boardState.PinnedFields = boardState.PinnedFields?.ToArray();
             }
+
+            // A waiting player needs board state only; avoid cloning or inverting the move list.
+            var moveSequences = Array.Empty<MoveSequenceModel>();
+            if (activePlayer)
+            {
+                moveSequences = inverted
+                    ? model.MoveSequences.ToContract(true, model.Modus)
+                    : model.MoveSequences.Select(sequence => sequence.DeepClone()).ToArray();
+            }
+
 			return new EventGameStatePayload(allowedCommands)
 			{
 				Modus = model.Modus,
@@ -69,9 +87,7 @@ namespace GammonX.Server.Contracts
 				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
 				DiceRolls = ((DiceRollsModel)model.DiceRolls.Clone()).ToArray(),
-				MoveSequences = inverted
-                    ? model.MoveSequences.ToContract(true, model.Modus)
-                    : model.MoveSequences.Select(sequence => sequence.DeepClone()).ToArray(),
+				MoveSequences = moveSequences,
 				BoardState = boardState,
 			};
 		}

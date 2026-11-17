@@ -21,6 +21,50 @@ namespace GammonX.Server.Tests
         private static readonly GameSessionFactory _gameSessionFactory = new(_diceServiceFactory);
 
         [Theory]
+        [InlineData(GameModus.Backgammon, true)]
+        [InlineData(GameModus.Backgammon, false)]
+        [InlineData(GameModus.Portes, true)]
+        [InlineData(GameModus.Portes, false)]
+        [InlineData(GameModus.Tavla, true)]
+        [InlineData(GameModus.Tavla, false)]
+        [InlineData(GameModus.Plakoto, true)]
+        [InlineData(GameModus.Plakoto, false)]
+        [InlineData(GameModus.Fevga, true)]
+        [InlineData(GameModus.Fevga, false)]
+        public void PayloadIncludesLegalMovesOnlyForActivePlayerAndFollowsTurnChanges(GameModus modus, bool isWhite)
+        {
+            // Arrange
+            var game = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var active = Guid.NewGuid();
+            var waiting = Guid.NewGuid();
+            game.StartGame(active, waiting);
+            game.SetDiceRolls([3, 3], isWhite);
+            var sequenceCount = game.MoveSequences.Count;
+
+            // Act
+            var activePayload = game.ToPayload(active, [], !isWhite);
+            var waitingPayload = game.ToPayload(waiting, [], isWhite);
+
+            // Assert
+            Assert.True(sequenceCount > 0);
+            Assert.Equal(sequenceCount, activePayload.MoveSequences.Length);
+            Assert.Empty(waitingPayload.MoveSequences);
+            Assert.Equal(GamePhase.WaitingForOpponent, waitingPayload.Phase);
+            Assert.Equal(game.Phase, activePayload.Phase);
+            Assert.Equal(active, waitingPayload.ActiveTurn);
+            Assert.Equal(activePayload.TurnNumber, waitingPayload.TurnNumber);
+            Assert.Equal(activePayload.DiceRolls.Select(dice => dice.Roll), waitingPayload.DiceRolls.Select(dice => dice.Roll));
+            Assert.NotEmpty(waitingPayload.BoardState.Fields);
+            Assert.Equal(sequenceCount, game.MoveSequences.Count);
+
+            game.NextTurn(waiting);
+            game.SetDiceRolls([2, 3], !isWhite);
+            Assert.NotEmpty(game.MoveSequences);
+            Assert.Equal(game.MoveSequences.Count, game.ToPayload(waiting, [], isWhite).MoveSequences.Length);
+            Assert.Empty(game.ToPayload(active, [], !isWhite).MoveSequences);
+        }
+
+        [Theory]
         [InlineData(GameModus.Backgammon)]
         [InlineData(GameModus.Tavla)]
         [InlineData(GameModus.Portes)]

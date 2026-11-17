@@ -299,9 +299,10 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted)
 		{
-			var payload = EventGameStatePayload.Create(this, inverted, allowedCommands);
+			var isActivePlayer = ActivePlayer == playerId;
+            var payload = EventGameStatePayload.Create(this, inverted, isActivePlayer, allowedCommands);
 
-			if (ActivePlayer != playerId)
+			if (!isActivePlayer)
 			{
 				// we need to set the phase on the payload in order to
 				// no disturb the active players game phase

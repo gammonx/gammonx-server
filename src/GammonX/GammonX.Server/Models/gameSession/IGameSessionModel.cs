@@ -175,6 +175,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Creates a payload which can be sent to a client.
 		/// </summary>
+        /// <remarks>
+        /// Legal move sequences are included only for the active player; waiting players receive an empty array.
+        /// </remarks>
 		/// <param name="playerId">Player for which the payload is constructed.</param>
 		/// <param name="allowedCommands">A list of allowed commands for the client.</param>
 		/// <param name="inverted">If set to <c>true</c> the payload is created for player 2. Otherwise for player 1.</param>

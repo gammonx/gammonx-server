@@ -1,5 +1,7 @@
 ﻿using System.Runtime.Serialization;
 
+using System.Text.Json.Serialization;
+
 namespace GammonX.Server.Bot
 {
 	/// <summary>
@@ -82,6 +84,7 @@ namespace GammonX.Server.Bot
 		/// Probability to lose normal, gammon or backgammon.
 		/// </summary>
 		[IgnoreDataMember]
+        [JsonIgnore]
 		public double Lose => 1 - Win;
 
 		/// <summary>
