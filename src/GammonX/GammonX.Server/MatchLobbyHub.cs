@@ -1706,7 +1706,8 @@ namespace GammonX.Server
                     try
                     {
                         var gameRound = GetLastConcludedGameRoundIndex(match);
-                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                        var gameRecords = match.ToRecords(gameRound);
+                        await _workQueue.EnqueueGameResultAsync(gameRecords, CancellationToken.None);
                     }
                     catch (Exception e)
                     {
@@ -1720,17 +1721,22 @@ namespace GammonX.Server
                     {
                         // we have to enqueue the last game of the match as well
                         var gameRound = GetLastConcludedGameRoundIndex(match);
-                        await _workQueue.EnqueueGameResultAsync(match, gameRound, CancellationToken.None);
+                        var gameRecords = match.ToRecords(gameRound);
+                        await _workQueue.EnqueueGameResultAsync(gameRecords, CancellationToken.None);
                     }
                     catch (Exception e)
                     {
                         Log.Logger.Error(e, "Code {errorCode} :: Message {errorMessage}", "ENQUEUE_GAME_RESULT_ERROR", $"An error occurred while enqueuing the game result for match {match.Id}.");
                         enqueueExceptions.Add(e);
                     }
+
+                    // we fetch the match records and their related games and histories once
+                    var matchRecords = match.ToRecords();
+
                     try
                     {
                         // we process the match result
-                        await _workQueue.EnqueueMatchResultAsync(match, CancellationToken.None);
+                        await _workQueue.EnqueueMatchResultAsync(matchRecords, CancellationToken.None);
                     }
                     catch (Exception e)
                     {
@@ -1740,7 +1746,7 @@ namespace GammonX.Server
                     try
                     {
                         // we update the player stats based on the match result
-                        await _workQueue.EnqueueStatProcessingAsync(match, CancellationToken.None);
+                        await _workQueue.EnqueueStatProcessingAsync(matchRecords, CancellationToken.None);
                     }
                     catch (Exception e)
                     {
@@ -1752,7 +1758,7 @@ namespace GammonX.Server
                     {
                         try
                         {
-                            await _workQueue.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+                            await _workQueue.EnqueueRatingProcessingAsync(matchRecords, CancellationToken.None);
                         }
                         catch (Exception e)
                         {

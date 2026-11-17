@@ -1,4 +1,4 @@
-using GammonX.Engine.Models;
+﻿using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
 using GammonX.Models;
@@ -6,6 +6,7 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
 using GammonX.Server.Contracts;
+using GammonX.Server.Extensions;
 using GammonX.Server.Models;
 using GammonX.Server.Queue;
 using GammonX.Server.Repository;
@@ -52,18 +53,19 @@ namespace GammonX.Server.Tests.Integration
             _diceFactory = new DiceServiceFactory();
             var gameSessionFactory = new GameSessionFactory(_diceFactory);
             var matchSessionFactory = new MatchSessionFactory(gameSessionFactory);
+            _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _normalService = new NormalMatchmakingService(_playerConnRepo);
 
             var mockScopeFactory = new Mock<IServiceScopeFactory>();
             Assert.NotNull(mockScopeFactory);
 
             _workQueueService = new();
-            _workQueueService.Setup(x => x.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            _workQueueService.Setup(x => x.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()))
-                .Callback<IMatchSessionModel, CancellationToken>((match, _) => _completedMatches[match.Id] = (IMatchSessionModel)match.Clone())
+            _workQueueService.Setup(x => x.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<MatchRecordContracts, CancellationToken>((records, _) => _completedMatches[records.Player1.Id] = _matchRepo.Get(records.Player1.Id)!)
                 .Returns(Task.CompletedTask);
-            _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _workQueueService.Setup(x => x.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
             var stubRepoClient = new SimpleRepositoryClient();
 
@@ -73,7 +75,6 @@ namespace GammonX.Server.Tests.Integration
             compositeService.AddService(MatchModus.Normal, _normalService);
             compositeService.AddService(MatchModus.Ranked, _rankedService);
             compositeService.AddService(MatchModus.Bot, _botMatchService);
-            _matchRepo = new MatchSessionRepository(matchSessionFactory);
             _wildBgBot = new WildbgBotService(_wildBgClient);
             _marsBot = new MarsBotService(_marsClient);
             _cancellationTokenService = new CancellationTokenServiceImpl();
@@ -109,7 +110,7 @@ namespace GammonX.Server.Tests.Integration
             await fixture.Hub.ResignMatchAsync(id.ToString());
             Assert.Null(_matchRepo.Get(id));
             _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
-                It.Is<IMatchSessionModel>(match => match.Id == id && match.Player2.Id == started.Player2.Id),
+                It.Is<MatchRecordContracts>(records => records.Player1.Id == id && records.Player2.PlayerId == started.Player2.Id),
                 It.IsAny<CancellationToken>()), modus == MatchModus.Ranked ? Times.Once() : Times.Never());
             Assert.NotNull(_playerConnRepo.Get(started.Player2.Id));
         }
@@ -263,7 +264,7 @@ namespace GammonX.Server.Tests.Integration
             Assert.Null(_matchRepo.Get(matchId));
             Assert.Null(_playerConnRepo.Get(playerId));
             _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
-                It.Is<IMatchSessionModel>(match => match.Id == matchId), It.IsAny<CancellationToken>()), Times.Once);
+                It.Is<MatchRecordContracts>(records => records.Player1.Id == matchId), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         private static Task InvokeDisconnectExpiryAsync(MatchLobbyHub hub, Guid playerId, Guid matchId,
@@ -304,8 +305,8 @@ namespace GammonX.Server.Tests.Integration
             Assert.Null(_matchRepo.Get(matchId));
             Assert.Null(_playerConnRepo.Get(playerId));
             Assert.NotNull(_playerConnRepo.Get(fixture.Session.Player2.Id));
-            _workQueueService.Verify(value => value.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
-            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never);
+            _workQueueService.Verify(value => value.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never);
+            _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Theory]
@@ -731,7 +732,7 @@ namespace GammonX.Server.Tests.Integration
             // Assert.
             Assert.Null(_matchRepo.Get(fixture.Session.Id));
             _workQueueService.Verify(value => value.EnqueueRatingProcessingAsync(
-                It.Is<IMatchSessionModel>(match => match.Id == fixture.Session.Id), It.IsAny<CancellationToken>()), Times.Once);
+                It.Is<MatchRecordContracts>(records => records.Player1.Id == fixture.Session.Id), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -1116,6 +1117,58 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Theory]
+        [InlineData(null)]
+        [InlineData(WorkQueueType.GameCompleted)]
+        [InlineData(WorkQueueType.MatchCompleted)]
+        [InlineData(WorkQueueType.StatsUpdated)]
+        [InlineData(WorkQueueType.RatingUpdated)]
+        public async Task MatchCompletionReusesRecordsAndAttemptsAllQueuesAfterFailure(WorkQueueType? failedQueue)
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture(modus: MatchModus.Ranked);
+            GameRecordContracts? gameRecords = null;
+            MatchRecordContracts? matchRecords = null;
+            MatchRecordContracts? statsRecords = null;
+            MatchRecordContracts? ratingRecords = null;
+            Task Publish(WorkQueueType queue) => failedQueue == queue
+                ? Task.FromException(new InvalidOperationException("Queue unavailable."))
+                : Task.CompletedTask;
+            _workQueueService.Setup(service => service.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<GameRecordContracts, CancellationToken>((records, _) => gameRecords = records)
+                .Returns(() => Publish(WorkQueueType.GameCompleted));
+            _workQueueService.Setup(service => service.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<MatchRecordContracts, CancellationToken>((records, _) => matchRecords = records)
+                .Returns(() => Publish(WorkQueueType.MatchCompleted));
+            _workQueueService.Setup(service => service.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<MatchRecordContracts, CancellationToken>((records, _) => statsRecords = records)
+                .Returns(() => Publish(WorkQueueType.StatsUpdated));
+            _workQueueService.Setup(service => service.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<MatchRecordContracts, CancellationToken>((records, _) => ratingRecords = records)
+                .Returns(() => Publish(WorkQueueType.RatingUpdated));
+
+            // Act
+            await fixture.Hub.ResignMatchAsync(fixture.Session.Id.ToString());
+
+            // Assert
+            Assert.NotNull(gameRecords);
+            Assert.NotNull(matchRecords);
+            Assert.Same(matchRecords, statsRecords);
+            Assert.Same(matchRecords, ratingRecords);
+            Assert.Equal(fixture.Session.Id, matchRecords.Player1.Id);
+            Assert.Equal(fixture.Session.Player1.Id, matchRecords.Player1.PlayerId);
+            Assert.Equal(fixture.Session.Player2.Id, matchRecords.Player2.PlayerId);
+            Assert.Equal(gameRecords.Player1.Id, Assert.Single(matchRecords.Player1.Games!).Id);
+            Assert.Equal(gameRecords.Player2.Id, Assert.Single(matchRecords.Player2.Games!).Id);
+            _workQueueService.Verify(service => service.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(service => service.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(service => service.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(service => service.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            fixture.Client.Verify(client => client.SendCoreAsync(ServerEventTypes.ErrorEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()),
+                failedQueue.HasValue ? Times.Once() : Times.Never());
+            Assert.Null(_matchRepo.Get(fixture.Session.Id));
+        }
+
+        [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public async Task MatchHubCommitsWinningMoveBeforeResultPublication(bool concludesMatch)
@@ -1135,8 +1188,8 @@ namespace GammonX.Server.Tests.Integration
             await setupLease.DisposeAsync();
             var move = game.MoveSequences.First().Moves.First();
             IMatchSessionModel? published = null;
-            _workQueueService.Setup(service => service.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .Callback<IMatchSessionModel, int, CancellationToken>((match, _, _) => published = _matchRepo.Get(match.Id))
+            _workQueueService.Setup(service => service.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<GameRecordContracts, CancellationToken>((records, _) => published = _matchRepo.Get(records.Player1.MatchId))
                 .Returns(Task.CompletedTask);
 
             await fixture.Hub.MoveAsync(fixture.Session.Id.ToString(), move.From, move.To);
@@ -1557,7 +1610,7 @@ namespace GammonX.Server.Tests.Integration
             Assert.False(cubeSession.IsDoubleOfferPending);
             Assert.Equal(type == MatchType.CashGame, matchSession.IsMatchOver());
             Assert.Equal(type == MatchType.CashGame, _matchRepo.Get(matchSession.Id) == null);
-            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -1627,12 +1680,12 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
             mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
-            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
-            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
-            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             if (modus == MatchModus.Ranked)
             {
-                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             }
         }
 
@@ -1657,8 +1710,8 @@ namespace GammonX.Server.Tests.Integration
 
             IMatchSessionModel? concludedMatch = null;
             _workQueueService
-                .Setup(service => service.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()))
-                .Callback<IMatchSessionModel, CancellationToken>((match, _) => concludedMatch = (IMatchSessionModel)match.Clone())
+                .Setup(service => service.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback<MatchRecordContracts, CancellationToken>((records, _) => concludedMatch = _matchRepo.Get(records.Player1.Id))
                 .ThrowsAsync(new InvalidOperationException("match result queue unavailable"));
 
             await hub1.ResignGameAsync(matchIdStr);
@@ -1685,7 +1738,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
             mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
-            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once);
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Theory]
@@ -1779,7 +1832,7 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
             mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
-            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
+            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
         [Theory]
@@ -1864,12 +1917,12 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeast(2));
             mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce());
-            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
-            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
-            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             if (modus == MatchModus.Ranked)
             {
-                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
+                _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             }
         }
 
@@ -2042,10 +2095,10 @@ namespace GammonX.Server.Tests.Integration
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
             mockClients.Verify(c => c.Client(playerConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
             mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
-            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
-            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
-            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Once());
-            _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<CancellationToken>()), Times.Never());
+            _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
+            _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
+            _workQueueService.Verify(c => c.EnqueueRatingProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never());
         }
 
         [Theory]
