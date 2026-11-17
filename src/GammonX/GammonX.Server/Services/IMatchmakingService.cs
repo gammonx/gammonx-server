@@ -22,7 +22,7 @@ namespace GammonX.Server.Services
 		bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry);
 
 		/// <summary>
-		/// Tries to find a match lobby by its ID. Returns null if not found.
+		/// Tries to find a match lobby by its match ID or either player's queue-entry ID. Returns null if not found.
 		/// </summary>
 		/// <param name="matchOrQueueId">Match id/Queue id to search for.</param>
 		/// <param name="matchLobby">Result.</param>
@@ -69,9 +69,9 @@ namespace GammonX.Server.Services
         Task MatchQueuedPlayersAsync();
 
 		/// <summary>
-		/// Gets all match lobbies.
+		/// Gets all match lobbies, with one entry per match ID.
 		/// </summary>
-		/// <returns>Returns an array of all match lobbies.</returns>
+		/// <returns>Returns an array of distinct match lobbies.</returns>
 		MatchLobby[] GetMatchLobbies();
 
 		/// <summary>

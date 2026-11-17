@@ -35,11 +35,8 @@ namespace GammonX.Server.Services
 
             var matchLobby = new MatchLobby(matchId, queueKey, playerConnection);
 
-			if (_matchLobbies.TryAdd(queueEntry, matchLobby))
-			{
-				return Task.FromResult(queueEntry);
-			}
-			throw new InvalidOperationException("An error occurred while creating the match lobby");
+            AddMatchLobby(matchLobby, queueEntry);
+            return Task.FromResult(queueEntry);
 		}
 
 		// <inheritdoc />

@@ -32,7 +32,7 @@ namespace GammonX.Server.Services
                 throw new InvalidOperationException("Match modus must be of type ranked in order to join this queue");
             }
 
-            if (_queue.Any(ml => ml.Value.PlayerId == playerId))
+            if (_queueEntries.Any(ml => ml.Value.PlayerId == playerId))
             {
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
@@ -64,7 +64,7 @@ namespace GammonX.Server.Services
 
                     for (var i = 0; i < count && queue.TryDequeue(out var idA); i++)
                     {
-                        if (!_queue.TryGetValue(idA, out var entryA))
+                        if (!_queueEntries.TryGetValue(idA, out var entryA))
                         {
                             continue;
                         }
@@ -72,8 +72,8 @@ namespace GammonX.Server.Services
                         // We first try to match to a human player
                         if (TryFindRankedPartner(queueKey, entryA, out var entryB))
                         {
-                            var claimedA = _queue.TryRemove(entryA.Id, out _);
-                            var claimedB = _queue.TryRemove(entryB.Id, out _);
+                            var claimedA = _queueEntries.TryRemove(entryA.Id, out _);
+                            var claimedB = _queueEntries.TryRemove(entryB.Id, out _);
                             if (!claimedA || !claimedB)
                             {
                                 if (claimedA)
@@ -94,8 +94,7 @@ namespace GammonX.Server.Services
                             var lobby = new MatchLobby(matchId, tmpQueueKey, player1Conn);
 
                             lobby.Join(player2Conn);
-                            _matchLobbies[entryA] = lobby;
-                            _matchLobbies[entryB] = lobby;
+                            AddMatchLobby(lobby, entryA, entryB);
 
                             continue;
                         }
@@ -117,7 +116,7 @@ namespace GammonX.Server.Services
                                 : ratings.OrderBy(rating => Math.Abs(rating.Rating - entryA.CurrentRating)).First().Level;
 
                             // Cancellation and expiry can remove the entry while rating reads are in flight.
-                            if (!_queue.TryRemove(entryA.Id, out _))
+                            if (!_queueEntries.TryRemove(entryA.Id, out _))
                             {
                                 continue;
                             }
@@ -132,11 +131,11 @@ namespace GammonX.Server.Services
                             var lobby = new MatchLobby(matchId, tmpRatingKey, player1Conn);
 
                             lobby.Join(bot);
-                            _matchLobbies[entryA] = lobby;
+                            AddMatchLobby(lobby, entryA);
                         }
                         catch
                         {
-                            if (_queue.ContainsKey(entryA.Id))
+                            if (_queueEntries.ContainsKey(entryA.Id))
                             {
                                 queue.Enqueue(entryA.Id);
                             }
@@ -187,7 +186,7 @@ namespace GammonX.Server.Services
             var count = queue.Count;
             for (var i = 0; i < count && queue.TryDequeue(out var entryId); i++)
             {
-                if (!_queue.TryGetValue(entryId, out var candidate))
+                if (!_queueEntries.TryGetValue(entryId, out var candidate))
                 {
                     continue;
                 }

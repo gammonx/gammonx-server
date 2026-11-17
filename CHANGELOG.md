@@ -3,6 +3,10 @@
 ## 17.11.2026
 - Load Test findings
 	- reduce unused board/history allocations on hot paths
+	- omit move sequences and dice rolls for waiting player
+	- set loglevel to `Error` for prod deployments
+	- made match cleanup more robust
+	- minor improvments in matchmaking
 
 ## 15.11.2026
 - ranked matchmaking

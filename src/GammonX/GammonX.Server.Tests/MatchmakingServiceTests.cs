@@ -13,6 +13,130 @@ namespace GammonX.Server.Tests
 {
     public class MatchmakingServiceTests
     {
+        [Theory]
+        [InlineData(MatchModus.Normal, false)]
+        [InlineData(MatchModus.Ranked, false)]
+        [InlineData(MatchModus.Bot, true)]
+        [InlineData(MatchModus.Ranked, true)]
+        public async Task LobbyIndexResolvesAllIdsAndRemovesOnlyTheSelectedMatch(MatchModus modus, bool botOpponent)
+        {
+            // Arrange
+            var connections = new PlayerConnectionRepository();
+            IMatchmakingService mode = modus switch
+            {
+                MatchModus.Normal => new NormalMatchmakingService(connections),
+                MatchModus.Ranked => new RankedMatchmakingService(connections, new Mock<IRepositoryClient>().Object),
+                _ => new BotMatchmakingService(connections)
+            };
+            var matcher = new CompositeMatchmakingService(connections);
+            matcher.AddService(modus, mode);
+            var key = new QueueKey(MatchVariant.Backgammon, modus, MatchType.FivePointGame, BotLevel.Hard);
+            var first = await CreateLobby();
+            var second = await CreateLobby();
+            Assert.Equal(2, matcher.GetMatchLobbies().Length);
+            var unknownId = Guid.NewGuid();
+            Assert.False(matcher.TryFindMatchLobby(unknownId, out var missing));
+            Assert.Null(missing);
+            Assert.False(matcher.TryRemoveMatchLobby(unknownId));
+
+            // Act: competing removals must remove both queue aliases exactly once.
+            var removals = await Task.WhenAll(Enumerable.Range(0, 16)
+                .Select(_ => Task.Run(() => matcher.TryRemoveMatchLobby(first.Lobby.MatchId))));
+
+            // Assert
+            Assert.Single(removals, removed => removed);
+            foreach (var id in first.QueueIds.Append(first.Lobby.MatchId))
+            {
+                Assert.False(matcher.TryFindMatchLobby(id, out var removed));
+                Assert.Null(removed);
+            }
+            foreach (var id in second.QueueIds.Append(second.Lobby.MatchId))
+            {
+                Assert.True(matcher.TryFindMatchLobby(id, out var remaining));
+                Assert.Same(second.Lobby, remaining);
+            }
+            Assert.Same(second.Lobby, Assert.Single(matcher.GetMatchLobbies()));
+
+            async Task<(MatchLobby Lobby, Guid[] QueueIds)> CreateLobby()
+            {
+                var entry1 = await matcher.JoinQueueAsync(Guid.NewGuid(), key);
+                var ids = new List<Guid> { entry1.Id };
+                if (!botOpponent)
+                {
+                    var entry2 = await matcher.JoinQueueAsync(Guid.NewGuid(), key);
+                    ids.Add(entry2.Id);
+                }
+                await matcher.MatchQueuedPlayersAsync();
+                Assert.True(matcher.TryFindMatchLobby(entry1.Id, out var lobby));
+                Assert.NotNull(lobby);
+                foreach (var id in ids.Append(lobby.MatchId))
+                {
+                    Assert.True(matcher.TryFindMatchLobby(id, out var byId));
+                    Assert.Same(lobby, byId);
+                }
+                foreach (var queueId in ids)
+                {
+                    Assert.False(matcher.TryRemoveMatchLobby(queueId));
+                    Assert.True(matcher.TryFindMatchLobby(queueId, out var byQueueId));
+                    Assert.Same(lobby, byQueueId);
+                }
+
+                return (lobby, ids.ToArray());
+            }
+        }
+
+        [Theory]
+        [InlineData("match-to-match")]
+        [InlineData("match-to-queue")]
+        [InlineData("queue-to-match")]
+        [InlineData("queue-to-queue")]
+        [InlineData("same-registration")]
+        [InlineData("duplicate-queue")]
+        public void LobbyIdCollisionDoesNotPartiallyRegisterLobby(string collision)
+        {
+            // Arrange
+            var connections = new PlayerConnectionRepository();
+            var matcher = new TestMatchmakingService(connections);
+            var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame, BotLevel.Unknown);
+            var existingEntry = CreateQueueEntry(key, 1500);
+            var existingLobby = new MatchLobby(Guid.NewGuid(), key, connections.GetOrCreate(existingEntry.PlayerId));
+            matcher.Register(existingLobby, existingEntry);
+
+            var matchId = collision switch
+            {
+                "match-to-match" => existingLobby.MatchId,
+                "match-to-queue" => existingEntry.Id,
+                _ => Guid.NewGuid()
+            };
+            var queueId = collision switch
+            {
+                "queue-to-match" => existingLobby.MatchId,
+                "queue-to-queue" => existingEntry.Id,
+                "same-registration" => matchId,
+                _ => Guid.NewGuid()
+            };
+            var entry = new QueueEntry(queueId, Guid.NewGuid(), key, DateTime.UtcNow, 1500);
+            var lobby = new MatchLobby(matchId, key, connections.GetOrCreate(entry.PlayerId));
+            var entries = collision == "duplicate-queue" ? new[] { entry, entry } : new[] { entry };
+
+            // Act
+            Assert.Throws<InvalidOperationException>(() => matcher.Register(lobby, entries));
+
+            // Assert
+            Assert.Same(existingLobby, Assert.Single(matcher.GetMatchLobbies()));
+            foreach (var id in new[] { existingLobby.MatchId, existingEntry.Id })
+            {
+                Assert.True(matcher.TryFindMatchLobby(id, out var found));
+                Assert.Same(existingLobby, found);
+            }
+
+            foreach (var id in new[] { matchId, queueId }.Except(new[] { existingLobby.MatchId, existingEntry.Id }))
+            {
+                Assert.False(matcher.TryFindMatchLobby(id, out var found));
+                Assert.Null(found);
+            }
+        }
+
         [Fact]
         public async Task RankedJoinUsesRatingForRequestedMatchType()
         {
@@ -98,23 +222,15 @@ namespace GammonX.Server.Tests
             // assert
             var matchLobbies = matcher.GetMatchLobbies();
             var matchedPlayers = matchLobbies                
-                .SelectMany(l => new[] {l.Player1.Id, l.Player2?.Id ?? Guid.Empty})
-                .Where(id => id != Guid.Empty)
+                .SelectMany(l => new[] { l.Player1, l.Player2 })
+                .Where(player => player != null && !player.IsBot)
+                .Select(player => player!.Id)
                 .ToList();
 
             // no duplicates
-            // we have each match lobby twice (once per player)
-            Assert.True(matchedPlayers.Count / 2 <= playerCount);
-            Assert.True(matchLobbies.Length / 2 <= playerCount / 2);
-            if (modus == MatchModus.Bot)
-            {
-                // except for bot matches
-                Assert.Equal(matchedPlayers.Count, matchedPlayers.Distinct().Count());
-            }
-            else
-            {
-                Assert.Equal(matchedPlayers.Count / 2, matchedPlayers.Distinct().Count());
-            }
+            Assert.True(matchedPlayers.Count <= playerCount);
+            Assert.Equal(matchLobbies.Length, matchLobbies.Select(lobby => lobby.MatchId).Distinct().Count());
+            Assert.Equal(matchedPlayers.Count, matchedPlayers.Distinct().Count());
 
             // no missing players
             var unmatched = matcher.GetQueueEntries().Select(e => e.PlayerId);
@@ -189,16 +305,9 @@ namespace GammonX.Server.Tests
             var lobbies = matcher.GetMatchLobbies();
             var entries = matcher.GetQueueEntries();
 
-            if (modus == MatchModus.Bot)
-            {
-                var totalKnown = entries.Length + (lobbies.Length / 2);
-                Assert.Equal(40, totalKnown);
-            }
-            else
-            {
-                var totalKnown = entries.Length + lobbies.Length;
-                Assert.Equal(40, totalKnown);
-            }
+            var matchedPlayerCount = lobbies.Sum(lobby =>
+                (lobby.Player1.IsBot ? 0 : 1) + (lobby.Player2 is { IsBot: false } ? 1 : 0));
+            Assert.Equal(40, entries.Length + matchedPlayerCount);
         }
 
         [Fact]
@@ -220,8 +329,8 @@ namespace GammonX.Server.Tests
             await matcher.MatchQueuedPlayersAsync();
 
             var lobbies = matcher.GetMatchLobbies();
-            // we expect a single match lobby per player
-            Assert.Equal(2, lobbies.Length);
+            // Both players share one match lobby.
+            Assert.Single(lobbies);
         }
 
         [Fact]
@@ -318,8 +427,8 @@ namespace GammonX.Server.Tests
 
             var lobbies = matcher.GetMatchLobbies();
 
-            // we should have exactly 5 unique lobbies but 10 entries for 10 players
-            Assert.Equal(10, lobbies.Length);
+            // We should have exactly 5 lobbies for 10 players.
+            Assert.Equal(5, lobbies.Length);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Equal(5, matchIds.Count);
         }
@@ -349,7 +458,7 @@ namespace GammonX.Server.Tests
                     allPlayerIds.Add(lobby.Player2.Id);
             }
 
-            Assert.Equal(8, allPlayerIds.Count);
+            Assert.Equal(4, allPlayerIds.Count);
             Assert.Equal(4, allPlayerIds.Distinct().Count());
         }
 
@@ -381,14 +490,14 @@ namespace GammonX.Server.Tests
             var ratingDiff = Math.Abs(rating1 - rating2);
 
             var allowed = secondsWaiting switch { < 5 => 50, < 15 => 100, < 30 => 200, _ => 400 };
-            Assert.Equal(2, lobbies.Length);
             if (ratingDiff <= allowed)
             {
-                Assert.Single(lobbies.Select(lobby => lobby.MatchId).Distinct());
+                Assert.Single(lobbies);
                 Assert.All(lobbies, lobby => Assert.False(lobby.Player2!.IsBot));
             }
             else
             {
+                Assert.Equal(2, lobbies.Length);
                 Assert.Equal(2, lobbies.Select(lobby => lobby.MatchId).Distinct().Count());
                 Assert.All(lobbies, lobby => Assert.True(lobby.Player2!.IsBot));
             }
@@ -442,7 +551,7 @@ namespace GammonX.Server.Tests
             var lobbies = matcher.GetMatchLobbies();
             // both have 400 rating diff allowed, 300 rating diff between them
             // both meet criteria, so should match
-            Assert.Equal(2, lobbies.Length);
+            Assert.Single(lobbies);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Single(matchIds);
         }
@@ -473,8 +582,8 @@ namespace GammonX.Server.Tests
             var entries = normalMatcher.GetQueueEntries();
             var lobbies = normalMatcher.GetMatchLobbies();
 
-            // we should have matched 2 unique lobbies but 4 entries and have 0 unmatched players
-            Assert.Equal(4, lobbies.Length);
+            // We should have 2 lobbies and no unmatched players.
+            Assert.Equal(2, lobbies.Length);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Equal(2, matchIds.Count);
             Assert.Empty(entries);
@@ -498,8 +607,8 @@ namespace GammonX.Server.Tests
             var entries = matcher.GetQueueEntries();
             var lobbies = matcher.GetMatchLobbies();
 
-            // we should have 3 unique lobbies and 6 entries + 1 unmatched player
-            Assert.Equal(6, lobbies.Length);
+            // We should have 3 lobbies and 1 unmatched player.
+            Assert.Equal(3, lobbies.Length);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Equal(3, matchIds.Count);
             Assert.Single(entries);
@@ -527,8 +636,9 @@ namespace GammonX.Server.Tests
             await composite.MatchQueuedPlayersAsync();
 
             var lobbies = composite.GetMatchLobbies();
-            // we should have 2 lobbies total (1 normal, 1 bot)
-            Assert.Equal(2, lobbies.Length);
+            // Normal players match; directly enqueued bot entries remain queued.
+            Assert.Equal(MatchModus.Normal, Assert.Single(lobbies).QueueKey.MatchModus);
+            Assert.Equal(2, composite.GetQueueEntries().Length);
         }
 
         [Fact]
@@ -550,8 +660,8 @@ namespace GammonX.Server.Tests
             var lobbies = matcher.GetMatchLobbies();
             var entries = matcher.GetQueueEntries();
 
-            // we should have 2 unique lobbies but 4 entries and 0 unmatched players
-            Assert.Equal(4, lobbies.Length);
+            // We should have 2 lobbies and no unmatched players.
+            Assert.Equal(2, lobbies.Length);
             var matchIds = lobbies.Select(l => l.MatchId).Distinct().ToList();
             Assert.Equal(2, matchIds.Count);
             Assert.Empty(entries);
@@ -559,8 +669,20 @@ namespace GammonX.Server.Tests
             // we verify variants are correct
             var backgammonLobbies = lobbies.Count(l => l.QueueKey.MatchVariant == MatchVariant.Backgammon);
             var tavlaLobbies = lobbies.Count(l => l.QueueKey.MatchVariant == MatchVariant.Tavla);
-            Assert.Equal(2, backgammonLobbies);
-            Assert.Equal(2, tavlaLobbies);
+            Assert.Equal(1, backgammonLobbies);
+            Assert.Equal(1, tavlaLobbies);
+        }
+
+        private sealed class TestMatchmakingService : NormalMatchmakingService
+        {
+            public TestMatchmakingService(PlayerConnectionRepository connections) : base(connections)
+            {
+            }
+
+            public void Register(MatchLobby lobby, params QueueEntry[] entries)
+            {
+                AddMatchLobby(lobby, entries);
+            }
         }
 
         private static QueueEntry CreateQueueEntry(QueueKey key, double rating)

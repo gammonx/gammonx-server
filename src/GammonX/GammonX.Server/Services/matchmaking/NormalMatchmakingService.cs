@@ -26,7 +26,7 @@ namespace GammonX.Server.Services
                 throw new InvalidOperationException("match modus must be of type normal in order to join this queue");
             }
 
-            if (_queue.Any(ml => ml.Value.PlayerId == playerId))
+            if (_queueEntries.Any(ml => ml.Value.PlayerId == playerId))
             {
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
@@ -47,7 +47,7 @@ namespace GammonX.Server.Services
                 while (queue.TryDequeue(out var idA))
                 {
                     // we dequeue entry ids from the mode queue and do not readd them if no related entry is found
-                    if (!_queue.TryGetValue(idA, out var entryA))
+                    if (!_queueEntries.TryGetValue(idA, out var entryA))
                         continue;
 
                     if (!queue.TryDequeue(out var idB))
@@ -57,7 +57,7 @@ namespace GammonX.Server.Services
                         break;
                     }
 
-                    if (!_queue.TryGetValue(idB, out var entryB))
+                    if (!_queueEntries.TryGetValue(idB, out var entryB))
                     {
                         // we requeue entry a if no entry b is found
                         queue.Enqueue(idA);
@@ -67,11 +67,11 @@ namespace GammonX.Server.Services
                     var claimedA = false;
                     var claimedB = false;
                     // atomic claims
-                    if (_queue.TryRemove(entryA.Id, out var _))
+                    if (_queueEntries.TryRemove(entryA.Id, out var _))
                     {
                         claimedA = true;
                     }
-                    if (_queue.TryRemove(entryB.Id, out var _))
+                    if (_queueEntries.TryRemove(entryB.Id, out var _))
                     {
                         claimedB = true;
                     }
@@ -84,13 +84,13 @@ namespace GammonX.Server.Services
                     else if (!claimedA)
                     {
                         // a could not be claimed > requeue b
-                        _queue.TryAdd(entryB.Id, entryB);
+                        _queueEntries.TryAdd(entryB.Id, entryB);
                         queue.Enqueue(idB);
                     }
                     else if (!claimedB)
                     {
                         //b could not be claimed > requeue a
-                        _queue.TryAdd(entryA.Id, entryA);
+                        _queueEntries.TryAdd(entryA.Id, entryA);
                         queue.Enqueue(idA);
                     }
 
@@ -101,8 +101,7 @@ namespace GammonX.Server.Services
                         var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
                         var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
                         lobby.Join(playerConnectionB);
-                        _matchLobbies[entryA] = lobby;
-                        _matchLobbies[entryB] = lobby;
+                        AddMatchLobby(lobby, entryA, entryB);
                     }
                 }
             }

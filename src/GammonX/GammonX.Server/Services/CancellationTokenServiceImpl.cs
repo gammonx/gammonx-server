@@ -4,7 +4,8 @@
     public class CancellationTokenServiceImpl : ICancellationTokenService
     {
         private readonly Dictionary<CancellationTokenKey, CancellationTokenSource> _tokenSources = new();
-        private readonly object _lock = new();
+
+        private readonly Lock _lock = new();
 
         // <inheritdoc />
         public void Store(CancellationTokenKey key, CancellationTokenSource cts)
