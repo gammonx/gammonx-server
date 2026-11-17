@@ -30,26 +30,22 @@ namespace GammonX.Engine.Services
         // <inheritdoc />
         public ValueTuple<int, int>[] GetLegalMovesAsFlattenedList(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _, CancellationToken.None);
-            // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
-            var sequences = sequencesByBoardHash
-                .Select(sbbh => sbbh.Item2)
-                .ToHashSet(_moveSequenceModelComparer)
-                .ToList();
-            var allowed = FilterSequencesByDiceRules(sequences, rolls);
-            var moves = ConvertToFlattenedMoves(allowed, model, isWhite);
+            var sequences = GetLegalMoveSequences(model, isWhite, rolls);
+            var moves = ConvertToFlattenedMoves(sequences, model, isWhite);
             return moves.Select(m => new ValueTuple<int, int>(m.From, m.To)).ToArray();
         }
 
         // <inheritdoc />
         public MoveSequenceModel[] GetLegalMoveSequences(IBoardModel model, bool isWhite, params int[] rolls)
         {
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out _, CancellationToken.None);
+            var sortedRolls = rolls.ToList();
+            sortedRolls.Sort();
+            var results = new List<MoveSequenceModel>();
+            
+            ExploreSequencesRecursively(model, isWhite, sortedRolls, [], [], results);
+
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
-            var sequences = sequencesByBoardHash
-                .Select(sbbh => sbbh.Item2)
-                .ToHashSet(_moveSequenceModelComparer)
-                .ToList();
+            var sequences = results.ToHashSet(_moveSequenceModelComparer).ToList();
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
             return unique.ToArray();
@@ -62,8 +58,7 @@ namespace GammonX.Engine.Services
 
             using var measurement = EvaluationMetrics.Measure(EvaluationMetrics.MoveGeneration);
 
-            var sequencesByBoardHash = GetAllLegalMoveSequences(model, isWhite, rolls, out var rawSequenceCount, uniqueBoards: true, cancellationToken: cancellationToken);
-            var sequences = sequencesByBoardHash.Select(item => item.Item2).ToList();
+            var sequences = GetSequencesForUniqueBoards(model, isWhite, rolls, out var rawSequenceCount, cancellationToken);
             var allowed = FilterSequencesByDiceRules(sequences, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
 
@@ -312,6 +307,7 @@ namespace GammonX.Engine.Services
                 return true;
             return false;
         }
+
         protected virtual void PerformMoveCheckerTo(IBoardModel model, int from, int to, bool isWhite)
         {
             // we check first if the given from to move bears the checker off
@@ -443,34 +439,95 @@ namespace GammonX.Engine.Services
             }
         }
 
-        private List<(IBoardModel, MoveSequenceModel)> GetAllLegalMoveSequences(IBoardModel model, bool isWhite, int[] rolls, out int rawSequenceCount, CancellationToken cancellationToken, bool uniqueBoards = false)
-        {
-            var sortedRolls = rolls.ToList();
-            sortedRolls.Sort();
-            var results = new List<(IBoardModel, MoveSequenceModel)>();
-
-            // We track seen board positions to avoid redundant exploration of identical board states.
-            var seen = uniqueBoards ? new HashSet<IBoardModel>() : null;
-            // We track repeated states separately for identical dice sequences to optimize traversal.
-            var repeatedStates = uniqueBoards && model is BoardBaseImpl && sortedRolls.Count > 2 && sortedRolls[0] == sortedRolls[^1]
-                ? new Dictionary<int, HashSet<IBoardModel>>()
-                : null;
-            // We track the total number of raw sequences explored, including duplicates.
-            rawSequenceCount = 0;
-
-            ExploreBoardRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
-
-            return results;
-        }
-
-        private void ExploreBoardRecursively(
+        private void ExploreSequencesRecursively(
             IBoardModel board,
             bool isWhite,
             List<int> remainingRolls,
             List<MoveModel> currentMoves,
             List<int> usedDices,
-            List<(IBoardModel, MoveSequenceModel)> results,
-            HashSet<IBoardModel>? seen,
+            List<MoveSequenceModel> results)
+        {
+            var anyMovePossible = false;
+
+            for (int i = 0; i < remainingRolls.Count; i++)
+            {
+                var die = remainingRolls[i];
+                // Equal dice produce identical subtrees, but different move orderings must be retained.
+                if (i > 0 && die == remainingRolls[i - 1])
+                {
+                    continue;
+                }
+
+                var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
+                if (possibleMoves.Count == 0)
+                {
+                    continue;
+                }
+
+                anyMovePossible = true;
+
+                foreach (var move in possibleMoves)
+                {
+                    MoveCheckerTo(board, move.From, move.To, isWhite);
+
+                    remainingRolls.RemoveAt(i);
+                    currentMoves.Add(move);
+                    usedDices.Add(die);
+
+                    try
+                    {
+                        ExploreSequencesRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results);
+                    }
+                    finally
+                    {
+                        usedDices.RemoveAt(usedDices.Count - 1);
+                        currentMoves.RemoveAt(currentMoves.Count - 1);
+                        remainingRolls.Insert(i, die);
+                        UndoMove(board, move, isWhite);
+                    }
+                }
+            }
+
+            if (!anyMovePossible && currentMoves.Count > 0)
+            {
+                // Gameplay needs every ordering, so neither board snapshots nor position pruning are needed.
+                results.Add(CreateMoveSequence(currentMoves, usedDices));
+            }
+        }
+
+        private List<MoveSequenceModel> GetSequencesForUniqueBoards(
+            IBoardModel model, 
+            bool isWhite, 
+            int[] rolls, 
+            out int rawSequenceCount, 
+            CancellationToken cancellationToken)
+        {
+            var sortedRolls = rolls.ToList();
+            sortedRolls.Sort();
+            var results = new List<MoveSequenceModel>();
+
+            // We track seen board positions to avoid redundant exploration of identical board states.
+            var seen = new HashSet<IBoardModel>();
+            // We track repeated states separately for identical dice sequences to optimize traversal.
+            var repeatedStates = model is BoardBaseImpl && sortedRolls.Count > 2 && sortedRolls[0] == sortedRolls[^1]
+                ? new Dictionary<int, HashSet<IBoardModel>>()
+                : null;
+            // We track the total number of raw sequences explored, including duplicates.
+            rawSequenceCount = 0;
+
+            ExploreUniqueBoardsRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
+
+            return results;
+        }
+
+        private void ExploreUniqueBoardsRecursively(
+            IBoardModel board,
+            bool isWhite,
+            List<int> remainingRolls,
+            List<MoveModel> currentMoves,
+            List<int> usedDices,
+            List<MoveSequenceModel> results,
+            HashSet<IBoardModel> seen,
             Dictionary<int, HashSet<IBoardModel>>? repeatedStates,
             ref int rawSequenceCount,
             CancellationToken cancellationToken)
@@ -506,12 +563,16 @@ namespace GammonX.Engine.Services
                 // skip duplicate dice values — identical values at adjacent indices
                 // produce identical sub-trees since the remaining rolls stay sorted
                 if (i > 0 && die == remainingRolls[i - 1])
+                {
                     continue;
+                }
 
                 var possibleMoves = GetMovesForDiceRoll(board, isWhite, die);
 
                 if (possibleMoves.Count == 0)
+                {
                     continue;
+                }
 
                 anyMovePossible = true;
 
@@ -527,7 +588,7 @@ namespace GammonX.Engine.Services
 
                     try
                     {
-                        ExploreBoardRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
+                        ExploreUniqueBoardsRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
                     }
                     finally
                     {
@@ -539,31 +600,36 @@ namespace GammonX.Engine.Services
                 }
             }
 
-            if (!anyMovePossible && currentMoves.Any())
+            if (!anyMovePossible && currentMoves.Count > 0)
             {
                 rawSequenceCount++;
                 // we query with the live board, but retain only immutable snapshots as hash-set entries.
-                if (seen != null && seen.Contains(board))
+                if (seen.Contains(board))
                 {
                     return;
                 }
 
-                var moveSeq = new MoveSequenceModel();
-                moveSeq.Moves.AddRange(currentMoves);
-                moveSeq.UsedDices.AddRange(usedDices);
                 IBoardModel boardSnapshot;
 
                 using (EvaluationMetrics.Measure(EvaluationMetrics.GenerationClone))
                 {
-                    boardSnapshot = seen != null && board is BoardBaseImpl terminalPosition
+                    boardSnapshot = board is BoardBaseImpl terminalPosition
                         ? terminalPosition.CreatePositionSnapshot()
                         : (IBoardModel)((ICloneable)board).Clone();
                 }
 
-                seen?.Add(boardSnapshot);
+                seen.Add(boardSnapshot);
 
-                results.Add(new ValueTuple<IBoardModel, MoveSequenceModel>(boardSnapshot, moveSeq));
+                results.Add(CreateMoveSequence(currentMoves, usedDices));
             }
+        }
+
+        private static MoveSequenceModel CreateMoveSequence(List<MoveModel> currentMoves, List<int> usedDices)
+        {
+            var sequence = new MoveSequenceModel();
+            sequence.Moves.AddRange(currentMoves);
+            sequence.UsedDices.AddRange(usedDices);
+            return sequence;
         }
 
         private void ExploreWithCallback(
@@ -652,25 +718,32 @@ namespace GammonX.Engine.Services
             return moves;
         }
 
-        private static IEnumerable<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel>? sequences, int[] rolls)
+        private static List<MoveSequenceModel> FilterSequencesByDiceRules(List<MoveSequenceModel>? sequences, int[] rolls)
         {
             // if possible: only sequences that use all dice
             // if not possible: only sequences that use the highest dice
             if (sequences == null || sequences.Count == 0)
+            {
                 return new List<MoveSequenceModel>();
+            }
 
             int totalDice = rolls.Length;
             int maxRoll = rolls.Max();
 
             var usingAll = sequences.Where(s => s.UsedDices.Count == totalDice).ToList();
-            if (usingAll.Any())
+            if (usingAll.Count != 0)
+            {
                 return usingAll;
+            }
 
             // no sequence has used all the dice -> only sequences are allowed that
             // who have used at least the highest die
             var usingMax = sequences.Where(s => s.UsedDices.Contains(maxRoll)).ToList();
-            if (usingMax.Any())
+            if (usingMax.Count != 0)
+            {
                 return usingMax;
+            }
+
             // we return all found moves if the max roll can not be used at all
             return sequences;
         }

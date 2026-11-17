@@ -151,16 +151,27 @@ public class UniqueMoveSequenceTests
         var history = board.History.Events.ToArray();
         var expected = ReferenceSequences(service, board, isWhite, rolls);
 
+        var all = service.GetLegalMoveSequences(board, isWhite, rolls);
+
+        Assert.True(board.Equals(original), "Sequence generation changed the input position.");
+        Assert.Equal(history, board.History.Events.ToArray());
+        Assert.Equal(expected.All.Length, all.Length);
+        for (var index = 0; index < all.Length; index++)
+        {
+            Assert.True(expected.All[index].Equals(all[index]), "A legal move ordering changed or was omitted.");
+            Assert.Equal(expected.All[index].UsedDices, all[index].UsedDices);
+        }
+
         var actual = service.GetUniqueLegalMoveSequences(board, isWhite, rolls, TestContext.Current.CancellationToken);
 
         Assert.True(board.Equals(original), "Unique generation changed the input position.");
         Assert.Equal(history, board.History.Events.ToArray());
-        Assert.Equal(expected.Length, actual.Length);
+        Assert.Equal(expected.Unique.Length, actual.Length);
         var endStates = new HashSet<IBoardModel>();
         for (var index = 0; index < actual.Length; index++)
         {
-            Assert.True(expected[index].Equals(actual[index]), "The first representative or its order changed.");
-            Assert.Equal(expected[index].UsedDices, actual[index].UsedDices);
+            Assert.True(expected.Unique[index].Equals(actual[index]), "The first representative or its order changed.");
+            Assert.Equal(expected.Unique[index].UsedDices, actual[index].UsedDices);
             var endBoard = board.DeepClone();
             foreach (var move in actual[index].Moves)
                 service.MoveCheckerTo(endBoard, move.From, move.To, isWhite);
@@ -168,19 +179,27 @@ public class UniqueMoveSequenceTests
         }
     }
 
-    private static MoveSequenceModel[] ReferenceSequences(
+    private static (MoveSequenceModel[] All, MoveSequenceModel[] Unique) ReferenceSequences(
         IBoardService service, IBoardModel board, bool isWhite, int[] rolls)
     {
         // Independent copy-per-branch traversal: retain every terminal position, then deduplicate and filter.
         var terminal = new List<(IBoardModel Board, MoveSequenceModel Sequence)>();
         Explore(board.DeepClone(), rolls.Order().ToArray(), new MoveSequenceModel());
+        var all = terminal.Select(result => result.Sequence).Distinct(new MoveSequenceModelComparer()).ToArray();
         var seen = new HashSet<IBoardModel>();
         var unique = terminal.Where(result => seen.Add(result.Board)).Select(result => result.Sequence).ToArray();
-        var full = unique.Where(sequence => sequence.UsedDices.Count == rolls.Length).ToArray();
-        if (full.Length > 0)
-            return full;
-        var higher = unique.Where(sequence => sequence.UsedDices.Contains(rolls.Max())).ToArray();
-        return higher.Length > 0 ? higher : unique;
+        return (Filter(all), Filter(unique));
+
+        MoveSequenceModel[] Filter(MoveSequenceModel[] sequences)
+        {
+            var full = sequences.Where(sequence => sequence.UsedDices.Count == rolls.Length).ToArray();
+            if (full.Length > 0)
+            {
+                return full;
+            }
+            var higher = sequences.Where(sequence => sequence.UsedDices.Contains(rolls.Max())).ToArray();
+            return higher.Length > 0 ? higher : sequences;
+        }
 
         void Explore(IBoardModel position, int[] remaining, MoveSequenceModel current)
         {

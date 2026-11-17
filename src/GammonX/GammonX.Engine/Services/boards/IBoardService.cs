@@ -123,6 +123,8 @@ namespace GammonX.Engine.Services
         /// <remarks>
         /// The moves within a move sequences must not be reordered. They have to be played in the exact same
         /// order as they were placed in the list.
+        /// Includes distinct move orderings even when they lead to the same terminal board.
+        /// Restores the board and its history before returning.
         /// </remarks>
 		/// <param name="model">Board model to operate on.</param>
 		/// <param name="isWhite">Indicates if the white or black pieces should be moved.</param>

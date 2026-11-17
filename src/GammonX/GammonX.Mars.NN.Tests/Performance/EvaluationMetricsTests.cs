@@ -46,9 +46,17 @@ public class EvaluationMetricsTests
         using (var collector = new EvaluationMetricsCollector())
         {
             Assert.NotEmpty(service.GetUniqueLegalMoveSequences(board, false, [3, 2], TestContext.Current.CancellationToken));
-            Assert.NotEmpty(service.GetLegalMoveSequences(board, false, 2, 2, 2, 2));
             Assert.Equal(0, collector.Snapshot().ReusedStates);
             Assert.DoesNotContain(collector.Snapshot().Stages, stage => stage.Stage == EvaluationMetrics.TraversalSnapshot);
+        }
+        using (var collector = new EvaluationMetricsCollector())
+        {
+            Assert.NotEmpty(service.GetLegalMoveSequences(board, false, 2, 2, 2, 2));
+            Assert.NotEmpty(service.GetLegalMovesAsFlattenedList(board, false, 2, 2, 2, 2));
+            var profile = collector.Snapshot();
+            Assert.Equal(0, profile.ReusedStates);
+            Assert.DoesNotContain(profile.Stages, stage => stage.Stage == EvaluationMetrics.TraversalSnapshot);
+            Assert.DoesNotContain(profile.Stages, stage => stage.Stage == EvaluationMetrics.GenerationClone);
         }
     }
 

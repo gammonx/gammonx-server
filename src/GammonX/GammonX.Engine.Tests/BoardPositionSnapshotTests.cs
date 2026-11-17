@@ -77,7 +77,7 @@ public class BoardPositionSnapshotTests
     [InlineData(GameModus.Tavla)]
     [InlineData(GameModus.Plakoto)]
     [InlineData(GameModus.Fevga)]
-    public void UniqueGenerationDoesNotCloneHistoryEventsButDeepCloneStillDoes(GameModus modus)
+    public void MoveGenerationDoesNotCloneHistoryEventsButDeepCloneStillDoes(GameModus modus)
     {
         var service = BoardServiceFactory.Create(modus);
         var board = Assert.IsAssignableFrom<BoardBaseImpl>(service.CreateBoard());
@@ -88,8 +88,12 @@ public class BoardPositionSnapshotTests
         Assert.IsAssignableFrom<IEditableBoardHistory>(board.History).Add(historyEvent.Object);
 
         var snapshot = board.CreatePositionSnapshot();
+        var allSequences = service.GetLegalMoveSequences(board, false, 2, 2, 2, 2);
+        var flattenedMoves = service.GetLegalMovesAsFlattenedList(board, false, 2, 2, 2, 2);
         var sequences = service.GetUniqueLegalMoveSequences(board, false, [2, 2, 2, 2], TestContext.Current.CancellationToken);
 
+        Assert.NotEmpty(allSequences);
+        Assert.NotEmpty(flattenedMoves);
         Assert.NotEmpty(sequences);
         Assert.Empty(snapshot.History.Events);
         Assert.Same(historyEvent.Object, Assert.Single(board.History.Events));

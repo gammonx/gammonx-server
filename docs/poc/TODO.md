@@ -46,3 +46,4 @@
 
 ## Functional Gap in Client
 - rating change url for match ended event
+- ranked should only be 7pts matches
