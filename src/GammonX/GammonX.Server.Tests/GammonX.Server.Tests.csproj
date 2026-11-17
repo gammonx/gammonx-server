@@ -8,6 +8,9 @@
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 	</PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/LoggingConfigurationTests.cs" Link="LoggingConfigurationTests.cs" />
+  </ItemGroup>
 
 	<ItemGroup>
 	  <None Include="..\GammonX.Server\.env" Link=".env">

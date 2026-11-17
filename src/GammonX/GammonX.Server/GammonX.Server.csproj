@@ -27,6 +27,7 @@
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="GammonX.Server.Tests" />
+		<Compile Include="../Shared/LoggingConfiguration.cs" Link="LoggingConfiguration.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

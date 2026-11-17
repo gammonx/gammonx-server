@@ -19,8 +19,8 @@ services:
       - BOT_SERVICE__TIMEOUT_SECONDS=5
       - BOT_SERVICE__MAX_RETRY_ATTEMPTS=1
       - BOT_SERVICE__RETRY_BASE_DELAY_MILLISECONDS=1000
-      - LOG_LEVEL__DEFAULT=Debug
-      - LOG_LEVEL__MICROSOFTASPNETCORE=Debug
+      - LOG_LEVEL__DEFAULT=Error
+      - LOG_LEVEL__MICROSOFTASPNETCORE=Error
       - JWT_SECRET=super-secret-key-that-is-at-least-32-characters-long-for-hs256
       - JWT_ISSUER=
       - JWT_AUDIENCE=
@@ -76,6 +76,8 @@ services:
       - SERVICE__BASEPATH=/bot/mars
       - OMP_NUM_THREADS=1
       - MKL_NUM_THREADS=1
+      - LOG_LEVEL__DEFAULT=Error
+      - LOG_LEVEL__MICROSOFTASPNETCORE=Error
       # We match the Dockerfile EXPOSE/HEALTHCHECK and the ECS containerPort
       - ASPNETCORE_HTTP_PORTS=8083
     networks:

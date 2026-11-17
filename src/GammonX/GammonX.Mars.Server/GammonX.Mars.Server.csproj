@@ -9,6 +9,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="DotNetEnv" Version="$(DotNetEnvVersion)" />
+		<Compile Include="../Shared/LoggingConfiguration.cs" Link="LoggingConfiguration.cs" />
+		<InternalsVisibleTo Include="GammonX.Mars.Server.Tests" />
 		<PackageReference Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="$(SerilogSinksConsoleVersion)" />
 	</ItemGroup>

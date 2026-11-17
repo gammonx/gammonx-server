@@ -2,6 +2,8 @@ using DotNetEnv;
 
 using GammonX.Engine.Services;
 
+using GammonX.Hosting;
+
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 
@@ -39,9 +41,10 @@ builder.Configuration.AddEnvironmentVariables();
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------
-builder.Host.UseSerilog((_, _, configuration) =>
+builder.Host.UseSerilog((context, _, configuration) =>
 {
     configuration
+        .ApplyLogLevels(context.Configuration)
         .Enrich.FromLogContext()
         .WriteTo.Console();
 });
