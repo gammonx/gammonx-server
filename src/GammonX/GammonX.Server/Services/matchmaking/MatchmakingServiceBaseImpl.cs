@@ -30,6 +30,19 @@ namespace GammonX.Server.Services
 		/// </summary>
 		private readonly Lock _lobbyGate = new();
 
+        private int _lobbyCount;
+
+        internal int LobbyCount
+        {
+            get
+            {
+                lock (_lobbyGate)
+                {
+                    return _lobbyCount;
+                }
+            }
+        }
+
 		/// <summary>
 		/// Contains match lobbies grouped by their match id and/or their queue id.
 		/// May contain a matchlobby up to three times.
@@ -123,6 +136,7 @@ namespace GammonX.Server.Services
                 }
 
                 _lobbiesById.Remove(matchId);
+                _lobbyCount--;
 
                 foreach (var queueId in registration.QueueIds)
                 {
@@ -160,6 +174,7 @@ namespace GammonX.Server.Services
                 var registration = (lobby, queueIds);
 				// we once add the matchlobby by its match id
                 _lobbiesById.Add(lobby.MatchId, registration);
+                _lobbyCount++;
                 
 				// we add the matchlobby by its two queue ids
 				foreach (var queueId in queueIds)

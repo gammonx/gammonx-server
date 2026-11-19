@@ -2,6 +2,7 @@
 using GammonX.Models.Enums;
 
 using GammonX.Server.Http;
+using GammonX.Server.Diagnostics;
 
 using Newtonsoft.Json;
 
@@ -42,6 +43,7 @@ namespace GammonX.Server.Bot
             EvalMoveRequestContract parameters, 
             CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "mars.move");
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.Rolls);
@@ -69,6 +71,7 @@ namespace GammonX.Server.Bot
             EvalCubeRequestContract parameters, 
             CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "mars.cube");
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.TurnNumber);
@@ -95,6 +98,7 @@ namespace GammonX.Server.Bot
             EvalBoardRequestContract parameters, 
             CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "mars.board");
             ArgumentNullException.ThrowIfNull(parameters);
             ArgumentNullException.ThrowIfNull(parameters.Board);
             ArgumentNullException.ThrowIfNull(parameters.TurnNumber);

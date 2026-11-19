@@ -6,6 +6,7 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Server.Diagnostics;
 
 namespace GammonX.Server.Bot
 {
@@ -62,7 +63,8 @@ namespace GammonX.Server.Bot
                 }
                 catch (Exception ex) when (parameters.BotLevel == BotLevel.Expert && IsTimeout(ex, cancellationToken))
                 {
-                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out, falling back to hard level.");
+                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out for match {matchId}, falling back to hard level.", matchSession.Id);
+                    ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "move.expert_to_hard"));
                     // we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
                     // we fall back to a 1ply evaluation instead
                     parameters.BotLevel = BotLevel.Hard;

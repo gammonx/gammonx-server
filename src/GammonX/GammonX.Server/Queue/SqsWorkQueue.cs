@@ -5,6 +5,7 @@ using Amazon.Runtime;
 using System.Net;
 
 using Newtonsoft.Json;
+using GammonX.Server.Diagnostics;
 
 namespace GammonX.Server.Queue
 {
@@ -88,6 +89,7 @@ namespace GammonX.Server.Queue
         // <inheritdoc />
         public async Task EnqueueAsync<T>(T message, CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "sqs.send");
             var request = new SendMessageRequest
             {
                 QueueUrl = _queueUrl,
@@ -101,6 +103,7 @@ namespace GammonX.Server.Queue
         // <inheritdoc />
         public async Task EnqueueBatchAsync<T>(IEnumerable<T> messages, CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "sqs.batch");
             var attrs = EventTypeAttribute();
             var entries = messages
                 .Select((msg, index) => new SendMessageBatchRequestEntry
@@ -117,6 +120,7 @@ namespace GammonX.Server.Queue
         // <inheritdoc />
         public async Task EnqueueFifoBatchAsync<T>(IEnumerable<FifoWorkMessage<T>> messages, CancellationToken cancellationToken)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "sqs.fifo_batch");
             var attrs = EventTypeAttribute();
             var entries = messages
                 .Select((message, index) => new SendMessageBatchRequestEntry

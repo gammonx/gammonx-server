@@ -45,6 +45,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Mars.NN", "GammonX.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Mars.NN.Tests", "GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj", "{0E686454-39ED-4123-B5EB-B571305E2DBA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Server", "Server", "{DAD03CFC-D5FA-AC94-41C7-9ABAB326F09E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Server.Performance", "GammonX.Server.Performance\GammonX.Server.Performance.csproj", "{F3637284-0467-403D-BB43-D6787D80FD38}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +119,10 @@ Global
 		{0E686454-39ED-4123-B5EB-B571305E2DBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E686454-39ED-4123-B5EB-B571305E2DBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0E686454-39ED-4123-B5EB-B571305E2DBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3637284-0467-403D-BB43-D6787D80FD38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3637284-0467-403D-BB43-D6787D80FD38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3637284-0467-403D-BB43-D6787D80FD38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3637284-0467-403D-BB43-D6787D80FD38}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -130,6 +138,7 @@ Global
 		{A3D6D7C1-1E5C-4B6C-9B72-6A7B3E4B8F10} = {2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}
 		{FF8BA34B-3752-43BF-A0C3-E05980A422F1} = {2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}
 		{0E686454-39ED-4123-B5EB-B571305E2DBA} = {2B6E2136-C2CD-4EF5-AB7C-06DF21563CB9}
+		{F3637284-0467-403D-BB43-D6787D80FD38} = {DAD03CFC-D5FA-AC94-41C7-9ABAB326F09E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {945C9211-4F4A-4FC0-A666-EDC2BF21D7FE}

@@ -9,12 +9,16 @@ using GammonX.Models.Helpers;
 
 using GammonX.Server;
 using GammonX.Server.Bot;
+using GammonX.Server.Diagnostics;
 using GammonX.Server.Extensions;
 using GammonX.Server.Queue;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR.Protocol;
 
 using Serilog;
 
@@ -141,11 +145,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR()
+builder.Services.AddSignalR(options => options.AddFilter<MatchHubMetricsFilter>())
     .AddJsonProtocol(options =>
     {
         options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
     });
+// Preserve the configured JSON contract while observing the actual serialization pass.
+builder.Services.Replace(ServiceDescriptor.Singleton<IHubProtocol, MeasuredJsonHubProtocol>());
+builder.Services.AddHostedService<ServerStateMetrics>();
 // we add a health check for the game server itself
 builder.Services.AddHealthChecks()
 // we add a health check for the mars bot service

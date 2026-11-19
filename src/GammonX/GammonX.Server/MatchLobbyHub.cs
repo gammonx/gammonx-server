@@ -4,6 +4,7 @@ using GammonX.Engine.Models;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
+using GammonX.Server.Diagnostics;
 using GammonX.Server.Contracts;
 using GammonX.Server.Extensions;
 using GammonX.Server.Models;
@@ -149,6 +150,7 @@ namespace GammonX.Server
                                 // The player is reconnecting. Bot requests use the players ConnectionAborted token,
                                 // so their disconnect may have canceled a bot action after its preceding state was committed.
                                 // Resume the bots interrupted turn from the committed game state.
+                                ServerMetrics.BotRecoveries.Add(1);
                                 await PerformBotTurnAsync(matchLock, matchSession, activeGameSession.ActivePlayer);
                             }
                             else if (activeGameSession.Phase != GamePhase.GameOver)
@@ -297,6 +299,7 @@ namespace GammonX.Server
 
             _ = Task.Run(async () =>
             {
+                ServerMetrics.TimerTaskStarted();
                 try
                 {
                     await Task.Delay(gracePeriod, newCts.Token);
@@ -311,11 +314,16 @@ namespace GammonX.Server
                 {
                     Log.Error(ex, "An error occurred while handling disconnect expiry for match {matchId}.", matchId);
                 }
+                finally
+                {
+                    ServerMetrics.TimerTaskFinished();
+                }
             });
         }
 
         private async Task HandlePermanentDisconnectAsync(Guid playerId, Guid matchId, string connectionId, CancellationTokenSource timer)
         {
+            using var callback = new ServerMetrics.CallbackScope();
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
             await ResolveDisconnectExpiryAsync(matchLock, playerId, matchId, connectionId, timer);
         }
@@ -1352,7 +1360,8 @@ namespace GammonX.Server
                         }
                         catch (Exception ex)
                         {
-                            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                            Log.Logger.Error(ex, "Match {matchId} :: Code {errorCode} :: Message {errorMessage}", matchSession.Id, "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                            ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "cube.offer"));
                         }
 
                         if (shouldOffer)
@@ -1373,7 +1382,8 @@ namespace GammonX.Server
                         }
                         catch (Exception ex)
                         {
-                            Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                            Log.Logger.Error(ex, "Match {matchId} :: Code {errorCode} :: Message {errorMessage}", matchSession.Id, "BOT_EXECUTE_CUBE_DECISION_ERROR", "An Error occurred while evaluating a cube decision.");
+                            ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "cube.take"));
                         }
 
                         if (shouldAccept)
@@ -1414,7 +1424,8 @@ namespace GammonX.Server
                     }
                     catch(Exception ex)
                     {
-                        Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_MOVE_ERROR", "An Error occurred while move sequence eval.");
+                        Log.Logger.Error(ex, "Match {matchId} :: Code {errorCode} :: Message {errorMessage}", matchSession.Id, "BOT_EXECUTE_MOVE_ERROR", "An Error occurred while move sequence eval.");
+                        ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "move"));
                         // we randomly select a valid move by default if the bot service has an issue answering
                         nextMoves = game.MoveSequences.FirstOrDefault() ?? new MoveSequenceModel();
                     }
@@ -1445,7 +1456,7 @@ namespace GammonX.Server
             catch (Exception ex)
             {
                 // TODO: implement a bot turn recovery.
-                Log.Logger.Error(ex, "Code {errorCode} :: Message {errorMessage}", "BOT_EXECUTE_TURN_ERROR", "An Error occurred while executing the bot turn");
+                Log.Logger.Error(ex, "Match {matchId} :: Code {errorCode} :: Message {errorMessage}", matchSession.Id, "BOT_EXECUTE_TURN_ERROR", "An Error occurred while executing the bot turn");
                 throw new BotServiceException(WellKnownBotServices.Mars, "An error occurred while executing the bot turn", ex);
             }
         }
@@ -1469,6 +1480,7 @@ namespace GammonX.Server
 
             _ = Task.Run(async () =>
             {
+                ServerMetrics.TimerTaskStarted();
                 try
                 {
                     var halfTimeLimit = GetTurnTimeLimit(modus).Divide(2);
@@ -1504,6 +1516,10 @@ namespace GammonX.Server
                     Log.Logger.Error(ex, "Turn timer error for player {playerId}", playerId);
                     _cancellationTokenService.Cancel(tokenKey);
                 }
+                finally
+                {
+                    ServerMetrics.TimerTaskFinished();
+                }
             }, turnCts.Token);
         }
 
@@ -1527,6 +1543,7 @@ namespace GammonX.Server
 
         private async Task HandleTurnTimeoutAsync(Guid matchId, Guid playerId)
         {
+            using var callback = new ServerMetrics.CallbackScope();
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
             
             if (await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock))
@@ -1900,6 +1917,7 @@ namespace GammonX.Server
 
         private async Task SendToCallerAsync<T>(string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "signalr.send");
             await Clients.Caller.SendAsync(serverEventName, response);
         }
 
@@ -1910,6 +1928,7 @@ namespace GammonX.Server
                 return;
             }
 
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "signalr.send");
             try
             {
                 await Clients.Client(connectionId).SendAsync(serverEventName, response);
@@ -1923,6 +1942,7 @@ namespace GammonX.Server
 
         private async Task SendToGroupAsync<T>(string groupName, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "signalr.send");
             try
             {
                 await Clients.Group(groupName).SendAsync(serverEventName, response);

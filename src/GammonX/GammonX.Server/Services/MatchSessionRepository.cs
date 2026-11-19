@@ -1,5 +1,6 @@
 using GammonX.Server.Models;
 using GammonX.Server.Contracts;
+using GammonX.Server.Diagnostics;
 
 using System.Collections.Concurrent;
 
@@ -14,6 +15,8 @@ namespace GammonX.Server.Services
         /// Returns the given match session by its match id.
         /// </summary>
         private readonly ConcurrentDictionary<Guid, IMatchSessionModel> _sessions = new();
+
+        internal int Count => _sessions.Count;
 
         private readonly IMatchSessionFactory _matchSessionFactory;
 
@@ -41,6 +44,7 @@ namespace GammonX.Server.Services
         /// <returns>A lease that releases access when disposed.</returns>
         public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
         {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.LeaseWait);
             MatchLock matchLock;
 
             lock (_matchLocks)
@@ -116,11 +120,14 @@ namespace GammonX.Server.Services
 
             private bool _disposed;
 
+            private readonly ServerMetrics.DurationScope _holdMeasurement;
+
             internal MatchSessionLease(MatchSessionRepository repository, Guid matchId, MatchLock matchLock)
             {
                 _repository = repository;
                 _matchId = matchId;
                 _matchLock = matchLock;
+                _holdMeasurement = ServerMetrics.Measure(ServerMetrics.LeaseHold);
             }
 
             /// <summary>
@@ -378,6 +385,7 @@ namespace GammonX.Server.Services
                                 _matchLock.Semaphore.Dispose();
                             }
                         }
+                        _holdMeasurement.Dispose();
                     }
                 }
                 return ValueTask.CompletedTask;

@@ -7,6 +7,17 @@
 
         private readonly Lock _lock = new();
 
+        internal int Count
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _tokenSources.Count;
+                }
+            }
+        }
+
         // <inheritdoc />
         public void Store(CancellationTokenKey key, CancellationTokenSource cts)
         {

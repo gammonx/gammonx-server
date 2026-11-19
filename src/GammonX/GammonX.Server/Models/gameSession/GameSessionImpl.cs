@@ -6,6 +6,7 @@ using GammonX.Models;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Diagnostics;
 
 namespace GammonX.Server.Models
 {
@@ -356,7 +357,9 @@ namespace GammonX.Server.Models
 
 		private void CalculateLegalMoveSequences(bool isWhite, int[] rolls)
 		{
+            using var measurement = ServerMetrics.Measure(ServerMetrics.MoveGenerationDuration);
 			var legalMoves = BoardService.GetLegalMoveSequences(BoardModel, isWhite, rolls);
+            ServerMetrics.SequenceCount.Record(legalMoves.Length);
 			MoveSequences = new MoveSequences();
 			MoveSequences.AddRange(legalMoves);
 		}

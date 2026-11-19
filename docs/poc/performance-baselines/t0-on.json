@@ -1,0 +1,977 @@
+{
+  "Metadata": {
+    "SchemaVersion": 1,
+    "FixtureVersion": 1,
+    "RecordedUtc": "2026-11-19T07:26:32.5637817Z",
+    "Runtime": ".NET 10.0.13",
+    "OS": "Microsoft Windows 10.0.26300",
+    "Architecture": "X64",
+    "LogicalProcessors": 16,
+    "CpuLimit": "unconstrained-local",
+    "MemoryLimitMb": "unconstrained-local",
+    "Configuration": "Release",
+    "Telemetry": "on",
+    "ServerGc": false,
+    "TieredCompilation": "false",
+    "ServerAssembly": "1.0.0\u002B64e2bb3730d6390167264d30ba5b4251864acb1d",
+    "ServerModuleId": "8ae44c3d-3b28-4ff0-8fb5-062df98417af",
+    "EngineModuleId": "b505a306-f97b-44ea-a07f-8654ce25f183",
+    "BenchmarkModuleId": "ad359bd8-72d5-49d2-b162-edd7d4d39e54",
+    "Note": "Local synchronous component benchmark; no host, transport, AWS or Mars. Runtime totals include preparation/warmup/harness; stage samples exclude preparation."
+  },
+  "Runtime": {
+    "ElapsedSeconds": 21.5999749,
+    "CpuSeconds": 21.5,
+    "AverageCpuCores": 0.9953715270289504,
+    "AllocatedBytes": 5446583048,
+    "AllocationBytesPerSecond": 252156915.6082677,
+    "GcPauseMs": 9002.733,
+    "GcPausePercent": 41.6793678774136,
+    "GcCollections": [
+      857,
+      429,
+      108
+    ],
+    "Exceptions": 0,
+    "PeakThreadPoolQueueSampled": 0,
+    "MetricMeasurements": 4516
+  },
+  "Samples": [
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.04465666666666668,
+      "P95Ms": 0.0494,
+      "AllocatedBytes": 21864,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.012499999999999999,
+      "P95Ms": 0.0141,
+      "AllocatedBytes": 14056,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.011396666666666666,
+      "P95Ms": 0.0142,
+      "AllocatedBytes": 12392,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.025620000000000014,
+      "P95Ms": 0.0272,
+      "AllocatedBytes": 5632,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "repository-turn",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.8682533333333333,
+      "P95Ms": 3.3616,
+      "AllocatedBytes": 281930.4,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.39538,
+      "P95Ms": 0.5188,
+      "AllocatedBytes": 175136,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.13000333333333333,
+      "P95Ms": 0.5049,
+      "AllocatedBytes": 115784,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.11667333333333335,
+      "P95Ms": 0.4504,
+      "AllocatedBytes": 112416,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.29451999999999984,
+      "P95Ms": 0.4731,
+      "AllocatedBytes": 66632,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "repository-turn",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 2.386153333333333,
+      "P95Ms": 3.2035,
+      "AllocatedBytes": 1028872,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.038553333333333335,
+      "P95Ms": 0.0399,
+      "AllocatedBytes": 21864,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.015603333333333339,
+      "P95Ms": 0.0167,
+      "AllocatedBytes": 14072,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.015306666666666666,
+      "P95Ms": 0.0181,
+      "AllocatedBytes": 12392,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.032426666666666666,
+      "P95Ms": 0.0379,
+      "AllocatedBytes": 5632,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.3897433333333334,
+      "P95Ms": 0.4192,
+      "AllocatedBytes": 175136,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.10781333333333334,
+      "P95Ms": 0.1443,
+      "AllocatedBytes": 115800,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.09936333333333332,
+      "P95Ms": 0.1119,
+      "AllocatedBytes": 112416,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.3007100000000001,
+      "P95Ms": 0.4106,
+      "AllocatedBytes": 66632,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.008816666666666667,
+      "P95Ms": 0.0093,
+      "AllocatedBytes": 4496,
+      "WireBytes": 871
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.018543333333333335,
+      "P95Ms": 0.0067,
+      "AllocatedBytes": 4048,
+      "WireBytes": 871
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.0033300000000000005,
+      "P95Ms": 0.0044,
+      "AllocatedBytes": 2560,
+      "WireBytes": 871
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.011896666666666668,
+      "P95Ms": 0.0145,
+      "AllocatedBytes": 5632,
+      "WireBytes": 871
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.022376666666666673,
+      "P95Ms": 0.0239,
+      "AllocatedBytes": 9992,
+      "WireBytes": 1567
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.006390000000000002,
+      "P95Ms": 0.0081,
+      "AllocatedBytes": 7136,
+      "WireBytes": 1567
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.006426666666666667,
+      "P95Ms": 0.0079,
+      "AllocatedBytes": 5616,
+      "WireBytes": 1567
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.016993333333333326,
+      "P95Ms": 0.0175,
+      "AllocatedBytes": 5632,
+      "WireBytes": 1567
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.010780000000000001,
+      "P95Ms": 0.0121,
+      "AllocatedBytes": 8384,
+      "WireBytes": 732
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.015906666666666666,
+      "P95Ms": 0.0053,
+      "AllocatedBytes": 3192,
+      "WireBytes": 732
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.0014866666666666663,
+      "P95Ms": 0.0022,
+      "AllocatedBytes": 1416,
+      "WireBytes": 732
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.006380000000000001,
+      "P95Ms": 0.0069,
+      "AllocatedBytes": 5632,
+      "WireBytes": 732
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.013386666666666667,
+      "P95Ms": 0.015,
+      "AllocatedBytes": 8176,
+      "WireBytes": 767
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.00381,
+      "P95Ms": 0.0052,
+      "AllocatedBytes": 2912,
+      "WireBytes": 767
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.001626666666666666,
+      "P95Ms": 0.0033,
+      "AllocatedBytes": 1152,
+      "WireBytes": 767
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.009806666666666665,
+      "P95Ms": 0.0177,
+      "AllocatedBytes": 5632,
+      "WireBytes": 767
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.05432333333333334,
+      "P95Ms": 0.058,
+      "AllocatedBytes": 21864,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.012379999999999999,
+      "P95Ms": 0.0132,
+      "AllocatedBytes": 14072,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.011146666666666666,
+      "P95Ms": 0.0146,
+      "AllocatedBytes": 12392,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.030883333333333332,
+      "P95Ms": 0.0373,
+      "AllocatedBytes": 5632,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.34330333333333335,
+      "P95Ms": 0.406,
+      "AllocatedBytes": 175136,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.11085333333333333,
+      "P95Ms": 0.3548,
+      "AllocatedBytes": 115800,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.10698333333333335,
+      "P95Ms": 0.3565,
+      "AllocatedBytes": 112416,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.3373666666666667,
+      "P95Ms": 0.6467,
+      "AllocatedBytes": 66632,
+      "WireBytes": 22591
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 99.88183,
+      "P95Ms": 122.0923,
+      "AllocatedBytes": 22548853.6,
+      "WireBytes": 3115575
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 60.40519333333335,
+      "P95Ms": 83.0933,
+      "AllocatedBytes": 16413794.933333334,
+      "WireBytes": 3115575
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 59.16161666666667,
+      "P95Ms": 93.3643,
+      "AllocatedBytes": 16129446.666666666,
+      "WireBytes": 3115575
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 40.984590000000004,
+      "P95Ms": 45.8807,
+      "AllocatedBytes": 8910064,
+      "WireBytes": 3115575
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "repository-turn",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 330.8508033333333,
+      "P95Ms": 377.9427,
+      "AllocatedBytes": 86415902.66666667,
+      "WireBytes": 3115575
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "generate",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.04174333333333333,
+      "P95Ms": 0.0451,
+      "AllocatedBytes": 21864,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "clone",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.06224666666666668,
+      "P95Ms": 0.0686,
+      "AllocatedBytes": 38568,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "payload",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.013523333333333335,
+      "P95Ms": 0.0167,
+      "AllocatedBytes": 12392,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "serialize",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.024820000000000002,
+      "P95Ms": 0.0279,
+      "AllocatedBytes": 5632,
+      "WireBytes": 2159
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "repository-turn",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.4360433333333333,
+      "P95Ms": 2.0538,
+      "AllocatedBytes": 509579.73333333334,
+      "WireBytes": 2159
+    }
+  ]
+}
