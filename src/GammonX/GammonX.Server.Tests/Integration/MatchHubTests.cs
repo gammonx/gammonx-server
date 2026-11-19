@@ -20,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
-using System.Reflection;
 using System.Security.Claims;
 
 using MatchType = GammonX.Models.Enums.MatchType;
@@ -351,8 +350,7 @@ namespace GammonX.Server.Tests.Integration
         private static Task InvokeDisconnectExpiryAsync(MatchLobbyHub hub, Guid playerId, Guid matchId,
             string connectionId, CancellationTokenSource timer)
         {
-            var method = typeof(MatchLobbyHub).GetMethod("HandlePermanentDisconnectAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
-            return (Task)method.Invoke(hub, [playerId, matchId, connectionId, timer])!;
+            return hub.Lifecycle.HandlePermanentDisconnectAsync(playerId, matchId, connectionId, timer, TestContext.Current.CancellationToken);
         }
 
         [Theory]
@@ -413,7 +411,7 @@ namespace GammonX.Server.Tests.Integration
             clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
             clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
             var groups = new Mock<IGroupManager>();
-            var hub = new MatchLobbyHub(BuildServiceProvider(matchmaking))
+            var hub = new MatchLobbyHub(BuildServiceProvider(matchmaking, clients: clients.Object, groups: groups.Object))
             {
                 Clients = clients.Object,
                 Groups = groups.Object,
@@ -465,7 +463,7 @@ namespace GammonX.Server.Tests.Integration
             }, secondTimer);
             var clients = new Mock<IHubCallerClients>();
             clients.Setup(value => value.Group(It.IsAny<string>())).Returns(new Mock<IClientProxy>().Object);
-            var hub = new MatchLobbyHub(BuildServiceProvider(_normalService))
+            var hub = new MatchLobbyHub(BuildServiceProvider(_normalService, clients: clients.Object))
             {
                 Clients = clients.Object,
                 Groups = new Mock<IGroupManager>().Object,
@@ -480,10 +478,10 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(secondTimer.IsCancellationRequested);
             Assert.NotNull(_matchRepo.Get(lobby.MatchId));
             _playerConnRepo.AddOrUpdate(lobby.Player1.Id, "first");
-            var deadline = hub.RegisterJoinDeadline(lobby, _matchRepo.Get(lobby.MatchId), lobby.Player1.Id, "first")!;
+            var deadline = hub.Lifecycle.RegisterJoinDeadline(lobby, _matchRepo.Get(lobby.MatchId), lobby.Player1.Id, "first")!;
             using var generation = deadline.Token;
             _deadlineClock.SetUtcNow(deadline.ExpiresAt);
-            await hub.HandleTurnTimeoutAsync(deadline);
+            await hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
             Assert.False(_normalService.TryFindMatchLobby(lobby.MatchId, out _));
         }
 
@@ -727,7 +725,7 @@ namespace GammonX.Server.Tests.Integration
                 _playerConnRepo.AddOrUpdate(player.Id, player.ConnectionId);
                 fixture.Hub.Context = new HubCallerContextStub(player.ConnectionId, player.Id, matchId);
                 await fixture.Hub.OnDisconnectedAsync(null);
-                _playerConnRepo.Get(player.Id)!.LastSeenUtc = DateTime.UtcNow - TimeSpan.FromMinutes(1);
+                _playerConnRepo.Get(player.Id)!.LastSeenUtc = _deadlineClock.GetUtcNow().UtcDateTime - TimeSpan.FromMinutes(1);
             }
             var first = players[reverseOrder ? 1 : 0];
             var key = new CancellationTokenKey { MatchId = matchId, PlayerId = first.Id, Category = CancellationTokenCategory.Disconnect };
@@ -909,7 +907,7 @@ namespace GammonX.Server.Tests.Integration
             dice.SetupSequence(value => value.Roll(1, 6)).Returns([3]).Returns([3]).Returns([6]).Returns([1]);
             var factory = new Mock<IDiceServiceFactory>();
             factory.Setup(value => value.Create(It.IsAny<DiceServiceType>())).Returns(dice.Object);
-            var hub = new MatchLobbyHub(BuildServiceProvider(_rankedService, factory.Object, new SimpleBotService()))
+            var hub = new MatchLobbyHub(BuildServiceProvider(_rankedService, factory.Object, new SimpleBotService(), clients: fixture.Clients.Object))
             {
                 Clients = fixture.Hub.Clients, Groups = fixture.Hub.Groups, Context = fixture.Hub.Context
             };
@@ -954,7 +952,7 @@ namespace GammonX.Server.Tests.Integration
             clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
             clients.Setup(value => value.Caller).Returns(client.Object);
             clients.Setup(value => value.Group(It.IsAny<string>())).Returns(client.Object);
-            var hub = new MatchLobbyHub(BuildServiceProvider(service, factory.Object, botService ?? new SimpleBotService()))
+            var hub = new MatchLobbyHub(BuildServiceProvider(service, factory.Object, botService ?? new SimpleBotService(), clients: clients.Object))
             {
                 Clients = clients.Object,
                 Groups = new Mock<IGroupManager>().Object,
@@ -2099,11 +2097,11 @@ namespace GammonX.Server.Tests.Integration
 
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Never);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -2157,11 +2155,11 @@ namespace GammonX.Server.Tests.Integration
                 Assert.Equal(GamePhase.GameOver, game.Phase);
             });
             Assert.Null(_matchRepo.Get(matchSession.Id));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -2251,11 +2249,11 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
             var gameEndedCount = (playedSessions.Count - 1) * multiplier;
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Exactly(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.Once);
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
         }
 
@@ -2336,11 +2334,11 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(matchSession.Player2.Points > 0 || matchSession.Player1.Points > 0);
             Assert.True(matchSession.Player2.Points >= type.GetMaxPoints() || matchSession.Player1.Points >= type.GetMaxPoints());
             var gameEndedCount = (playedSessions.Count - 1) * multiplier;
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeast(2));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), CancellationToken.None), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
-            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeast(2));
-            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), CancellationToken.None), Times.AtLeastOnce());
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player1ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.GameEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), gameEndedCount == 0 ? Times.Never() : Times.AtLeast(gameEndedCount));
+            mockClients.Verify(c => c.Client(player2ConnectionId).SendCoreAsync(ServerEventTypes.MatchEndedEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            mockClients.Verify(c => c.Group(groupName).SendCoreAsync(ServerEventTypes.ForceDisconnectEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
             _workQueueService.Verify(c => c.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Exactly(playedSessions.Count));
             _workQueueService.Verify(c => c.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
             _workQueueService.Verify(c => c.EnqueueStatProcessingAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -2368,13 +2366,13 @@ namespace GammonX.Server.Tests.Integration
             var matchIdStr = matchId.ToString();
 
             var matchService = GetService(MatchModus.Bot);
-            var hub = new MatchLobbyHub(BuildServiceProvider(matchService, botService: new SimpleBotService()));
             Assert.True(matchService.TryFindMatchLobby(matchId, out var lobby));
             Assert.NotNull(lobby);
             var groupName = lobby.GroupName;
 
             var mockClients = new Mock<IHubCallerClients>();
             var mockGroup = new Mock<IClientProxy>();
+            var hub = new MatchLobbyHub(BuildServiceProvider(matchService, botService: new SimpleBotService(), clients: mockClients.Object));
             hub.Clients = mockClients.Object;
             hub.Context = new HubCallerContextStub("human-" + Guid.NewGuid());
             hub.Groups = new Mock<IGroupManager>().Object;
@@ -2658,12 +2656,12 @@ namespace GammonX.Server.Tests.Integration
             await using var lease = await _matchRepo.AcquireStateAsync(matchId);
             var match = lease.Get();
             Assert.NotNull(match);
-            var deadline = hub.RegisterTurnDeadline(match, playerId);
+            var deadline = hub.Lifecycle.RegisterTurnDeadline(match, playerId);
             Assert.NotNull(deadline);
             using var generation = deadline.Token;
             await lease.DisposeAsync();
             _deadlineClock.SetUtcNow(deadline.ExpiresAt);
-            await hub.HandleTurnTimeoutAsync(deadline);
+            await hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -2674,18 +2672,18 @@ namespace GammonX.Server.Tests.Integration
             var playerId = match.Player1.Id;
             await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
             var current = lease.Get()!;
-            var original = hub.RegisterTurnDeadline(current, playerId)!;
+            var original = hub.Lifecycle.RegisterTurnDeadline(current, playerId)!;
             using var originalGeneration = original.Token;
             _deadlineClock.SetUtcNow(original.ExpiresAt);
 
             // Act
-            var expiry = hub.HandleTurnTimeoutAsync(original);
+            var expiry = hub.Lifecycle.HandleTurnTimeoutAsync(original, TestContext.Current.CancellationToken);
             Assert.False(expiry.IsCompleted);
             var game = current.GetGameSession(current.GameRound)!;
             game.NextTurn(current.Player2.Id);
             game.NextTurn(playerId);
             Assert.True(lease.Commit());
-            var replacement = hub.RegisterTurnDeadline(current, playerId)!;
+            var replacement = hub.Lifecycle.RegisterTurnDeadline(current, playerId)!;
             using var replacementGeneration = replacement.Token;
             await lease.DisposeAsync();
             await expiry;
@@ -2723,13 +2721,13 @@ namespace GammonX.Server.Tests.Integration
                 current.ResignGame(current.Player2.Id);
             }
             Assert.True(lease.Commit());
-            var deadline = hub.RegisterTurnDeadline(current, playerId)!;
+            var deadline = hub.Lifecycle.RegisterTurnDeadline(current, playerId)!;
             using var generation = deadline.Token;
             Assert.Equal(action, deadline.Obligation.Action);
             _deadlineClock.SetUtcNow(deadline.ExpiresAt);
 
             // Act: deliberately leave the same registration in place so the obligation check is exercised.
-            var expiry = hub.HandleTurnTimeoutAsync(deadline);
+            var expiry = hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
             Assert.False(expiry.IsCompleted);
             if (remove)
             {
@@ -2773,14 +2771,14 @@ namespace GammonX.Server.Tests.Integration
             var player = fixture.Session.Player1.Id;
             await hub.StartMatchAsync(id.ToString());
             await using var lease = await _matchRepo.AcquireStateAsync(id);
-            var original = hub.RegisterTurnDeadline(lease.Get()!, player)!;
+            var original = hub.Lifecycle.RegisterTurnDeadline(lease.Get()!, player)!;
             using var generation = original.Token;
             _deadlineClock.SetUtcNow(original.ExpiresAt);
 
             // Act
             hub.Context = new HubCallerContextStub("replacement", player, id);
             var reconnect = hub.OnConnectedAsync();
-            var expiry = hub.HandleTurnTimeoutAsync(original);
+            var expiry = hub.Lifecycle.HandleTurnTimeoutAsync(original, TestContext.Current.CancellationToken);
             Assert.False(reconnect.IsCompleted);
             Assert.False(expiry.IsCompleted);
             await lease.DisposeAsync();
@@ -2803,7 +2801,7 @@ namespace GammonX.Server.Tests.Integration
             var player = match.Player1.Id;
             await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
             var current = lease.Get()!;
-            var deadline = hub.RegisterTurnDeadline(current, player)!;
+            var deadline = hub.Lifecycle.RegisterTurnDeadline(current, player)!;
             using var generation = deadline.Token;
             var game = current.GetGameSession(1)!;
             game.SetDiceRolls([2, 1], true);
@@ -2813,12 +2811,12 @@ namespace GammonX.Server.Tests.Integration
             await lease.DisposeAsync();
 
             // Act
-            await hub.HandleTurnTimeoutAsync(deadline);
+            await hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
             Assert.False(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
             await using var expiryLease = await _matchRepo.AcquireStateAsync(match.Id);
             _deadlineClock.SetUtcNow(deadline.ExpiresAt);
-            var first = hub.HandleTurnTimeoutAsync(deadline);
-            var duplicate = hub.HandleTurnTimeoutAsync(deadline);
+            var first = hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
+            var duplicate = hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
             Assert.False(first.IsCompleted);
             Assert.False(duplicate.IsCompleted);
             await expiryLease.DisposeAsync();
@@ -2835,7 +2833,7 @@ namespace GammonX.Server.Tests.Integration
         {
             // Arrange
             var (match, hub, _) = await CreatePersistenceFixture();
-            var deadline = hub.RegisterTurnDeadline(match, match.Player1.Id)!;
+            var deadline = hub.Lifecycle.RegisterTurnDeadline(match, match.Player1.Id)!;
             using var generation = deadline.Token;
             using var disconnect = new CancellationTokenSource();
             var disconnectKey = new CancellationTokenKey
@@ -2846,7 +2844,7 @@ namespace GammonX.Server.Tests.Integration
             _deadlineClock.SetUtcNow(deadline.ExpiresAt);
 
             // Act
-            await hub.HandleTurnTimeoutAsync(deadline);
+            await hub.Lifecycle.HandleTurnTimeoutAsync(deadline, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.False(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
@@ -2854,6 +2852,96 @@ namespace GammonX.Server.Tests.Integration
             Assert.True(_cancellationTokenService.TryGet(disconnectKey, out var registered));
             Assert.Same(disconnect, registered);
             _cancellationTokenService.Cancel(disconnectKey);
+        }
+
+        [Fact]
+        public async Task FirstDisconnectExpiryKeepsItsMarkerUntilSecondDeadlineElapses()
+        {
+            // Arrange
+            var (match, hub, _) = await CreatePersistenceFixture();
+            var lifecycle = hub.Lifecycle;
+            var first = _playerConnRepo.AddOrUpdate(match.Player1.Id, match.Player1.ConnectionId).Value;
+            var second = _playerConnRepo.AddOrUpdate(match.Player2.Id, match.Player2.ConnectionId).Value;
+            first.DisconnectGracePeriod = TimeSpan.Zero;
+            first.LastSeenUtc = second.LastSeenUtc = lifecycle.UtcNow;
+            var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var firstExpiry = lifecycle.StartDisconnectGraceTimer(first, match.Id);
+            var secondExpiry = lifecycle.StartDisconnectGraceTimer(second, match.Id);
+            hub.Dispose();
+            await lease.DisposeAsync();
+
+            // Act
+            await using (var afterFirst = await _matchRepo.AcquireStateAsync(match.Id))
+            {
+                Assert.NotNull(afterFirst.Get());
+                Assert.False(firstExpiry.IsCompleted);
+                Assert.Equal(2, ((CancellationTokenServiceImpl)_cancellationTokenService).Count);
+            }
+            _deadlineClock.SetUtcNow(_deadlineClock.GetUtcNow() + second.DisconnectGracePeriod);
+            _deadlineClock.FireDueTimers();
+            await Task.WhenAll(firstExpiry, secondExpiry).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Null(_matchRepo.Get(match.Id));
+            Assert.Equal(0, ((CancellationTokenServiceImpl)_cancellationTokenService).Count);
+            Assert.Empty(_completedMatches);
+        }
+
+        [Fact]
+        public async Task RepeatedDisconnectExpiriesReleaseHumanMatchState()
+        {
+            for (var cycle = 0; cycle < 3; cycle++)
+            {
+                // Arrange
+                var (match, hub, _) = await CreatePersistenceFixture();
+                hub.Context = new HubCallerContextStub(match.Player1.ConnectionId, match.Player1.Id, match.Id);
+                await hub.OnConnectedAsync();
+                _playerConnRepo.AddOrUpdate(match.Player2.Id, match.Player2.ConnectionId);
+                _playerConnRepo.Get(match.Player1.Id)!.DisconnectGracePeriod = TimeSpan.Zero;
+
+                // Act
+                await hub.OnDisconnectedAsync(null);
+                hub.Dispose();
+                // Zero grace queues expiry behind the disconnect handler on the same match lease.
+                await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+                await hub.Lifecycle.StopAsync(TestContext.Current.CancellationToken);
+
+                // Assert
+                Assert.Null(lease.Get());
+                Assert.Equal(0, _matchRepo.Count);
+                Assert.Null(_playerConnRepo.Get(match.Player1.Id));
+                Assert.Null(_playerConnRepo.Get(match.Player2.Id));
+                Assert.Equal(0, ((CancellationTokenServiceImpl)_cancellationTokenService).Count);
+            }
+        }
+
+        [Fact]
+        public async Task ShutdownDrainsDeadlinesWaitingForTheMatchLease()
+        {
+            // Arrange
+            var (match, hub, _) = await CreatePersistenceFixture();
+            var lifecycle = hub.Lifecycle;
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var deadline = lifecycle.RegisterTurnDeadline(match, match.Player1.Id)!;
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+            var expiry = lifecycle.RunTurnTimerAsync(deadline);
+            Assert.False(expiry.IsCompleted);
+            var player = new PlayerConnection(match.Player2.Id, match.Player2.ConnectionId)
+            {
+                DisconnectGracePeriod = TimeSpan.Zero
+            };
+            var disconnect = lifecycle.StartDisconnectGraceTimer(player, match.Id);
+            hub.Dispose();
+
+            // Act
+            await lifecycle.StopAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.True(expiry.IsCompletedSuccessfully);
+            Assert.True(disconnect.IsCompletedSuccessfully);
+            Assert.Equal(0, ((CancellationTokenServiceImpl)_cancellationTokenService).Count);
+            Assert.False(lease.Get()!.IsMatchOver());
+            Assert.Empty(_completedMatches);
         }
 
         [Fact]
@@ -2872,8 +2960,9 @@ namespace GammonX.Server.Tests.Integration
                 });
             _workQueueService.Setup(queue => queue.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()))
                 .Callback(() => published.SetResult()).Returns(Task.CompletedTask);
-            var deadline = hub.RegisterTurnDeadline(match, match.Player1.Id)!;
-            var timer = hub.RunTurnTimerAsync(deadline);
+            var deadline = hub.Lifecycle.RegisterTurnDeadline(match, match.Player1.Id)!;
+            var timer = hub.Lifecycle.RunTurnTimerAsync(deadline);
+            hub.Dispose();
             var cancellation = TestContext.Current.CancellationToken;
 
             // Act
@@ -2928,7 +3017,7 @@ namespace GammonX.Server.Tests.Integration
             // client 1
             var player1ConnectionId = "human-" + Guid.NewGuid();
             var context1 = new HubCallerContextStub(player1ConnectionId);
-            var hub1 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object))
+            var hub1 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object, clients: mockClients.Object, groups: mockGroups.Object))
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -2938,7 +3027,7 @@ namespace GammonX.Server.Tests.Integration
             // client 2
             var player2ConnectionId = "human-" + Guid.NewGuid();
             var context2 = new HubCallerContextStub(player2ConnectionId);
-            var hub2 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object))
+            var hub2 = new MatchLobbyHub(BuildServiceProvider(matchService, diceFactory.Object, clients: mockClients.Object, groups: mockGroups.Object))
             {
                 Clients = mockClients.Object,
                 Groups = mockGroups.Object,
@@ -3081,14 +3170,8 @@ namespace GammonX.Server.Tests.Integration
             clients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
             clients.Setup(value => value.Caller).Returns(client.Object);
             clients.Setup(value => value.Group(It.IsAny<string>())).Returns(client.Object);
-            var hubContext = new Mock<IHubContext<MatchLobbyHub>>();
-            var contextClients = new Mock<IHubClients>();
-            contextClients.Setup(value => value.Client(It.IsAny<string>())).Returns(client.Object);
-            contextClients.Setup(value => value.Group(It.IsAny<string>())).Returns(client.Object);
             var groups = new Mock<IGroupManager>().Object;
-            hubContext.SetupGet(value => value.Clients).Returns(contextClients.Object);
-            hubContext.SetupGet(value => value.Groups).Returns(groups);
-            var hub = new MatchLobbyHub(BuildServiceProvider(GetService(modus), diceFactory.Object, botService, hubContext.Object))
+            var hub = new MatchLobbyHub(BuildServiceProvider(GetService(modus), diceFactory.Object, botService, clients.Object, groups))
             {
                 Clients = clients.Object,
                 Groups = groups,
@@ -3107,13 +3190,14 @@ namespace GammonX.Server.Tests.Integration
         }
 
         private ServiceProvider BuildServiceProvider(IMatchmakingService matchmakingService, IDiceServiceFactory? diceFactory = null,
-            IBotService? botService = null, IHubContext<MatchLobbyHub>? hubContext = null)
+            IBotService? botService = null, IHubCallerClients? clients = null, IGroupManager? groups = null)
         {
             var services = new ServiceCollection();
             services.AddSingleton(_workQueueService.Object);
             services.AddSingleton(matchmakingService);
             services.AddSingleton(_matchRepo);
             services.AddSingleton<MatchLobbyCleanupService>();
+            services.AddSingleton<MatchLifecycleService>();
             services.AddSingleton(diceFactory ?? _diceFactory);
             services.AddKeyedSingleton(WellKnownBotServices.WildBg, _wildBgBot);
             services.AddKeyedSingleton(WellKnownBotServices.Mars, botService ?? _marsBot);
@@ -3121,7 +3205,16 @@ namespace GammonX.Server.Tests.Integration
             services.AddSingleton(_cancellationTokenService);
             services.AddSingleton(_botRecovery);
             services.AddSingleton<TimeProvider>(_deadlineClock);
-            _ = services.AddSingleton(hubContext ?? new Mock<IHubContext<MatchLobbyHub>>().Object);
+            var background = new Mock<IHubClients>();
+            if (clients != null)
+            {
+                background.Setup(value => value.Client(It.IsAny<string>())).Returns((string id) => clients.Client(id));
+                background.Setup(value => value.Group(It.IsAny<string>())).Returns((string group) => clients.Group(group));
+            }
+            var context = new Mock<IHubContext<MatchLobbyHub>>();
+            context.SetupGet(value => value.Clients).Returns(background.Object);
+            context.SetupGet(value => value.Groups).Returns(groups ?? new Mock<IGroupManager>().Object);
+            services.AddSingleton(context.Object);
             return services.BuildServiceProvider();
         }
 

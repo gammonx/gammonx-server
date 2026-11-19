@@ -112,6 +112,40 @@ namespace GammonX.Server.Tests
         #region Replacement Operations
 
         [Fact]
+        public async Task ReplacementIsVisibleWhileOldCancellationCallbackIsBlocked()
+        {
+            // Arrange
+            var key = CreateKey(Guid.NewGuid(), Guid.NewGuid(), CancellationTokenCategory.Turn);
+            using var first = new CancellationTokenSource();
+            using var next = new CancellationTokenSource();
+            using var release = new ManualResetEventSlim();
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var cancellation = TestContext.Current.CancellationToken;
+            _service.Store(key, first);
+            using var registration = first.Token.Register(() =>
+            {
+                entered.SetResult();
+                release.Wait(cancellation);
+            });
+
+            // Act
+            var replace = Task.Run(() => _service.Store(key, next), cancellation);
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellation);
+                var lookup = Task.Run(() => _service.TryGet(key, out var current) ? current : null, cancellation);
+
+                // Assert
+                Assert.Same(next, await lookup.WaitAsync(TimeSpan.FromSeconds(5), cancellation));
+            }
+            finally
+            {
+                release.Set();
+                await replace;
+            }
+        }
+
+        [Fact]
         public void StoreWithExistingKeyShouldCancelPreviousToken()
         {
             var playerId = Guid.NewGuid();

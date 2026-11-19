@@ -54,7 +54,12 @@ namespace GammonX.Server.Services
         /// <returns>
         /// True if an unstarted lobby or session was removed; false if absent or started.
         /// </returns>
-        public async Task<bool> TryCleanupUnstartedAsync(Guid matchId, MatchSessionLease lease)
+        public Task<bool> TryCleanupUnstartedAsync(Guid matchId, MatchSessionLease lease)
+        {
+            return TryCleanupUnstartedAsync(matchId, lease, CancellationToken.None);
+        }
+
+        internal async Task<bool> TryCleanupUnstartedAsync(Guid matchId, MatchSessionLease lease, CancellationToken cancellationToken)
         {
             var match = lease.Get();
             if (match?.StartedAt != null)
@@ -94,7 +99,7 @@ namespace GammonX.Server.Services
             try
             {
                 var response = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await hub.Clients.Group(groupName).SendAsync(ServerEventTypes.ForceDisconnectEvent, response);
+                await hub.Clients.Group(groupName).SendAsync(ServerEventTypes.ForceDisconnectEvent, response, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -107,7 +112,7 @@ namespace GammonX.Server.Services
                 {
                     try
                     {
-                        await hub.Groups.RemoveFromGroupAsync(player.ConnectionId, groupName);
+                        await hub.Groups.RemoveFromGroupAsync(player.ConnectionId, groupName, cancellationToken);
                     }
                     catch (Exception ex)
                     {

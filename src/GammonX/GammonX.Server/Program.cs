@@ -84,6 +84,8 @@ builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
 builder.Services.AddSingleton<ICancellationTokenService, CancellationTokenServiceImpl>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<MatchLifecycleService>();
+builder.Services.AddHostedService(services => services.GetRequiredService<MatchLifecycleService>());
 builder.Services.AddSingleton<BotTurnRecoveryService>();
 builder.Services.AddHostedService(services => services.GetRequiredService<BotTurnRecoveryService>());
 // -------------------------------------------------------------------------------

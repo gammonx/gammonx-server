@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 through T3 complete locally. T4 through T7 pending.
+- Status: T0 through T4 complete locally. T5 through T7 pending.
 
 ## Objective and scope
 
@@ -20,7 +20,8 @@ Paths below are relative to `src/GammonX/`. Search by method name; line numbers 
 
 | Area | Source and methods |
 |---|---|
-| Hub orchestration | `GammonX.Server/MatchLobbyHub.cs`: `StartMatchAsync`, `EndTurnAsync`, `PerformBotTurnAsync`, `PerformMoveAsync`, `PerformRollAsync`, `SendGameState`, `SendMatchState` |
+| Hub commands | `GammonX.Server/MatchLobbyHub.cs`: `StartMatchAsync`, `EndTurnAsync` |
+| Shared match transitions | `GammonX.Server/Services/MatchLifecycleService.BotTurns.cs`: `PerformBotTurnAsync`, `PerformMoveAsync`, `PerformRollAsync`. `MatchLifecycleService.cs`: `SendGameState`, `SendMatchState` |
 | Match state ownership | `GammonX.Server/Services/MatchSessionRepository.cs`: `AcquireStateAsync`, `Get`, `MatchSessionLease.Commit`, `DisposeAsync` |
 | Active game | `GammonX.Server/Models/gameSession/GameSessionImpl.cs`: `CalculateLegalMoveSequences`, `MoveCheckers`, `UndoLastMove`, `Clone` |
 | Variant cloning | `GammonX.Server/Models/gameSession/BackgammonGameSession.cs`, `PlakotoGameSession.cs` |
@@ -30,7 +31,7 @@ Paths below are relative to `src/GammonX/`. Search by method name; line numbers 
 | Client payloads | `GammonX.Server/Contracts/payloads/EventGameStatePayload.cs`: `Create` |
 | History snapshots | `GammonX.Engine/History/impls/BoardHistoryImpl.cs`: `Clone` |
 | Deadline registry | `GammonX.Server/Services/ICancellationTokenService.cs`, `CancellationTokenServiceImpl.cs` |
-| Timer callbacks | `MatchLobbyHub.cs`: `StartTurnTimer`, `HandleTurnTimeoutAsync`, `StartDisconnectGraceTimer`, `ResolveDisconnectExpiryAsync` |
+| Timer callbacks | `GammonX.Server/Services/MatchLifecycleService.Deadlines.cs`: `StartTurnTimer`, `HandleTurnTimeoutAsync`, `StartDisconnectGraceTimer`, `ResolveDisconnectExpiryAsync` |
 | Lobby lifecycle | `GammonX.Server/Services/matchmaking/MatchLobbyCleanupService.cs`, `MatchmakingWorker.cs` |
 | Publications | `GammonX.Server/Extensions/MatchSessionExtensions.cs`; `GammonX.Server/Queue/WorkQueueService.cs`, `SqsWorkQueue.cs` |
 
@@ -101,7 +102,7 @@ Deliver small PRs with their own validation. The order below separates correctne
 | 2 | T1: turn-deadline generation checks **(complete locally)** | High correctness | None |
 | 3 | T2: bounded bot progress and recovery **(complete locally)** | High correctness | Reuse T1 deadline identity for recovery |
 | 4 | T3: remove started lobbies reliably **(complete locally)** | High lifecycle | None |
-| 5 | T4: move timer ownership out of hubs | Medium | Preserve T1 and T2 behavior |
+| 5 | T4: move timer ownership out of hubs **(complete locally)** | Medium | Preserve T1 and T2 behavior |
 | 6 | T5: reduce active-game snapshot allocation | High CPU | T0 baseline |
 | 7 | T6: compact legal continuations and client payloads | High CPU | T0; coordinate with T5 and client implementation |
 | 8 | T7: shorten match leases around external I/O | High resilience | T1, T2; explicit operation/version ownership |
@@ -253,7 +254,7 @@ Extend `MatchLobbyCleanupTests` and the start/failure cases in `MatchHubTests`. 
 
 ### T4: give timers service-owned lifetimes
 
-Current behavior: timer tasks capture the transient hub, retaining its context and service-provider references. Turn deadlines can last five minutes. Background sends first access disposed hub properties, catch `ObjectDisposedException`, and then use `IHubContext`. Cancellation sources have no explicit disposal owner. This is avoidable retention and exception work; it is not by itself proof of an unbounded leak.
+Original behavior. Timers retained the transient hub and its context for up to five minutes. Background sends accessed disposed hub properties before falling back to `IHubContext`. Disconnect timers lacked an explicit disposal owner.
 
 Implementation:
 
@@ -270,6 +271,13 @@ Acceptance:
 - Disposed-hub exceptions disappear from ordinary timer notifications.
 - Repeated connect/play/disconnect cycles return repository/registry counts to baseline, allowing intentionally shared bot profiles and active participants.
 - Tests cover cancellation/replacement races and both-human-disconnect behavior. A targeted retention diagnostic can use weak references after timer completion; avoid flaky heap-size assertions in ordinary tests.
+
+#### T4 completion record — 2026-11-19
+
+- A singleton hosted service owns turn, join, and disconnect deadlines. It cancels pending delays and lease waits on shutdown, drains outstanding work, and disposes each generation after its callback and warning delivery finish. An elapsed disconnect keeps its marker while the other human still has grace. [Deadline lifecycle](../../src/GammonX/GammonX.Server/Services/MatchLifecycleService.Deadlines.cs)
+- Expiry and bot recovery use the same match transitions as hub commands. Targeted sends and group cleanup use `IHubContext<MatchLobbyHub>` directly. Delayed callbacks run without capturing the request execution context. [Match transitions and notifications](../../src/GammonX/GammonX.Server/Services/MatchLifecycleService.cs)
+- The registry detaches entries under its lock and invokes cancellation listeners after releasing it. A blocked listener allows concurrent lookup of the replacement generation. [Registry regression tests](../../src/GammonX/GammonX.Server.Tests/CancellationTokenServiceTests.cs)
+- All 282 selected Release tests passed across the hub, cancellation registry, lobby cleanup, session repository, and telemetry. Controlled-clock cases cover shutdown behind a held lease, warning and expiry after hub disposal, both disconnected humans, and repeated human-match cleanup. The move-generation telemetry fixture now explicitly requests the sequences it measures. [Hub regression tests](../../src/GammonX/GammonX.Server.Tests/Integration/MatchHubTests.cs)
 
 ### T5: reduce active-game snapshot allocation without weakening isolation
 

@@ -174,6 +174,7 @@ public class ServerMetricsTests
 
         // Act
         game.SetDiceRolls([1, 1], true);
+        game.GetLegalMoveSequences(true);
 
         // Assert
         var sample = Assert.Single(capture.Read("gammonx.server.moves.sequences"));

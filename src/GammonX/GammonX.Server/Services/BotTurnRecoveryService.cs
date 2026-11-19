@@ -56,10 +56,24 @@ internal sealed class BotTurnRecoveryService(
             var deadline = new Deadline(turn, key, clock.GetUtcNow() + RecoveryDelay, generation);
             tokens.Store(key, generation);
             
-            var task = RunAsync(deadline, disconnected, recover);
-            
-            _pending.Add(task);
-            _ = ForgetAsync(task);
+            if (ExecutionContext.IsFlowSuppressed())
+            {
+                StartRecovery();
+            }
+            else
+            {
+                using (ExecutionContext.SuppressFlow())
+                {
+                    StartRecovery();
+                }
+            }
+
+            void StartRecovery()
+            {
+                var task = RunAsync(deadline, disconnected, recover);
+                _pending.Add(task);
+                _ = ForgetAsync(task);
+            }
         }
     }
 
