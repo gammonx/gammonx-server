@@ -1,5 +1,21 @@
 # Game-server baseline findings
 
+## Move-sequence refactor
+
+The Release captures use the T0 fixture IDs, dice, five warmups and 30 iterations. All 52 shared standard stages retained their sequence counts and wire sizes. The spread fixture still produced 35,370 sequences and a 3,115,575-byte active message. [Standard capture](move-sequences-off.json), [T0 comparison](move-sequences-off.json.comparison.json)
+
+| Backgammon spread operation | Mean ms | p95 ms | MB per operation | Full generations |
+|---|---:|---:|---:|---:|
+| Single move command | 0.0101 | 0.0107 | 0.0052 | 0 |
+| Clone rolled game | 0.0012 | 0.0018 | 0.0018 | 0 |
+| Human repository turn | 125.14 | 143.31 | 33.21 | 4 |
+| Repeated active query | 84.93 | 104.52 | 22.23 | 1 |
+| Waiting query | 0.0013 | 0.0017 | 0.0014 | 0 |
+| Complete bot batch | 1.50 | 1.59 | 0.20 | 0 |
+| Local bot fallback | 87.60 | 103.38 | 22.26 | 1 |
+
+Coordinate commands use the engine resolver. All 12 command fixtures recorded zero full generations. The spread command allocated 5,176 bytes. Its complete human turn generated four lists for active-player responses and allocated 33.21 MB, down from 86.43 MB at T0 and 58.77 MB with the full-list validator. Repeated active queries still generate the response while holding the lease. These local measurements exclude deployed traffic and Mars inference. [Bot capture](move-sequences-bot-off.json), [Historical bot comparison](move-sequences-bot-off.json.comparison.json)
+
 ## Post-T2 baseline and bot-turn diagnostic
 
 The listener-off Release capture after T1, T2, and the deferred-generation change uses the same 12 fixtures, 5 warmups, and 30 measurements per stage as T0. Both captures report .NET 10.0.13 on Windows X64, 16 runtime-visible logical processors, and no container limits. All standard fixture sequence counts and prepared message sizes match T0. Use `t2-off.json` as the baseline for subsequent component changes. [Post-T2 baseline](t2-off.json) · [Comparison with T0](t2-off.json.comparison.json)

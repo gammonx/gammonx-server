@@ -290,7 +290,7 @@ namespace GammonX.Server.Models
 			{
 				if (activeSession.DiceRolls.HasUnused)
 				{
-					return !activeSession.MoveSequences.CanMove;
+					return !activeSession.CanMove(IsWhite(callingPlayerId));
 				}
 				else
 				{
@@ -448,14 +448,15 @@ namespace GammonX.Server.Models
 				throw new InvalidOperationException($"No game session exists for round {GameRound}.");
 
 			var allowedCommands = ServerCommands.GetAllowedCommands(this, callingPlayerId, LastExecutedCommand);
+
 			if (Player1.Id.Equals(callingPlayerId))
 			{
-				return activeSession.ToPayload(callingPlayerId, allowedCommands, false);
+				return activeSession.ToPayload(callingPlayerId, allowedCommands, false, !Player1.IsBot && allowedCommands.Contains(ServerCommands.MoveCommand));
 			}
 			else if (Player2.Id.Equals(callingPlayerId))
 			{
 				// invert for player 2
-				return activeSession.ToPayload(callingPlayerId, allowedCommands, true);
+				return activeSession.ToPayload(callingPlayerId, allowedCommands, true, !Player2.IsBot && allowedCommands.Contains(ServerCommands.MoveCommand));
 			}
 
 			throw new InvalidOperationException("Player is not part of this match session.");
@@ -570,6 +571,7 @@ namespace GammonX.Server.Models
 
             return new TurnObligation(action, game.Id, game.TurnNumber);
 		}
+
 
 		#region Abstract Methods
 

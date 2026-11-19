@@ -70,9 +70,8 @@ namespace GammonX.Server.Models.gameSession
 		// <inheritdoc />
         public override object Clone()
         {
-			var moveSeqClone = this.MoveSequences.Select(ms => ms.DeepClone()).ToList();
             // we need to ensure the proper order of moves in the undo stack
-            var undoStackClone = new Stack<MoveModel>(ActiveUndoStack.Select(m => (MoveModel)m.Clone()).Reverse());
+            var undoStackClone = new Stack<(int From, int To, int DieIndex)>(ActiveUndoStack.Reverse());
 			var rollsClone = new DiceRollsModel(this.DiceRolls.Select(dr => (DiceRollContract)dr.Clone()));
 
 			var gameSession = new BackgammonGameSession(this.MatchId, this.Modus, this.BoardService, this.DiceService)
@@ -82,7 +81,6 @@ namespace GammonX.Server.Models.gameSession
 				ActivePlayer = this.ActivePlayer,
 				BoardModel = this.BoardModel.DeepClone(),
 				DiceRolls = rollsClone,
-				MoveSequences = new MoveSequences(moveSeqClone),
 				Result = this.Result,
 				Phase = this.Phase,
 				EndedAt = this.EndedAt,

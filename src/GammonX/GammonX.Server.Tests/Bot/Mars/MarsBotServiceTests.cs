@@ -79,7 +79,7 @@ namespace GammonX.Server.Tests.Bot.Mars
             var (match, botId) = CreateExpertSession();
             var game = match.GetGameSession(match.GameRound)!;
             game.SetDiceRolls([2, 1], false);
-            var move = game.MoveSequences.First().Moves[0];
+            var move = game.GetLegalMoveSequences(match.Player1.Id == botId).First().Moves[0];
             match.MoveCheckers(botId, move.From, move.To);
             var remaining = Assert.Single(game.DiceRolls, roll => !roll.Used).Roll;
 

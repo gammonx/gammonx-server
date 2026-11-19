@@ -102,17 +102,21 @@ namespace GammonX.Server.Tests.Repository
             var game = query.ReadGameState(playerId)!;
             var matchState = query.ReadMatchState(playerId)!;
             var originalField = game.BoardState.Fields[0];
-            var originalMove = game.MoveSequences[0].Moves[0].From;
+            var originalMove = game.MoveSequences.FirstOrDefault()?.Moves[0].From;
+            Assert.Equal(completed, originalMove == null);
             game.BoardState.Fields[0] = 99;
             game.DiceRolls[0].Used = true;
-            game.MoveSequences[0].Moves[0].From = 99;
+            if (!completed)
+            {
+                game.MoveSequences[0].Moves[0].From = 99;
+            }
             matchState.GameRounds![0].Points = 99;
 
             // Assert
             var reread = query.ReadGameState(playerId)!;
             Assert.Equal(originalField, reread.BoardState.Fields[0]);
             Assert.False(reread.DiceRolls[0].Used);
-            Assert.Equal(originalMove, reread.MoveSequences[0].Moves[0].From);
+            Assert.Equal(originalMove, reread.MoveSequences.FirstOrDefault()?.Moves[0].From);
             Assert.NotEqual(99, query.ReadMatchState(playerId)!.GameRounds![0].Points);
             Assert.False(query.Commit()); // A state query never loads a working match.
         }

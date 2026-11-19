@@ -28,7 +28,7 @@ namespace GammonX.Server.Tests.Integration
         private readonly Guid _player1Id = Guid.Parse("fdd907ca-794a-43f4-83e6-cadfabc57c45");
         private readonly Guid _player2Id = Guid.Parse("f6f9bb06-cbf6-4f42-80bf-5d62be34cff6");
 
-        private static volatile bool _player1EndedHisTurn;
+        private volatile bool _player1EndedHisTurn;
 
         public StartMatchAndGameIntegrationTests(WebApplicationFactory<Program> factory)
         {
@@ -36,6 +36,7 @@ namespace GammonX.Server.Tests.Integration
             {
                 builder.ConfigureServices(services =>
                 {
+                    services.AddSingleton<GammonX.Server.Repository.IRepositoryClient, GammonX.Server.Repository.SimpleRepositoryClient>();
                     var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IGameSessionFactory));
                     if (descriptor != null)
                     {
@@ -391,7 +392,7 @@ namespace GammonX.Server.Tests.Integration
                     // player 1 who starts the game implicitly has his first roll based on the opening rolls
                     player1FirstDiceRoll = payload.DiceRolls[0];
                     player1SecondDiceRoll = payload.DiceRolls[1];
-                    player1FirstRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1FirstDiceRoll.Roll);
+                    player1FirstRollMove = payload.MoveSequences.Select(ms => ms.Moves[0]).First(lm => Math.Abs(lm.From - lm.To) == player1FirstDiceRoll.Roll);
                     player1RolledTheDice = true;
                     Assert.Equal(3, payload.AllowedCommands.Length);
                     Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
@@ -425,7 +426,7 @@ namespace GammonX.Server.Tests.Integration
                     Assert.False(payload.DiceRolls[0].Used);
                     Assert.Equal(1, payload.DiceRolls[1].Roll);
                     Assert.False(payload.DiceRolls[1].Used);
-                    Assert.NotEmpty(payload.MoveSequences);
+                    Assert.Empty(payload.MoveSequences);
                     Assert.NotNull(payload.BoardState);
                     Assert.Equal(2, payload.AllowedCommands.Length);
                     Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
@@ -475,10 +476,11 @@ namespace GammonX.Server.Tests.Integration
                         Assert.False(payload.DiceRolls[1].Used);
                         Assert.NotEmpty(payload.MoveSequences);
                         Assert.NotNull(player1SecondDiceRoll);
-                        player1SecondRollMove = payload.MoveSequences.SelectMany(ms => ms.Moves).First(lm => Math.Abs(lm.From - lm.To) == player1SecondDiceRoll.Roll);
+                        player1SecondRollMove = payload.MoveSequences.Select(ms => ms.Moves[0]).First(lm => Math.Abs(lm.From - lm.To) == player1SecondDiceRoll.Roll);
                         player1FirstMove = true;
                         Assert.NotNull(payload.BoardState);
-                        Assert.Equal(3, payload.AllowedCommands.Length);
+                        Assert.Contains(ServerCommands.UndoMoveCommand, payload.AllowedCommands);
+                        Assert.Equal(4, payload.AllowedCommands.Length);
                         Assert.Contains(ServerCommands.MoveCommand, payload.AllowedCommands);
                         Assert.Contains(ServerCommands.ResignGameCommand, payload.AllowedCommands);
                         Assert.Contains(ServerCommands.ResignMatchCommand, payload.AllowedCommands);
@@ -547,7 +549,7 @@ namespace GammonX.Server.Tests.Integration
                 var contract = JsonConvert.DeserializeObject<EventResponseContract<EventGameStatePayload>>(response.ToString() ?? "");
                 if (contract?.Payload is EventGameStatePayload payload)
                 {
-                    if (_player1EndedHisTurn && !player2StartedTurn)
+                    if (payload.ActiveTurn == player2.PlayerId && !player2StartedTurn)
                     {
                         player2StartedTurn = true;
                         Assert.Equal(gameId, payload.Id);
@@ -576,7 +578,7 @@ namespace GammonX.Server.Tests.Integration
                         player2SecondDiceRoll = payload.DiceRolls[1];
                         Assert.NotEmpty(payload.MoveSequences);
                         // execute a combined dice roll
-                        var moveSeq = payload.MoveSequences.Select(ms => ms.Moves).First(ms => Math.Abs(ms[0].From - ms[1].To) == player2FirstDiceRoll.Roll + player2SecondDiceRoll.Roll);
+                        var moveSeq = payload.MoveSequences.Select(ms => ms.Moves).First(ms => ms.Count >= 2 && ms[0].To == ms[1].From);
                         player2FirstRollMove = new MoveModel(moveSeq[0].From, moveSeq[1].To);
                         player2RolledTheDice = true;
                         Assert.NotNull(payload.BoardState);

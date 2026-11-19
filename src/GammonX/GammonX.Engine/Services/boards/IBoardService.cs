@@ -84,6 +84,28 @@ namespace GammonX.Engine.Services
         void AddCubeEventToHistory(IBoardModel model, bool isWhite, CubeAction cubeAction);
 
         /// <summary>
+        /// Resolves a coordinate command to contiguous steps and their dice, or null when no legal
+        /// interpretation exists. Prefers a single step, then tries combined paths in ascending die order.
+        /// Leaves the board and the supplied dice untouched.
+        /// </summary>
+        /// <param name="model">Board at the start of the command.</param>
+        /// <param name="isWhite">True for white checkers, false for black.</param>
+        /// <param name="from">Starting point or bar entry position.</param>
+        /// <param name="to">Requested destination or bear-off position.</param>
+        /// <param name="rolls">Unused dice for the current turn, including each remaining double.</param>
+        /// <returns>The ordered steps and the die spent on each, or <see langword="null"/> if the command is illegal.</returns>
+        MoveSequenceModel? ResolveMove(IBoardModel model, bool isWhite, int from, int to, params int[] rolls);
+
+        /// <summary>
+        /// Checks whether any remaining die can be played from this position.
+        /// </summary>
+        /// <param name="model">Board to examine.</param>
+        /// <param name="isWhite">True for white checkers, false for black.</param>
+        /// <param name="rolls">Dice still available to the player.</param>
+        /// <returns>True if any checker can move or bear off with an available die.</returns>
+        bool CanUseAnyRoll(IBoardModel model, bool isWhite, params int[] rolls);
+
+        /// <summary>
         /// Checks if the given checker can be moved from to a given position based
         /// on the roll.
         /// </summary>

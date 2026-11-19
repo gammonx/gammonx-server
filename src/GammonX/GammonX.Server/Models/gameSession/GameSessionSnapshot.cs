@@ -1,4 +1,5 @@
 using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Models;
 using GammonX.Models.Enums;
@@ -65,6 +66,9 @@ internal sealed class GameSessionSnapshot : IGameSessionModel, ICloneable
     // <inheritdoc />
     public GameModus Modus => Read.Modus;
 
+    /// <inheritdoc />
+    public IBoardService BoardService => Read.BoardService;
+
     // <inheritdoc />
     public Guid MatchId => Read.MatchId;
 
@@ -103,14 +107,14 @@ internal sealed class GameSessionSnapshot : IGameSessionModel, ICloneable
     public DiceRollsModel DiceRolls => Write.DiceRolls;
 
     // <inheritdoc />
-    public MoveSequences MoveSequences => Write.MoveSequences;
-
-    // <inheritdoc />
     public IBoardModel BoardModel => Write.BoardModel;
 
     #endregion Mutable Properties
 
     #region Immutable Access
+
+    /// <inheritdoc />
+    public bool CanMove(bool isWhite) => Read.CanMove(isWhite);
 
     // <inheritdoc />
     public bool CanUndoLastMove(Guid callingPlayerId) => Read.CanUndoLastMove(callingPlayerId);
@@ -122,7 +126,7 @@ internal sealed class GameSessionSnapshot : IGameSessionModel, ICloneable
     public GameRoundContract ToContract(int gameRoundIndex) => Read.ToContract(gameRoundIndex);
 
     // <inheritdoc />
-    public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted) => Read.ToPayload(playerId, allowedCommands, inverted);
+    public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted, bool includeMoves = true) => Read.ToPayload(playerId, allowedCommands, inverted, includeMoves);
 
     #endregion Immutable Access
 

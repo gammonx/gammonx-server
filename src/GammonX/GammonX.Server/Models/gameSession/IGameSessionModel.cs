@@ -1,4 +1,5 @@
 ﻿using GammonX.Engine.Models;
+using GammonX.Engine.Services;
 
 using GammonX.Models;
 using GammonX.Models.Enums;
@@ -16,6 +17,11 @@ namespace GammonX.Server.Models
 		/// Gets the modus of this game round.
 		/// </summary>
 		public GameModus Modus { get; }
+
+		/// <summary>
+		/// Provides the board rules used for this round and its move views.
+		/// </summary>
+		IBoardService BoardService { get; }
 
 		/// <summary>
 		/// Gets the match id of the match this game session belongs to.
@@ -65,11 +71,6 @@ namespace GammonX.Server.Models
 		/// Get an array of all dice rolls for the active turn.
 		/// </summary>
 		public DiceRollsModel DiceRolls { get; }
-
-		/// <summary>
-		/// Get an array of all legal moves for the active turn.
-		/// </summary>
-		public MoveSequences  MoveSequences { get; }
 
 		/// <summary>
 		/// Gets the board model and its current state for the player1.
@@ -166,6 +167,13 @@ namespace GammonX.Server.Models
 		bool CanUndoLastMove(Guid callingPlayerId);
 
 		/// <summary>
+		/// Checks move availability without enumerating sequences.
+		/// </summary>
+		/// <param name="isWhite">True for white checkers, false for black.</param>
+		/// <returns>True when the player can spend at least one unused die.</returns>
+		bool CanMove(bool isWhite);
+
+		/// <summary>
 		/// Checks if the given game session is over.
 		/// </summary>
 		/// <param name="isWhite">True for white checkers. False for black checkers</param>
@@ -181,8 +189,9 @@ namespace GammonX.Server.Models
 		/// <param name="playerId">Player for which the payload is constructed.</param>
 		/// <param name="allowedCommands">A list of allowed commands for the client.</param>
 		/// <param name="inverted">If set to <c>true</c> the payload is created for player 2. Otherwise for player 1.</param>
+		/// <param name="includeMoves">Includes playable sequences when the recipient is the active human.</param>
 		/// <returns>An instance of <see cref="EventGameStatePayload"/>.</returns>
-		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted);
+		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted, bool includeMoves = true);
 
 		/// <summary>
 		/// Creates a game round contract which concludes the game session.

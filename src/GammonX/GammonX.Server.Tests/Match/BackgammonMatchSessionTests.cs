@@ -116,7 +116,7 @@ namespace GammonX.Server.Tests.Match
 			board.BearOffChecker(false, 1);
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -171,7 +171,7 @@ namespace GammonX.Server.Tests.Match
 			board.BearOffChecker(true, 14);
 			// no borne off for black
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -216,7 +216,7 @@ namespace GammonX.Server.Tests.Match
 			homeBarBoard.AddToHomeBar(false, 1);
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -255,7 +255,7 @@ namespace GammonX.Server.Tests.Match
 			// no borne off for black but has one in winners home range
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -294,7 +294,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a full turn
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -304,7 +304,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
             Assert.Equal(session.Player2.Id, gameSession.Result.WinnerId);
@@ -347,7 +347,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a turn for white checkers
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -356,7 +356,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -402,7 +402,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a turn for white checkers
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -411,7 +411,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -454,7 +454,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a turn for white checkers
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -463,7 +463,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -503,7 +503,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.DoesNotContain(ServerCommands.OfferDoubleCommand, player2GameState.AllowedCommands);
 
 			// execute a full turn
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var anyMove in anyMoveSeq.Moves)
 			{
@@ -588,7 +588,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
-			var move = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			var move = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(move);
 			session.MoveCheckers(session.Player1.Id, move.From, move.To);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
@@ -599,7 +599,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.AcceptDouble(session.Player2.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player1.Id));
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
-			move = gameSession.MoveSequences.FirstOrDefault()?.Moves.FirstOrDefault();
+			move = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault()?.Moves.FirstOrDefault();
 			Assert.NotNull(move);
 			session.MoveCheckers(session.Player1.Id, move.From, move.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -622,7 +622,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.Throws<InvalidOperationException>(() => doublingCubeSession.DeclineDouble(session.Player2.Id));
 			// execute a full turn
 			session.RollDices(session.Player2.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var anyMove in anyMoveSeq.Moves)
 			{
@@ -672,7 +672,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.False(doublingCubeSession.CanOfferDouble(session.Player1.Id));
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			// move
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var anyMove in anyMoveSeq.Moves)
 			{
@@ -691,7 +691,7 @@ namespace GammonX.Server.Tests.Match
 			// roll
 			session.RollDices(session.Player2.Id);
 			// move
-			anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var anyMove in anyMoveSeq.Moves)
 			{

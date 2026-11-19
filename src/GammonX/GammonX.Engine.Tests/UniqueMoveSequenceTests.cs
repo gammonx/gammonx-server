@@ -182,13 +182,15 @@ public class UniqueMoveSequenceTests
     private static (MoveSequenceModel[] All, MoveSequenceModel[] Unique) ReferenceSequences(
         IBoardService service, IBoardModel board, bool isWhite, int[] rolls)
     {
-        // Independent copy-per-branch traversal: retain every terminal position, then deduplicate and filter.
+        // Apply the turn rules to every terminal path before choosing representatives.
         var terminal = new List<(IBoardModel Board, MoveSequenceModel Sequence)>();
         Explore(board.DeepClone(), rolls.Order().ToArray(), new MoveSequenceModel());
-        var all = terminal.Select(result => result.Sequence).Distinct(new MoveSequenceModelComparer()).ToArray();
+        var allowed = Filter(terminal.Select(result => result.Sequence).ToArray()).ToHashSet(ReferenceEqualityComparer.Instance);
+        var legal = terminal.Where(result => allowed.Contains(result.Sequence)).ToArray();
+        var all = legal.Select(result => result.Sequence).Distinct(new MoveSequenceModelComparer()).ToArray();
         var seen = new HashSet<IBoardModel>();
-        var unique = terminal.Where(result => seen.Add(result.Board)).Select(result => result.Sequence).ToArray();
-        return (Filter(all), Filter(unique));
+        var unique = legal.Where(result => seen.Add(result.Board)).Select(result => result.Sequence).ToArray();
+        return (all, unique);
 
         MoveSequenceModel[] Filter(MoveSequenceModel[] sequences)
         {

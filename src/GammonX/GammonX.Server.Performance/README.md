@@ -32,12 +32,17 @@ Stages:
 | Stage | Included work |
 |---|---|
 | `generate` | Engine legal-sequence generation on the unrolled board; traversal restores the board/history |
+| `move-command` | Resolve and apply the first requested move on a rolled game. Fixture cloning happens before timing. |
 | `clone` | Deep clone of the prepared, rolled game |
-| `payload` | Detached active-white-player game payload |
+| `payload` | Detached active-white-player payload, including one full generation from its position |
+| `project-generated` | Project the same position with an already generated list |
+| `active-query`, `waiting-query` | Repeated reads of one committed rolled match through the repository lease, once per sample |
 | `serialize` | Production JSON protocol/options, event contract and SignalR envelope; fresh output buffer per operation |
 | `repository-turn` | Backgammon only: roll, individual legal moves, end turn, per-command leases and commits, payloads and SignalR serialization for both players, then repository removal |
 
 The turn stage exercises the repository/model/serialization path without a SignalR host, transport, timers, authentication, bot inference or SQS. It includes small harness helper allocations and final removal; it is not a latency benchmark for a deployed hub. Each iteration prepares a fresh match outside the measured section. Other stages reuse an unchanged prepared fixture. Buffer growth is included in serialization allocation; output capacity is not retained between standalone serialization samples.
+
+`FullGenerations` counts full server enumerations in a separate untimed replay. The direct engine `generate` stage performs one enumeration. `LeaseHoldMs` sums repository lease time in that replay. The timed samples run with the selected telemetry setting.
 
 `AllocatedBytes` uses current-thread allocation around synchronous operations only. The turn stage checks that uncontended lease acquisition completes synchronously. Do not extend these measurements across arbitrary asynchronous I/O without changing the allocation method. Mean/p95 are descriptive measurements, never unit-test timing thresholds.
 
@@ -51,7 +56,7 @@ Runtime totals cover the entire run, including warmup, fixture preparation, samp
 dotnet run --project src/GammonX/GammonX.Server.Performance/GammonX.Server.Performance.csproj -c Release --no-build -- --bot-turns on --iterations 30 --warmup 5 --telemetry off --output out/performance/bot-turns.json --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local
 ```
 
-`--bot-turns on` runs only `bot-turn-eager` and `bot-turn-deferred` on the same 12 fixtures. Both stages replay the same precomputed moves for the fixture's white player. Each measures the roll, moves, end turn, game clones, and SignalR serialization for the human opponent. If the recorded moves leave unused dice, the deferred stage checks for a local continuation as it would after an empty evaluation. Fixture preparation, Mars calls, hub orchestration, leases and transport are outside the measured stage. In this mode, `WireBytes` records the prepared rolled message for the human opponent. Compare paired stages within a run and use the standard stages for comparisons against the original T0 baseline.
+`--bot-turns on` measures three bot paths on each fixture. `bot-turn-deferred` replays a complete preselected batch. `bot-turn-eager` replays it while also generating the list at every playable position. `bot-turn-fallback` generates one local batch after rolling. The three paths include a game clone and serialization for the human opponent at each publication. The eager stage uses the current snapshot representation. Its allocation differs from historical runs that also cloned stored sequences. `WireBytes` records the prepared observer message. Fixture preparation, Mars inference, leases and transport are outside these bot stages.
 
 ## Production telemetry
 

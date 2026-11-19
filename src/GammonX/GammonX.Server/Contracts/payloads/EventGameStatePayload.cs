@@ -54,10 +54,48 @@ namespace GammonX.Server.Contracts
 			BoardState = new BoardModelContract();
 		}
 
-        internal static EventGameStatePayload Create(
-			IGameSessionModel model, 
+        /// <summary>
+		/// Builds the game state in the recipient's orientation and turn phase.
+		/// </summary>
+        /// <param name="model">Round to project.</param>
+        /// <param name="playerId">Player receiving the state.</param>
+        /// <param name="inverted">Whether to project the board for the second seat.</param>
+        /// <param name="requiresMoves">Whether the active recipient needs legal sequences when a move is due.</param>
+        /// <param name="allowedCommands">Commands available to this recipient.</param>
+        /// <returns>A detached game state suitable for delivery to the player.</returns>
+        internal static EventGameStatePayload ForPlayer(
+            IGameSessionModel model, 
+			Guid playerId, 
 			bool inverted, 
-			bool activePlayer, 
+			bool requiresMoves, 
+			string[] allowedCommands)
+        {
+            var active = model.ActivePlayer == playerId;
+			var phaseFits = model.Phase is GamePhase.Rolling or GamePhase.Moving;
+			// we send the legal moves in the game state if player is active, it is required and the game phase is fitting
+            var moves = active && requiresMoves && phaseFits ? model.GetLegalMoveSequences(!inverted) : null;
+            var payload = Create(model, moves, inverted, allowedCommands);
+            
+			if (!active)
+            {
+                payload.Phase = GamePhase.WaitingForOpponent;
+            }
+            
+			return payload;
+        }
+
+        /// <summary>
+		/// Projects a position with the move list prepared for the recipient.
+		/// </summary>
+        /// <param name="model">Round supplying the current board and dice.</param>
+        /// <param name="moveSequences">Detached sequences to publish, or <see langword="null"/> for an empty list.</param>
+        /// <param name="inverted">Whether to orient the board and moves for the second seat.</param>
+        /// <param name="allowedCommands">Commands available to the recipient.</param>
+        /// <returns>The projected board, dice, commands, and move sequences.</returns>
+        internal static EventGameStatePayload Create(
+			IGameSessionModel model,
+			MoveSequences? moveSequences,
+			bool inverted, 
 			params string[] allowedCommands)
 		{
 			var boardState = model.BoardModel.ToContract(inverted);
@@ -69,15 +107,6 @@ namespace GammonX.Server.Contracts
                 boardState.PinnedFields = boardState.PinnedFields?.ToArray();
             }
 
-            // A waiting player needs board state only; avoid cloning or inverting the move list.
-            var moveSequences = Array.Empty<MoveSequenceModel>();
-            if (activePlayer)
-            {
-                moveSequences = inverted
-                    ? model.MoveSequences.ToContract(true, model.Modus)
-                    : model.MoveSequences.Select(sequence => sequence.DeepClone()).ToArray();
-            }
-
 			return new EventGameStatePayload(allowedCommands)
 			{
 				Modus = model.Modus,
@@ -87,7 +116,7 @@ namespace GammonX.Server.Contracts
 				ActiveTurn = model.ActivePlayer,
 				TurnNumber = model.TurnNumber,
 				DiceRolls = ((DiceRollsModel)model.DiceRolls.Clone()).ToArray(),
-				MoveSequences = moveSequences,
+				MoveSequences = moveSequences?.ToContract(inverted, model.Modus) ?? [],
 				BoardState = boardState,
 			};
 		}

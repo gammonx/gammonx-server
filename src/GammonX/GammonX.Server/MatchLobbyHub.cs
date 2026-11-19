@@ -610,10 +610,9 @@ namespace GammonX.Server
                                 }
                                 else
                                 {
+                                    StartTurnTimer(matchSession, startingPlayerId);
                                     await SendMatchState(matchLock, ServerEventTypes.MatchStartedEvent, matchSession);
                                     await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
-                                    // we set a timeout for the starting player to end his turn
-                                    StartTurnTimer(matchSession, startingPlayerId);
                                 }
 
                                 // we clean up the match lobby as soon as the first player rolled his starting dice
@@ -706,9 +705,8 @@ namespace GammonX.Server
                         }
                         else
                         {
-                            await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
-                            // we set a timeout for the starting player to end his turn
                             StartTurnTimer(matchSession, startingPlayerId);
+                            await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
                         }
                     }
                     else
@@ -912,8 +910,8 @@ namespace GammonX.Server
                     }
                     else
                     {
-                        await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                         StartTurnTimer(matchSession, otherPlayerId);
+                        await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                     }
                 }
                 else
@@ -1391,10 +1389,10 @@ namespace GammonX.Server
         }
 
         private async Task RunBotTurnAsync(
-            MatchSessionLease matchLock, 
-            IMatchSessionModel matchSession, 
+            MatchSessionLease matchLock,
+            IMatchSessionModel matchSession,
             BotTurnIdentity turn,
-            CancellationToken cancellationToken, 
+            CancellationToken cancellationToken,
             bool fallbackEval = false)
         {
             var game = RequireActiveBotGame(matchSession, turn, cancellationToken);
@@ -1405,7 +1403,7 @@ namespace GammonX.Server
                 {
                     var shouldTake = fallbackEval || await EvaluateBotCubeAsync(matchSession, turn.BotId, true, cancellationToken);
                     RequireActiveBotGame(matchSession, turn, cancellationToken);
-                    
+
                     if (shouldTake)
                     {
                         await PerformAcceptDoubleAsync(matchLock, matchSession, turn.BotId, cancellationToken);
@@ -1422,7 +1420,7 @@ namespace GammonX.Server
                 {
                     var shouldOffer = await EvaluateBotCubeAsync(matchSession, turn.BotId, false, cancellationToken);
                     RequireActiveBotGame(matchSession, turn, cancellationToken);
-                    
+
                     if (shouldOffer)
                     {
                         await PerformOfferDoubleAsync(matchLock, matchSession, turn.BotId, cancellationToken);
@@ -1440,11 +1438,11 @@ namespace GammonX.Server
             var diceRemaining = game.DiceRolls.Count(roll => !roll.Used);
             IReadOnlyList<MoveModel>? moveSeq = null;
             var nextMove = 0;
-            
-            while (diceRemaining > 0 && game.MoveSequences.CanMove)
+
+            while (diceRemaining > 0 && game.CanMove(matchLock.IsWhite(turn.BotId)))
             {
                 RequireActiveBotGame(matchSession, turn, cancellationToken);
-                
+
                 if (!fallbackEval && (moveSeq == null || nextMove >= moveSeq.Count))
                 {
                     try
@@ -1462,7 +1460,7 @@ namespace GammonX.Server
                     game = RequireActiveBotGame(matchSession, turn, cancellationToken);
                 }
 
-                var move = !fallbackEval && moveSeq != null && nextMove < moveSeq.Count ? moveSeq[nextMove++] : null;
+                var move = moveSeq != null && nextMove < moveSeq.Count ? moveSeq[nextMove++] : null;
                 if (move == null)
                 {
                     if (!fallbackEval)
@@ -1472,31 +1470,33 @@ namespace GammonX.Server
                     }
 
                     // the bot service failed to deliver a move, we just fall back on the first one
-                    move = game.MoveSequences.First(sequence => sequence.Moves.Count > 0).Moves[0];
+                    moveSeq = game.GetLegalMoveSequences(matchLock.IsWhite(turn.BotId)).First().Moves;
+                    nextMove = 1;
+                    move = moveSeq[0];
                 }
 
                 RequireActiveBotGame(matchSession, turn, cancellationToken);
-               
+
                 await PerformMoveAsync(matchLock, matchSession, turn.BotId, move.From, move.To, cancellationToken);
-                
+
                 if (game.Phase == GamePhase.GameOver)
                 {
                     return;
                 }
 
                 game = RequireActiveBotGame(matchSession, turn, cancellationToken);
-                
+
                 var unused = game.DiceRolls.Count(roll => !roll.Used);
                 if (unused >= diceRemaining)
                 {
                     throw new InvalidOperationException("A committed bot move must spend at least one die.");
                 }
-                
+
                 diceRemaining = unused;
             }
 
             RequireActiveBotGame(matchSession, turn, cancellationToken);
-            
+
             if (!matchSession.CanEndTurn(turn.BotId))
             {
                 throw new InvalidOperationException("The bot could not finish its turn within the remaining dice.");
@@ -1504,15 +1504,15 @@ namespace GammonX.Server
 
             matchSession.EndTurn(turn.BotId);
             matchLock.Commit();
-            
+
             StartTurnTimer(matchSession, matchLock.GetOtherPlayerId(turn.BotId));
             await SendGameState(ServerEventTypes.GameStateEvent, matchSession, cancellationToken);
         }
 
         private async Task<bool> EvaluateBotCubeAsync(
-            IMatchSessionModel match, 
-            Guid botId, 
-            bool take, 
+            IMatchSessionModel match,
+            Guid botId,
+            bool take,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1529,9 +1529,9 @@ namespace GammonX.Server
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Log.Warning(ex, "Bot cube evaluation failed for match {MatchId}.", match.Id);
-                
+
                 ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", take ? "cube.take" : "cube.offer"));
-                
+
                 return take;
             }
         }
@@ -1565,9 +1565,9 @@ namespace GammonX.Server
             var turn = deadline.Turn;
             using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Generation.Token);
             await using var matchLock = await _matchRepository.AcquireStateWithCancellationAsync(turn.MatchId, wait.Token);
-            
+
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             var match = matchLock.Get();
             if (match == null || GetActiveBotGame(match, turn) == null ||
                 IsDisconnectPending(turn.MatchId, matchLock.GetOtherPlayerId(turn.BotId)) ||
@@ -1940,14 +1940,14 @@ namespace GammonX.Server
         }
 
         private async Task SendGameState(
-            string serverEventName, 
+            string serverEventName,
             IMatchSessionModel matchSession,
             CancellationToken cancellationToken = default)
         {
             var gameSessionPlayer1 = matchSession.GetGameState(matchSession.Player1.Id);
             var player1Contract = new EventResponseContract<EventGameStatePayload>(serverEventName, gameSessionPlayer1);
             await SendToClientAsync(matchSession.Player1.ConnectionId, serverEventName, player1Contract, cancellationToken);
-            
+
             if (!matchSession.Player2.IsBot)
             {
                 var gameSessionPlayer2 = matchSession.GetGameState(matchSession.Player2.Id);
@@ -1999,13 +1999,13 @@ namespace GammonX.Server
         }
 
         private async Task CleanUpMatchAsync(
-            MatchSessionLease matchLock, 
-            IMatchSessionModel match, 
+            MatchSessionLease matchLock,
+            IMatchSessionModel match,
             string groupName,
             CancellationToken cancellationToken = default)
         {
             CancelTimersFor(match.Id, CancellationTokenCategory.BotRecovery);
-            
+
             if (await _lobbyCleanup.TryCleanupUnstartedAsync(match.Id, matchLock))
             {
                 return;
@@ -2161,7 +2161,7 @@ namespace GammonX.Server
             var unWrappedException = UnWrapAggregateException(exception);
             var payload = new EventErrorPayload(errorCode, message, unWrappedException, ServerCommands.GameStateCommand, ServerCommands.MatchStateCommand);
             var contract = new EventResponseContract<EventErrorPayload>(ServerEventTypes.ErrorEvent, payload);
-            
+
             if (!string.IsNullOrEmpty(connectionId))
             {
                 await SendToClientAsync(connectionId, ServerEventTypes.ErrorEvent, contract);
@@ -2175,9 +2175,9 @@ namespace GammonX.Server
         }
 
         private async Task SendErrorEventToGroupAsync(
-            string errorCode, 
-            string message, 
-            string groupName, 
+            string errorCode,
+            string message,
+            string groupName,
             Exception? exception = null,
             CancellationToken cancellationToken = default)
         {
@@ -2231,8 +2231,8 @@ namespace GammonX.Server
         }
 
         private async Task SendToClientAsync<T>(
-            string connectionId, 
-            string serverEventName, 
+            string connectionId,
+            string serverEventName,
             EventResponseContract<T> response,
             CancellationToken cancellation = default) where T : EventPayloadBase
         {
@@ -2254,8 +2254,8 @@ namespace GammonX.Server
         }
 
         private async Task SendToGroupAsync<T>(
-            string groupName, 
-            string serverEventName, 
+            string groupName,
+            string serverEventName,
             EventResponseContract<T> response,
             CancellationToken cancellationToken = default) where T : EventPayloadBase
         {
@@ -2272,8 +2272,8 @@ namespace GammonX.Server
         }
 
         private async Task RemoveFromGroupAsync(
-            string connectionId, 
-            string groupName, 
+            string connectionId,
+            string groupName,
             CancellationToken cancellationToken = default)
         {
             if (string.Equals(connectionId, WellKnownBotPlayers.ConnectionId, StringComparison.Ordinal))

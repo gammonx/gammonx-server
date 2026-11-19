@@ -1,5 +1,6 @@
 using System.Buffers;
 
+using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
@@ -70,19 +71,11 @@ internal sealed record RunSimulationModel(string Name, GameModus Variant, int Di
     // actual SignalR serialization to both recipients. Hosting, timers and transport are excluded.
     internal Action PrepareTurn()
     {
-        var repository = new MatchSessionRepository(new MatchSessionFactory(new GameSessionFactory(new FixedDiceFactory(Die1, Die2))));
-        var lease = Acquire(repository);
-        var match = lease.Create(new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame));
-        match.JoinSession(new PlayerConnection(Player, "one"));
-        match.JoinSession(new PlayerConnection(Opponent, "two"));
-        match.Player1.AcceptNextGame();
-        match.Player2.AcceptNextGame();
-        Configure(match.StartMatch(Player));
-        lease.Commit();
-        lease.DisposeAsync().GetAwaiter().GetResult();
+        var repository = CreateRepository(rolled: false);
         var protocol = CreateProtocol();
         var output = new ArrayBufferWriter<byte>();
 
+        MoveModel? nextMove = null;
         return () =>
         {
             using (var command = new TurnCommand(repository))
@@ -99,7 +92,7 @@ internal sealed record RunSimulationModel(string Name, GameModus Variant, int Di
                 {
                     break;
                 }
-                var move = command.Match.GetGameSession(1)!.MoveSequences[0].Moves[0];
+                var move = nextMove ?? throw new InvalidOperationException("Missing move in active payload.");
                 finished = command.Match.MoveCheckers(Player, move.From, move.To);
                 Publish(command);
             }
@@ -124,10 +117,109 @@ internal sealed record RunSimulationModel(string Name, GameModus Variant, int Di
                 foreach (var player in new[] { Player, Opponent })
                 {
                     output.Clear();
-                    protocol.WriteMessage(Message(command.Match.GetGameState(player)), output);
+                    var payload = command.Match.GetGameState(player);
+                    if (player == Player)
+                    {
+                        nextMove = payload.MoveSequences.FirstOrDefault()?.Moves[0];
+                    }
+                    protocol.WriteMessage(Message(payload), output);
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// Prepares a repeatable game-state read through the repository lease.
+    /// </summary>
+    /// <param name="player">Seat whose response is measured.</param>
+    /// <returns>The query to execute for each sample.</returns>
+    internal Action PrepareQuery(Guid player)
+    {
+        var repository = CreateRepository(rolled: true);
+        return () =>
+        {
+            var lease = Acquire(repository);
+            try
+            {
+                GC.KeepAlive(lease.ReadGameState(player));
+            }
+            finally
+            {
+                lease.DisposeAsync().GetAwaiter().GetResult();
+            }
+        };
+    }
+
+    /// <summary>
+    /// Prepares a bot turn with observer publication after the roll, each move, and handoff.
+    /// </summary>
+    /// <param name="selected">Preselected sequence used for a complete bot batch.</param>
+    /// <param name="eager">Whether to generate legal sequences at each playable position.</param>
+    /// <param name="fallback">Whether to select a local continuation after rolling.</param>
+    /// <returns>The prepared turn to execute once.</returns>
+    internal Action PrepareBotTurn(MoveSequenceModel selected, bool eager, bool fallback)
+    {
+        var game = CreateGame(false);
+        var protocol = CreateProtocol();
+        var output = new ArrayBufferWriter<byte>();
+        return () =>
+        {
+            game.SetDiceRolls([Die1, Die2], true);
+            Publish();
+            var sequence = fallback ? game.GetLegalMoveSequences(true).First() : selected;
+            foreach (var move in sequence.Moves)
+            {
+                game.MoveCheckers(Player, move.From, move.To, true);
+                Publish();
+            }
+            if (game.CanMove(true))
+            {
+                throw new InvalidOperationException("Recorded bot sequence left a playable die.");
+            }
+            game.NextTurn(Opponent);
+            Publish();
+        };
+
+        void Publish()
+        {
+            if (eager && game.Phase is GamePhase.Rolling or GamePhase.Moving)
+            {
+                GC.KeepAlive(game.GetLegalMoveSequences(true));
+            }
+            GC.KeepAlive(((ICloneable)game).Clone());
+            output.Clear();
+            protocol.WriteMessage(Message(game.ToPayload(Opponent, [], true)), output);
+        }
+    }
+
+    /// <summary>
+    /// Creates a committed match at the benchmark fixture position.
+    /// </summary>
+    /// <param name="rolled">Whether to commit the fixture dice before sampling.</param>
+    /// <returns>The repository containing the prepared match.</returns>
+    private MatchSessionRepository CreateRepository(bool rolled)
+    {
+        var repository = new MatchSessionRepository(new MatchSessionFactory(new GameSessionFactory(new FixedDiceFactory(Die1, Die2))));
+        var lease = Acquire(repository);
+        try
+        {
+            var match = lease.Create(new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame));
+            match.JoinSession(new PlayerConnection(Player, "one"));
+            match.JoinSession(new PlayerConnection(Opponent, "two"));
+            match.Player1.AcceptNextGame();
+            match.Player2.AcceptNextGame();
+            Configure(match.StartMatch(Player));
+            if (rolled)
+            {
+                match.RollDices(Player);
+            }
+            lease.Commit();
+        }
+        finally
+        {
+            lease.DisposeAsync().GetAwaiter().GetResult();
+        }
+        return repository;
     }
 
     private static MatchSessionRepository.MatchSessionLease Acquire(MatchSessionRepository repository)

@@ -6,7 +6,6 @@ using GammonX.Models;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
-using GammonX.Diagnostics.Server;
 
 namespace GammonX.Server.Models
 {
@@ -15,12 +14,16 @@ namespace GammonX.Server.Models
 	{
 		protected IDiceService DiceService { get; private set; }
 
-		protected Stack<MoveModel> ActiveUndoStack { get; init; } = new();
+		/// <summary>
+		/// Stores each played step and its die index in reverse play order for undo.
+		/// </summary>
+		protected Stack<(int From, int To, int DieIndex)> ActiveUndoStack { get; init; } = new();
 
-        protected IBoardService BoardService { get; init; }
+		/// <inheritdoc />
+		public IBoardService BoardService { get; protected init; }
 
-        // <inheritdoc />
-        public GameModus Modus { get; }
+		// <inheritdoc />
+		public GameModus Modus { get; }
 
 		// <inheritdoc />
 		public Guid MatchId { get; init; }
@@ -31,8 +34,8 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public GamePhase Phase { get; set; }
 
-        // <inheritdoc />
-        public GameResultModel Result { get; protected set; } = GameResultModel.Empty();
+		// <inheritdoc />
+		public GameResultModel Result { get; protected set; } = GameResultModel.Empty();
 
 		// <inheritdoc />
 		public Guid ActivePlayer { get; protected set; }
@@ -47,18 +50,15 @@ namespace GammonX.Server.Models
 		public DiceRollsModel DiceRolls { get; protected set; }
 
 		// <inheritdoc />
-		public MoveSequences MoveSequences { get; protected set; }
-
-		// <inheritdoc />
 		public IBoardModel BoardModel { get; init; }
 
 		// <inheritdoc />
 		public DateTime? StartedAt { get; protected set; }
 
-        // <inheritdoc />
+		// <inheritdoc />
 		public DateTime? EndedAt { get; protected set; }
 
-        // <inheritdoc />
+		// <inheritdoc />
 		public long Duration
 		{
 			get
@@ -81,7 +81,6 @@ namespace GammonX.Server.Models
 			Modus = modus;
 			Id = Guid.NewGuid();
 			DiceRolls = new DiceRollsModel();
-			MoveSequences = new MoveSequences();
 			Phase = GamePhase.NotStarted;
 		}
 
@@ -103,7 +102,7 @@ namespace GammonX.Server.Models
 			Phase = GamePhase.GameOver;
 			if (!StartedAt.HasValue)
 			{
-                StartedAt = DateTime.UtcNow;
+				StartedAt = DateTime.UtcNow;
 			}
 			EndedAt = DateTime.UtcNow;
 		}
@@ -115,50 +114,47 @@ namespace GammonX.Server.Models
 			OtherPlayer = ActivePlayer;
 			ActivePlayer = playerId;
 			DiceRolls = new DiceRollsModel();
-			MoveSequences = new MoveSequences();
 			ActiveUndoStack.Clear();
 			Phase = GamePhase.WaitingForRoll;
 		}
 
-        // <inheritdoc />
-        public void SetDiceRolls(int[] rolls, bool isWhite)
-        {
-            if (rolls[0].Equals(rolls[1]))
-            {
-                // pasch rolled
-                var diceRoll1 = new DiceRollContract(rolls[0]);
-                var diceRoll2 = new DiceRollContract(rolls[0]);
-                var diceRoll3 = new DiceRollContract(rolls[0]);
-                var diceRoll4 = new DiceRollContract(rolls[0]);
-                DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2, diceRoll3, diceRoll4 };
-            }
-            else
-            {
-                var diceRoll1 = new DiceRollContract(rolls[0]);
-                var diceRoll2 = new DiceRollContract(rolls[1]);
-                DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2 };
-            }
+		// <inheritdoc />
+		public void SetDiceRolls(int[] rolls, bool isWhite)
+		{
+			if (rolls[0].Equals(rolls[1]))
+			{
+				// pasch rolled
+				var diceRoll1 = new DiceRollContract(rolls[0]);
+				var diceRoll2 = new DiceRollContract(rolls[0]);
+				var diceRoll3 = new DiceRollContract(rolls[0]);
+				var diceRoll4 = new DiceRollContract(rolls[0]);
+				DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2, diceRoll3, diceRoll4 };
+			}
+			else
+			{
+				var diceRoll1 = new DiceRollContract(rolls[0]);
+				var diceRoll2 = new DiceRollContract(rolls[1]);
+				DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2 };
+			}
 
-            rolls = DiceRolls.Select(dr => dr.Roll).ToArray();
-            CalculateLegalMoveSequences(isWhite, rolls);
+			if (CanMove(isWhite))
+			{
+				Phase = GamePhase.Rolling;
+			}
+			else
+			{
+				Phase = GamePhase.WaitingForEndTurn;
+			}
 
-            if (MoveSequences.CanMove)
-            {
-                Phase = GamePhase.Rolling;
-            }
-            else
-            {
-                Phase = GamePhase.WaitingForEndTurn;
-            }
+			rolls = DiceRolls.Select(dr => dr.Roll).ToArray();
+			BoardService.AddRollEventToHistory(BoardModel, isWhite, rolls);
+		}
 
-            BoardService.AddRollEventToHistory(BoardModel, isWhite, rolls);
-        }
-
-        // <inheritdoc />
-        public int[] RollDices(int amount)
+		// <inheritdoc />
+		public int[] RollDices(int amount)
 		{
 			return DiceService.Roll(amount, 6);
-        }
+		}
 
 		// <inheritdoc />
 		public void RollDices(Guid callingPlayerId, bool isWhite)
@@ -169,69 +165,34 @@ namespace GammonX.Server.Models
 			}
 			var rolls = RollDices(2);
 			SetDiceRolls(rolls, isWhite);
-        }
+		}
 
-        // <inheritdoc />
-        public void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite)
-        {
-            if (ActivePlayer != callingPlayerId)
-            {
-                throw new InvalidOperationException("It's not your turn to move the checkers.");
-            }
+		// <inheritdoc />
+		public void MoveCheckers(Guid callingPlayerId, int from, int to, bool isWhite)
+		{
+			if (ActivePlayer != callingPlayerId)
+			{
+				throw new InvalidOperationException("It's not your turn to move the checkers.");
+			}
 
-            if (MoveSequences.TryUseMove(from, to, out var playedMoves))
-            {
-                foreach (var move in playedMoves)
-                {
-                    if (!DiceRolls.TryUseDice(BoardModel, move.From, move.To))
-                    {
-                        throw new InvalidOperationException($"No unused dice roll for the submove '{move.From}'/'{move.To}' of client move '{from}'/'{to}' left");
-                    }
-                }
+			var remainingRolls = DiceRolls.GetRemainingRolls();
+			var sequence = BoardService.ResolveMove(BoardModel, isWhite, from, to, remainingRolls);
+			if (sequence == null)
+			{
+				throw new InvalidOperationException($"No legal move exists from '{from}' to '{to}' with the remaining dice.");
+			}
 
-                if (playedMoves == null || playedMoves.Count == 0)
-                {
-                    throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");
-                }
+			for (var i = 0; i < sequence.Moves.Count; i++)
+			{
+				var die = DiceRolls.First(d => !d.Used && d.Roll == sequence.UsedDices[i]);
+				ApplyMove(sequence.Moves[i], die, isWhite);
+			}
 
-                foreach (var move in playedMoves)
-                {
-                    BoardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
-                    ActiveUndoStack.Push(move);
-                }
+			Phase = CanMove(isWhite) ? GamePhase.Moving : GamePhase.WaitingForEndTurn;
+		}
 
-                // we recalculate the remaining move for the given unused dices
-                var remainingRolls = DiceRolls.GetRemainingRolls();
-                if (remainingRolls != null && remainingRolls.Count() > 0)
-				{
-					CalculateLegalMoveSequences(isWhite, remainingRolls);
-				}
-				else
-				{
-					MoveSequences = new MoveSequences();
-				}
-
-                // if dices left
-                if (MoveSequences.CanMove)
-                {
-                    // still dices left, so we stay in the moving phase
-                    Phase = GamePhase.Moving;
-                }
-                else
-                {
-                    // no dices left, so we should switch to the next turn
-                    MoveSequences = new MoveSequences();
-                    Phase = GamePhase.WaitingForEndTurn;
-                }
-            }
-            else
-            {
-                throw new InvalidOperationException($"No legal move exists for from '{from}' to '{to}'.");
-            }
-        }
-
-        // <inheritdoc />
-        public void UndoLastMove(Guid callingPlayerId, bool isWhite)
+		// <inheritdoc />
+		public void UndoLastMove(Guid callingPlayerId, bool isWhite)
 		{
 			if (ActivePlayer != callingPlayerId)
 			{
@@ -252,25 +213,11 @@ namespace GammonX.Server.Models
 			}
 
 			// we reverse the move direction in order to undo the last move
-			BoardService.UndoMove(BoardModel, lastMove, isWhite);
-			var roll = DiceRollsModel.GetMoveDistance(BoardModel, lastMove.From, lastMove.To, out var bearOffMove);
-			DiceRolls.UndoDiceRoll(roll, bearOffMove);
+			BoardService.UndoMove(BoardModel, new MoveModel(lastMove.From, lastMove.To), isWhite);
+			DiceRolls[lastMove.DieIndex].Revert();
 			ActiveUndoStack.Pop();
-			var remainingRolls = DiceRolls.GetRemainingRolls();
-			CalculateLegalMoveSequences(isWhite, remainingRolls);
 
-			// if dices left
-			if (MoveSequences.CanMove)
-			{
-				// still dices left, so we stay in the moving phase
-				Phase = GamePhase.Moving;
-			}
-			else
-			{
-				// no dices left, so we should switch to the next turn
-				MoveSequences = new MoveSequences();
-				Phase = GamePhase.WaitingForEndTurn;
-			}
+			Phase = CanMove(isWhite) ? GamePhase.Moving : GamePhase.WaitingForEndTurn;
 		}
 
 		// <inheritdoc />
@@ -281,6 +228,13 @@ namespace GammonX.Server.Models
 				return false;
 			}
 			return ActiveUndoStack.TryPeek(out var _);
+		}
+
+		/// <inheritdoc />
+		public bool CanMove(bool isWhite)
+		{
+			var remainingRolls = DiceRolls.GetRemainingRolls();
+			return BoardService.CanUseAnyRoll(BoardModel, isWhite, remainingRolls);
 		}
 
 		// <inheritdoc />
@@ -305,19 +259,9 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted)
+		public EventGameStatePayload ToPayload(Guid playerId, string[] allowedCommands, bool inverted, bool includeMoves = true)
 		{
-			var isActivePlayer = ActivePlayer == playerId;
-            var payload = EventGameStatePayload.Create(this, inverted, isActivePlayer, allowedCommands);
-
-			if (!isActivePlayer)
-			{
-				// we need to set the phase on the payload in order to
-				// no disturb the active players game phase
-				payload.Phase = GamePhase.WaitingForOpponent;
-			}
-
-			return payload;
+			return EventGameStatePayload.ForPlayer(this, playerId, inverted, includeMoves, allowedCommands);
 		}
 
 		// <inheritdoc />
@@ -355,21 +299,11 @@ namespace GammonX.Server.Models
 			DiceService = diceService ?? throw new ArgumentNullException(nameof(diceService));
 		}
 
-		private void CalculateLegalMoveSequences(bool isWhite, int[] rolls)
-		{
-            using var measurement = ServerMetrics.Measure(ServerMetrics.MoveGenerationDuration);
-			var legalMoves = BoardService.GetLegalMoveSequences(BoardModel, isWhite, rolls);
-            ServerMetrics.SequenceCount.Record(legalMoves.Length);
-			MoveSequences = new MoveSequences();
-			MoveSequences.AddRange(legalMoves);
-		}
-
 		// <inheritdoc />
-        public virtual object Clone()
-        {
-			var moveSeqClone = this.MoveSequences.Select(ms => ms.DeepClone()).ToList();
+		public virtual object Clone()
+		{
 			// we need to ensure the proper order of moves in the undo stack
-            var undoStackClone = new Stack<MoveModel>(ActiveUndoStack.Select(m => (MoveModel)m.Clone()).Reverse());
+			var undoStackClone = new Stack<(int From, int To, int DieIndex)>(ActiveUndoStack.Reverse());
 			var rollsClone = new DiceRollsModel(this.DiceRolls.Select(dr => (DiceRollContract)dr.Clone()));
 
 			var gameSession = new GameSessionImpl(this.MatchId, this.Modus, this.BoardService, this.DiceService)
@@ -379,7 +313,6 @@ namespace GammonX.Server.Models
 				ActivePlayer = this.ActivePlayer,
 				BoardModel = this.BoardModel.DeepClone(),
 				DiceRolls = rollsClone,
-				MoveSequences = new MoveSequences(moveSeqClone),
 				Result = this.Result,
 				Phase = this.Phase,
 				EndedAt = this.EndedAt,
@@ -390,6 +323,17 @@ namespace GammonX.Server.Models
 			};
 
 			return gameSession;
-        }
-    }
+		}
+
+		/// <summary>Applies a resolved step and records the exact die for undo.</summary>
+		/// <param name="move">Validated checker movement.</param>
+		/// <param name="die">Unused die assigned to this step.</param>
+		/// <param name="isWhite">Color of the moving checkers.</param>
+		private void ApplyMove(MoveModel move, DiceRollContract die, bool isWhite)
+		{
+			BoardService.MoveCheckerTo(BoardModel, move.From, move.To, isWhite);
+			die.Use();
+			ActiveUndoStack.Push((move.From, move.To, DiceRolls.IndexOf(die)));
+		}
+	}
 }

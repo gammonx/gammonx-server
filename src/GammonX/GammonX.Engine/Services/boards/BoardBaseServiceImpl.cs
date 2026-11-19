@@ -41,12 +41,11 @@ namespace GammonX.Engine.Services
             var sortedRolls = rolls.ToList();
             sortedRolls.Sort();
             var results = new List<MoveSequenceModel>();
-            
+
             ExploreSequencesRecursively(model, isWhite, sortedRolls, [], [], results);
 
             // We may return moves which lead to the same end board, but do not want to return exact identical move sequences
-            var sequences = results.ToHashSet(_moveSequenceModelComparer).ToList();
-            var allowed = FilterSequencesByDiceRules(sequences, rolls);
+            var allowed = FilterSequencesByDiceRules(results, rolls);
             var unique = allowed.ToHashSet(_moveSequenceModelComparer);
             return unique.ToArray();
         }
@@ -86,6 +85,106 @@ namespace GammonX.Engine.Services
                 ref maxDepthSeen,
                 ref satisfied);
             return satisfied;
+        }
+
+        /// <inheritdoc />
+        public bool CanUseAnyRoll(IBoardModel model, bool isWhite, params int[] rolls)
+        {
+            if (rolls.Length == 0)
+            {
+                return false;
+            }
+            foreach (var from in GetMoveableCheckerFields(model, isWhite))
+            {
+                foreach (var roll in rolls)
+                {
+                    if (TryGetDestination(model, isWhite, from, roll, out _))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <inheritdoc />
+        public MoveSequenceModel? ResolveMove(IBoardModel model, bool isWhite, int from, int to, params int[] rolls)
+        {
+            if (rolls.Length == 0 || !GetMoveableCheckerFields(model, isWhite).Contains(from))
+            {
+                return null;
+            }
+
+            var remaining = rolls.Order().ToList();
+            var highest = remaining[^1];
+            var board = model.CloneForMoveGeneration();
+            var path = new MoveSequenceModel();
+            DiceUse? requiredUse = null;
+
+            // A coordinate shared by a direct bear-off and a chain is interpreted as a single
+            // step if it satisfies the turn rules. This also preserves ordered bot batches.
+            if (FindPath(from, singleStep: true) || FindPath(from, singleStep: false))
+            {
+                return path;
+            }
+
+            return null;
+
+            bool FindPath(int position, bool singleStep)
+            {
+                for (var i = 0; i < remaining.Count; i++)
+                {
+                    var die = remaining[i];
+                    if (i > 0 && die == remaining[i - 1])
+                    {
+                        continue;
+                    }
+                    
+                    // we se next as the step in between before reaching to
+                    if (!TryGetDestination(board, isWhite, position, die, out var next) || (singleStep && next != to))
+                    {
+                        continue;
+                    }
+
+                    var move = new MoveModel(position, next);
+                    MoveCheckerTo(board, position, next, isWhite);
+                    remaining.RemoveAt(i);
+                    path.Moves.Add(move);
+                    path.UsedDices.Add(die);
+
+                    if (next == to)
+                    {
+                        if (TurnAllowsPrefix())
+                        {
+                            return true;
+                        }
+                    }
+                    else if (remaining.Count > 0 && GetMoveableCheckerFields(board, isWhite).Contains(next) && FindPath(next, singleStep: false))
+                    {
+                        return true;
+                    }
+
+                    path.Moves.RemoveAt(path.Moves.Count - 1);
+                    path.UsedDices.RemoveAt(path.UsedDices.Count - 1);
+                    remaining.Insert(i, die);
+                    UndoMove(board, move, isWhite);
+                }
+
+                return false;
+            }
+
+            bool TurnAllowsPrefix()
+            {
+                var use = BestDiceUse(board, isWhite, remaining, highest, path.UsedDices.Contains(highest));
+                if (use == DiceUse.All)
+                {
+                    return true;
+                }
+
+                // Only a partial continuation needs comparison with alternatives from the root.
+                requiredUse ??= BestDiceUse(model.CloneForMoveGeneration(), isWhite, rolls.Order().ToList(), highest, false);
+                return use == requiredUse;
+            }
         }
 
         // <inheritdoc />
@@ -373,6 +472,82 @@ namespace GammonX.Engine.Services
             }
         }
 
+        /// <summary>
+        /// Finds the best dice use attainable from a simulated position, stopping at the first complete roll.
+        /// </summary>
+        /// <param name="board">Working board restored as each continuation unwinds.</param>
+        /// <param name="isWhite">Color of the moving checkers.</param>
+        /// <param name="remaining">Sorted dice available after the candidate prefix.</param>
+        /// <param name="highest">Highest die available at the start of the command.</param>
+        /// <param name="usedHighest">Whether the prefix has already spent that die value.</param>
+        /// <returns>The strongest attainable dice-use priority.</returns>
+        private DiceUse BestDiceUse(IBoardModel board, bool isWhite, List<int> remaining, int highest, bool usedHighest)
+        {
+            if (remaining.Count == 0)
+            {
+                return DiceUse.All;
+            }
+
+            var best = usedHighest ? DiceUse.Highest : DiceUse.Partial;
+            if (remaining.Count == 1)
+            {
+                return CanUseAnyRoll(board, isWhite, remaining[0]) ? DiceUse.All : best;
+            }
+
+            for (var i = 0; i < remaining.Count; i++)
+            {
+                var die = remaining[i];
+                if (i > 0 && die == remaining[i - 1])
+                {
+                    continue;
+                }
+
+                foreach (var move in GetMovesForDiceRoll(board, isWhite, die))
+                {
+                    MoveCheckerTo(board, move.From, move.To, isWhite);
+                    remaining.RemoveAt(i);
+                    var use = BestDiceUse(board, isWhite, remaining, highest, usedHighest || die == highest);
+                    remaining.Insert(i, die);
+                    UndoMove(board, move, isWhite);
+
+                    if (use == DiceUse.All)
+                    {
+                        return use;
+                    }
+
+                    if (use == DiceUse.Highest)
+                    {
+                        best = use;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>Determines the destination for one die from a candidate checker position.</summary>
+        /// <param name="model">Current board position.</param>
+        /// <param name="isWhite">Color of the moving checkers.</param>
+        /// <param name="from">Candidate starting point.</param>
+        /// <param name="roll">Value of the die to try.</param>
+        /// <param name="to">Board point or bear-off position when the move succeeds.</param>
+        /// <returns>True if the variant permits the step.</returns>
+        private bool TryGetDestination(IBoardModel model, bool isWhite, int from, int roll, out int to)
+        {
+            if (CanBearOffChecker(model, from, roll, isWhite))
+            {
+                to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
+                return true;
+            }
+            if (CanMoveChecker(model, from, roll, isWhite))
+            {
+                to = model.MoveOperator(isWhite, from, roll);
+                return true;
+            }
+            to = default;
+            return false;
+        }
+
         private static bool CheckerBearedOff(IBoardModel model, int from, int to, bool isWhite)
         {
             if (isWhite)
@@ -496,10 +671,10 @@ namespace GammonX.Engine.Services
         }
 
         private List<MoveSequenceModel> GetSequencesForUniqueBoards(
-            IBoardModel model, 
-            bool isWhite, 
-            int[] rolls, 
-            out int rawSequenceCount, 
+            IBoardModel model,
+            bool isWhite,
+            int[] rolls,
+            out int rawSequenceCount,
             CancellationToken cancellationToken)
         {
             var sortedRolls = rolls.ToList();
@@ -507,7 +682,7 @@ namespace GammonX.Engine.Services
             var results = new List<MoveSequenceModel>();
 
             // We track seen board positions to avoid redundant exploration of identical board states.
-            var seen = new HashSet<IBoardModel>();
+            var seen = new HashSet<(IBoardModel Position, DiceUse Use)>();
             // We track repeated states separately for identical dice sequences to optimize traversal.
             var repeatedStates = model is BoardBaseImpl && sortedRolls.Count > 2 && sortedRolls[0] == sortedRolls[^1]
                 ? new Dictionary<int, HashSet<IBoardModel>>()
@@ -515,7 +690,7 @@ namespace GammonX.Engine.Services
             // We track the total number of raw sequences explored, including duplicates.
             rawSequenceCount = 0;
 
-            ExploreUniqueBoardsRecursively(model, isWhite, sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
+            ExploreUniqueBoardsRecursively(model, isWhite, sortedRolls.LastOrDefault(), sortedRolls, [], [], results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
 
             return results;
         }
@@ -523,11 +698,12 @@ namespace GammonX.Engine.Services
         private void ExploreUniqueBoardsRecursively(
             IBoardModel board,
             bool isWhite,
+            int highest,
             List<int> remainingRolls,
             List<MoveModel> currentMoves,
             List<int> usedDices,
             List<MoveSequenceModel> results,
-            HashSet<IBoardModel> seen,
+            HashSet<(IBoardModel Position, DiceUse Use)> seen,
             Dictionary<int, HashSet<IBoardModel>>? repeatedStates,
             ref int rawSequenceCount,
             CancellationToken cancellationToken)
@@ -588,7 +764,7 @@ namespace GammonX.Engine.Services
 
                     try
                     {
-                        ExploreUniqueBoardsRecursively(board, isWhite, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
+                        ExploreUniqueBoardsRecursively(board, isWhite, highest, remainingRolls, currentMoves, usedDices, results, seen, repeatedStates, ref rawSequenceCount, cancellationToken);
                     }
                     finally
                     {
@@ -604,7 +780,10 @@ namespace GammonX.Engine.Services
             {
                 rawSequenceCount++;
                 // we query with the live board, but retain only immutable snapshots as hash-set entries.
-                if (seen.Contains(board))
+                // Keep one representative per dice priority until whole-roll filtering.
+                // Different dice can bear the same checker off into the same terminal position.
+                var use = remainingRolls.Count == 0 ? DiceUse.All : usedDices.Contains(highest) ? DiceUse.Highest : DiceUse.Partial;
+                if (seen.Contains((board, use)))
                 {
                     return;
                 }
@@ -618,7 +797,7 @@ namespace GammonX.Engine.Services
                         : (IBoardModel)((ICloneable)board).Clone();
                 }
 
-                seen.Add(boardSnapshot);
+                seen.Add((boardSnapshot, use));
 
                 results.Add(CreateMoveSequence(currentMoves, usedDices));
             }
@@ -703,14 +882,8 @@ namespace GammonX.Engine.Services
 
             foreach (var from in moveable)
             {
-                if (CanBearOffChecker(board, from, diceRoll, isWhite))
+                if (TryGetDestination(board, isWhite, from, diceRoll, out var to))
                 {
-                    int to = isWhite ? BoardPositions.BearOffWhite : BoardPositions.BearOffBlack;
-                    moves.Add(new MoveModel(from, to));
-                }
-                else if (CanMoveChecker(board, from, diceRoll, isWhite))
-                {
-                    int to = board.MoveOperator(isWhite, from, diceRoll);
                     moves.Add(new MoveModel(from, to));
                 }
             }

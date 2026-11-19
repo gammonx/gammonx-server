@@ -381,7 +381,7 @@ namespace GammonX.Server.Tests.Match
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
 		}
 
 		[Theory]
@@ -463,12 +463,12 @@ namespace GammonX.Server.Tests.Match
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -492,9 +492,9 @@ namespace GammonX.Server.Tests.Match
 			var player2Id = session.Player2.Id;
 			session.RollDices(player1Id);
 
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).First();
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).First();
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
 
@@ -537,14 +537,14 @@ namespace GammonX.Server.Tests.Match
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.False(session.CanEndTurn(player1Id));
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -559,7 +559,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotEqual(player2Id, gameSession.OtherPlayer);
 			Assert.Equal(2, gameSession.TurnNumber);
 			Assert.Empty(gameSession.DiceRolls);
-			Assert.Empty(gameSession.MoveSequences);
+			Assert.Empty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
 		}
 
 		[Theory]
@@ -1146,7 +1146,7 @@ namespace GammonX.Server.Tests.Match
 		private static void ExecutePlayerTurn(IMatchSessionModel matchSession, IGameSessionModel gameSession)
 		{
 			matchSession.RollDices(gameSession.ActivePlayer);
-			var ms = gameSession.MoveSequences.FirstOrDefault();
+			var ms = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == matchSession.Player1.Id).FirstOrDefault();
 			if (ms != null)
 			{
 				var moves = ms.Moves.ToList();

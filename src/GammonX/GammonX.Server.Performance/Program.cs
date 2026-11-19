@@ -19,7 +19,7 @@ if (args.FirstOrDefault() == "nn")
     return await NeuralCommands.RunAsync(args[1..]);
 }
 
-var supportedOptions = new HashSet<string>(["--output", "--iterations", "--warmup", "--telemetry", "--compare", "--cpu-limit", "--memory-limit-mb"]);
+var supportedOptions = new HashSet<string>(["--output", "--iterations", "--warmup", "--telemetry", "--compare", "--cpu-limit", "--memory-limit-mb", "--bot-turns"]);
 var options = new Dictionary<string, string>(StringComparer.Ordinal);
 // we parse the cli arguments
 for (var i = 0; i < args.Length; i += 2)
@@ -44,6 +44,12 @@ if (telemetry is not ("on" or "off"))
     throw new ArgumentException("Telemetry must be on or off.");
 }
 // we set the output path
+var botTurns = options.GetValueOrDefault("--bot-turns", "off") switch
+{
+    "on" => true,
+    "off" => false,
+    _ => throw new ArgumentException("--bot-turns must be on or off.")
+};
 var outputPath = Path.GetFullPath(options.GetValueOrDefault("--output", "baseline.json"));
 if (options.TryGetValue("--compare", out var comparisonPath)
     && string.Equals(Path.GetFullPath(comparisonPath), outputPath, StringComparison.OrdinalIgnoreCase))
@@ -110,11 +116,27 @@ foreach (var fixture in fixtures)
     var payload = game.ToPayload(RunSimulationModel.Player, [], false);
     var protocol = RunSimulationModel.CreateProtocol();
     var message = RunSimulationModel.Message(payload);
-    var wireBytes = protocol.GetMessageBytes(message).Length;
+    var wireBytes = protocol.GetMessageBytes(botTurns
+        ? RunSimulationModel.Message(game.ToPayload(RunSimulationModel.Opponent, [], true)) : message).Length;
+    var sequences = new GammonX.Server.Models.MoveSequences(payload.MoveSequences);
+    if (botTurns)
+    {
+        RunSimulation("bot-turn-eager", () => fixture.PrepareBotTurn(sequences.First(), true, false));
+        RunSimulation("bot-turn-deferred", () => fixture.PrepareBotTurn(sequences.First(), false, false));
+        RunSimulation("bot-turn-fallback", () => fixture.PrepareBotTurn(sequences.First(), false, true));
+        continue;
+    }
 
     RunSimulation("generate", () => () => GC.KeepAlive(boardService.GetLegalMoveSequences(unrolled.BoardModel, true, rolls)));
+    RunSimulation("move-command", () =>
+    {
+        var working = (GammonX.Server.Models.IGameSessionModel)((ICloneable)game).Clone();
+        var move = sequences.First().Moves[0];
+        return () => working.MoveCheckers(RunSimulationModel.Player, move.From, move.To, true);
+    });
     RunSimulation("clone", () => () => GC.KeepAlive(((ICloneable)game).Clone()));
     RunSimulation("payload", () => () => GC.KeepAlive(game.ToPayload(RunSimulationModel.Player, [], false)));
+    RunSimulation("project-generated", () => () => GC.KeepAlive(GammonX.Server.Contracts.EventGameStatePayload.Create(game, sequences, false)));
     RunSimulation("serialize", () =>
     {
         // Allocate a fresh buffer per operation; include buffer growth, never reuse its capacity.
@@ -128,6 +150,10 @@ foreach (var fixture in fixtures)
     if (fixture.Variant == GameModus.Backgammon)
     {
         RunSimulation("repository-turn", fixture.PrepareTurn);
+        var activeQuery = fixture.PrepareQuery(RunSimulationModel.Player);
+        RunSimulation("active-query", () => activeQuery);
+        var waitingQuery = fixture.PrepareQuery(RunSimulationModel.Opponent);
+        RunSimulation("waiting-query", () => waitingQuery);
     }
 
     void RunSimulation(string stage, Func<Action> prepare)
@@ -151,9 +177,32 @@ foreach (var fixture in fixtures)
         }
 
         Array.Sort(times);
+        // Observe a separate replay so metric listeners do not perturb the timed samples.
+        var probe = prepare();
+        var generations = stage == "generate" ? 1 : 0;
+        var leaseMs = 0d;
+        using (var observer = new MeterListener())
+        {
+            observer.InstrumentPublished = (instrument, meter) =>
+            {
+                if (instrument == ServerMetrics.SequenceCount || instrument == ServerMetrics.LeaseHold)
+                {
+                    meter.EnableMeasurementEvents(instrument);
+                }
+            };
+            observer.SetMeasurementEventCallback<long>((_, _, _, _) => generations++);
+            observer.SetMeasurementEventCallback<double>((_, value, _, _) => leaseMs += value);
+            observer.Start();
+            probe();
+        }
+        if ((stage is "move-command" or "bot-turn-deferred" or "waiting-query" && generations != 0)
+            || (stage is "bot-turn-fallback" or "active-query" && generations != 1))
+        {
+            throw new InvalidOperationException($"Unexpected full generation count for {stage}: {generations}.");
+        }
         var sample = new Sample(fixture.Name, fixture.Variant.ToString(), rolls, game.BoardModel.History.Events.Count,
-            game.MoveSequences.Count, stage, iterations, warmup, times.Average(), times[(int)Math.Ceiling(iterations * 0.95) - 1],
-            (double)bytes / iterations, wireBytes);
+            payload.MoveSequences.Length, stage, iterations, warmup, times.Average(), times[(int)Math.Ceiling(iterations * 0.95) - 1],
+            (double)bytes / iterations, wireBytes, generations, leaseMs);
         results.Add(sample);
         
         Console.WriteLine(FormattableString.Invariant($"{sample.Fixture,-30} {stage,-16} {sample.MeanMs,10:F3} ms {sample.AllocatedBytes,14:F0} B/op; sequences={sample.Sequences}; wire={wireBytes}"));
@@ -194,6 +243,7 @@ var metadata = new
     MemoryLimitMb = options.GetValueOrDefault("--memory-limit-mb", "unspecified"),
     Configuration = configuration,
     Telemetry = telemetry,
+    BotTurns = botTurns,
     ServerGc = GCSettings.IsServerGC,
     TieredCompilation = AppContext.GetData("System.Runtime.TieredCompilation")?.ToString(),
     ServerAssembly = typeof(GammonX.Server.MatchLobbyHub).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
@@ -214,11 +264,11 @@ if (options.TryGetValue("--compare", out var baselinePath))
     using var baseline = JsonDocument.Parse(File.ReadAllText(baselinePath));
     var prior = baseline.RootElement.GetProperty("Samples").Deserialize<Sample[]>()!;
     var priorMetadata = baseline.RootElement.GetProperty("Metadata");
-    if (priorMetadata.GetProperty("FixtureVersion").GetInt32() != metadata.FixtureVersion || prior.Length != results.Count)
+    if (priorMetadata.GetProperty("FixtureVersion").GetInt32() != metadata.FixtureVersion || prior.Any(p => !results.Any(r => r.Stage == p.Stage && r.Fixture == p.Fixture)))
     {
         throw new InvalidOperationException("Fixture sets differ; comparison is not valid.");
     }
-    var comparisons = results.Select(current =>
+    var comparisons = results.Where(r => prior.Any(p => p.Fixture == r.Fixture && p.Stage == r.Stage)).Select(current =>
     {
         var previous = prior.Single(sample => sample.Fixture == current.Fixture && sample.Stage == current.Stage);
         if (previous.Sequences != current.Sequences || previous.HistoryEvents != current.HistoryEvents
@@ -251,6 +301,23 @@ return 0;
 
 static double? Percent(double before, double after) => before == 0 ? null : (after / before - 1) * 100;
 
+/// <summary>
+/// Measurements and fixture metadata for one benchmark stage.
+/// </summary>
+/// <param name="Fixture">Stable fixture identifier.</param>
+/// <param name="Variant">Game variant under test.</param>
+/// <param name="Dice">Dice available in the prepared position.</param>
+/// <param name="HistoryEvents">History size at the start of the sample.</param>
+/// <param name="Sequences">Legal sequence count for the prepared roll.</param>
+/// <param name="Stage">Operation measured.</param>
+/// <param name="Iterations">Number of timed operations.</param>
+/// <param name="Warmup">Number of operations run before timing.</param>
+/// <param name="MeanMs">Mean elapsed milliseconds per timed operation.</param>
+/// <param name="P95Ms">95th percentile elapsed milliseconds per timed operation.</param>
+/// <param name="AllocatedBytes">Mean bytes allocated per timed operation.</param>
+/// <param name="WireBytes">Size of the prepared SignalR message in bytes.</param>
+/// <param name="FullGenerations">Complete move-list generations in one untimed replay.</param>
+/// <param name="LeaseHoldMs">Total repository lease time in milliseconds during that replay.</param>
 internal sealed record Sample(
     string Fixture, 
     string Variant, 
@@ -263,5 +330,7 @@ internal sealed record Sample(
     double MeanMs, 
     double P95Ms, 
     double AllocatedBytes, 
-    int WireBytes
+    int WireBytes,
+    int FullGenerations,
+    double LeaseHoldMs
 );
