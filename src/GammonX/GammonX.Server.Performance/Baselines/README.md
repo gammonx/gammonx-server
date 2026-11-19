@@ -1,4 +1,22 @@
-# Game-server T0 baseline findings
+# Game-server baseline findings
+
+## Post-T2 baseline and bot-turn diagnostic
+
+The listener-off Release capture after T1, T2, and the deferred-generation change uses the same 12 fixtures, 5 warmups, and 30 measurements per stage as T0. Both captures report .NET 10.0.13 on Windows X64, 16 runtime-visible logical processors, and no container limits. All standard fixture sequence counts and prepared message sizes match T0. Use `t2-off.json` as the baseline for subsequent component changes. [Post-T2 baseline](t2-off.json) · [Comparison with T0](t2-off.json.comparison.json)
+
+The standard repository-turn stages run the human move path. The spread turn allocated 86.43 MB at T0, 86.42 MB in the same-session pre-change run, and 86.42 MB after the change. Its means were 386.3 ms, 327.4 ms, and 320.0 ms respectively. The same-session run shows why the historical timing delta should not be attributed to bot deferral.
+
+The paired bot diagnostic replays one precomputed sequence per fixture and measures game-server work with and without local sequence generation. Below are first-run means and decimal allocation units. The repeat kept the spread allocation below 0.20 MB on the deferred path, with an eager mean of 162.5 ms and a deferred mean of 1.25 ms. [Paired diagnostic](t2-bot-turns-off.json) · [Repeat](t2-bot-turns-off-repeat.json)
+
+| Backgammon fixture | Eager mean | Deferred mean | Eager allocation | Deferred allocation |
+|---|---:|---:|---:|---:|
+| Opening, 1-2 | 3.91 ms | 1.96 ms | 225 KB | 184 KB |
+| Opening, double ones | 3.22 ms | 1.80 ms | 613 KB | 193 KB |
+| Spread, double ones | 168.76 ms | 1.13 ms | 42.82 MB | 0.19 MB |
+
+Allocation fell on all 12 fixtures in both runs. The Backgammon opening with double ones saved about 69% and the spread fixture saved about 99.6%. Timings varied more on the small fixtures. The spread position is a branching stress case. These measurements exclude Mars inference and deployed request latency. [Diagnostic scope and reproduction](../README.md#paired-bot-turn-diagnostic)
+
+## T0 baseline findings
 
 The runs below used the Release benchmark on 2026-11-19. Reproduction commands and metric definitions are in the [performance README](../README.md). The raw data includes the [listener-off run](t0-off.json), [listener-on run](t0-on.json), and [comparison](t0-on.json.comparison.json).
 

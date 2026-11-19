@@ -1,8 +1,10 @@
-# Game-server performance baseline (T0)
+# Game-server performance baselines
 
 Opt-in .NET 10 console benchmarks for the game server and Mars neural evaluation. The game-server benchmarks run when called with the options below. Use the `nn` subcommand for neural benchmarks and tuning studies. [NN benchmarks and historical findings](NN/README.md)
 
 The T0 baseline recorded 35,370 legal sequences, a 3,115,575-byte SignalR message and 86.4 MB allocated for a repository-level turn on the Backgammon spread fixture. An attached metrics listener added 32 bytes per measured serialization across all 12 fixtures. [Baseline findings and raw reports](Baselines/README.md)
+
+Use the listener-off post-T2 capture for future component comparisons. Its companion diagnostic measures the game-server work saved by deferring local move generation on bot turns. [Post-T2 baseline and bot-turn results](Baselines/README.md#post-t2-baseline-and-bot-turn-diagnostic)
 
 ## Run from the repository root
 
@@ -42,6 +44,14 @@ The turn stage exercises the repository/model/serialization path without a Signa
 `WireBytes` is the prepared rolled active-player **SignalR message** size, including its envelope/separator, repeated as fixture metadata on each stage. It is not the cumulative traffic of a full turn. It differs from the earlier handover probe, which serialized a bare payload using default JSON options.
 
 Runtime totals cover the entire run, including warmup, fixture preparation, sampling and console output. They include CPU seconds/core equivalents, total allocation/rate, GC pauses/collections, first-chance exception count, and thread-pool queue length sampled every 100 ms. Short queue spikes can be missed. These totals must not be presented as the cost of measured stage operations alone. The normal production app does not install the benchmark's first-chance exception handler or sampling timer.
+
+## Paired bot-turn diagnostic
+
+```powershell
+dotnet run --project src/GammonX/GammonX.Server.Performance/GammonX.Server.Performance.csproj -c Release --no-build -- --bot-turns on --iterations 30 --warmup 5 --telemetry off --output out/performance/bot-turns.json --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local
+```
+
+`--bot-turns on` runs only `bot-turn-eager` and `bot-turn-deferred` on the same 12 fixtures. Both stages replay the same precomputed moves for the fixture's white player. Each measures the roll, moves, end turn, game clones, and SignalR serialization for the human opponent. If the recorded moves leave unused dice, the deferred stage checks for a local continuation as it would after an empty evaluation. Fixture preparation, Mars calls, hub orchestration, leases and transport are outside the measured stage. In this mode, `WireBytes` records the prepared rolled message for the human opponent. Compare paired stages within a run and use the standard stages for comparisons against the original T0 baseline.
 
 ## Production telemetry
 

@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 and T1 implemented and locally validated. T2-T7 pending.
+- Status: T0 through T2 implemented and locally validated. T3 through T7 pending.
 
 ## Objective and scope
 
@@ -198,9 +198,9 @@ Current defects:
 Implementation:
 
 1. Before every move request and application, check operation cancellation and the current game/turn identity.
-2. Treat null, empty, or illegal bot output as an unusable response when legal moves exist. Use a deterministic legal fallback from the server's current move data, following the existing service-failure fallback policy.
+2. For null or empty bot output, use a deterministic legal fallback from the server's current move data. If the game session rejects a returned move, use the recovery path to resume from the last successful commit.
 3. Measure progress through unused dice and committed game transitions. Every accepted move batch must consume dice or conclude the game. Bound move-evaluation iterations by the dice remaining at loop entry; each successful iteration must consume at least one die. Cube/start transitions need separate explicit handling.
-4. Stop applying the returned batch immediately when the game or match concludes. Validate against the latest committed state after any partial success.
+4. Apply returned moves in order through the game session. Stop applying the batch when the game or match concludes.
 5. If no legal moves exist, finish the turn through the normal rule path. Do not use an empty fallback to keep the loop alive.
 6. Handle requested cancellation separately from service failure. It must not trigger additional evaluation requests or continue normal fallback play. Preserve reconnect's ability to resume from committed state.
 7. If a non-cancellation failure prevents completion, register a bounded recovery operation with its own identity and deadline. Allow one automatic recovery attempt using server-legal fallback moves. On repeated failure, close/clean up the match as a server failure without awarding a competitive loss to the human, emit an operational error, and prevent duplicate result publications. Keep this recovery path independent of client requests.
@@ -214,6 +214,17 @@ Regression tests:
 - Forced recovery failure: no permanently stored match without a live owner/deadline, no human forfeit for an internal server error, and no duplicate result events.
 
 Extend `MatchHubTests`, including `MatchHubBotFallbackCompletesTurnAfterServiceFailure` and `RankedBotReconnectResumesInterruptedTurn`. These tests should use fake bot services, not real Mars inference.
+
+#### T2 completion record
+
+- The hub passes each returned move directly to the game session. Null, empty, and failed evaluations switch the rest of the turn to the first server-legal continuation. A move rejected by the game session triggers local recovery from the last commit. Each successful iteration spends a die or concludes the game, so the turn requests at most as many evaluations as it had unused dice when move processing began. Blocked turns offer the normal `EndTurn` command, including after an opening roll. [Bot turn loop](../../src/GammonX/GammonX.Server/MatchLobbyHub.cs)
+- Mars move requests on a partially played turn now carry only the unused dice. Connection cancellation stops evaluation and fallback, and a reconnect resumes the committed board and dice. [Mars request construction](../../src/GammonX/GammonX.Server/Bot/mars/MarsBotService.cs)
+- If an unexpected failure leaves the bot in control, the host schedules one local retry after one second. The retry checks the match, game, turn, bot, and current registration under the match lease. Local recovery skips optional cube offers and takes a pending offer. If it fails while the same bot turn still owns the match, the hub emits `BOT_RECOVERY_FAILED` and removes the match and its registrations without publishing a forfeit, stats, or a rating change. Disconnect and match cleanup cancel pending retries. Host shutdown also cancels and drains them, including retries waiting for a match lease. [Recovery service](../../src/GammonX/GammonX.Server/Services/BotTurnRecoveryService.cs)
+- A committed handoff arms the human deadline before notifying the client. A committed win attempts result publication even if the final board notification fails. Recovery never replays a concluded game or a completed handoff. The recovery counter includes reconnects and automatic attempts. [Server metrics reference](../../src/GammonX/GammonX.Server.Performance/README.md)
+- All 456 selected Release tests passed. The selection included hub, match session, repository, cancellation registry, lobby cleanup, diagnostics, and Mars client tests. The new paths use fake bots, a controlled clock, and simulated notification failures. The build reported the existing nullable warning in `MatchHistoryImpl.cs`. AWS load and live Mars inference were outside this validation. [Hub regression tests](../../src/GammonX/GammonX.Server.Tests/Integration/MatchHubTests.cs)
+- After removing the hub's separate move validation, 414 selected Release tests passed across the hub, move sequences, match sessions, and Mars client. The tests cover recovery when the game session rejects the first or a later move in the response. [Hub regression tests](../../src/GammonX/GammonX.Server.Tests/Integration/MatchHubTests.cs)
+- Bot opening rolls and ordinary bot rolls defer local sequence generation. The game server checks each returned move against the board and one unused die. Mars supplies the turn's move order. Empty responses and local recovery generate sequences for the current board and unused dice. Human turns continue to generate sequences eagerly. All 567 selected Release tests passed after this change. [Hub regression tests](../../src/GammonX/GammonX.Server.Tests/Integration/MatchHubTests.cs)
+- The post-T2 listener-off baseline reproduces the T0 fixture sequence counts and wire sizes. The paired bot diagnostic reduced allocation on the constructed Backgammon spread turn from 42.82 MB to about 0.19 MB. The standard human-turn allocation remained near 86.42 MB. The new baseline and raw reports are available for subsequent work items. [Post-T2 baseline and bot-turn diagnostic](../../src/GammonX/GammonX.Server.Performance/Baselines/README.md#post-t2-baseline-and-bot-turn-diagnostic)
 
 ### T3: remove the lobby at the committed start transition
 

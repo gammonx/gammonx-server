@@ -1,0 +1,474 @@
+{
+  "Metadata": {
+    "SchemaVersion": 1,
+    "FixtureVersion": 1,
+    "RecordedUtc": "2026-11-19T15:59:48.2277895Z",
+    "Runtime": ".NET 10.0.13",
+    "OS": "Microsoft Windows 10.0.26300",
+    "Architecture": "X64",
+    "LogicalProcessors": 16,
+    "CpuLimit": "unconstrained-local",
+    "MemoryLimitMb": "unconstrained-local",
+    "Configuration": "Release",
+    "Telemetry": "off",
+    "BotTurns": true,
+    "ServerGc": false,
+    "TieredCompilation": "false",
+    "ServerAssembly": "1.0.0\u002Badd797d77759254ca84c054ca736b8a5575e350b",
+    "ServerModuleId": "337aaec2-8ab0-4cc2-93fe-a15f11379ee6",
+    "EngineModuleId": "133b99e9-a3cc-4f4c-8ade-bbb7cd42278c",
+    "BenchmarkModuleId": "a22d7db1-a3c5-4ef8-9840-a51396bfcd42",
+    "Note": "Local synchronous component benchmark; no host, transport, AWS or Mars. Runtime totals include preparation/warmup/harness; stage samples exclude preparation."
+  },
+  "Runtime": {
+    "ElapsedSeconds": 7.8881935,
+    "CpuSeconds": 7.5625,
+    "AverageCpuCores": 0.9587112689362907,
+    "AllocatedBytes": 1749289160,
+    "AllocationBytesPerSecond": 221760427.149765,
+    "GcPauseMs": 2700.802,
+    "GcPausePercent": 34.23853636450475,
+    "GcCollections": [
+      364,
+      144,
+      50
+    ],
+    "Exceptions": 0,
+    "PeakThreadPoolQueueSampled": 0,
+    "MetricMeasurements": 0
+  },
+  "Samples": [
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 3.913759999999999,
+      "P95Ms": 13.6772,
+      "AllocatedBytes": 225269.86666666667,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Backgammon-opening-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.9560566666666668,
+      "P95Ms": 3.7639,
+      "AllocatedBytes": 184063.2,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 3.218656666666667,
+      "P95Ms": 4.945,
+      "AllocatedBytes": 612595.4666666667,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Backgammon-opening-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.7972466666666667,
+      "P95Ms": 2.7527,
+      "AllocatedBytes": 192847.2,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 2.096293333333333,
+      "P95Ms": 2.9177,
+      "AllocatedBytes": 228753.86666666667,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Portes-opening-12",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.372173333333333,
+      "P95Ms": 2.1772,
+      "AllocatedBytes": 184159.2,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 2.8449833333333334,
+      "P95Ms": 4.2257,
+      "AllocatedBytes": 612451.2,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Portes-opening-11",
+      "Variant": "Portes",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.51006,
+      "P95Ms": 2.3998,
+      "AllocatedBytes": 192662.4,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.7359033333333331,
+      "P95Ms": 3.0124,
+      "AllocatedBytes": 199024,
+      "WireBytes": 680
+    },
+    {
+      "Fixture": "Plakoto-opening-12",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 4,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.4207799999999997,
+      "P95Ms": 2.5676,
+      "AllocatedBytes": 187615.2,
+      "WireBytes": 680
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.9014200000000003,
+      "P95Ms": 2.822,
+      "AllocatedBytes": 242372.53333333333,
+      "WireBytes": 728
+    },
+    {
+      "Fixture": "Plakoto-opening-11",
+      "Variant": "Plakoto",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 10,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.67021,
+      "P95Ms": 2.7631,
+      "AllocatedBytes": 198175.2,
+      "WireBytes": 728
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.3548966666666666,
+      "P95Ms": 2.4106,
+      "AllocatedBytes": 202215.2,
+      "WireBytes": 635
+    },
+    {
+      "Fixture": "Fevga-opening-12",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 2,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.2510033333333335,
+      "P95Ms": 2.1997,
+      "AllocatedBytes": 186124.8,
+      "WireBytes": 635
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.4871500000000002,
+      "P95Ms": 2.5919,
+      "AllocatedBytes": 227446.66666666666,
+      "WireBytes": 683
+    },
+    {
+      "Fixture": "Fevga-opening-11",
+      "Variant": "Fevga",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 1,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.5050266666666665,
+      "P95Ms": 2.1506,
+      "AllocatedBytes": 199377.86666666667,
+      "WireBytes": 683
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.8620066666666666,
+      "P95Ms": 3.5424,
+      "AllocatedBytes": 228048.53333333333,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Tavla-opening-12",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 30,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.2131766666666666,
+      "P95Ms": 1.8858,
+      "AllocatedBytes": 184159.2,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.86949,
+      "P95Ms": 2.5553,
+      "AllocatedBytes": 612451.2,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Tavla-opening-11",
+      "Variant": "Tavla",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 245,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.9962533333333333,
+      "P95Ms": 1.5314,
+      "AllocatedBytes": 192993.86666666667,
+      "WireBytes": 684
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 168.75660333333332,
+      "P95Ms": 207.3434,
+      "AllocatedBytes": 42823030.93333333,
+      "WireBytes": 682
+    },
+    {
+      "Fixture": "Backgammon-spread-11",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "HistoryEvents": 1,
+      "Sequences": 35370,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.1319833333333333,
+      "P95Ms": 0.8864,
+      "AllocatedBytes": 189357.06666666668,
+      "WireBytes": 682
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "bot-turn-eager",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 1.3642633333333334,
+      "P95Ms": 2.9424,
+      "AllocatedBytes": 328440,
+      "WireBytes": 636
+    },
+    {
+      "Fixture": "Backgammon-history1000-12",
+      "Variant": "Backgammon",
+      "Dice": [
+        1,
+        2
+      ],
+      "HistoryEvents": 1001,
+      "Sequences": 30,
+      "Stage": "bot-turn-deferred",
+      "Iterations": 30,
+      "Warmup": 5,
+      "MeanMs": 0.9077300000000003,
+      "P95Ms": 1.2224,
+      "AllocatedBytes": 286576,
+      "WireBytes": 636
+    }
+  ]
+}
