@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 through T2 implemented and locally validated. T3 through T7 pending.
+- Status: T0 through T3 complete locally. T4 through T7 pending.
 
 ## Objective and scope
 
@@ -99,8 +99,8 @@ Deliver small PRs with their own validation. The order below separates correctne
 |---|---|---|---|
 | 1 | T0: reproducible measurements and bounded telemetry **(complete locally)** | High | None |
 | 2 | T1: turn-deadline generation checks **(complete locally)** | High correctness | None |
-| 3 | T2: bounded bot progress and recovery | High correctness | Reuse T1 deadline identity for recovery |
-| 4 | T3: remove started lobbies reliably | High lifecycle | None |
+| 3 | T2: bounded bot progress and recovery **(complete locally)** | High correctness | Reuse T1 deadline identity for recovery |
+| 4 | T3: remove started lobbies reliably **(complete locally)** | High lifecycle | None |
 | 5 | T4: move timer ownership out of hubs | Medium | Preserve T1 and T2 behavior |
 | 6 | T5: reduce active-game snapshot allocation | High CPU | T0 baseline |
 | 7 | T6: compact legal continuations and client payloads | High CPU | T0; coordinate with T5 and client implementation |
@@ -228,7 +228,7 @@ Extend `MatchHubTests`, including `MatchHubBotFallbackCompletesTurnAfterServiceF
 
 ### T3: remove the lobby at the committed start transition
 
-Current defect: `StartMatchAsync` commits the started match, sends notifications, and may perform a bot turn before removing the matchmaking lobby. A failure in that interval retains the lobby. After five minutes, the cleanup worker repeatedly loads/clones the started match and declines to remove it.
+Original defect. A failed start notification or opening bot turn could leave the lobby registered after the match started. After five minutes, the cleanup worker repeatedly cloned the started match and left its lobby registered.
 
 Implementation:
 
@@ -244,6 +244,12 @@ Acceptance tests:
 - Cleanup of a previously stale started lobby performs no forfeiture, connection removal, or result publication.
 
 Extend `MatchLobbyCleanupTests` and the start/failure cases in `MatchHubTests`. T2 is still necessary to recover a match whose bot turn failed after lobby removal.
+
+#### T3 completion record — 2026-11-19
+
+- The hub removes the matchmaking registration and all queue aliases under the match lease immediately after the first game commits. A tied opening roll keeps the lobby available for the reroll.
+- Expiry checks the start status under the lease without cloning the active game. When an expired registration belongs to a started match, expiry removes only that registration and its aliases.
+- All 46 selected Release tests passed. Coverage includes a failed first start notification, a failing opening bot evaluation, a tied roll, rejected commands preserving their deadlines, and expiry waiting on a concurrent start. The expiry test checks both human queue aliases, both connections, group operations, and the active turn deadline. The build reported the existing nullable warning in `MatchHistoryImpl.cs`. [Hub tests](../../src/GammonX/GammonX.Server.Tests/Integration/MatchHubTests.cs) and [expiry tests](../../src/GammonX/GammonX.Server.Tests/MatchLobbyCleanupTests.cs)
 
 ### T4: give timers service-owned lifetimes
 

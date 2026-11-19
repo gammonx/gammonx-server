@@ -181,6 +181,17 @@ namespace GammonX.Server.Services
             }
 
             /// <summary>
+            /// Checks whether the match has started without loading a working copy.
+            /// </summary>
+            internal bool HasStarted()
+            {
+                lock (_gate)
+                {
+                    return GetMatchSession()?.StartedAt != null;
+                }
+            }
+
+            /// <summary>
             /// Returns the seated player associated with a connection without loading a working copy.
             /// </summary>
             public Guid GetCallingPlayerId(string connectionId)

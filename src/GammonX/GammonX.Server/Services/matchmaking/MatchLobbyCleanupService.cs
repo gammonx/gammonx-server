@@ -37,6 +37,12 @@ namespace GammonX.Server.Services
                 if (matchmaking.TryFindMatchLobby(candidate.MatchId, out var current) &&
                     current != null && utcNow - current.CreatedAtUtc >= MatchLobby.StartTimeout)
                 {
+                    if (lease.HasStarted())
+                    {
+                        matchmaking.TryRemoveMatchLobby(candidate.MatchId);
+                        continue;
+                    }
+
                     await TryCleanupUnstartedAsync(candidate.MatchId, lease);
                 }
             }

@@ -23,7 +23,7 @@ namespace GammonX.Server.Tests
         private readonly Mock<IClientProxy> _client = new();
         private readonly Mock<IGroupManager> _groups = new();
 
-        private async Task<(IMatchmakingService Mode, MatchLobby Lobby, MatchLobbyCleanupService Cleanup)> CreateLobby(MatchModus modus)
+        private async Task<(IMatchmakingService Mode, MatchLobby Lobby, MatchLobbyCleanupService Cleanup, List<Guid> QueueIds)> CreateLobby(MatchModus modus)
         {
             var repository = new Mock<IRepositoryClient>();
             repository.Setup(value => value.GetRatingAsync(It.IsAny<Guid>(), It.IsAny<MatchVariant>(), It.IsAny<MatchType>(), It.IsAny<CancellationToken>()))
@@ -36,9 +36,11 @@ namespace GammonX.Server.Tests
             };
             var key = new QueueKey(MatchVariant.Backgammon, modus, MatchType.SevenPointGame, BotLevel.Hard);
             var entry = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+            var queueIds = new List<Guid> { entry.Id };
             if (modus == MatchModus.Normal)
             {
-                await mode.JoinQueueAsync(Guid.NewGuid(), key);
+                var opponent = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+                queueIds.Add(opponent.Id);
             }
             await mode.MatchQueuedPlayersAsync();
             Assert.True(mode.TryFindMatchLobby(entry.Id, out var lobby));
@@ -47,7 +49,7 @@ namespace GammonX.Server.Tests
             var hub = new Mock<IHubContext<MatchLobbyHub>>();
             hub.SetupGet(value => value.Clients).Returns(clients.Object);
             hub.SetupGet(value => value.Groups).Returns(_groups.Object);
-            return (mode, lobby!, new MatchLobbyCleanupService(mode, _matches, _connections, _timers, hub.Object));
+            return (mode, lobby!, new MatchLobbyCleanupService(mode, _matches, _connections, _timers, hub.Object), queueIds);
         }
 
         [Theory]
@@ -135,6 +137,9 @@ namespace GammonX.Server.Tests
             lobby.Player2!.SetConnectionId("two");
             session.JoinSession(lobby.Player1);
             session.JoinSession(lobby.Player2);
+            using var timer = new CancellationTokenSource();
+            var key = new CancellationTokenKey { MatchId = lobby.MatchId, PlayerId = lobby.Player1.Id, Category = CancellationTokenCategory.Turn };
+            _timers.Store(key, timer);
             var expiry = fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, lobby.CreatedAtUtc + MatchLobby.StartTimeout);
             Assert.False(expiry.IsCompleted);
 
@@ -148,9 +153,18 @@ namespace GammonX.Server.Tests
             await lease.DisposeAsync();
             await expiry.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
-            // Assert: even a lobby still present during start notifications is safe.
-            Assert.NotNull(_matches.Get(lobby.MatchId)!.StartedAt);
-            Assert.NotNull(_connections.Get(lobby.Player1.Id));
+            // Assert
+            Assert.False(fixture.Mode.TryFindMatchLobby(lobby.MatchId, out _));
+            Assert.All(fixture.QueueIds, id => Assert.False(fixture.Mode.TryFindMatchLobby(id, out _)));
+            var started = _matches.Get(lobby.MatchId)!;
+            Assert.NotNull(started.StartedAt);
+            Assert.False(started.IsMatchOver());
+            Assert.Same(lobby.Player1, _connections.Get(lobby.Player1.Id));
+            Assert.Same(lobby.Player2, _connections.Get(lobby.Player2.Id));
+            Assert.True(_timers.TryGet(key, out var current));
+            Assert.Same(timer, current);
+            Assert.False(timer.IsCancellationRequested);
+            _groups.VerifyNoOtherCalls();
             _client.Verify(value => value.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 

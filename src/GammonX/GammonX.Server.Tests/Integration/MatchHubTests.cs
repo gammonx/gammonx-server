@@ -119,6 +119,48 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Fact]
+        public async Task StartNotificationFailureLeavesStartedMatchWithoutLobby()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var id = fixture.Session.Id;
+            var client = Mock.Get(fixture.Clients.Object.Client(fixture.Session.Player1.ConnectionId));
+            var started = CaptureStoredSessions(client, id, ServerEventTypes.MatchStartedEvent, failSend: true);
+
+            // Act
+            await fixture.Hub.StartMatchAsync(id.ToString());
+
+            // Assert
+            Assert.NotNull(Assert.Single(started).StartedAt);
+            Assert.False(_matchRepo.Get(id)!.IsMatchOver());
+            Assert.False(_rankedService.TryFindMatchLobby(id, out _));
+            Assert.False(_rankedService.TryFindMatchLobby(fixture.QueueId, out _));
+        }
+
+        [Fact]
+        public async Task OpeningBotEvaluationFailsAfterLobbyRemoval()
+        {
+            // Arrange
+            var bot = new Mock<IBotService>();
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked, botStarts: true, botService: bot.Object);
+            var id = fixture.Session.Id;
+            bool? lobbyPresent = null;
+            bot.Setup(service => service.GetNextMovesAsync(It.IsAny<IMatchSessionModel>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Callback(() => lobbyPresent = _rankedService.TryFindMatchLobby(id, out _) ||
+                    _rankedService.TryFindMatchLobby(fixture.QueueId, out _))
+                .ThrowsAsync(new InvalidOperationException("Bot evaluation failed."));
+
+            // Act
+            await fixture.Hub.StartMatchAsync(id.ToString());
+
+            // Assert
+            Assert.False(lobbyPresent);
+            var match = _matchRepo.Get(id)!;
+            Assert.NotNull(match.StartedAt);
+            Assert.Equal(match.Player1.Id, match.GetGameSession(match.GameRound)!.ActivePlayer);
+        }
+
+        [Fact]
         public async Task RankedBotCleanupPreservesOtherMatchUsingSameBot()
         {
             // Arrange.
@@ -862,8 +904,7 @@ namespace GammonX.Server.Tests.Integration
         public async Task RankedBotTiedOpeningRollsCanBeRetried()
         {
             // Arrange.
-            var fixture = await CreatePersistenceFixture(startMatch: false, modus: MatchModus.Ranked,
-                botOpponent: true, botService: new SimpleBotService());
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
             var dice = new Mock<IDiceService>();
             dice.SetupSequence(value => value.Roll(1, 6)).Returns([3]).Returns([3]).Returns([6]).Returns([1]);
             var factory = new Mock<IDiceServiceFactory>();
@@ -876,6 +917,8 @@ namespace GammonX.Server.Tests.Integration
             // Act.
             await hub.StartMatchAsync(fixture.Session.Id.ToString());
             var tied = _matchRepo.Get(fixture.Session.Id)!;
+            Assert.True(_rankedService.TryFindMatchLobby(tied.Id, out _));
+            Assert.True(_rankedService.TryFindMatchLobby(fixture.QueueId, out _));
             Assert.True(_cancellationTokenService.TryGet(new CancellationTokenKey
             {
                 MatchId = tied.Id, PlayerId = tied.Player1.Id, Category = CancellationTokenCategory.Turn
@@ -894,7 +937,7 @@ namespace GammonX.Server.Tests.Integration
             await hub.ResignMatchAsync(fixture.Session.Id.ToString());
         }
 
-        private async Task<(IMatchSessionModel Session, MatchLobbyHub Hub, Mock<IHubCallerClients> Clients)> CreateBotLobbyFixture(
+        private async Task<(IMatchSessionModel Session, MatchLobbyHub Hub, Mock<IHubCallerClients> Clients, Guid QueueId)> CreateBotLobbyFixture(
             MatchModus modus, bool botStarts = false, IBotService? botService = null)
         {
             var playerId = Guid.NewGuid();
@@ -921,7 +964,7 @@ namespace GammonX.Server.Tests.Integration
             await hub.JoinMatchAsync(lobby!.MatchId.ToString(), playerId.ToString());
             var session = _matchRepo.Get(lobby.MatchId)!;
             Assert.True(session.Player2.IsBot);
-            return (session, hub, clients);
+            return (session, hub, clients, entry.Id);
         }
 
         [Theory]

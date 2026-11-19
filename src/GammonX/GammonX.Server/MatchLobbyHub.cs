@@ -598,7 +598,12 @@ namespace GammonX.Server
                                 // we set the opening dice rolls for the starting player
                                 gameSession.SetDiceRolls([player1.StartDiceRoll.Value, player2.StartDiceRoll.Value], isWhite);
 
-                                matchLock.Commit();
+                                if (!matchLock.Commit())
+                                {
+                                    throw new InvalidOperationException("Could not commit the match start.");
+                                }
+
+                                _matchmakingService.TryRemoveMatchLobby(matchSession.Id);
 
                                 if (matchLock.IsBotPlayer(startingPlayerId))
                                 {
@@ -614,9 +619,6 @@ namespace GammonX.Server
                                     await SendMatchState(matchLock, ServerEventTypes.MatchStartedEvent, matchSession);
                                     await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
                                 }
-
-                                // we clean up the match lobby as soon as the first player rolled his starting dice
-                                _matchmakingService.TryRemoveMatchLobby(matchSession.Id);
                             }
                         }
                     }
