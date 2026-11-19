@@ -83,6 +83,7 @@ builder.Services.AddSingleton<IMatchSessionFactory, MatchSessionFactory>();
 builder.Services.AddSingleton<IGameSessionFactory, GameSessionFactory>();
 builder.Services.AddSingleton<IDiceServiceFactory, DiceServiceFactory>();
 builder.Services.AddSingleton<ICancellationTokenService, CancellationTokenServiceImpl>();
+builder.Services.AddSingleton(TimeProvider.System);
 // -------------------------------------------------------------------------------
 // BOT SERVICE SETUP
 // -------------------------------------------------------------------------------

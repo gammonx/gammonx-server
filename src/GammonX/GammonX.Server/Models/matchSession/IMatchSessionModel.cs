@@ -1,7 +1,7 @@
 ﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
-
+using GammonX.Server.Services;
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
@@ -219,5 +219,10 @@ namespace GammonX.Server.Models
 		/// <param name="command">Command to check.</param>
 		/// <returns>Boolean indicating if the command can be executed.</returns>
 		bool IsAllowedCommand(Guid callingPlayerId, string command);
+
+		/// <summary>
+		/// Returns the action the seated player still owes, or null when no action is due.
+		/// </summary>
+		TurnObligation? PendingObligation(Guid callingPlayerId);
 	}
 }

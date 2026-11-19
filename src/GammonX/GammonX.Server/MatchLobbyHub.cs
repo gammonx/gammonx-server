@@ -1,4 +1,4 @@
-using GammonX.Engine.Services;
+﻿using GammonX.Engine.Services;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
@@ -38,20 +38,22 @@ namespace GammonX.Server
         private readonly ICancellationTokenService _cancellationTokenService;
 
         private readonly IMatchmakingService _matchmakingService;
-        
+
         private readonly MatchSessionRepository _matchRepository;
-        
+
         private readonly MatchLobbyCleanupService _lobbyCleanup;
-        
+
         private readonly PlayerConnectionRepository _playerConnectionRepository;
-        
+
         private readonly IDiceService _diceService;
-        
+
         private readonly IServiceProvider _serviceProvider;
-        
+
         private readonly IWorkQueueService _workQueue;
-        
+
         private readonly IHubContext<MatchLobbyHub> _hubContext;
+
+        private readonly TimeProvider _timeProvider;
 
         public MatchLobbyHub(IServiceProvider serviceProvider)
         {
@@ -64,6 +66,7 @@ namespace GammonX.Server
             _playerConnectionRepository = serviceProvider.GetRequiredService<PlayerConnectionRepository>();
             _cancellationTokenService = serviceProvider.GetRequiredService<ICancellationTokenService>();
             _hubContext = serviceProvider.GetRequiredService<IHubContext<MatchLobbyHub>>();
+            _timeProvider = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
         }
 
         #region Overrides
@@ -156,19 +159,19 @@ namespace GammonX.Server
                             else if (activeGameSession.Phase != GamePhase.GameOver)
                             {
                                 // A player owes the next move or cube response, restore their response deadline.
-                                StartTurnTimer(matchSession.Modus, matchSession.Id, activeGameSession.ActivePlayer);
+                                StartTurnTimer(matchSession, activeGameSession.ActivePlayer);
                             }
                             else if (!matchSession.IsMatchOver())
                             {
                                 // Restore deadlines only for outstanding acceptances. The bot accepts automatically.
                                 if (!matchSession.Player1.NextGameAccepted)
                                 {
-                                    StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
+                                    StartTurnTimer(matchSession, matchSession.Player1.Id);
                                 }
 
                                 if (!matchSession.Player2.IsBot && !matchSession.Player2.NextGameAccepted)
                                 {
-                                    StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
+                                    StartTurnTimer(matchSession, matchSession.Player2.Id);
                                 }
                             }
                         }
@@ -183,10 +186,10 @@ namespace GammonX.Server
                             {
                                 // Both seats are assigned, but the first game has not started. Restore player start deadlines;
                                 // the bots opening roll and acceptance are supplied when the player starts the match.
-                                StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
+                                StartTurnTimer(matchSession, matchSession.Player1.Id);
                                 if (!matchLock.IsBotPlayer(matchSession.Player2.Id))
                                 {
-                                    StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
+                                    StartTurnTimer(matchSession, matchSession.Player2.Id);
                                 }
                             }
                             else if (matchSession.IsMatchOver())
@@ -210,7 +213,7 @@ namespace GammonX.Server
                             var contract = new EventResponseContract<EventMatchLobbyPayload>(ServerEventTypes.PlayerConnectedEvent, payload);
                             await Groups.AddToGroupAsync(connectionId, ConstructGroupName(matchId.Value));
                             await SendToClientAsync(connectionId, ServerEventTypes.PlayerConnectedEvent, contract);
-                            StartTurnTimer(null, matchId.Value, playerId.Value);
+                            StartJoinTimer(matchLobby, matchSession, playerId.Value, connectionId);
                         }
                         else
                         {
@@ -474,10 +477,10 @@ namespace GammonX.Server
                         await SendToGroupAsync(ConstructGroupName(matchSession.Id), ServerEventTypes.MatchLobbyFoundEvent, matchLobbyContract);
                         await SendMatchState(matchLock, ServerEventTypes.MatchWaitingForStartEvent, matchSession);
                         // we set a timeout for the players to start the match
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player1.Id);
-                        if (!matchLock.IsBotPlayer( matchSession.Player2.Id))
+                        StartTurnTimer(matchSession, matchSession.Player1.Id);
+                        if (!matchLock.IsBotPlayer(matchSession.Player2.Id))
                         {
-                            StartTurnTimer(matchSession.Modus, matchSession.Id, matchSession.Player2.Id);
+                            StartTurnTimer(matchSession, matchSession.Player2.Id);
                         }
                     }
                     else
@@ -526,8 +529,8 @@ namespace GammonX.Server
                     var player1 = matchSession.Player1;
                     var player2 = matchSession.Player2;
                     var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
-                    
-                    if(!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartMatchCommand))
+
+                    if (!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartMatchCommand))
                     {
                         await SendErrorEventAsync("START_MATCH_ERROR", "You cannot start the match at this moment.", Context.ConnectionId);
                         return;
@@ -565,10 +568,10 @@ namespace GammonX.Server
                             // re-roll is required in this case
                             matchLock.Commit();
                             // Both human players need a new deadline after their opening timers were canceled.
-                            StartTurnTimer(matchSession.Modus, matchSession.Id, player1.Id);
+                            StartTurnTimer(matchSession, player1.Id);
                             if (!player2.IsBot)
                             {
-                                StartTurnTimer(matchSession.Modus, matchSession.Id, player2.Id);
+                                StartTurnTimer(matchSession, player2.Id);
                             }
 
                             await SendMatchState(matchLock, ServerEventTypes.MatchWaitingForStartEvent, matchSession);
@@ -579,7 +582,7 @@ namespace GammonX.Server
                             {
                                 var startingPlayerId = GetStartingPlayerId(matchSession);
                                 var gameSession = matchSession.StartMatch(startingPlayerId);
-                                
+
                                 // A retry can resolve the starting roll tie while the opponent still has a reroll timer.
                                 CancelTimersFor(matchSession.Id, CancellationTokenCategory.Turn);
 
@@ -599,7 +602,7 @@ namespace GammonX.Server
                                 else
                                 {
                                     // we set a timeout for the starting player to end his turn
-                                    StartTurnTimer(matchSession.Modus, matchSession.Id, startingPlayerId);
+                                    StartTurnTimer(matchSession, startingPlayerId);
                                 }
 
                                 // we clean up the match lobby as soon as the first player rolled his starting dice
@@ -655,7 +658,7 @@ namespace GammonX.Server
                 if (matchSession != null)
                 {
                     var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
-                    if(!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartGameCommand))
+                    if (!matchSession.IsAllowedCommand(callingPlayerId, ServerCommands.StartGameCommand))
                     {
                         await SendErrorEventAsync("START_GAME_ERROR", "You cannot start the next game at this moment.", Context.ConnectionId);
                         return;
@@ -694,7 +697,7 @@ namespace GammonX.Server
                         {
                             await SendGameState(ServerEventTypes.GameStartedEvent, matchSession);
                             // we set a timeout for the starting player to end his turn
-                            StartTurnTimer(matchSession.Modus, matchSession.Id, startingPlayerId);
+                            StartTurnTimer(matchSession, startingPlayerId);
                         }
                     }
                     else
@@ -899,7 +902,7 @@ namespace GammonX.Server
                     else
                     {
                         await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
+                        StartTurnTimer(matchSession, otherPlayerId);
                     }
                 }
                 else
@@ -1087,7 +1090,7 @@ namespace GammonX.Server
                     var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
                     if (!matchLock.IsBotPlayer(otherPlayerId))
                     {
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
+                        StartTurnTimer(matchSession, otherPlayerId);
                     }
                 }
                 else
@@ -1130,7 +1133,7 @@ namespace GammonX.Server
                     var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
                     if (!matchLock.IsBotPlayer(otherPlayerId))
                     {
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, otherPlayerId);
+                        StartTurnTimer(matchSession, otherPlayerId);
                     }
                 }
                 else
@@ -1186,10 +1189,10 @@ namespace GammonX.Server
             if (matchSession is IDoubleCubeMatchSession doubleCubeSession)
             {
                 // active players changes here
-                doubleCubeSession.OfferDouble(offeringPlayerId);                
+                doubleCubeSession.OfferDouble(offeringPlayerId);
                 CancelTimersFor(matchSession.Id, offeringPlayerId, CancellationTokenCategory.Turn);
-                
-                matchLock.Commit();                
+
+                matchLock.Commit();
                 var offeredPlayerId = matchLock.GetOtherPlayerId(offeringPlayerId);
 
                 if (matchLock.IsBotPlayer(offeredPlayerId))
@@ -1211,7 +1214,7 @@ namespace GammonX.Server
                     await SendToClientAsync(otherPlayerConnectionId, ServerEventTypes.DoubleOfferedEvent, otherPlayerContract);
                     if (matchLock.IsBotPlayer(offeringPlayerId))
                     {
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, offeredPlayerId);
+                        StartTurnTimer(matchSession, offeredPlayerId);
                     }
                 }
             }
@@ -1227,10 +1230,10 @@ namespace GammonX.Server
             {
                 doubleCubeSession.AcceptDouble(offeredPlayerId);
                 CancelTimersFor(matchSession.Id, offeredPlayerId, CancellationTokenCategory.Turn);
-                
+
                 var offeringPlayerId = matchLock.GetOtherPlayerId(offeredPlayerId);
                 matchLock.Commit();
-                
+
                 if (matchLock.IsBotPlayer(offeringPlayerId))
                 {
                     // the bot offered the double and the player player accepted it
@@ -1244,7 +1247,7 @@ namespace GammonX.Server
                     await SendGameState(ServerEventTypes.DoubleAcceptedEvent, matchSession);
                     if (matchLock.IsBotPlayer(offeredPlayerId))
                     {
-                        StartTurnTimer(matchSession.Modus, matchSession.Id, offeringPlayerId);
+                        StartTurnTimer(matchSession, offeringPlayerId);
                     }
                 }
             }
@@ -1261,7 +1264,7 @@ namespace GammonX.Server
                 // declining a double offer automatically loses the current game round
                 doubleCubeSession.DeclineDouble(offeredPlayerId);
                 CancelTimersFor(matchSession.Id, offeredPlayerId, CancellationTokenCategory.Turn);
-                
+
                 matchLock.Commit();
                 // check if this was the last game round of the match
                 if (matchSession.IsMatchOver())
@@ -1403,7 +1406,7 @@ namespace GammonX.Server
 
                 if (game == null)
                 {
-                    throw new InvalidOperationException("game session must not be null while executing a bot turn");    
+                    throw new InvalidOperationException("game session must not be null while executing a bot turn");
                 }
 
                 // 3) we then check if the bot has to roll his dices
@@ -1422,7 +1425,7 @@ namespace GammonX.Server
                         var botService = GetBotService();
                         nextMoves = await botService.GetNextMovesAsync(matchSession, botPlayerId, Context.ConnectionAborted);
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         Log.Logger.Error(ex, "Match {matchId} :: Code {errorCode} :: Message {errorMessage}", matchSession.Id, "BOT_EXECUTE_MOVE_ERROR", "An Error occurred while move sequence eval.");
                         ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "move"));
@@ -1440,7 +1443,7 @@ namespace GammonX.Server
                         canMove = await PerformMoveAsync(matchLock, matchSession, botPlayerId, nextMove.From, nextMove.To);
                     }
                 }
-                
+
 
                 // 5) we then check if the bot can end his turn and pass over to the player
                 if (matchSession.CanEndTurn(botPlayerId))
@@ -1450,7 +1453,7 @@ namespace GammonX.Server
                     matchLock.Commit();
                     await SendGameState(ServerEventTypes.GameStateEvent, matchSession);
                     var humanPlayerId = matchLock.GetOtherPlayerId(botPlayerId);
-                    StartTurnTimer(matchSession.Modus, matchSession.Id, humanPlayerId);
+                    StartTurnTimer(matchSession, humanPlayerId);
                 }
             }
             catch (Exception ex)
@@ -1465,62 +1468,180 @@ namespace GammonX.Server
 
         #region Turn Timers
 
-        private void StartTurnTimer(MatchModus? modus, Guid matchId, Guid playerId)
+        private void StartTurnTimer(IMatchSessionModel match, Guid playerId)
         {
-            if (_playerConnectionRepository.Get(playerId)?.IsBot == true)
+            if (RegisterTurnDeadline(match, playerId) is { } deadline)
             {
-                return;
+                _ = RunTurnTimerAsync(deadline);
+            }
+        }
+
+        private void StartJoinTimer(MatchLobby lobby, IMatchSessionModel? match, Guid playerId, string connectionId)
+        {
+            if (RegisterJoinDeadline(lobby, match, playerId, connectionId) is { } deadline)
+            {
+                _ = RunTurnTimerAsync(deadline);
+            }
+        }
+
+        internal async Task RunTurnTimerAsync(TurnDeadline deadline)
+        {
+            ServerMetrics.TimerTaskStarted();
+            var cancellation = deadline.Token.Token;
+            var warning = SendTurnWarningAsync(deadline, cancellation);
+
+            try
+            {
+                await DelayUntilAsync(deadline.ExpiresAt, cancellation);
+                await HandleTurnTimeoutAsync(deadline);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                // A command, disconnect, or reconnect superseded the deadline.
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Turn expiry failed for match {matchId}, player {playerId}", deadline.Key.MatchId, deadline.Key.PlayerId);
+            }
+            finally
+            {
+                _cancellationTokenService.TryCancel(deadline.Key, deadline.Token);
+                // Warning delivery and expiry run independently. A slow send cannot grant extra time.
+                await warning;
+                deadline.Token.Dispose();
+                ServerMetrics.TimerTaskFinished();
+            }
+        }
+
+        internal TurnDeadline? RegisterTurnDeadline(IMatchSessionModel match, Guid playerId)
+        {
+            var player = GetDeadlinePlayer(match, playerId);
+            var obligation = GetTurnObligation(match, player);
+            var connectionId = player?.ConnectionId;
+            if (obligation != null && connectionId != null && connectionId.Length > 0)
+            {
+                return RegisterTurnDeadline(match.Id, playerId, connectionId, obligation.Value, match.Modus);
             }
 
-            var tokenKey = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Turn);
-            _cancellationTokenService.Cancel(tokenKey);
+            return null;
+        }
 
-            var turnCts = new CancellationTokenSource();
-            _cancellationTokenService.Store(tokenKey, turnCts);
+        private TurnDeadline RegisterTurnDeadline(
+            Guid matchId,
+            Guid playerId,
+            string connectionId,
+            TurnObligation obligation,
+            MatchModus? modus)
+        {
+            var key = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Turn);
+            var now = _timeProvider.GetUtcNow();
+            var limit = GetTurnTimeLimit(modus);
+            var warnAt = now + limit.Divide(2);
+            var expireAt = now + limit;
+            var token = new CancellationTokenSource();
 
-            _ = Task.Run(async () =>
+            var deadline = new TurnDeadline(key, token, obligation, connectionId, warnAt, expireAt);
+            _cancellationTokenService.Store(key, deadline.Token);
+
+            return deadline;
+        }
+
+        internal TurnDeadline? RegisterJoinDeadline(MatchLobby lobby, IMatchSessionModel? match, Guid playerId, string connectionId)
+        {
+            if (OwesJoin(lobby, match, playerId))
             {
-                ServerMetrics.TimerTaskStarted();
-                try
+                var obligation = new TurnObligation(TurnDeadlineAction.Join);
+                return RegisterTurnDeadline(lobby.MatchId, playerId, connectionId, obligation, null);
+            }
+            return null;
+        }
+
+        private async Task SendTurnWarningAsync(TurnDeadline deadline, CancellationToken cancellation)
+        {
+            try
+            {
+                await DelayUntilAsync(deadline.WarnAt, cancellation);
+                if (_timeProvider.GetUtcNow() >= deadline.ExpiresAt || !IsActiveDeadline(deadline))
                 {
-                    var halfTimeLimit = GetTurnTimeLimit(modus).Divide(2);
-                    await Task.Delay(halfTimeLimit, turnCts.Token);
-                    if (!turnCts.Token.IsCancellationRequested)
-                    {
-                        // we send a timer event to the client after half of the time limit is exceeded
-                        var payload = new EventTurnTimerPayload
-                        {
-                            ActivePlayer = playerId,
-                            TurnExpiration = DateTime.UtcNow.Add(halfTimeLimit)
-                        };
-                        var responseContract = new EventResponseContract<EventTurnTimerPayload>(ServerEventTypes.TurnTimerEvent, payload);
-                        var playerConnection = _playerConnectionRepository.Get(playerId);
-                        if (!string.IsNullOrEmpty(playerConnection?.ConnectionId))
-                        {
-                            await SendToClientAsync(playerConnection.ConnectionId, ServerEventTypes.TurnTimerEvent, responseContract);
-                        }
-                        await Task.Delay(halfTimeLimit, turnCts.Token);
-                        if (!turnCts.Token.IsCancellationRequested)
-                        {
-                            _cancellationTokenService.Cancel(tokenKey);
-                            await HandleTurnTimeoutAsync(matchId, playerId);
-                        }
-                    }
+                    return;
                 }
-                catch (OperationCanceledException)
+
+                var connection = _playerConnectionRepository.Get(deadline.Key.PlayerId);
+                if (connection != null && connection.ConnectionId != deadline.ConnectionId)
                 {
-                    // timer was cancelled and cleaned up
+                    return;
                 }
-                catch (Exception ex)
+
+                var payload = new EventTurnTimerPayload
                 {
-                    Log.Logger.Error(ex, "Turn timer error for player {playerId}", playerId);
-                    _cancellationTokenService.Cancel(tokenKey);
-                }
-                finally
-                {
-                    ServerMetrics.TimerTaskFinished();
-                }
-            }, turnCts.Token);
+                    ActivePlayer = deadline.Key.PlayerId,
+                    TurnExpiration = deadline.ExpiresAt.UtcDateTime
+                };
+
+                var response = new EventResponseContract<EventTurnTimerPayload>(ServerEventTypes.TurnTimerEvent, payload);
+                await SendToClientAsync(deadline.ConnectionId, ServerEventTypes.TurnTimerEvent, response, cancellation);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                // The deadline was superseded before the warning could be sent.
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Turn warning failed for match {matchId}, player {playerId}", deadline.Key.MatchId, deadline.Key.PlayerId);
+            }
+        }
+
+        private async Task DelayUntilAsync(DateTimeOffset due, CancellationToken cancellation)
+        {
+            var remaining = due - _timeProvider.GetUtcNow();
+            while (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining, _timeProvider, cancellation);
+                remaining = due - _timeProvider.GetUtcNow();
+            }
+            cancellation.ThrowIfCancellationRequested();
+        }
+
+        private bool IsActiveDeadline(TurnDeadline deadline)
+        {
+            var isNotCancelled = !deadline.Token.IsCancellationRequested;
+            if (isNotCancelled && _cancellationTokenService.TryGet(deadline.Key, out var registered))
+            {
+                return ReferenceEquals(registered, deadline.Token);
+            }
+            return false;
+        }
+
+        private static MatchPlayerModel? GetDeadlinePlayer(IMatchSessionModel? match, Guid playerId)
+        {
+            if (match?.Player1.Id == playerId)
+            {
+                return match.Player1;
+            }
+            return match?.Player2.Id == playerId ? match.Player2 : null;
+        }
+
+        private static bool OwesJoin(MatchLobby? lobby, IMatchSessionModel? match, Guid playerId)
+        {
+            if (lobby == null)
+            {
+                return false;
+            }
+
+            var matchStarted = match?.StartedAt == null;
+            var player = GetDeadlinePlayer(match, playerId) == null;
+            var notBot = lobby.Player1.Id == playerId && !lobby.Player1.IsBot || lobby.Player2?.Id == playerId && !lobby.Player2.IsBot;
+            return matchStarted && player && notBot;
+        }
+
+        private static TurnObligation? GetTurnObligation(IMatchSessionModel? match, MatchPlayerModel? player)
+        {
+            if (match == null || player == null || !player.Claimed || player.IsBot || match.EndedAt != null)
+            {
+                return null;
+            }
+
+            return match.PendingObligation(player.Id);
         }
 
         private static TimeSpan GetTurnTimeLimit(MatchModus? modus)
@@ -1541,57 +1662,85 @@ namespace GammonX.Server
             };
         }
 
-        private async Task HandleTurnTimeoutAsync(Guid matchId, Guid playerId)
+        internal async Task HandleTurnTimeoutAsync(TurnDeadline deadline)
         {
             using var callback = new ServerMetrics.CallbackScope();
+            var (matchId, playerId) = (deadline.Key.MatchId, deadline.Key.PlayerId);
             await using var matchLock = await _matchRepository.AcquireStateAsync(matchId);
-            
-            if (await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock))
+            if (_timeProvider.GetUtcNow() < deadline.ExpiresAt || !IsActiveDeadline(deadline))
             {
                 return;
             }
-            
-            var matchSession = matchLock.Get();
-            if (matchSession != null && !matchSession.IsMatchOver())
-            {
-                var gameSession = matchSession.GetGameSession(matchSession.GameRound);
-                if (gameSession != null && !gameSession.Result.IsConcluded)
-                {
-                    if (matchSession is IDoubleCubeMatchSession cubeSession && cubeSession.IsDoubleOfferPending && gameSession.ActivePlayer == playerId)
-                    {
-                        // Missing a cube response passes the offer at the already accepted cube value.
-                        cubeSession.DeclineDouble(playerId);
-                    }
-                    else
-                    {
-                        matchSession.ResignGame(playerId);
-                    }
 
-                    matchLock.Commit();
-
-                    if (matchSession.IsMatchOver())
-                    {
-                        await SendMatchState(matchLock, ServerEventTypes.MatchEndedEvent, matchSession);
-                    }
-                    else
-                    {
-                        await SendMatchState(matchLock, ServerEventTypes.GameEndedEvent, matchSession);
-                    }
-                }
-                else
-                {
-                    // we resign the complete match if no game has started yet
-                    matchSession.ResignMatch(playerId);
-                    matchLock.Commit();
-                    await SendMatchState(matchLock, ServerEventTypes.MatchEndedEvent, matchSession);
-                }
-            }
-            else
+            var match = matchLock.Get();
+            var stillOwed = IsTurnObligationCurrent(deadline, match);
+            // Consume only this generation, even if it no longer applies. Duplicate callbacks
+            // and callbacks from a replaced timer must not change the match or its new timer.
+            if (!_cancellationTokenService.TryCancel(deadline.Key, deadline.Token) || !stillOwed)
             {
-                // no match was started, we simply close the connections in this case
-                var emptyResponse = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await SendToGroupAsync(ConstructGroupName(matchId), ServerEventTypes.ForceDisconnectEvent, emptyResponse);
+                return;
             }
+
+            switch (deadline.Obligation.Action)
+            {
+                case TurnDeadlineAction.Join:
+                case TurnDeadlineAction.StartMatch:
+                    await _lobbyCleanup.TryCleanupUnstartedAsync(matchId, matchLock);
+                    return;
+                case TurnDeadlineAction.AcceptNextGame:
+                    match!.ResignMatch(playerId);
+                    break;
+                case TurnDeadlineAction.RespondToCube:
+                    // A missed cube response passes at the already accepted cube value.
+                    ((IDoubleCubeMatchSession)match!).DeclineDouble(playerId);
+                    break;
+                case TurnDeadlineAction.PlayTurn:
+                    match!.ResignGame(playerId);
+                    break;
+            }
+
+            matchLock.Commit();
+            var serverEvent = match!.IsMatchOver() ? ServerEventTypes.MatchEndedEvent : ServerEventTypes.GameEndedEvent;
+            await SendMatchState(matchLock, serverEvent, match);
+        }
+
+        private bool IsTurnObligationCurrent(TurnDeadline deadline, IMatchSessionModel? match)
+        {
+            var matchId = deadline.Key.MatchId;
+            var playerId = deadline.Key.PlayerId;
+            var currentConnection = _playerConnectionRepository.Get(playerId);
+
+            // we check if the given player has a disconnect timer running
+            if ((currentConnection != null && currentConnection.ConnectionId != deadline.ConnectionId) || IsDisconnectPending(matchId, playerId))
+            {
+                return false;
+            }
+
+            if (deadline.Obligation.Action == TurnDeadlineAction.Join)
+            {
+                var hasLobby = _matchmakingService.TryFindMatchLobby(matchId, out var lobby);
+                var owesJoin = OwesJoin(lobby, match, playerId);
+                if (currentConnection == null || !hasLobby || lobby == null || !owesJoin)
+                {
+                    return false;
+                }
+
+                var otherLobbyPlayer = lobby.Player1.Id == playerId ? lobby.Player2 : lobby.Player1;
+                return otherLobbyPlayer == null || otherLobbyPlayer.IsBot || !IsDisconnectPending(matchId, otherLobbyPlayer.Id);
+            }
+
+            var player = GetDeadlinePlayer(match, playerId);
+            var other = match?.Player1.Id == playerId ? match.Player2 : match?.Player1;
+            var sameConnId = player?.ConnectionId == deadline.ConnectionId;
+            var sameObligation = GetTurnObligation(match, player) == deadline.Obligation;
+            var validTarget = other == null || other.IsBot || !IsDisconnectPending(matchId, other.Id);
+            return sameConnId && sameObligation && validTarget;
+        }
+
+        private bool IsDisconnectPending(Guid matchId, Guid playerId)
+        {
+            var tokenKey = ConstructTokenKey(playerId, matchId, CancellationTokenCategory.Disconnect);
+            return _cancellationTokenService.TryGet(tokenKey, out _);
         }
 
         private void CancelTimersFor(Guid matchId, Guid playerId, CancellationTokenCategory category)
@@ -1684,10 +1833,10 @@ namespace GammonX.Server
                     // we do not know for sure which turn it was, so we cancel all active turn timers
                     CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
                     // we set a timeout for the players to start the next game
-                    StartTurnTimer(match.Modus, match.Id, match.Player1.Id);
+                    StartTurnTimer(match, match.Player1.Id);
                     if (!matchLock.IsBotPlayer(match.Player2.Id))
                     {
-                        StartTurnTimer(match.Modus, match.Id, match.Player2.Id);
+                        StartTurnTimer(match, match.Player2.Id);
                     }
                 }
             }
@@ -1744,12 +1893,12 @@ namespace GammonX.Server
                 {
                     _playerConnectionRepository.TryRemove(match.Player1.Id);
                 }
-                
+
                 if (!match.Player2.IsBot)
                 {
                     _playerConnectionRepository.TryRemove(match.Player2.Id);
                 }
-                
+
                 CancelTimersFor(match.Id, CancellationTokenCategory.Turn);
                 CancelTimersFor(match.Id, CancellationTokenCategory.Disconnect);
             }
@@ -1921,7 +2070,8 @@ namespace GammonX.Server
             await Clients.Caller.SendAsync(serverEventName, response);
         }
 
-        private async Task SendToClientAsync<T>(string connectionId, string serverEventName, EventResponseContract<T> response) where T : EventPayloadBase
+        private async Task SendToClientAsync<T>(string connectionId, string serverEventName, EventResponseContract<T> response,
+            CancellationToken cancellation = default) where T : EventPayloadBase
         {
             if (string.Equals(connectionId, WellKnownBotPlayers.ConnectionId, StringComparison.Ordinal))
             {
@@ -1931,12 +2081,12 @@ namespace GammonX.Server
             using var measurement = ServerMetrics.Measure(ServerMetrics.ExternalDuration, "signalr.send");
             try
             {
-                await Clients.Client(connectionId).SendAsync(serverEventName, response);
+                await Clients.Client(connectionId).SendAsync(serverEventName, response, cancellation);
             }
             catch (ObjectDisposedException)
             {
                 // if the hub instance already got disposed, we must use the hub context
-                await _hubContext.Clients.Client(connectionId).SendAsync(serverEventName, response);
+                await _hubContext.Clients.Client(connectionId).SendAsync(serverEventName, response, cancellation);
             }
         }
 

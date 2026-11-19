@@ -58,6 +58,23 @@
         }
 
         // <inheritdoc />
+        public bool TryCancel(CancellationTokenKey key, CancellationTokenSource expected)
+        {
+            lock (_lock)
+            {
+                if (!_tokenSources.TryGetValue(key, out var current) || !ReferenceEquals(current, expected) || expected.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                _tokenSources.Remove(key);
+                try { expected.Cancel(); }
+                catch (ObjectDisposedException) { return false; }
+                return true;
+            }
+        }
+
+        // <inheritdoc />
         public void CancelForPlayer(Guid playerId, CancellationTokenCategory category)
         {
             lock (_lock)

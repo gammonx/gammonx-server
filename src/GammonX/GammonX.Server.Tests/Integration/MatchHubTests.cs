@@ -44,6 +44,7 @@ namespace GammonX.Server.Tests.Integration
         private readonly Guid _player2Id = Guid.NewGuid();
         private readonly Mock<IWorkQueueService> _workQueueService;
         private readonly ICancellationTokenService _cancellationTokenService;
+        private readonly DeadlineTestClock _deadlineClock = new();
         private readonly Dictionary<Guid, IMatchSessionModel> _completedMatches = new();
 
 
@@ -398,7 +399,11 @@ namespace GammonX.Server.Tests.Integration
             Assert.False(firstTimer.IsCancellationRequested);
             Assert.True(secondTimer.IsCancellationRequested);
             Assert.NotNull(_matchRepo.Get(lobby.MatchId));
-            await InvokeTurnTimeoutAsync(hub, lobby.MatchId, lobby.Player2.Id);
+            _playerConnRepo.AddOrUpdate(lobby.Player1.Id, "first");
+            var deadline = hub.RegisterJoinDeadline(lobby, _matchRepo.Get(lobby.MatchId), lobby.Player1.Id, "first")!;
+            using var generation = deadline.Token;
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+            await hub.HandleTurnTimeoutAsync(deadline);
             Assert.False(_normalService.TryFindMatchLobby(lobby.MatchId, out _));
         }
 
@@ -2308,16 +2313,252 @@ namespace GammonX.Server.Tests.Integration
             return matchSession;
         }
 
-        private static async Task InvokeTurnTimeoutAsync(MatchLobbyHub hub, Guid matchId, Guid playerId)
+        private async Task InvokeTurnTimeoutAsync(MatchLobbyHub hub, Guid matchId, Guid playerId)
         {
-            var timeoutMethod = typeof(MatchLobbyHub).GetMethod(
-                "HandleTurnTimeoutAsync",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            Assert.NotNull(timeoutMethod);
+            await using var lease = await _matchRepo.AcquireStateAsync(matchId);
+            var match = lease.Get();
+            Assert.NotNull(match);
+            var deadline = hub.RegisterTurnDeadline(match, playerId);
+            Assert.NotNull(deadline);
+            using var generation = deadline.Token;
+            await lease.DisposeAsync();
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+            await hub.HandleTurnTimeoutAsync(deadline);
+        }
 
-            var timeoutTask = timeoutMethod.Invoke(hub, [matchId, playerId]) as Task;
-            Assert.NotNull(timeoutTask);
-            await timeoutTask;
+        [Fact]
+        public async Task QueuedTurnDeadlineCannotConsumeReplacementForSamePlayer()
+        {
+            // Arrange
+            var (match, hub, _) = await CreatePersistenceFixture();
+            var playerId = match.Player1.Id;
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var current = lease.Get()!;
+            var original = hub.RegisterTurnDeadline(current, playerId)!;
+            using var originalGeneration = original.Token;
+            _deadlineClock.SetUtcNow(original.ExpiresAt);
+
+            // Act
+            var expiry = hub.HandleTurnTimeoutAsync(original);
+            Assert.False(expiry.IsCompleted);
+            var game = current.GetGameSession(current.GameRound)!;
+            game.NextTurn(current.Player2.Id);
+            game.NextTurn(playerId);
+            Assert.True(lease.Commit());
+            var replacement = hub.RegisterTurnDeadline(current, playerId)!;
+            using var replacementGeneration = replacement.Token;
+            await lease.DisposeAsync();
+            await expiry;
+
+            // Assert
+            Assert.True(_cancellationTokenService.TryGet(replacement.Key, out var registered));
+            Assert.Same(replacement.Token, registered);
+            Assert.False(replacement.Token.IsCancellationRequested);
+            Assert.False(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
+            _cancellationTokenService.Cancel(replacement.Key);
+            _workQueueService.Verify(queue => queue.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData((int)TurnDeadlineAction.PlayTurn, false)]
+        [InlineData((int)TurnDeadlineAction.PlayTurn, true)]
+        [InlineData((int)TurnDeadlineAction.RespondToCube, false)]
+        [InlineData((int)TurnDeadlineAction.AcceptNextGame, false)]
+        [InlineData((int)TurnDeadlineAction.StartMatch, false)]
+        public async Task QueuedTurnDeadlineChecksWhetherActionIsStillOwed(int actionValue, bool remove)
+        {
+            // Arrange
+            var action = (TurnDeadlineAction)actionValue;
+            var (match, hub, _) = await CreatePersistenceFixture(startMatch: action != TurnDeadlineAction.StartMatch);
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var current = lease.Get()!;
+            var playerId = current.Player1.Id;
+            if (action == TurnDeadlineAction.RespondToCube)
+            {
+                ((IDoubleCubeMatchSession)current).OfferDouble(playerId);
+                playerId = current.Player2.Id;
+            }
+            else if (action == TurnDeadlineAction.AcceptNextGame)
+            {
+                current.ResignGame(current.Player2.Id);
+            }
+            Assert.True(lease.Commit());
+            var deadline = hub.RegisterTurnDeadline(current, playerId)!;
+            using var generation = deadline.Token;
+            Assert.Equal(action, deadline.Obligation.Action);
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+
+            // Act: deliberately leave the same registration in place so the obligation check is exercised.
+            var expiry = hub.HandleTurnTimeoutAsync(deadline);
+            Assert.False(expiry.IsCompleted);
+            if (remove)
+            {
+                Assert.True(lease.TryRemove());
+            }
+            else
+            {
+                switch (action)
+                {
+                    case TurnDeadlineAction.PlayTurn:
+                        var game = current.GetGameSession(1)!;
+                        game.NextTurn(current.Player2.Id);
+                        game.NextTurn(playerId);
+                        break;
+                    case TurnDeadlineAction.RespondToCube:
+                        ((IDoubleCubeMatchSession)current).AcceptDouble(playerId);
+                        break;
+                    default:
+                        current.Player1.AcceptNextGame();
+                        break;
+                }
+                Assert.True(lease.Commit());
+            }
+            await lease.DisposeAsync();
+            await expiry;
+
+            // Assert
+            Assert.Equal(remove, _matchRepo.Get(match.Id) == null);
+            Assert.False(_cancellationTokenService.TryGet(deadline.Key, out _));
+            _workQueueService.Verify(queue => queue.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never);
+            _workQueueService.Verify(queue => queue.EnqueueMatchResultAsync(It.IsAny<MatchRecordContracts>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ReconnectReplacesTurnDeadlineBeforeQueuedExpiryCanForfeit()
+        {
+            // Arrange
+            var fixture = await CreateBotLobbyFixture(MatchModus.Ranked);
+            var hub = fixture.Hub;
+            var id = fixture.Session.Id;
+            var player = fixture.Session.Player1.Id;
+            await hub.StartMatchAsync(id.ToString());
+            await using var lease = await _matchRepo.AcquireStateAsync(id);
+            var original = hub.RegisterTurnDeadline(lease.Get()!, player)!;
+            using var generation = original.Token;
+            _deadlineClock.SetUtcNow(original.ExpiresAt);
+
+            // Act
+            hub.Context = new HubCallerContextStub("replacement", player, id);
+            var reconnect = hub.OnConnectedAsync();
+            var expiry = hub.HandleTurnTimeoutAsync(original);
+            Assert.False(reconnect.IsCompleted);
+            Assert.False(expiry.IsCompleted);
+            await lease.DisposeAsync();
+            await Task.WhenAll(reconnect, expiry);
+
+            // Assert
+            Assert.True(original.Token.IsCancellationRequested);
+            Assert.True(_cancellationTokenService.TryGet(original.Key, out var replacement));
+            Assert.NotSame(original.Token, replacement);
+            Assert.Equal("replacement", _matchRepo.Get(id)!.Player1.ConnectionId);
+            Assert.False(_matchRepo.Get(id)!.GetGameSession(1)!.Result.IsConcluded);
+            _cancellationTokenService.Cancel(original.Key);
+        }
+
+        [Fact]
+        public async Task TurnDeadlineSurvivesRollAndMoveAndOnlyPublishesOnce()
+        {
+            // Arrange
+            var (match, hub, _) = await CreatePersistenceFixture();
+            var player = match.Player1.Id;
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var current = lease.Get()!;
+            var deadline = hub.RegisterTurnDeadline(current, player)!;
+            using var generation = deadline.Token;
+            var game = current.GetGameSession(1)!;
+            game.SetDiceRolls([2, 1], true);
+            var move = game.MoveSequences.First().Moves.First();
+            current.MoveCheckers(player, move.From, move.To);
+            Assert.True(lease.Commit());
+            await lease.DisposeAsync();
+
+            // Act
+            await hub.HandleTurnTimeoutAsync(deadline);
+            Assert.False(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
+            await using var expiryLease = await _matchRepo.AcquireStateAsync(match.Id);
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+            var first = hub.HandleTurnTimeoutAsync(deadline);
+            var duplicate = hub.HandleTurnTimeoutAsync(deadline);
+            Assert.False(first.IsCompleted);
+            Assert.False(duplicate.IsCompleted);
+            await expiryLease.DisposeAsync();
+            await Task.WhenAll(first, duplicate);
+
+            // Assert
+            Assert.Equal(GameResult.Resign, _matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.WinnerResult);
+            _workQueueService.Verify(queue => queue.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()), Times.Once);
+            _cancellationTokenService.CancelForMatch(match.Id, CancellationTokenCategory.Turn);
+        }
+
+        [Fact]
+        public async Task TurnDeadlineCannotForfeitWhileTheOpponentIsDisconnected()
+        {
+            // Arrange
+            var (match, hub, _) = await CreatePersistenceFixture();
+            var deadline = hub.RegisterTurnDeadline(match, match.Player1.Id)!;
+            using var generation = deadline.Token;
+            using var disconnect = new CancellationTokenSource();
+            var disconnectKey = new CancellationTokenKey
+            {
+                MatchId = match.Id, PlayerId = match.Player2.Id, Category = CancellationTokenCategory.Disconnect
+            };
+            _cancellationTokenService.Store(disconnectKey, disconnect);
+            _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+
+            // Act
+            await hub.HandleTurnTimeoutAsync(deadline);
+
+            // Assert
+            Assert.False(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
+            Assert.False(_cancellationTokenService.TryGet(deadline.Key, out _));
+            Assert.True(_cancellationTokenService.TryGet(disconnectKey, out var registered));
+            Assert.Same(disconnect, registered);
+            _cancellationTokenService.Cancel(disconnectKey);
+        }
+
+        [Fact]
+        public async Task DelayedTurnWarningKeepsOriginalDeadlineAndDoesNotDelayExpiry()
+        {
+            // Arrange
+            var (match, hub, client) = await CreatePersistenceFixture();
+            var warning = new TaskCompletionSource<EventTurnTimerPayload>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var completeWarning = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            client.Setup(proxy => proxy.SendCoreAsync(ServerEventTypes.TurnTimerEvent, It.IsAny<object[]>(), It.IsAny<CancellationToken>()))
+                .Returns((string _, object[] args, CancellationToken _) =>
+                {
+                    warning.SetResult(((EventResponseContract<EventTurnTimerPayload>)args[0]).Payload);
+                    return completeWarning.Task;
+                });
+            _workQueueService.Setup(queue => queue.EnqueueGameResultAsync(It.IsAny<GameRecordContracts>(), It.IsAny<CancellationToken>()))
+                .Callback(() => published.SetResult()).Returns(Task.CompletedTask);
+            var deadline = hub.RegisterTurnDeadline(match, match.Player1.Id)!;
+            var timer = hub.RunTurnTimerAsync(deadline);
+            var cancellation = TestContext.Current.CancellationToken;
+
+            // Act
+            try
+            {
+                _deadlineClock.SetUtcNow(deadline.WarnAt.AddSeconds(5));
+                _deadlineClock.FireDueTimers();
+                var payload = await warning.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellation);
+                Assert.Equal(deadline.ExpiresAt.UtcDateTime, payload.TurnExpiration);
+
+                _deadlineClock.SetUtcNow(deadline.ExpiresAt);
+                _deadlineClock.FireDueTimers();
+                await published.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellation);
+
+                // Assert: expiry applied while SignalR still held the warning send.
+                Assert.False(completeWarning.Task.IsCompleted);
+                Assert.True(_matchRepo.Get(match.Id)!.GetGameSession(1)!.Result.IsConcluded);
+            }
+            finally
+            {
+                completeWarning.TrySetResult();
+                _cancellationTokenService.Cancel(deadline.Key);
+                await timer.WaitAsync(TimeSpan.FromSeconds(5), cancellation);
+                _cancellationTokenService.CancelForMatch(match.Id, CancellationTokenCategory.Turn);
+            }
         }
 
         private async Task<(IMatchSessionModel, MatchLobbyHub, MatchLobbyHub, Mock<IHubCallerClients>, string groupName)> SetupPlayerVsPlayerMatchSession(
@@ -2509,6 +2750,7 @@ namespace GammonX.Server.Tests.Integration
             services.AddKeyedSingleton(WellKnownBotServices.Mars, botService ?? _marsBot);
             services.AddSingleton(_playerConnRepo);
             services.AddSingleton(_cancellationTokenService);
+            services.AddSingleton<TimeProvider>(_deadlineClock);
             _ = services.AddSingleton(new Mock<IHubContext<MatchLobbyHub>>().Object);
             return services.BuildServiceProvider();
         }

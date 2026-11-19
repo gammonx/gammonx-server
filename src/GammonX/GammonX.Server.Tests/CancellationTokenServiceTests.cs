@@ -88,6 +88,25 @@ namespace GammonX.Server.Tests
             _service.Cancel(key);
         }
 
+        [Fact]
+        public void TryCancelConsumesOnlyTheCurrentGenerationOnce()
+        {
+            // Arrange
+            var key = CreateKey(Guid.NewGuid(), Guid.NewGuid(), CancellationTokenCategory.Turn);
+            using var original = new CancellationTokenSource();
+            using var replacement = new CancellationTokenSource();
+            _service.Store(key, original);
+            _service.Store(key, replacement);
+
+            // Act and assert
+            Assert.False(_service.TryCancel(key, original));
+            Assert.False(replacement.IsCancellationRequested);
+            Assert.True(_service.TryCancel(key, replacement));
+            Assert.True(replacement.IsCancellationRequested);
+            Assert.False(_service.TryCancel(key, replacement));
+            Assert.False(_service.TryGet(key, out _));
+        }
+
         #endregion Basic Operations
 
         #region Replacement Operations

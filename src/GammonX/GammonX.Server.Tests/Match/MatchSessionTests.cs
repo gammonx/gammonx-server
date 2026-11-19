@@ -22,6 +22,34 @@ namespace GammonX.Server.Tests.Match
 		private static readonly MatchSessionFactory _matchSessionFactory = new(_gameSessionFactory);
 
 		[Theory]
+		[InlineData(MatchType.SevenPointGame, false, TurnDeadlineAction.AcceptNextGame)]
+		[InlineData(MatchType.SevenPointGame, true, null)]
+		[InlineData(MatchType.CashGame, false, null)]
+		public void FinishedRoundOnlyOwesAcceptanceForAnUnacceptedNextGame(
+			MatchType matchType, bool acceptedNextGame, TurnDeadlineAction? expected)
+		{
+			// Arrange
+			var match = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, matchType, _matchSessionFactory);
+			var player = match.Player1;
+			player.AcceptNextGame();
+			match.Player2.AcceptNextGame();
+			var game = match.StartMatch(player.Id);
+			match.ResignGame(match.Player2.Id);
+			Assert.Equal(GamePhase.GameOver, game.Phase);
+			Assert.Equal(player.Id, game.ActivePlayer);
+			if (acceptedNextGame)
+			{
+				player.AcceptNextGame();
+			}
+
+			// Act
+			var obligation = match.PendingObligation(player.Id);
+
+			// Assert
+			Assert.Equal(expected, obligation?.Action);
+		}
+
+		[Theory]
 		[InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
 		[InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
 		[InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
