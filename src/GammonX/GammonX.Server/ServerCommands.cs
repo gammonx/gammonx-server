@@ -172,7 +172,10 @@ namespace GammonX.Server
                         // subsequent games have to be started with 'StartGameCommand' and the starting player
                         // is implicitly defined by the winner of the previous game.
                         if (game.DiceRolls.Any())
-                            return new string[] { MoveCommand, ResignGameCommand, ResignMatchCommand };
+                        {
+                            var next = match.CanEndTurn(callingPlayerId) ? EndTurnCommand : MoveCommand;
+                            return new string[] { next, ResignGameCommand, ResignMatchCommand };
+                        }
                         else
                             return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
                     case StartGameCommand:

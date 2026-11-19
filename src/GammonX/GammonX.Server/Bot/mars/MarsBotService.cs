@@ -43,7 +43,7 @@ namespace GammonX.Server.Bot
                 // bot plays with black checkers
                 var isWhite = IsWhite(matchSession, playerId);
                 var boardContract = gameSession.BoardModel.ToContract(false);
-                var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
+                var rolls = gameSession.DiceRolls.GetRemainingRolls();
 
                 EvalMoveRequestContract parameters = new EvalMoveRequestContract
                 {

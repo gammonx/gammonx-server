@@ -42,7 +42,12 @@ namespace GammonX.Server.Services
         /// </remarks>
         /// <param name="matchId">The match to synchronize.</param>
         /// <returns>A lease that releases access when disposed.</returns>
-        public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
+        public Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
+        {
+            return AcquireStateWithCancellationAsync(matchId, CancellationToken.None);
+        }
+
+        internal async Task<MatchSessionLease> AcquireStateWithCancellationAsync(Guid matchId, CancellationToken cancellationToken)
         {
             using var measurement = ServerMetrics.Measure(ServerMetrics.LeaseWait);
             MatchLock matchLock;
@@ -59,10 +64,34 @@ namespace GammonX.Server.Services
                 matchLock.Users++;
             }
 
-            // We lock the semaphore until the returned lease is disposed
-            await matchLock.Semaphore.WaitAsync();
+            try
+            {
+                await matchLock.Semaphore.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                ReleaseLock(matchId, matchLock, acquired: false);
+                throw;
+            }
 
             return new MatchSessionLease(this, matchId, matchLock);
+        }
+
+        private void ReleaseLock(Guid matchId, MatchLock matchLock, bool acquired)
+        {
+            lock (_matchLocks)
+            {
+                if (acquired)
+                {
+                    matchLock.Semaphore.Release();
+                }
+
+                if (--matchLock.Users == 0)
+                {
+                    _matchLocks.Remove(matchId);
+                    matchLock.Semaphore.Dispose();
+                }
+            }
         }
 
         /// <summary>
@@ -375,16 +404,7 @@ namespace GammonX.Server.Services
                         _disposed = true;
                         _session = null;
 
-                        lock (_repository._matchLocks)
-                        {
-                            // we release the match session lease
-                            _matchLock.Semaphore.Release();
-                            if (--_matchLock.Users == 0)
-                            {
-                                _repository._matchLocks.Remove(_matchId);
-                                _matchLock.Semaphore.Dispose();
-                            }
-                        }
+                        _repository.ReleaseLock(_matchId, _matchLock, acquired: true);
                         _holdMeasurement.Dispose();
                     }
                 }

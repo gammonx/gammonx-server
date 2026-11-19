@@ -62,7 +62,7 @@ The `GammonX.Server` meter is available without an exporter package. Attach a .N
 | `gammonx.server.timer.tasks` | Observable gauge | Started timer tasks that have not finished; includes asynchronous delays and callback waits |
 | `gammonx.server.timer.callbacks.active` | Observable gauge | Expiry handlers in progress, including waits for match leases and I/O; excludes sleeping timer tasks |
 | `gammonx.server.bot.fallbacks` | Counter | Fallback decisions, `operation` = `move`, `cube.offer`, `cube.take`, `move.expert_to_hard` |
-| `gammonx.server.bot.recoveries` | Counter | Existing reconnect-driven bot-turn resume attempts; automatic recovery is still T2 work |
+| `gammonx.server.bot.recoveries` | Counter | Bot turns resumed on reconnect and automatic local recovery attempts |
 
 Durations are inclusive elapsed time, not CPU time. Nested durations overlap. Hub methods catch many errors internally, so command completion does not imply game-command success. HTTP/SQS duration counts failed calls too. Health probes are outside these external-call measurements.
 

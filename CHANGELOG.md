@@ -6,7 +6,9 @@
 	- omit move sequences and dice rolls for waiting player
 	- set loglevel to `Error` for prod deployments
 	- made match cleanup more robust
-	- minor improvments in matchmaking
+	- minor improvements in matchmaking
+	- made turn timer more robust. Invented concept of obligated turn actions
+	- made bot turn recovery more robust. Added bot turn recovery hosted service
 
 ## 15.11.2026
 - ranked matchmaking

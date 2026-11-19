@@ -63,5 +63,6 @@
     {
         Turn = 0,
         Disconnect = 1,
+        BotRecovery = 2,
     }
 }
