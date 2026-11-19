@@ -103,4 +103,4 @@ $RECYCLE.BIN/
 __pycache__/
 
 # Performance Artifacts
-**/GammonX.Server.Performance/**/*.json
+**/GammonX.Server.Performance/Baselines/**.json
