@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Extensions;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Contracts;
@@ -6,7 +6,7 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 
 namespace GammonX.Server.Bot
 {

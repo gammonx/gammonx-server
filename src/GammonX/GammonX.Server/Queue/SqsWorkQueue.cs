@@ -1,11 +1,11 @@
-﻿using Amazon.SQS;
+using Amazon.SQS;
 using Amazon.SQS.Model;
 using Amazon.Runtime;
 
 using System.Net;
 
 using Newtonsoft.Json;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 
 namespace GammonX.Server.Queue
 {

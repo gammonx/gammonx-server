@@ -5,7 +5,7 @@ using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Services;
-using GammonX.Mars.NN.Tests.Performance;
+using GammonX.Server.Performance.NN;
 using GammonX.Models.Enums;
 
 using Moq;

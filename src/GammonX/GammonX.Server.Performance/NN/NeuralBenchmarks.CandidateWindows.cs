@@ -1,8 +1,9 @@
+using GammonX.Mars.NN;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
 
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Services;
 
 using GammonX.Mars.NN.Models;
@@ -16,11 +17,11 @@ using Newtonsoft.Json;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-public partial class PerformanceTests
+internal partial class NeuralBenchmarks
 {
-    [Fact(Skip = "PERFORMANCE")]
+
     public async Task MeasureCandidateWindows()
     {
         var window = ReadTuningInt("GAMMONX_PERF_WINDOW", 1);
@@ -40,16 +41,16 @@ public partial class PerformanceTests
         var contract = JsonConvert.DeserializeObject<BoardModelContract>(json);
         Assert.NotNull(contract);
 
-        var modelPath = Path.Combine("Data", "NeuralNets", "Backgammon", "training_net.dat");
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Data", "NeuralNets", "Backgammon", "training_net.dat");
         using var neural = Assert.IsType<BatchedNeuralEvalService>(BatchedNeuralEvalService.Load(GameModus.Backgammon, modelPath, CPU, 32));
 
-        await neural.StartAsync(TestContext.Current.CancellationToken);
-        
+        await neural.StartAsync(cancellationToken);
+
         try
         {
             WriteEnvironment(boardNumber == 2 ? [3, 2] : [2, 2, 2, 2]);
             output.WriteLine($"Window={window}; WindowMode={mode}; TorchThreads={get_num_threads()}; TorchInteropThreads={get_num_interop_threads()}; ReuseCpuInput={neural.ReuseCPUTensor}");
-            output.WriteLine($"ModelSHA256={Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(modelPath, TestContext.Current.CancellationToken)))}");
+            output.WriteLine($"ModelSHA256={Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(modelPath, cancellationToken)))}");
             var counting = new CountingNeuralEvalService(neural);
             var service = Assert.IsAssignableFrom<BaseFeatureEvalServiceImpl>(FeatureEvalServiceFactory.Create(GameModus.Backgammon, counting));
             // Every fresh process validates against sequential scores, not just its selected move.
@@ -91,7 +92,7 @@ public partial class PerformanceTests
                     IsWhite = false,
                     TurnNumber = 0,
                 });
-                var expected = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
+                var expected = await neural.PredictAsync(model, board, false, cancellationToken);
                 var latencies = new List<double>();
                 using var process = Process.GetCurrentProcess();
                 var cpu = process.TotalProcessorTime;
@@ -109,11 +110,11 @@ public partial class PerformanceTests
                     {
                         Assert.False(first.IsCompleted && second.IsCompleted, "Probes must overlap search.");
                         var probeStart = Stopwatch.GetTimestamp();
-                        var actual = await neural.PredictAsync(model, board, false, TestContext.Current.CancellationToken);
+                        var actual = await neural.PredictAsync(model, board, false, cancellationToken);
                         latencies.Add(Stopwatch.GetElapsedTime(probeStart).TotalMilliseconds);
                         for (var head = 0; head < expected.Length; head++)
                             Assert.InRange(Math.Abs(actual[head] - expected[head]), 0, 1e-5);
-                        await Task.Delay(5, TestContext.Current.CancellationToken);
+                        await Task.Delay(5, cancellationToken);
                     }
                 }
                 finally
@@ -130,7 +131,7 @@ public partial class PerformanceTests
                     GC.GetTotalAllocatedBytes(true) - allocated,
                     GC.CollectionCount(0) - collections[0], GC.CollectionCount(1) - collections[1],
                     GC.CollectionCount(2) - collections[2], counting.PredictionCount - before));
-                
+
                 probes = latencies.ToArray();
                 Assert.Equal(2 * expectedRows, samples[0].Predictions);
             }
@@ -156,7 +157,7 @@ public partial class PerformanceTests
                 samples.AddRange(await MeasureAsync(
                     $"Board{boardNumber}", $"Window{window}", reference.Count,
                     () => new ValueTask<FinalEvalResultModels>(Evaluate()), Validate, counting));
-                
+
                 Assert.All(samples, sample => Assert.Equal(expectedRows, sample.Predictions));
             }
             WriteProcessMemory("AfterMeasurements");
@@ -171,7 +172,7 @@ public partial class PerformanceTests
                 Samples = samples, Probes = probes, Profile = profile,
                 PrivateBytes = memory.PrivateMemorySize64, WorkingSet = memory.WorkingSet64,
                 PeakWorkingSet = memory.PeakWorkingSet64, ManagedLive = GC.GetTotalMemory(false),
-                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), row.Equity }).ToArray(),
+                Scores = warmup.Select(row => new { Key = MoveKey(row.MoveSequence), Score = row.Equity }).ToArray(),
                 Selected = MoveKey(warmup.Select(BotLevel.Expert)),
                 MaximumScoreDifference = maximumScoreDifference
             }));
@@ -191,7 +192,7 @@ public partial class PerformanceTests
                     },
                     ContactWeights = EvalWeights.DefaultContactWeights,
                     TurnNumber = 0,
-                }, TestContext.Current.CancellationToken);
+                }, cancellationToken);
             }
 
             void Validate(FinalEvalResultModels actual)
@@ -278,9 +279,9 @@ public partial class PerformanceTests
     }
 
     private sealed record WindowProfile(
-        long PeakCandidates, 
-        long PeakReplyBoards, 
-        long PeakFeatures, 
+        long PeakCandidates,
+        long PeakReplyBoards,
+        long PeakFeatures,
         long PeakQueuedRows,
         long ReplyClones,
         Dictionary<long, long> BatchSizes);

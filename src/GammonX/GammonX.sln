@@ -49,12 +49,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Server", "Server", "{DAD03C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Server.Performance", "GammonX.Server.Performance\GammonX.Server.Performance.csproj", "{F3637284-0467-403D-BB43-D6787D80FD38}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GammonX.Diagnostics", "GammonX.Diagnostics\GammonX.Diagnostics.csproj", "{84C703E5-7A2A-4FC0-8AC5-9F5E1D056F15}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{84C703E5-7A2A-4FC0-8AC5-9F5E1D056F15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84C703E5-7A2A-4FC0-8AC5-9F5E1D056F15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84C703E5-7A2A-4FC0-8AC5-9F5E1D056F15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84C703E5-7A2A-4FC0-8AC5-9F5E1D056F15}.Release|Any CPU.Build.0 = Release|Any CPU
 		{470F0267-C935-48AE-ABA6-29C70DF8CF72}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{470F0267-C935-48AE-ABA6-29C70DF8CF72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{470F0267-C935-48AE-ABA6-29C70DF8CF72}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Services;
 using GammonX.Models.Enums;
 

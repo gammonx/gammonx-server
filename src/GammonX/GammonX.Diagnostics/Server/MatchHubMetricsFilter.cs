@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.SignalR;
 
-namespace GammonX.Server.Diagnostics;
+namespace GammonX.Diagnostics.Server;
 
-internal sealed class MatchHubMetricsFilter : IHubFilter
+/// <summary>
+/// SignalR middleware for intercepting hub commands.
+/// </summary>
+internal sealed class MetricsHubFilter : IHubFilter
 {
     public async ValueTask<object?> InvokeMethodAsync(HubInvocationContext invocationContext,
         Func<HubInvocationContext, ValueTask<object?>> next)

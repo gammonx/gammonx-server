@@ -1,6 +1,6 @@
-﻿using GammonX.Models.Contracts;
+using GammonX.Models.Contracts;
 
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.History;
 using GammonX.Engine.Models;
 

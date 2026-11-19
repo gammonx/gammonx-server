@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 using GammonX.Engine.Extensions;

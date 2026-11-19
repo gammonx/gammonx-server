@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.History;
+using GammonX.Engine.History;
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
@@ -6,7 +6,7 @@ using GammonX.Models;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 
 namespace GammonX.Server.Models
 {

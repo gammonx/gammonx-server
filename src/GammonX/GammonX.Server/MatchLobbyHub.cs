@@ -1,10 +1,10 @@
-﻿using GammonX.Engine.Services;
+using GammonX.Engine.Services;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Enums;
 
 using GammonX.Server.Bot;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 using GammonX.Server.Contracts;
 using GammonX.Server.Extensions;
 using GammonX.Server.Models;

@@ -1,3 +1,4 @@
+using GammonX.Mars.NN;
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
@@ -12,14 +13,11 @@ using Newtonsoft.Json;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-public partial class PerformanceTests
+internal partial class NeuralBenchmarks
 {
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
+
     public async Task MeasureIdenticalInputs(int boardNumber)
     {
         var json = boardNumber switch
@@ -34,11 +32,11 @@ public partial class PerformanceTests
         var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
         var board = boardService.CreateBoard(contract);
         int[] rolls = boardNumber == 2 ? [3, 2] : [2, 2, 2, 2];
-        var moves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
+        var moves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, cancellationToken);
         using var neural = Assert.IsType<BatchedNeuralEvalService>(BatchedNeuralEvalService.Load(
             GameModus.Backgammon,
-            Path.Combine("Data", "NeuralNets", "Backgammon", "training_net.dat"), CPU));
-        await neural.StartAsync(TestContext.Current.CancellationToken);
+            Path.Combine(AppContext.BaseDirectory, "Data", "NeuralNets", "Backgammon", "training_net.dat"), CPU));
+        await neural.StartAsync(cancellationToken);
         try
         {
             var observer = new DuplicateInputObserver(neural);
@@ -55,7 +53,7 @@ public partial class PerformanceTests
                     BotLevel = BotLevel.Expert,
                     ContactWeights = EvalWeights.DefaultContactWeights,
                     TurnNumber = 0,
-                }, TestContext.Current.CancellationToken);
+                }, cancellationToken);
                 Assert.True(double.IsFinite(result.Equity));
                 Assert.Equal(observer.Rows, observer.Unique + observer.WithinBatchDuplicates + observer.CrossBatchDuplicates);
                 Assert.Equal(0, observer.RemainingGroups);
@@ -69,7 +67,7 @@ public partial class PerformanceTests
         }
     }
 
-    private static IEnumerable<int[]> ExpectedReplyGroups(
+    private IEnumerable<int[]> ExpectedReplyGroups(
         IBoardService service, IBoardModel initial, MoveSequenceModel move, bool batchAcrossRolls)
     {
         var root = initial.DeepClone();
@@ -81,7 +79,7 @@ public partial class PerformanceTests
             for (var die2 = die1; die2 <= 6; die2++)
             {
                 int[] rolls = die1 == die2 ? [die1, die1, die1, die1] : [die1, die2];
-                var count = Math.Max(1, service.GetUniqueLegalMoveSequences(root, true, rolls, TestContext.Current.CancellationToken).Length);
+                var count = Math.Max(1, service.GetUniqueLegalMoveSequences(root, true, rolls, cancellationToken).Length);
                 for (var row = 0; row < count; row++)
                 {
                     pending.Add(die1 * 10 + die2);

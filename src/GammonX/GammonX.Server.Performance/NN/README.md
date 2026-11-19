@@ -1,6 +1,6 @@
 # GammonX Engine and NN Performance Analysis
 
-This folder contains the manual CPU tuning runner and the findings from the
+This folder contains the neural benchmark commands and the findings from the
 move-sequence evaluation investigation begun on **2026-10-26**. The numbers below are
 historical measurements on one workstation, not performance guarantees or CI
 thresholds. See the current implementation notes before reproducing an older batch.
@@ -54,16 +54,19 @@ thresholds. See the current implementation notes before reproducing an older bat
   old environment variable cannot select a legacy path. The obsolete
   `compare-inference.py` A/B runner was removed: comparing two labels on the same
   batch-only code would be misleading.
-- [BatchEvaluationTests](../Services/BatchEvaluationTests.cs) replaces the old
+- [BatchEvaluationTests](../../GammonX.Mars.NN.Tests/Services/BatchEvaluationTests.cs) replaces the old
   dual-path tests. Real-model comparisons use a one-row reference scorer versus
   grouped scoring; other tests retain history, terminal/pass, lifetime, cap and
   restoration coverage. This is a correctness reference, not a restored
   production legacy mode.
 
-The commands below run the current batch-only implementation. Historical
-before/after timings and test counts are retained as experiment records, not
-claims about the refactored code. Reproducing the old A/B experiment requires the
-matching earlier source revision and model.
+Run `dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn --help`
+to list the neural commands. The studies save each child process's output as a log.
+The metrics and input-comparer correctness tests in [Tests](Tests) run through
+`GammonX.Mars.NN.Tests` using linked sources.
+
+The historical measurements below describe the recorded revisions. Reproducing
+an older A/B experiment requires its source revision and model.
 
 Refactoring validation on 2026-10-29 passed **367 NN feature/service tests**,
 **21 training/search tests** and **14 performance smoke cases**; the Mars server
@@ -75,12 +78,10 @@ execution, not a new performance improvement claim.
 
 ### Prerequisites
 
-- Python **3.10+**. The runner uses only the standard library; no pip install is
-  needed.
-- The **.NET 10 SDK** on `PATH`, with the test project's NuGet packages restored.
+- The **.NET 10 SDK** on `PATH`, with the performance project's NuGet packages restored.
 - The Backgammon model and its metadata available in the checkout:
   [NeuralNets/Backgammon](../../GammonX.Mars.Server/NeuralNets/Backgammon).
-  The test project copies these into its build output.
+  The performance project copies these into its build output.
 - A quiet machine. Run only one experiment at a time, without a debugger,
   coverage collection, other test runs, or edits/builds in the same checkout.
   Allow several minutes and substantial CPU/GC activity.
@@ -88,9 +89,7 @@ execution, not a new performance improvement claim.
 From the repository root in PowerShell:
 
 ```powershell
-dotnet restore .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj
-
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-cpu-tuning.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn cpu-tuning `
     --baseline-threads 16 `
     --output-dir "$env:TEMP\gammonx-cpu-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -99,25 +98,12 @@ Use the thread count of the deployment/reference configuration for
 `--baseline-threads`; **16 is the value used in the recorded experiment**, not
 a universal recommendation.
 
-The repository is discovered relative to the script, so it is also possible to
-run from this folder or invoke the script by its absolute path:
-
-```powershell
-python .\scripts\run-cpu-tuning.py --help
-python .\scripts\run-cpu-tuning.py --baseline-threads 16
-```
-
 | Option | Meaning |
 | --- | --- |
-| `--baseline-threads N` | Required positive reference thread count; reference maximum batch size is 32. |
-| `--repo PATH` | Optional repository root override. By default, discover the checkout above the script, not from the shell's working directory. |
-| `--output-dir PATH` | Optional new or empty output directory. Default: a timestamped folder under `TestResults` beside the script, already covered by the repository's ignore rules. |
+| `--baseline-threads N` | Required positive reference thread count. The reference maximum batch size is 32. |
+| `--output-dir PATH` | New or empty results directory. Defaults to a timestamped folder under `out/performance`. |
 
-Paths containing spaces must be quoted. Relative option paths are resolved from
-the shell's working directory. Existing non-empty result directories are rejected;
-use a new directory for every experiment. The runner does not install dependencies,
-restore packages, reuse cached TRX files, or change the parent shell's environment.
-Importing the Python module does not run the experiment.
+Run from the repository root or pass an absolute project path. Relative output paths resolve from the caller’s working directory. The runner sets Torch thread options for each fresh child process.
 
 ### What the runner does
 
@@ -134,7 +120,7 @@ Importing the Python module does not run the experiment.
 6. Checks that the fingerprint has not changed and writes the final comparison
    and context reports.
 
-With a reference of 16 threads, this is **17 fresh test processes and 51 timed
+With a reference of 16 threads, this is **17 fresh benchmark processes and 51 timed
 evaluations**, plus startup, first inference and full-evaluation warm-ups.
 This is a **sequential screening experiment**, not a full factorial search or proof
 that the selected pair is optimal.
@@ -143,9 +129,9 @@ implementation; increasing a worker limit above 32 does not increase the two-ply
 per-caller group cap.
 
 Each process runs
-[MeasureCpuThreadAndBatchTuning](./PerformanceTests.CPU.cs).
+[MeasureCpuThreadAndBatchTuning](./NeuralBenchmarks.CPU.cs).
 The runner sets `OMP_NUM_THREADS` and `MKL_NUM_THREADS` before Torch loads, together
-with the test's `GAMMONX_PERF_*` configuration variables. The C# test verifies the
+with the test's `GAMMONX_PERF_*` configuration variables. The benchmark verifies the
 requested thread count on **every inference-worker batch during warm-up**.
 Inter-op threads are not tuned. There is **no metrics listener in the three timed
 evaluations**. Model loading, first inference, warm-up and cleanup are outside
@@ -162,7 +148,7 @@ All outputs are placed below the selected output directory:
 
 | Output | Contents |
 | --- | --- |
-| `fresh-process/<run>/result.trx` | Original test output, including timings, scores and worker-setting verification. |
+| `<run>.log` | Original benchmark output, including timings, scores and worker-setting verification. |
 | `tuning-summary.csv` | Per-run min/median/max wall time, median process CPU time, managed allocations, GC counts and search counts. |
 | `tuning-samples.csv` | Individual measured iterations. |
 | `candidate-scores.csv` | All candidate move keys and warm-up scores for each configuration. |
@@ -170,36 +156,25 @@ All outputs are placed below the selected output directory:
 | `tuning-context.json` | Successful-run context: selected pair, fingerprints, environment, tolerance, run counts and worker evidence. |
 
 The three raw CSV reports are saved after each successfully validated run.
-A failing build/test, invalid TRX output, changed result or changed runtime
+A failed process, invalid benchmark output, changed result or changed runtime
 fingerprint stops the experiment with a nonzero exit code. Tool failures include
 the command's output. Cancellation returns exit code 130. Partial reports are
 retained, but **do not treat a partial directory as a completed comparison**.
 Rerun into a new directory after resolving the failure.
 
-The Python runner orchestrates the CPU experiment only. To collect the separate
+To collect the separate
 baseline, stage profiles or mixed-load output from the repository root:
 
 ```powershell
-# Baseline: engine-only, one-ply and two-ply, without stage collection.
-dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-    -c Release --no-restore `
-    --filter "FullyQualifiedName~PerformanceTests.MeasureEvalPerformance|FullyQualifiedName~PerformanceTests.MeasureEnginePerformance" `
-    --logger "trx;LogFileName=baseline.trx" `
-    --results-directory .\TestResults\performance-baseline
-
-# Stage profiles: opt-in collection during measured two-ply evaluations.
-dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-    -c Release --no-restore `
-    --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
-    --logger "trx;LogFileName=stages.trx" `
-    --results-directory .\TestResults\performance-stages
-
-# Mixed load: two evaluations sharing the worker with single-row probes.
-dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-    -c Release --no-restore `
-    --filter "FullyQualifiedName~PerformanceTests.MeasureSharedWorkerInference" `
-    --logger "trx;LogFileName=mixed.trx" `
-    --results-directory .\TestResults\performance-mixed
+# Run each board for the engine, one-ply, two-ply and profiled workloads.
+dotnet build src/GammonX/GammonX.Server.Performance -c Release
+foreach ($board in 1..3) {
+    dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn engine --board $board
+    dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn eval --board $board --level Hard
+    dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn eval --board $board --level Expert
+    dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn profile --board $board
+}
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn inference
 ```
 
 `MIXED` now reports
@@ -211,7 +186,7 @@ through `GAMMONX_PERF_BATCH_SIZE` (default 32).
 ## Workload and measurement rules
 
 The fixtures are defined in
-[MockBoardContracts.cs](../Data/MockBoardContracts.cs):
+[MockBoardContracts.cs](../../GammonX.Mars.NN.Tests/Data/MockBoardContracts.cs):
 
 | Fixture | Player | Dice | Unique root candidates |
 | --- | --- | --- | ---: |
@@ -236,7 +211,7 @@ An engine-only test measures initial root generation, **not** all opponent
 generation inside two-ply. Fast root generation does not establish that move
 generation is cheap across the entire search.
 
-[PerformanceTests.cs](./PerformanceTests.cs) fixes the device to CPU,
+[NeuralBenchmarks.cs](./NeuralBenchmarks.cs) fixes the device to CPU,
 uses one full warm-up and three timed iterations, and isolates its collection
 from parallel test collections. Inference workers are stopped and disposed.
 There is no forced GC.
@@ -340,7 +315,7 @@ prediction counts and batch membership reconciled.
 
 ### Does metric capture affect production?
 
-[EvaluationMetrics](../../GammonX.Engine/Diagnostics/EvaluationMetrics.cs) is
+[EvaluationMetrics](../../GammonX.Diagnostics/Engine/EvaluationMetrics.cs) is
 **runtime opt-in, not compiled out of production**:
 
 - Without a metrics subscriber, scopes do not read timestamps or allocation
@@ -930,7 +905,7 @@ The historical switch and A/B runner are obsolete. To record a current
 configuration with candidate scores, from the repository root in PowerShell:
 
 ```powershell
-dotnet build .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
+dotnet build src/GammonX/GammonX.Server.Performance `
     -c Release --no-restore
 
 $env:OMP_NUM_THREADS = '16'
@@ -940,19 +915,14 @@ $env:GAMMONX_PERF_BATCH_SIZE = '32'
 $env:GAMMONX_PERF_BOARD = '1'
 $env:GAMMONX_PERF_PHASE = 'ConfirmDefault'
 
-dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-    -c Release --no-build --no-restore `
-    --filter "FullyQualifiedName=GammonX.Mars.NN.Tests.Performance.PerformanceTests.MeasureCpuThreadAndBatchTuning" `
-    --logger "trx;LogFileName=inference.trx" `
-    --results-directory ".\TestResults\inference-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn cpu-case
 if ($LASTEXITCODE -ne 0) { throw "Inference measurement failed" }
 ```
 
 Run this in a fresh PowerShell process or restore any pre-existing environment
 values afterward. This is a measurement of one configuration, not a legacy/batch
 comparison. Use new result directories for repeat runs.
-Use `MeasureSharedWorkerInference` as the test-name filter for mixed-load output,
-and `ProfileTwoPlyPerformance` for separate instrumented batch statistics.
+Use `nn inference` for mixed-load output and `nn profile` for instrumented batch statistics.
 Set `GAMMONX_PERF_BATCH_SIZE=64` to test an alternative worker limit;
 reply groups remain capped at 32. The mixed-load benchmark reads this
 setting too, while the general stage-profile cases use their fixed 32-row worker.
@@ -1135,11 +1105,7 @@ $env:OMP_NUM_THREADS = '16'
 $env:MKL_NUM_THREADS = '16'
 foreach ($reuse in '0', '1') {
     $env:GAMMONX_PERF_REUSE_INPUT = $reuse
-    dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-        -c Release --no-restore `
-        --filter "FullyQualifiedName~PerformanceTests.ProfileTwoPlyPerformance" `
-        --logger "trx;LogFileName=profile.trx" `
-        --results-directory ".\TestResults\input-$reuse-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn profile --board 1
     if ($LASTEXITCODE -ne 0) { throw "Input profile failed for reuse=$reuse" }
 }
 ```
@@ -1162,7 +1128,7 @@ The existing input-buffer reuse and all previous accepted optimizations remain.
 
 ### Measuring the opportunity
 
-[MeasureIdenticalInputs](./PerformanceTests.InputReuse.cs) observes the actual
+[MeasureIdenticalInputs](./NeuralBenchmarks.InputReuse.cs) observes the actual
 full inference inputs and resets its identity table for every root candidate.
 Every float bit participates in equality, including signed zero and NaN payloads;
 dictionary lookup uses full equality after hashing, not a hash-only identity.
@@ -1298,11 +1264,7 @@ The retained diagnostic performs the full ordinary uncached search. Run it from
 the repository root in PowerShell:
 
 ```powershell
-dotnet test .\src\GammonX\GammonX.Mars.NN.Tests\GammonX.Mars.NN.Tests.csproj `
-    -c Release --no-restore `
-    --filter "FullyQualifiedName~PerformanceTests.MeasureIdenticalInputs" `
-    --logger "trx;LogFileName=duplicate-inputs.trx" `
-    --results-directory ".\TestResults\duplicates-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn input-reuse --board 1
 ```
 
 `DUPLICATES` emits one row per root with columns:
@@ -1318,7 +1280,7 @@ The diagnostic uses the three known nonterminal fixtures and validates their
 expected group boundaries; adapting it to terminal-heavy corpora would require
 matching the scorer's terminal filtering.
 
-[NeuralInputComparerTests](./NeuralInputComparerTests.cs) protects the diagnostic's
+[NeuralInputComparerTests](Tests/NeuralInputComparerTests.cs) protects the diagnostic's
 bitwise identity and collision handling. The comparer itself is test-only.
 There is **no production lookup or cache overhead from this rejected experiment**.
 After removing the prototype, **394 NN/performance tests passed**, excluding
@@ -1365,7 +1327,7 @@ extra workers, queue delays, selective search, caching and GPU work were not add
 
 ### Predeclared gates and measurement protocol
 
-The [runner](./scripts/run-candidate-windows.py) writes its thresholds before comparisons:
+The [runner](./CandidateWindowStudy.cs) writes its thresholds before comparisons:
 
 - At least **5%** pooled median improvement on **each** board, also achieved in
   at least **2 of 3** paired rounds. Choose the smallest passing window.
@@ -1388,10 +1350,10 @@ configuration warm-up. No forced GC was used.
 Torch intra-op and inter-op counts were **16/16** throughout, with CPU storage
 reuse enabled and the 32-row limits fixed. Application assemblies, dependency
 manifest, model and metadata were SHA-256 checked before and after each process.
-The [raw results](./batch10-results.json) retain fingerprints, all samples, GC/CPU/
+The historical `batch10-results.json` report recorded fingerprints, all samples, GC/CPU/
 allocation/memory observations, candidate scores, cross-process checks, complete
 diagnostic batch distributions and every interactive probe. The supplied runner
-also retains individual TRX/log files in its ignored output directory.
+retains a log for each child process in its output directory.
 
 Timing and mixed-load processes have **no metrics subscriber**. Separate
 diagnostics subscribe only to batch/ownership/queue metrics, not synchronous stage
@@ -1489,7 +1451,7 @@ and renewed FIFO/error/completion tests, not an unmeasured scheduling change her
 
 ### Correctness and reproduction
 
-[CandidateWindowTests](../Services/CandidateWindowTests.cs) covers out-of-order
+[CandidateWindowTests](../../GammonX.Mars.NN.Tests/Services/CandidateWindowTests.cs) covers out-of-order
 completion, stable ties, bounded admission, independent boards/history/cube state,
 draining on failure/cancellation, real worker shutdown, terminal candidates and
 exact feature-multiset/score comparisons for both perspectives of all five
@@ -1508,7 +1470,7 @@ performance-process tests also passed. Long-running self-play was not rerun.
 From the repository root in PowerShell, with restored packages and a quiet machine:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\scripts\run-candidate-windows.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn candidate-windows `
     --threads 16 `
     --output-dir "$env:TEMP\gammonx-windows-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -1520,7 +1482,7 @@ final `results.json` with the smallest passing window (1 when neither passes).
 It does not change production defaults. Manual single-process selectors are
 `GAMMONX_PERF_WINDOW=1|2|4`, `GAMMONX_PERF_BOARD=1|2|3` and
 `GAMMONX_PERF_WINDOW_MODE=Timing|Diagnostic|Mixed`, used only by
-[MeasureCandidateWindows](./PerformanceTests.CandidateWindows.cs).
+[MeasureCandidateWindows](./NeuralBenchmarks.CandidateWindows.cs).
 
 ## Follow-up step 1: direct checker-array updates (2026-11-01)
 
@@ -1632,7 +1594,7 @@ as the reference and cross-roll packing as the candidate. It isolates the flush
 strategy, not the total effect of the evaluator refactor against the old binary.
 Both modes reuse one bounded buffer within an evaluation.
 
-The [runner](./run-roll-batching.py) recorded thresholds before launching **30
+The [runner](./CandidateWindowStudy.cs) recorded thresholds before launching **30
 fresh Release processes**: 18 timing processes (three paired rounds on each of
 three boards, three samples per process), six diagnostic processes and six
 mixed-load processes. Pair order alternated by round. All used CPU, 16 OMP/MKL
@@ -1684,7 +1646,7 @@ rerun.
 From the repository root, with restored packages and a quiet machine:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn roll-batching `
     --threads 16 `
     --output-dir "$env:TEMP\gammonx-rolls-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -1785,7 +1747,7 @@ long-running self-play was not rerun.
 Reproduce from the repository root, with restored packages and a quiet machine:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn roll-batching `
     --optimization reply-board --threads 16 `
     --output-dir "$env:TEMP\gammonx-reply-board-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -1878,7 +1840,7 @@ test additions do not change the built-in hosted path measured by the benchmark.
 Reproduce the screening run from the repository root:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn roll-batching `
     --optimization feature-buffers --quick --threads 16 `
     --output-dir "$env:TEMP\gammonx-feature-buffers-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 ```
@@ -1987,7 +1949,7 @@ defaults were changed, and no additional optimization was implemented.
 Reproduce from the repository root with restored packages and a quiet machine:
 
 ```powershell
-python .\src\GammonX\GammonX.Mars.NN.Tests\Performance\run-roll-batching.py `
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- nn roll-batching `
     --optimization per-roll-reuse --threads 16 `
     --output-dir TestResults/per-roll-reuse-repeat
 ```

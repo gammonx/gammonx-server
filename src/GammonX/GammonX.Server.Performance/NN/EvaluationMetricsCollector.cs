@@ -1,8 +1,8 @@
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 
 using System.Diagnostics.Metrics;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
 internal sealed class EvaluationMetricsCollector : IDisposable
 {

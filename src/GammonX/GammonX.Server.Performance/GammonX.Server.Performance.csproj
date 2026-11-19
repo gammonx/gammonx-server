@@ -8,6 +8,14 @@
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../GammonX.Diagnostics/GammonX.Diagnostics.csproj" />
     <ProjectReference Include="../GammonX.Server/GammonX.Server.csproj" />
+    <ProjectReference Include="../GammonX.Mars.NN/GammonX.Mars.NN.csproj" />
+    <PackageReference Include="xunit.v3.assert" Version="$(XunitVersion)" />
+    <Using Include="Xunit" />
+    <Compile Remove="NN/Tests/**/*.cs" />
+    <Compile Include="../GammonX.Mars.NN.Tests/Data/MockBoardContracts.cs" Link="NN/MockBoardContracts.cs" />
+    <None Include="../GammonX.Mars.Server/NeuralNets/Backgammon/training_net.dat*" Link="Data/NeuralNets/Backgammon/%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

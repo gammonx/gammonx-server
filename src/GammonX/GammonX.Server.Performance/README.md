@@ -1,6 +1,8 @@
 # Game-server performance baseline (T0)
 
-Opt-in .NET 10 console benchmark for the game-server components. It does not start the web host, load `.env` or credentials, or contact AWS/Mars. It is included in the solution for build/discovery, but runs only when explicitly invoked.
+Opt-in .NET 10 console benchmarks for the game server and Mars neural evaluation. The game-server benchmarks run when called with the options below. Use the `nn` subcommand for neural benchmarks and tuning studies. [NN benchmarks and historical findings](NN/README.md)
+
+The T0 baseline recorded 35,370 legal sequences, a 3,115,575-byte SignalR message and 86.4 MB allocated for a repository-level turn on the Backgammon spread fixture. An attached metrics listener added 32 bytes per measured serialization across all 12 fixtures. [Baseline findings and raw reports](Baselines/README.md)
 
 ## Run from the repository root
 

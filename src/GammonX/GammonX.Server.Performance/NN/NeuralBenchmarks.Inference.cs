@@ -1,3 +1,4 @@
+using GammonX.Mars.NN;
 using GammonX.Engine.Services;
 using GammonX.Mars.NN.Services;
 using GammonX.Mars.NN.Tests.Data;
@@ -7,19 +8,19 @@ using Newtonsoft.Json;
 using System.Diagnostics;
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-public partial class PerformanceTests
+internal partial class NeuralBenchmarks
 {
-    [Fact(Skip = "PERFORMANCE")]
+
     public async Task MeasureSharedWorkerInference()
     {
         var maxBatchSize = ReadTuningInt("GAMMONX_PERF_BATCH_SIZE", 32);
-        var modelPath = Path.Combine("Data", "NeuralNets", nameof(GameModus.Backgammon), "training_net.dat");
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Data", "NeuralNets", nameof(GameModus.Backgammon), "training_net.dat");
 
         using var neural = Assert.IsType<BatchedNeuralEvalService>(BatchedNeuralEvalService.Load(GameModus.Backgammon, modelPath, CPU, maxBatchSize));
         ConfigureInputStaging(neural);
-        await neural.StartAsync(TestContext.Current.CancellationToken);
+        await neural.StartAsync(cancellationToken);
 
         try
         {
@@ -35,13 +36,13 @@ public partial class PerformanceTests
                 IsWhite = false,
                 TurnNumber = 0,
             });
-            var expected = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
+            var expected = await neural.PredictAsync(features, board, false, cancellationToken);
             await service.EvalMoveSequencesAsync(new FeatureEvalOptions
             {
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
 
             WriteProcessMemory("AfterWarmup");
             var singleLatencies = new List<double>();
@@ -54,13 +55,13 @@ public partial class PerformanceTests
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
             var second = service.EvalMoveSequencesAsync(new FeatureEvalOptions
             {
                 EvalMoveRequest = Request(),
                 ContactWeights = EvalWeights.DefaultContactWeights,
                 TurnNumber = 0,
-            }, TestContext.Current.CancellationToken);
+            }, cancellationToken);
 
             for (var index = 0; index < 100; index++)
             {
@@ -68,7 +69,7 @@ public partial class PerformanceTests
                     break;
 
                 var singleStart = Stopwatch.GetTimestamp();
-                var actual = await neural.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
+                var actual = await neural.PredictAsync(features, board, false, cancellationToken);
                 singleLatencies.Add(Stopwatch.GetElapsedTime(singleStart).TotalMilliseconds);
 
                 for (var head = 0; head < expected.Length; head++)
@@ -76,7 +77,7 @@ public partial class PerformanceTests
                     Assert.InRange(Math.Abs(actual[head] - expected[head]), 0f, 1e-5f);
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(5), TestContext.Current.CancellationToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(5), cancellationToken);
             }
 
             var moves = await Task.WhenAll(first, second);

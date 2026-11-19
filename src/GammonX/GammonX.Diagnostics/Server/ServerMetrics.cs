@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace GammonX.Server.Diagnostics;
+namespace GammonX.Diagnostics.Server;
 
 /// <summary>
 /// Low-cardinality game-server measurements. Subscribe to the meter to enable histograms.

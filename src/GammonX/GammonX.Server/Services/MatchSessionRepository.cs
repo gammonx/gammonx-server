@@ -1,6 +1,6 @@
 using GammonX.Server.Models;
 using GammonX.Server.Contracts;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 
 using System.Collections.Concurrent;
 

@@ -1,4 +1,4 @@
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Models;
 
 namespace GammonX.Mars.NN.Services;

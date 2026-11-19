@@ -1,8 +1,8 @@
-﻿using GammonX.Models.Contracts;
+using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
 using GammonX.Server.Http;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 
 using Newtonsoft.Json;
 

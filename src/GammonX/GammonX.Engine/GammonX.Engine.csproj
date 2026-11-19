@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>$(TargetFramework)</TargetFramework>
@@ -16,6 +16,7 @@
 		<InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
 	</ItemGroup>
 	<ItemGroup>
+	  <ProjectReference Include="../GammonX.Diagnostics/GammonX.Diagnostics.csproj" />
 	  <ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 

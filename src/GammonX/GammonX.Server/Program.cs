@@ -9,7 +9,7 @@ using GammonX.Models.Helpers;
 
 using GammonX.Server;
 using GammonX.Server.Bot;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 using GammonX.Server.Extensions;
 using GammonX.Server.Queue;
 using GammonX.Server.Services;
@@ -145,14 +145,23 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR(options => options.AddFilter<MatchHubMetricsFilter>())
+builder.Services.AddSignalR(options => options.AddFilter<MetricsHubFilter>())
     .AddJsonProtocol(options =>
     {
         options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
     });
 // Preserve the configured JSON contract while observing the actual serialization pass.
-builder.Services.Replace(ServiceDescriptor.Singleton<IHubProtocol, MeasuredJsonHubProtocol>());
-builder.Services.AddHostedService<ServerStateMetrics>();
+builder.Services.Replace(ServiceDescriptor.Singleton<IHubProtocol, MetricsJsonHubProtocol>());
+
+builder.Services.AddHostedService(services =>
+{
+    var matches = services.GetRequiredService<MatchSessionRepository>();
+    var timers = (CancellationTokenServiceImpl)services.GetRequiredService<ICancellationTokenService>();
+    var normal = (MatchmakingServiceBaseImpl)services.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Normal);
+    var ranked = (MatchmakingServiceBaseImpl)services.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Ranked);
+    var bot = (MatchmakingServiceBaseImpl)services.GetRequiredKeyedService<IMatchmakingService>(MatchModus.Bot);
+    return new ServerStateMetrics(() => matches.Count, () => timers.Count, () => normal.LobbyCount + ranked.LobbyCount + bot.LobbyCount);
+});
 // we add a health check for the game server itself
 builder.Services.AddHealthChecks()
 // we add a health check for the mars bot service

@@ -5,7 +5,7 @@ using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
 using GammonX.Server;
 using GammonX.Server.Contracts;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 
@@ -17,7 +17,7 @@ using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Performance;
 
-internal sealed record Fixture(string Name, GameModus Variant, int Die1, int Die2, int HistoryEvents = 0, bool Spread = false)
+internal sealed record RunSimulationModel(string Name, GameModus Variant, int Die1, int Die2, int HistoryEvents = 0, bool Spread = false)
 {
     internal static readonly Guid Player = Guid.Parse("11111111-1111-1111-1111-111111111111");
     internal static readonly Guid Opponent = Guid.Parse("22222222-2222-2222-2222-222222222222");
@@ -56,11 +56,11 @@ internal sealed record Fixture(string Name, GameModus Variant, int Die1, int Die
         }
     }
 
-    internal static MeasuredJsonHubProtocol CreateProtocol()
+    internal static MetricsJsonHubProtocol CreateProtocol()
     {
         var options = new JsonHubProtocolOptions();
         options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
-        return new MeasuredJsonHubProtocol(Options.Create(options));
+        return new MetricsJsonHubProtocol(Options.Create(options));
     }
 
     internal static InvocationMessage Message(EventGameStatePayload payload) =>

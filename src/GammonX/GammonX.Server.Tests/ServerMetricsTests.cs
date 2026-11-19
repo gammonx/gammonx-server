@@ -6,9 +6,8 @@ using System.Text.Json.Serialization;
 using GammonX.Engine.Services;
 using GammonX.Models.Enums;
 using GammonX.Models.Helpers;
-using GammonX.Server.Diagnostics;
+using GammonX.Diagnostics.Server;
 using GammonX.Server.Models;
-using GammonX.Server.Repository;
 using GammonX.Server.Services;
 
 using Microsoft.AspNetCore.SignalR;
@@ -37,7 +36,7 @@ public class ServerMetricsTests
         using var capture = new Capture();
         var options = new JsonHubProtocolOptions();
         options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
-        var measured = new MeasuredJsonHubProtocol(Options.Create(options));
+        var measured = new MetricsJsonHubProtocol(Options.Create(options));
         var reference = new JsonHubProtocol(Options.Create(options));
         var payload = new CountingPayload();
         var message = new InvocationMessage("Test", [payload]);
@@ -69,7 +68,7 @@ public class ServerMetricsTests
     {
         // Arrange
         var options = Options.Create(new JsonHubProtocolOptions());
-        var protocol = new MeasuredJsonHubProtocol(options);
+        var protocol = new MetricsJsonHubProtocol(options);
         var input = new ReadOnlySequence<byte>(protocol.GetMessageBytes(PingMessage.Instance));
 
         // Act
@@ -114,7 +113,7 @@ public class ServerMetricsTests
         var method = typeof(TestHub).GetMethod(nameof(TestHub.Command))!;
         using var services = new ServiceCollection().BuildServiceProvider();
         var context = new HubInvocationContext(Mock.Of<HubCallerContext>(), services, new TestHub(), method, ["private-player-id"]);
-        var filter = new MatchHubMetricsFilter();
+        var filter = new MetricsHubFilter();
 
         // Act
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -134,12 +133,7 @@ public class ServerMetricsTests
         var connections = new PlayerConnectionRepository();
         var timers = new CancellationTokenServiceImpl();
         var bot = new BotMatchmakingService(connections);
-        var services = new ServiceCollection();
-        services.AddKeyedSingleton<IMatchmakingService>(MatchModus.Bot, bot);
-        services.AddKeyedSingleton<IMatchmakingService>(MatchModus.Normal, new NormalMatchmakingService(connections));
-        services.AddKeyedSingleton<IMatchmakingService>(MatchModus.Ranked, new RankedMatchmakingService(connections, new SimpleRepositoryClient()));
-        using var provider = services.BuildServiceProvider();
-        using var state = new ServerStateMetrics(repository, timers, provider);
+        using var state = new ServerStateMetrics(() => repository.Count, () => timers.Count, () => bot.LobbyCount);
         var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Bot, MatchType.FivePointGame, BotLevel.Easy);
         var entry = await bot.JoinQueueAsync(Guid.NewGuid(), key);
         Assert.True(bot.TryFindMatchLobby(entry.Id, out var lobby));

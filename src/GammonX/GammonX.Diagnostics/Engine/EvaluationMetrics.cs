@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
-namespace GammonX.Engine.Diagnostics
+namespace GammonX.Diagnostics.Engine
 {
     /// <summary>
     /// Opt-in evaluation metrics, enabled by subscribing to <see cref="MeterName"/>.

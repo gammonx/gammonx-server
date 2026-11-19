@@ -1,9 +1,10 @@
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Services;
+using GammonX.Mars.NN.Tests;
 
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
 [Collection(nameof(PerformanceTestCollection))]
 public class EvaluationMetricsTests

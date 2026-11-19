@@ -1,4 +1,4 @@
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using GammonX.Mars.NN.Models;
 using GammonX.Engine.Models;
 

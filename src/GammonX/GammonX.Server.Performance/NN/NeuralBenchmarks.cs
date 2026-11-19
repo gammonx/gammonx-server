@@ -1,4 +1,5 @@
-using GammonX.Engine.Diagnostics;
+using GammonX.Mars.NN;
+using GammonX.Diagnostics.Engine;
 using GammonX.Engine.Models;
 using GammonX.Engine.Services;
 
@@ -18,56 +19,28 @@ using System.Security.Cryptography;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-[CollectionDefinition(nameof(PerformanceTestCollection), DisableParallelization = true)]
-public sealed class PerformanceTestCollection
-{
-    // pass
-}
-
-[Collection(nameof(PerformanceTestCollection))]
-public partial class PerformanceTests(ITestOutputHelper output)
+internal partial class NeuralBenchmarks(TextWriter output, CancellationToken cancellationToken)
 {
     private const int MeasurementIterations = 3;
 
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(2, 2, BotLevel.Hard)]
-    [InlineData(2, 2, BotLevel.Expert)]
-    public Task MeasureEvalPerformanceBoard1(int roll1, int roll2, BotLevel botLevel) =>
-        MeasureEvalPerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2, botLevel);
+    internal Task MeasureBoard(int board, int roll1, BotLevel level, bool engineOnly)
+    {
+        var boardJson = GetBoardJson(board);
+        return engineOnly
+            ? MeasureEnginePerformanceAsync($"Board{board}", boardJson, roll1, 2)
+            : MeasureEvalPerformanceAsync($"Board{board}", boardJson, roll1, 2, level);
+    }
 
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(2, 2)]
-    public Task MeasureEnginePerformanceBoard1(int roll1, int roll2) =>
-        MeasureEnginePerformanceAsync("Board1", MockBoards.PerformanceBoard1, roll1, roll2);
+    private static string GetBoardJson(int board) => board switch
+    {
+        1 => MockBoards.PerformanceBoard1,
+        2 => MockBoards.PerformanceBoard2,
+        3 => MockBoards.PerformanceBoard3,
+        _ => throw new ArgumentOutOfRangeException(nameof(board), "Use board 1, 2, or 3.")
+    };
 
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(3, 2, BotLevel.Hard)]
-    [InlineData(3, 2, BotLevel.Expert)]
-    public Task MeasureEvalPerformanceBoard2(int roll1, int roll2, BotLevel botLevel) =>
-        MeasureEvalPerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2, botLevel);
-
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(3, 2)]
-    public Task MeasureEnginePerformanceBoard2(int roll1, int roll2) =>
-        MeasureEnginePerformanceAsync("Board2", MockBoards.PerformanceBoard2, roll1, roll2);
-
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(2, 2, BotLevel.Hard)]
-    [InlineData(2, 2, BotLevel.Expert)]
-    public Task MeasureEvalPerformanceBoard3(int roll1, int roll2, BotLevel botLevel) =>
-        MeasureEvalPerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2, botLevel);
-
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(2, 2)]
-    public Task MeasureEnginePerformanceBoard3(int roll1, int roll2) =>
-        MeasureEnginePerformanceAsync("Board3", MockBoards.PerformanceBoard3, roll1, roll2);
-
-    [Theory(Skip = "PERFORMANCE")]
-    [InlineData(1, 2, 2)]
-    [InlineData(2, 3, 2)]
-    [InlineData(3, 2, 2)]
     public Task ProfileTwoPlyPerformance(int boardNumber, int roll1, int roll2)
     {
         var boardJson = boardNumber switch
@@ -84,7 +57,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
     {
         var boardContract = JsonConvert.DeserializeObject<BoardModelContract>(boardJson);
         Assert.NotNull(boardContract);
-        
+
         var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
         var board = boardService.CreateBoard(boardContract);
         var originalBoard = boardService.CreateBoard(boardContract);
@@ -92,14 +65,14 @@ public partial class PerformanceTests(ITestOutputHelper output)
 
         WriteEnvironment(rolls);
 
-        var warmup = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
+        var warmup = boardService.GetUniqueLegalMoveSequences(board, false, rolls, cancellationToken);
         Assert.NotEmpty(warmup);
 
         await MeasureAsync(
             boardName,
             "Engine",
             warmup.Length,
-            () => ValueTask.FromResult(boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken)),
+            () => ValueTask.FromResult(boardService.GetUniqueLegalMoveSequences(board, false, rolls, cancellationToken)),
             result =>
             {
                 Assert.Equal(warmup.Length, result.Length);
@@ -123,12 +96,12 @@ public partial class PerformanceTests(ITestOutputHelper output)
         var board = boardService.CreateBoard(boardContract);
         var rolls = CreateRolls(roll1, roll2);
 
-        var legalMoves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, TestContext.Current.CancellationToken);
+        var legalMoves = boardService.GetUniqueLegalMoveSequences(board, false, rolls, cancellationToken);
         Assert.NotEmpty(legalMoves);
 
         WriteEnvironment(rolls);
 
-        var modelPath = Path.Combine("Data", "NeuralNets", nameof(GameModus.Backgammon), "training_net.dat");
+        var modelPath = Path.Combine(AppContext.BaseDirectory, "Data", "NeuralNets", nameof(GameModus.Backgammon), "training_net.dat");
         var startup = Stopwatch.StartNew();
         using var neuralService = Assert.IsType<BatchedNeuralEvalService>(
             BatchedNeuralEvalService.Load(GameModus.Backgammon, modelPath, CPU, tuning?.MaxBatchSize ?? 32));
@@ -194,7 +167,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                 }
 
                 var firstInference = Stopwatch.StartNew();
-                var prediction = await countingService.PredictAsync(features, board, false, TestContext.Current.CancellationToken);
+                var prediction = await countingService.PredictAsync(features, board, false, cancellationToken);
                 firstInference.Stop();
                 Assert.NotEmpty(prediction);
                 Assert.All(prediction, value => Assert.True(float.IsFinite(value)));
@@ -207,7 +180,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                         EvalMoveRequest = request,
                         ContactWeights = EvalWeights.DefaultContactWeights,
                         TurnNumber = request.TurnNumber,
-                    }, TestContext.Current.CancellationToken);
+                    }, cancellationToken);
                     Assert.Equal(legalMoves.Length, candidateScores.Count);
                     Assert.All(candidateScores, result => Assert.True(double.IsFinite(result.Equity)));
                     warmup = candidateScores.Select(botLevel);
@@ -223,7 +196,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                         EvalMoveRequest = request,
                         ContactWeights = EvalWeights.DefaultContactWeights,
                         TurnNumber = request.TurnNumber,
-                    }, TestContext.Current.CancellationToken);
+                    }, cancellationToken);
                 }
                 output.WriteLine(FormattableString.Invariant(
                     $"FullEvaluationWarmupMs={Stopwatch.GetElapsedTime(warmupStart).TotalMilliseconds:F3}"));
@@ -241,7 +214,7 @@ public partial class PerformanceTests(ITestOutputHelper output)
                         EvalMoveRequest = request,
                         ContactWeights = EvalWeights.DefaultContactWeights,
                         TurnNumber = request.TurnNumber,
-                    }, TestContext.Current.CancellationToken)),
+                    }, cancellationToken)),
                 result =>
                 {
                     Validate(result);
