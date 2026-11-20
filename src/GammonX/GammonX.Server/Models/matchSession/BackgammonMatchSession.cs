@@ -15,6 +15,11 @@ namespace GammonX.Server.Models
 	// <inheritdoc />
 	public sealed class BackgammonMatchSession : MatchSession, IDoubleCubeMatchSession
 	{
+		private BackgammonMatchSession(BackgammonMatchSession source) : base(source)
+		{
+			_doubleCubeOfferPlayerId = source._doubleCubeOfferPlayerId;
+		}
+
 		public BackgammonMatchSession(
 			Guid id,
 			QueueKey queueKey,
@@ -388,23 +393,6 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-        public override object Clone()
-        {
-            var restoredQueueKey = new QueueKey(this.Variant, this.Modus, this.Type, this.BotLevel);
-			var gameSessionClones = this.GameSessions.Select(GameSessionSnapshot.CloneSession).ToArray();
-
-            return new BackgammonMatchSession(this.Id, restoredQueueKey, _gameSessionFactory)
-			{
-				EndedAt = this.EndedAt,
-				StartedAt = this.StartedAt,
-				GameRound = this.GameRound,
-				Player1 = (MatchPlayerModel)this.Player1.Clone(),
-				Player2 = (MatchPlayerModel)this.Player2.Clone(),
-				LastExecutedCommand = this.LastExecutedCommand,
-				_doubleCubeOfferPlayerId = this._doubleCubeOfferPlayerId,
-				Rounds = this.Rounds,
-				GameSessions = gameSessionClones
-			};
-        }
+        public override object Clone() => new BackgammonMatchSession(this);
     }
 }

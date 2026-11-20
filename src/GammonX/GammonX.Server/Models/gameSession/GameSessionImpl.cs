@@ -17,7 +17,7 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Stores each played step and its die index in reverse play order for undo.
 		/// </summary>
-		protected Stack<(int From, int To, int DieIndex)> ActiveUndoStack { get; init; } = new();
+		protected Stack<(int From, int To, int DieIndex)> ActiveUndoStack { get; init; }
 
 		/// <inheritdoc />
 		public IBoardService BoardService { get; protected init; }
@@ -35,7 +35,7 @@ namespace GammonX.Server.Models
 		public GamePhase Phase { get; set; }
 
 		// <inheritdoc />
-		public GameResultModel Result { get; protected set; } = GameResultModel.Empty();
+		public GameResultModel Result { get; protected set; }
 
 		// <inheritdoc />
 		public Guid ActivePlayer { get; protected set; }
@@ -72,8 +72,29 @@ namespace GammonX.Server.Models
 			}
 		}
 
+		private protected GameSessionImpl(GameSessionImpl source)
+		{
+			Id = source.Id;
+			MatchId = source.MatchId;
+			ActivePlayer = source.ActivePlayer;
+			OtherPlayer = source.OtherPlayer;
+			TurnNumber = source.TurnNumber;
+			Modus = source.Modus;
+			BoardService = source.BoardService;
+			DiceService = source.DiceService;
+			Result = source.Result;
+			Phase = source.Phase;
+			StartedAt = source.StartedAt;
+			EndedAt = source.EndedAt;
+			BoardModel = source.BoardModel.DeepClone();
+			DiceRolls = (DiceRollsModel)source.DiceRolls.Clone();
+			ActiveUndoStack = new(source.ActiveUndoStack.Reverse());
+		}
+
 		public GameSessionImpl(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 		{
+			ActiveUndoStack = new();
+			Result = GameResultModel.Empty();
 			BoardService = boardService;
 			DiceService = diceService;
 			BoardModel = BoardService.CreateBoard();
@@ -300,30 +321,7 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-		public virtual object Clone()
-		{
-			// we need to ensure the proper order of moves in the undo stack
-			var undoStackClone = new Stack<(int From, int To, int DieIndex)>(ActiveUndoStack.Reverse());
-			var rollsClone = new DiceRollsModel(this.DiceRolls.Select(dr => (DiceRollContract)dr.Clone()));
-
-			var gameSession = new GameSessionImpl(this.MatchId, this.Modus, this.BoardService, this.DiceService)
-			{
-				Id = this.Id,
-				MatchId = this.MatchId,
-				ActivePlayer = this.ActivePlayer,
-				BoardModel = this.BoardModel.DeepClone(),
-				DiceRolls = rollsClone,
-				Result = this.Result,
-				Phase = this.Phase,
-				EndedAt = this.EndedAt,
-				StartedAt = this.StartedAt,
-				OtherPlayer = this.OtherPlayer,
-				TurnNumber = this.TurnNumber,
-				ActiveUndoStack = undoStackClone,
-			};
-
-			return gameSession;
-		}
+		public virtual object Clone() => new GameSessionImpl(this);
 
 		/// <summary>Applies a resolved step and records the exact die for undo.</summary>
 		/// <param name="move">Validated checker movement.</param>

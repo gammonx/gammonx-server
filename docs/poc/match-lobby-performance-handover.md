@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 through T4 complete locally. T5 through T7 pending.
+- Status: T0 through T5 complete locally. T6 and T7 pending.
 
 ## Objective and scope
 
@@ -103,7 +103,7 @@ Deliver small PRs with their own validation. The order below separates correctne
 | 3 | T2: bounded bot progress and recovery **(complete locally)** | High correctness | Reuse T1 deadline identity for recovery |
 | 4 | T3: remove started lobbies reliably **(complete locally)** | High lifecycle | None |
 | 5 | T4: move timer ownership out of hubs **(complete locally)** | Medium | Preserve T1 and T2 behavior |
-| 6 | T5: reduce active-game snapshot allocation | High CPU | T0 baseline |
+| 6 | T5: reduce active-game snapshot allocation **(complete locally)** | High CPU | T0 baseline |
 | 7 | T6: compact legal continuations and client payloads | High CPU | T0; coordinate with T5 and client implementation |
 | 8 | T7: shorten match leases around external I/O | High resilience | T1, T2; explicit operation/version ownership |
 
@@ -281,7 +281,7 @@ Acceptance:
 
 ### T5: reduce active-game snapshot allocation without weakening isolation
 
-Current behavior: a mutation normally clones on working-state load and again on commit. The active game copies its full move list, dice, undo state, board, and history stack. Payload construction copies the move list again. A roll, two individual moves, and end-turn normally produce eight match snapshots.
+The original analysis found a retained move list in each active-game snapshot. The current implementation generates legal sequences on demand. Working-state load and commit still clone the active board, history, dice and undo stack.
 
 Implementation:
 
@@ -297,6 +297,29 @@ Acceptance:
 - Add tests showing mutations to exposed contracts cannot modify shared move data.
 - Clone allocation no longer grows linearly with the number of immutable legal sequences. Report measured before/after values for all baseline fixtures.
 - All variants retain their specific state, including cube and pinned-checker state, undo order, dice, and history.
+
+#### T5 completion record — 2026-11-20
+
+Game and match snapshots now use copy constructors across all variants. Completed rounds retain their existing sharing behavior, and active boards and histories use their existing deep-copy paths. Legal moves are generated on demand, so snapshot isolation requires no shared move cache.
+
+All 556 selected Release tests passed across the repository, game sessions, match variants, move sequences and hub. Existing coverage includes mutating a returned legal move and rereading committed state, undoing moves on a clone, and preserving Plakoto pinned checkers.
+
+Local Release measurements used one warmup and three measured repetitions per fixture, with telemetry off. Values are allocated bytes per active-game clone.
+
+| Fixture | Before | After |
+|---|---:|---:|
+| Backgammon opening 1,2 | 1,784 | 1,256 |
+| Backgammon opening 1,1 | 1,832 | 1,304 |
+| Portes opening 1,2 | 1,800 | 1,264 |
+| Portes opening 1,1 | 1,848 | 1,312 |
+| Plakoto opening 1,2 | 2,176 | 1,512 |
+| Plakoto opening 1,1 | 2,224 | 1,560 |
+| Fevga opening 1,2 | 2,104 | 1,416 |
+| Fevga opening 1,1 | 2,152 | 1,464 |
+| Tavla opening 1,2 | 1,800 | 1,264 |
+| Tavla opening 1,1 | 1,848 | 1,312 |
+| Backgammon spread 1,1 | 1,832 | 1,304 |
+| Backgammon opening 1,2 with 1,000 history events | 26,296 | 25,768 |
 
 ### T6: reduce move enumeration and wire payload size
 

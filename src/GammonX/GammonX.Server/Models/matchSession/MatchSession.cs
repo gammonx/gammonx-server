@@ -66,6 +66,25 @@ namespace GammonX.Server.Models
 		// <inheritdoc />
 		public MatchPlayerModel Player2 { get; protected set; }
 
+		private protected MatchSession(MatchSession source)
+		{
+			Id = source.Id;
+			GameRound = source.GameRound;
+			Variant = source.Variant;
+			Modus = source.Modus;
+			Type = source.Type;
+			BotLevel = source.BotLevel;
+			StartedAt = source.StartedAt;
+			EndedAt = source.EndedAt;
+			LastExecutedCommand = source.LastExecutedCommand;
+			Rounds = source.Rounds;
+			_gameSessionFactory = source._gameSessionFactory;
+			_isMatchOver = source._isMatchOver;
+			Player1 = (MatchPlayerModel)source.Player1.Clone();
+			Player2 = (MatchPlayerModel)source.Player2.Clone();
+			GameSessions = source.GameSessions.Select(GameSessionSnapshot.CloneSession).ToArray();
+		}
+
 		protected MatchSession(
 			Guid id,
 			QueueKey queueKey,

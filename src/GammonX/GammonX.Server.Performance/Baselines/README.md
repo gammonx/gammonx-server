@@ -1,5 +1,9 @@
 # Game-server baseline findings
 
+## T5 snapshot allocation
+
+The listener-off Release run used five warmups and 30 measured iterations on the T5 working tree. All 84 fixture/stage pairs matched the preceding move-sequence baseline in sequence count and wire size. Cloning the Backgammon spread position fell from 1,832 to 1,304 bytes per operation (28.8%). The full human repository turn allocated 33.18 MB and averaged 127.62 ms, compared with 33.21 MB and 125.14 ms previously. This single local run establishes an allocation baseline for future changes. [T5 capture](t5-off.json) and [stage-by-stage comparison](t5-off.json.comparison.json)
+
 ## Move-sequence refactor
 
 The Release captures use the T0 fixture IDs, dice, five warmups and 30 iterations. All 52 shared standard stages retained their sequence counts and wire sizes. The spread fixture still produced 35,370 sequences and a 3,115,575-byte active message. [Standard capture](move-sequences-off.json), [T0 comparison](move-sequences-off.json.comparison.json)

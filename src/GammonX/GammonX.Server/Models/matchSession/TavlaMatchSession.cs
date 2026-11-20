@@ -11,6 +11,11 @@ namespace GammonX.Server.Models
 {
 	public sealed class TavlaMatchSession : MatchSession
 	{
+		private TavlaMatchSession(TavlaMatchSession source) : base(source)
+		{
+			// pass
+		}
+
 		public TavlaMatchSession(
 			Guid id,
 			QueueKey queueKey,
@@ -76,22 +81,6 @@ namespace GammonX.Server.Models
 		}
 
 		// <inheritdoc />
-        public override object Clone()
-        {
-            var restoredQueueKey = new QueueKey(this.Variant, this.Modus, this.Type, this.BotLevel);
-			var gameSessionClones = this.GameSessions.Select(GameSessionSnapshot.CloneSession).ToArray();
-
-            return new TavlaMatchSession(this.Id, restoredQueueKey, _gameSessionFactory)
-			{
-				EndedAt = this.EndedAt,
-				StartedAt = this.StartedAt,
-				GameRound = this.GameRound,
-				Player1 = (MatchPlayerModel)this.Player1.Clone(),
-				Player2 = (MatchPlayerModel)this.Player2.Clone(),
-				LastExecutedCommand = this.LastExecutedCommand,
-				Rounds = this.Rounds,
-				GameSessions = gameSessionClones
-			};
-        }
+        public override object Clone() => new TavlaMatchSession(this);
     }
 }
