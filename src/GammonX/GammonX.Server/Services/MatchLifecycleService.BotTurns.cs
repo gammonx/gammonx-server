@@ -35,10 +35,7 @@ namespace GammonX.Server.Services
             }
             else
             {
-                if (matchLock.IsBotPlayer(offeringPlayerId))
-                {
-                    StartTurnTimer(matchSession, offeredPlayerId);
-                }
+                StartTurnTimer(matchSession, offeredPlayerId);
 
                 // the player who is offering the double is waiting for a response
                 var callingPlayerGameSession = matchSession.GetGameState(offeringPlayerId);
@@ -77,10 +74,7 @@ namespace GammonX.Server.Services
             {
                 // doubles can only be offered/accepted/declined at the start of a turn and before the dices got rolled
                 // Therefore, the next command must be the roll command
-                if (matchLock.IsBotPlayer(offeredPlayerId))
-                {
-                    StartTurnTimer(matchSession, offeringPlayerId);
-                }
+                StartTurnTimer(matchSession, offeringPlayerId);
 
                 await SendGameState(ServerEventTypes.DoubleAcceptedEvent, matchSession, cancellationToken);
             }

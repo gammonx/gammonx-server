@@ -1025,11 +1025,6 @@ namespace GammonX.Server
                     }
 
                     await Lifecycle.PerformOfferDoubleAsync(matchLock, matchSession, doubleCubeSession, callingPlayerId, Context.ConnectionAborted);
-                    var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
-                    if (!matchLock.IsBotPlayer(otherPlayerId))
-                    {
-                        Lifecycle.StartTurnTimer(matchSession, otherPlayerId);
-                    }
                 }
                 else
                 {
@@ -1077,12 +1072,6 @@ namespace GammonX.Server
                     else
                     {
                         await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The match with matchId '{matchSession.Id}' does not support doubling cubes.", Context.ConnectionId);
-                    }
-
-                    var otherPlayerId = matchLock.GetOtherPlayerId(callingPlayerId);
-                    if (!matchLock.IsBotPlayer(otherPlayerId))
-                    {
-                        Lifecycle.StartTurnTimer(matchSession, otherPlayerId);
                     }
                 }
                 else

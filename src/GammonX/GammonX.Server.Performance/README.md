@@ -1,16 +1,20 @@
 # Game-server performance baselines
 
-Opt-in .NET 10 console benchmarks for the game server and Mars neural evaluation. The game-server benchmarks run when called with the options below. Use the `nn` subcommand for neural benchmarks and tuning studies. [NN benchmarks and historical findings](NN/README.md)
+Opt-in .NET 10 console benchmarks for the game server and Mars neural evaluation. The game-server benchmarks run when called with the options below. Use the `nn` subcommand for neural benchmarks and tuning studies.
 
-The T0 baseline recorded 35,370 legal sequences, a 3,115,575-byte SignalR message and 86.4 MB allocated for a repository-level turn on the Backgammon spread fixture. An attached metrics listener added 32 bytes per measured serialization across all 12 fixtures. [Baseline findings and raw reports](Baselines/README.md)
-
-Use the listener-off post-T2 capture for future component comparisons. Its companion diagnostic measures the game-server work saved by deferring local move generation on bot turns. [Post-T2 baseline and bot-turn results](Baselines/README.md#post-t2-baseline-and-bot-turn-diagnostic)
+The T0 baseline recorded 35,370 legal sequences, a 3,115,575-byte SignalR message and 86.4 MB allocated for a repository-level turn on the Backgammon spread fixture. An attached metrics listener added 32 bytes per measured serialization across all 12 fixtures.
 
 ## Run from the repository root
 
+Generate a local baseline for the current revision with the .NET 10 SDK. The runner creates the output directory.
+
 ```powershell
-dotnet build src/GammonX/GammonX.Server.Performance/GammonX.Server.Performance.csproj -c Release
-dotnet run --project src/GammonX/GammonX.Server.Performance/GammonX.Server.Performance.csproj -c Release --no-build -- --iterations 30 --warmup 5 --telemetry off --output out/performance/baseline.json --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local
+dotnet run --project src/GammonX/GammonX.Server.Performance -c Release -- --iterations 30 --warmup 5 --telemetry off --output out/performance/baseline.json --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local
+```
+
+To measure the overhead of an attached listener, compare a second run against that file.
+
+```powershell
 dotnet run --project src/GammonX/GammonX.Server.Performance/GammonX.Server.Performance.csproj -c Release --no-build -- --iterations 30 --warmup 5 --telemetry on --compare out/performance/baseline.json --output out/performance/observed.json --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local
 ```
 

@@ -16,6 +16,9 @@ using MatchSessionLease = GammonX.Server.Services.MatchSessionRepository.MatchSe
 
 namespace GammonX.Server.Services
 {
+    // TODO: Move bot evaluation, ordered client notifications and result publication outside the
+    // match lease. Revalidate the turn before applying bot results and preserve event order per match.
+
     /// <summary>
     /// Runs match transitions and publishes their results for hub commands and host-owned deadlines.
     /// </summary>
