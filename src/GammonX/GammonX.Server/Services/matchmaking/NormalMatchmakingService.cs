@@ -31,9 +31,11 @@ namespace GammonX.Server.Services
                 throw new InvalidOperationException($"Player '{playerId}' is already part of a match lobby queue");
             }
 
-            // add player to queue
-            var entry = new QueueEntry(Guid.NewGuid(), playerId, queueKey, DateTime.UtcNow, 0);
+            // A clients bot difficulty preference must not split the normal queue.
+            var entry = new QueueEntry(Guid.NewGuid(), playerId, queueKey with { BotLevel = BotLevel.Unknown }, DateTime.UtcNow, 0);
+
             Enqueue(entry);
+
             return Task.FromResult(entry);
         }
 
@@ -64,45 +66,7 @@ namespace GammonX.Server.Services
                         continue;
                     }
 
-                    var claimedA = false;
-                    var claimedB = false;
-                    // atomic claims
-                    if (_queueEntries.TryRemove(entryA.Id, out var _))
-                    {
-                        claimedA = true;
-                    }
-                    if (_queueEntries.TryRemove(entryB.Id, out var _))
-                    {
-                        claimedB = true;
-                    }
-
-                    // rollback if one couldn't be claimed
-                    if (!claimedA && !claimedB)
-                    {
-                        queue.Enqueue(idA);
-                    }
-                    else if (!claimedA)
-                    {
-                        // a could not be claimed > requeue b
-                        _queueEntries.TryAdd(entryB.Id, entryB);
-                        queue.Enqueue(idB);
-                    }
-                    else if (!claimedB)
-                    {
-                        //b could not be claimed > requeue a
-                        _queueEntries.TryAdd(entryA.Id, entryA);
-                        queue.Enqueue(idA);
-                    }
-
-                    if (claimedA && claimedB)
-                    {
-                        // create lobby
-                        var playerConnectionA = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                        var playerConnectionB = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
-                        var lobby = new MatchLobby(Guid.NewGuid(), queueKey, playerConnectionA);
-                        lobby.Join(playerConnectionB);
-                        AddMatchLobby(lobby, entryA, entryB);
-                    }
+                    MatchQueuedEntries(queueKey, entryA, entryB);
                 }
             }
 

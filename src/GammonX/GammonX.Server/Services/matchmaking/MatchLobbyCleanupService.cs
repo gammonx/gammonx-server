@@ -19,33 +19,55 @@ namespace GammonX.Server.Services
         ICancellationTokenService timers,
         IHubContext<MatchLobbyHub> hub)
     {
+        private static readonly TimeSpan CleanupTimeout = TimeSpan.FromSeconds(1);
+
         /// <summary>
-        /// Expires old lobbies in the supplied matchmaking mode.
+        /// Expires old lobbies within one time budget per pass. Busy lobbies are retried on the next pass.
         /// </summary>
-        public async Task CleanupExpiredAsync(IMatchmakingService mode, DateTime utcNow)
+        /// <param name="mode">Matchmaking service whose lobbies will be checked.</param>
+        /// <param name="utcNow">UTC time used to determine whether a lobby has expired.</param>
+        /// <param name="cancellationToken">Cancels the pass when the worker stops.</param>
+        public async Task CleanupExpiredAsync(IMatchmakingService mode, DateTime utcNow, CancellationToken cancellationToken = default)
         {
-            foreach (var candidate in mode.GetMatchLobbies().DistinctBy(lobby => lobby.MatchId))
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(CleanupTimeout);
+            
+            try
             {
-                if (utcNow - candidate.CreatedAtUtc < MatchLobby.StartTimeout)
-                {
-                    continue;
-                }
-
-                await using var lease = await matches.AcquireStateAsync(candidate.MatchId);
+                // A busy match must not prevent other expired lobbies from releasing their players.
+                var expired = mode.GetMatchLobbies()
+                    .TakeWhile(_ => !deadline.IsCancellationRequested)
+                    .Where(lobby => utcNow - lobby.CreatedAtUtc >= MatchLobby.StartTimeout);
                 
-                // Joining/start and expiry share this lease. Recheck after waiting for a start.
-                if (matchmaking.TryFindMatchLobby(candidate.MatchId, out var current) &&
-                    current != null && utcNow - current.CreatedAtUtc >= MatchLobby.StartTimeout)
-                {
-                    if (lease.HasStarted())
-                    {
-                        matchmaking.TryRemoveMatchLobby(candidate.MatchId);
-                        continue;
-                    }
-
-                    await TryCleanupUnstartedAsync(candidate.MatchId, lease);
-                }
+                await Task.WhenAll(expired.Select(lobby => CleanupLobbyAsync(lobby.MatchId, utcNow, deadline.Token)));
+                
+                cancellationToken.ThrowIfCancellationRequested();
             }
+            catch (OperationCanceledException) when (deadline.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                Log.Debug("Expired lobby cleanup reached its time budget of {CleanupTimeout}.", CleanupTimeout);
+            }
+        }
+
+        private async Task CleanupLobbyAsync(Guid matchId, DateTime utcNow, CancellationToken cancellationToken)
+        {
+            await using var lease = await matches.AcquireStateAsync(matchId, cancellationToken);
+            // Joining/start and expiry share this lease. Recheck after waiting for a start.
+            if (!matchmaking.TryFindMatchLobby(matchId, out var current) ||
+                current == null || utcNow - current.CreatedAtUtc < MatchLobby.StartTimeout)
+            {
+                return;
+            }
+
+            if (lease.HasStarted())
+            {
+                matchmaking.TryRemoveMatchLobby(matchId);
+                return;
+            }
+
+            await TryCleanupUnstartedAsync(matchId, lease, cancellationToken);
         }
 
         /// <summary>
@@ -99,7 +121,11 @@ namespace GammonX.Server.Services
             try
             {
                 var response = new EventResponseContract<EmptyEventPayload>(ServerEventTypes.ForceDisconnectEvent, new EmptyEventPayload());
-                await hub.Clients.Group(groupName).SendAsync(ServerEventTypes.ForceDisconnectEvent, response, cancellationToken);
+                await hub.Clients.Group(groupName).SendAsync(ServerEventTypes.ForceDisconnectEvent, response, cancellationToken).WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -112,7 +138,11 @@ namespace GammonX.Server.Services
                 {
                     try
                     {
-                        await hub.Groups.RemoveFromGroupAsync(player.ConnectionId, groupName, cancellationToken);
+                        await hub.Groups.RemoveFromGroupAsync(player.ConnectionId, groupName, cancellationToken).WaitAsync(cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {

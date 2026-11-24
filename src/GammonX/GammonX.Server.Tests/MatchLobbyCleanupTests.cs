@@ -64,10 +64,11 @@ namespace GammonX.Server.Tests
             var deadline = lobby.CreatedAtUtc + MatchLobby.StartTimeout;
 
             // Act / Assert: polling does not extend the creation-based deadline.
-            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline.AddTicks(-1));
+            var token = TestContext.Current.CancellationToken;
+            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline.AddTicks(-1), token);
             Assert.True(fixture.Mode.TryFindMatchLobby(lobby.MatchId, out _));
-            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline);
-            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline);
+            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline, token);
+            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, deadline, token);
 
             Assert.Empty(fixture.Mode.GetMatchLobbies());
             Assert.Null(_matches.Get(lobby.MatchId));
@@ -97,7 +98,7 @@ namespace GammonX.Server.Tests
             lobby.Player2!.SetConnectionId("two");
             if (joinedPlayers > 0)
             {
-                await using var lease = await _matches.AcquireStateAsync(lobby.MatchId);
+                await using var lease = await _matches.AcquireStateAsync(lobby.MatchId, TestContext.Current.CancellationToken);
                 var session = lease.Create(lobby.QueueKey);
                 session.JoinSession(lobby.Player1);
                 if (joinedPlayers == 2)
@@ -112,7 +113,7 @@ namespace GammonX.Server.Tests
             _timers.Store(new CancellationTokenKey { MatchId = lobby.MatchId, PlayerId = lobby.Player2.Id, Category = CancellationTokenCategory.Disconnect }, disconnect);
 
             // Act
-            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, lobby.CreatedAtUtc + MatchLobby.StartTimeout);
+            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, lobby.CreatedAtUtc + MatchLobby.StartTimeout, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Empty(fixture.Mode.GetMatchLobbies());
@@ -131,7 +132,7 @@ namespace GammonX.Server.Tests
             // Arrange
             var fixture = await CreateLobby(MatchModus.Normal);
             var lobby = fixture.Lobby;
-            var lease = await _matches.AcquireStateAsync(lobby.MatchId);
+            var lease = await _matches.AcquireStateAsync(lobby.MatchId, TestContext.Current.CancellationToken);
             var session = lease.Create(lobby.QueueKey);
             lobby.Player1.SetConnectionId("one");
             lobby.Player2!.SetConnectionId("two");
@@ -140,7 +141,7 @@ namespace GammonX.Server.Tests
             using var timer = new CancellationTokenSource();
             var key = new CancellationTokenKey { MatchId = lobby.MatchId, PlayerId = lobby.Player1.Id, Category = CancellationTokenCategory.Turn };
             _timers.Store(key, timer);
-            var expiry = fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, lobby.CreatedAtUtc + MatchLobby.StartTimeout);
+            var expiry = fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, lobby.CreatedAtUtc + MatchLobby.StartTimeout, TestContext.Current.CancellationToken);
             Assert.False(expiry.IsCompleted);
 
             // Act
@@ -169,6 +170,78 @@ namespace GammonX.Server.Tests
         }
 
         [Fact]
+        public async Task BusyLobbyTimesOutWhileOtherExpiredLobbiesAreCleanedAndCanBeRetried()
+        {
+            // Arrange
+            var fixture = await CreateLobby(MatchModus.Normal);
+            var mode = fixture.Mode;
+            var busy = fixture.Lobby;
+            var other = await mode.JoinQueueAsync(Guid.NewGuid(), busy.QueueKey);
+            await mode.JoinQueueAsync(Guid.NewGuid(), busy.QueueKey);
+            await mode.MatchQueuedPlayersAsync();
+            Assert.True(mode.TryFindMatchLobby(other.Id, out var otherLobby));
+            var deadline = otherLobby!.CreatedAtUtc + MatchLobby.StartTimeout;
+            var token = TestContext.Current.CancellationToken;
+
+            await using (await _matches.AcquireStateAsync(busy.MatchId, token))
+            {
+                // Act
+                await fixture.Cleanup.CleanupExpiredAsync(mode, deadline, token).WaitAsync(TimeSpan.FromSeconds(5), token);
+
+                // Assert
+                Assert.Same(busy, Assert.Single(mode.GetMatchLobbies()));
+                Assert.Null(_connections.Get(other.PlayerId));
+            }
+
+            await fixture.Cleanup.CleanupExpiredAsync(mode, deadline, token);
+            Assert.Empty(mode.GetMatchLobbies());
+        }
+
+        [Fact]
+        public async Task WorkerCancellationInterruptsCleanupWaitingForALease()
+        {
+            // Arrange
+            var fixture = await CreateLobby(MatchModus.Normal);
+            using var stopping = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            await using var lease = await _matches.AcquireStateAsync(fixture.Lobby.MatchId, stopping.Token);
+            var cleanup = fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, fixture.Lobby.CreatedAtUtc + MatchLobby.StartTimeout, stopping.Token);
+
+            // Act
+            await stopping.CancelAsync();
+
+            // Assert
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cleanup.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            Assert.Same(fixture.Lobby, Assert.Single(fixture.Mode.GetMatchLobbies()));
+        }
+
+        [Fact]
+        public async Task StalledDisconnectNotificationReleasesTheLeaseAtTheCleanupDeadline()
+        {
+            // Arrange
+            var fixture = await CreateLobby(MatchModus.Bot);
+            var notification = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _client.Setup(value => value.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<CancellationToken>()))
+                .Returns(notification.Task);
+            var token = TestContext.Current.CancellationToken;
+
+            // Act
+            try
+            {
+                await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, fixture.Lobby.CreatedAtUtc + MatchLobby.StartTimeout, token)
+                    .WaitAsync(TimeSpan.FromSeconds(5), token);
+
+                // Assert
+                Assert.Empty(fixture.Mode.GetMatchLobbies());
+                await using var lease = await _matches.AcquireStateAsync(fixture.Lobby.MatchId, token).WaitAsync(TimeSpan.FromSeconds(1), token);
+                Assert.Null(lease.Get());
+            }
+            finally
+            {
+                notification.TrySetResult();
+            }
+        }
+
+        [Fact]
         public async Task FailedNotificationDoesNotPreventCleanup()
         {
             // Arrange
@@ -177,7 +250,7 @@ namespace GammonX.Server.Tests
                 .ThrowsAsync(new InvalidOperationException("Socket unavailable."));
 
             // Act
-            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, fixture.Lobby.CreatedAtUtc + MatchLobby.StartTimeout);
+            await fixture.Cleanup.CleanupExpiredAsync(fixture.Mode, fixture.Lobby.CreatedAtUtc + MatchLobby.StartTimeout, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Empty(fixture.Mode.GetMatchLobbies());

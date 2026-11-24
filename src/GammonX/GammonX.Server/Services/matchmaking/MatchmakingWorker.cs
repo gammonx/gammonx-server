@@ -58,8 +58,12 @@ namespace GammonX.Server.Services
 				try
 				{
 					_matchmakingService.CleanupExpiredQueueEntries(TimeSpan.FromSeconds(30));
-                    await _lobbyCleanup.CleanupExpiredAsync(_matchmakingService, DateTime.UtcNow);
+                    await _lobbyCleanup.CleanupExpiredAsync(_matchmakingService, DateTime.UtcNow, stoppingToken);
                     await _matchmakingService.MatchQueuedPlayersAsync();
+				}
+				catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+				{
+					break;
 				}
 				catch (Exception ex)
 				{

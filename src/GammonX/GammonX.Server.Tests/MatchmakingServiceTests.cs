@@ -138,6 +138,36 @@ namespace GammonX.Server.Tests
         }
 
         [Fact]
+        public async Task FailedLobbyPublicationKeepsBothQueueEntriesAvailableForRetry()
+        {
+            // Arrange
+            var connections = new PlayerConnectionRepository();
+            var mode = new TestMatchmakingService(connections);
+            var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+            var first = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+            var second = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+            var collision = new MatchLobby(first.Id, key, connections.GetOrCreate(Guid.NewGuid()));
+            mode.Register(collision, CreateQueueEntry(key, 0));
+
+            // Act
+            await Assert.ThrowsAsync<InvalidOperationException>(() => mode.MatchQueuedPlayersAsync());
+
+            // Assert
+            Assert.True(mode.TryFindQueueEntry(first.Id, out var pendingFirst));
+            Assert.Same(first, pendingFirst);
+            Assert.True(mode.TryFindQueueEntry(second.Id, out var pendingSecond));
+            Assert.Same(second, pendingSecond);
+
+            Assert.True(mode.TryRemoveMatchLobby(collision.MatchId));
+            await mode.MatchQueuedPlayersAsync();
+            Assert.True(mode.TryFindMatchLobby(first.Id, out var lobby));
+            Assert.True(mode.TryFindMatchLobby(second.Id, out var sameLobby));
+            Assert.Same(lobby, sameLobby);
+            Assert.Empty(mode.GetQueueEntries());
+            Assert.False(await mode.LeaveQueueAsync(first));
+        }
+
+        [Fact]
         public async Task RankedJoinUsesRatingForRequestedMatchType()
         {
             var playerId = Guid.NewGuid();

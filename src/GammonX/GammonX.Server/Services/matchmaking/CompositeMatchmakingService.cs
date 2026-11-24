@@ -51,6 +51,13 @@ namespace GammonX.Server.Services
 		}
 
 		// <inheritdoc />
+		public override Task<bool> LeaveQueueAsync(QueueEntry entry)
+		{
+			var service = _services[entry.QueueKey.MatchModus];
+			return service.LeaveQueueAsync(entry);
+		}
+
+		// <inheritdoc />
 		public override async Task MatchQueuedPlayersAsync()
 		{
 			foreach (var service in _services)
