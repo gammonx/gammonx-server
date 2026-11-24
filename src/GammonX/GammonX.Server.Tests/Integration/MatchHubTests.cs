@@ -2738,7 +2738,7 @@ namespace GammonX.Server.Tests.Integration
             // Arrange
             var (match, hub, _) = await CreatePersistenceFixture();
             var playerId = match.Player1.Id;
-            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id, TestContext.Current.CancellationToken);
             var current = lease.Get()!;
             var original = hub.Lifecycle.RegisterTurnDeadline(current, playerId)!;
             using var originalGeneration = original.Token;
