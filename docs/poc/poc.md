@@ -145,6 +145,28 @@ The `StartMatch` command does roll the opening dices for both players. These dic
 #### `GamePhase` [Link](../../src/GammonX/GammonX.Server/Models/gameSession/GamePhase.cs)
 
 ## MoveSequences
+
+### Direct move hints
+
+All SignalR connections receive direct hints by default, including after reconnecting.
+
+Both modes use the same `moveSequences[].moves[]` JSON shape and recipient board orientation. In direct mode each entry contains one command the active player can submit now. A command may spend several dice on the selected checker. For example, the following entries highlight 6 and 8 when the player selects 5:
+
+```json
+{
+  "moveSequences": [
+    { "moves": [{ "from": 5, "to": 6 }] },
+    { "moves": [{ "from": 5, "to": 8 }] }
+  ]
+}
+```
+
+Submit the selected coordinates using the usual move command. The server resolves the intermediate steps and validates dice usage. Read the next game-state response after a move or undo to refresh highlights. The waiting seat receives an empty list.
+
+### Full sequences (server code only)
+
+Set the private `UseFullMoveSequences` constant in `EventGameStatePayload` to `true` and rebuild to emit complete turn orderings.
+
 A move sequence is an array of from / to moves that are legally playable based on a given pair of dice rolls.
 A sequence can contain between 1 and 4 moves. The standard dice rules apply:
 - If possible, both dice rolls must be used.
@@ -190,7 +212,9 @@ public static HashSet<int> GetLegalToPositions(int from, IEnumerable<MoveSequenc
             if (move.from != from)
                 continue;
 
-            results.Add(move.to); // first move is valid by definition
+            results.Add(move.to);
+            if (i != 0)
+                continue; // combined commands start at the first step of a sequence
             int currentTo = move.to; // check for chained/combined moves
             for (int j = i + 1; j < seq.Moves.Count; j++)
             {

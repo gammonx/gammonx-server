@@ -1,5 +1,33 @@
 # Game-server baseline findings
 
+## T6 next-action experiment
+
+The table below records the original flat `nextActions` prototype. Current runs of `resolver-response` measure the server's default `moveSequences` encoding, including the single-move wrapper for each destination. `next-action-response` still measures the experimental projection. [Server protocol](../../../../docs/poc/poc.md#movesequences)
+
+With the direct encoding, the 35,370-sequence spread fixture measured 2,561 bytes versus 3,115,575 bytes with full resolution. Fevga opening doubles measured 806 versus 767 bytes. Both measurements include the SignalR JSON envelope.
+
+The benchmark-only candidate replaces the ordered move lists in an active game-state response with distinct legal from/to commands, including combined moves by one checker. A client would need a fresh response after each command to see subsequent choices. The experiment uses the normal board, dice, command fields and SignalR JSON envelope. It measures uncompressed message bytes.
+
+The projection candidate generates the existing full payload, then deduplicates contiguous move prefixes before serialization. The direct candidate builds the payload with move generation disabled and probes reachable endpoints using the server's move resolver. Both sets matched on all 12 fixtures for both colors, including after a playable first step and undo, plus constructed Backgammon bar-entry and bear-off positions. Timed responses use the active white seat. These checks do not exercise a client or establish equivalence on every reachable board.
+
+| Fixture | Full → compact wire bytes | Mean response ms, full / projection / direct | Response allocation KB, full / projection / direct |
+|---|---:|---:|---:|
+| Backgammon opening 1,2 | 2,159 → 847 | 0.063 / 0.062 / 0.065 | 28.3 / 28.9 / 37.4 |
+| Backgammon opening 1,1 | 22,591 → 913 | 0.727 / 0.370 / 0.089 | 239.3 / 178.9 / 51.8 |
+| Backgammon spread 1,1 | 3,115,575 → 1,839 | 114.780 / 89.237 / 1.821 | 31,348.3 / 22,308.3 / 256.4 |
+| Fevga opening 1,1 | 767 → 756 | 0.019 / 0.019 / 0.057 | 15.3 / 15.4 / 49.3 |
+
+Each response measurement includes construction and serialization into a fresh buffer. For the complete spread repository turn, T5 measured 127.62 ms and 33.178 MB. The same-run full-list control measured 131.18 ms and 33.197 MB. Compact projection measured 95.45 ms and 24.124 MB, with the same moves and full generations as the control. The direct resolver was measured only at response level. All 84 shared control measurements reproduced T5 sequence counts and wire sizes. [Raw experiment](t6-actions-off.json) and [T5 control comparison](t6-actions-off.json.comparison.json)
+
+The high-branching results show the benefit of direct resolution for this fixture. Low-branching Fevga positions show why a blanket switch to direct resolution needs a representative workload. Before rollout, measure how often large responses occur, test both seat orientations in the client, and check whether the UI relies on full-turn previews or submits multiple moves between server responses.
+
+Reproduce from the repository root with .NET 10.
+
+```powershell
+$bench = 'src/GammonX/GammonX.Server.Performance'
+dotnet run --project $bench -c Release -- --next-actions on --iterations 30 --warmup 5 --telemetry off --cpu-limit unconstrained-local --memory-limit-mb unconstrained-local --compare "$bench/Baselines/t5-off.json" --output out/performance/direct-hints.json
+```
+
 ## T5 snapshot allocation
 
 The listener-off Release run used five warmups and 30 measured iterations on the T5 working tree. All 84 fixture/stage pairs matched the preceding move-sequence baseline in sequence count and wire size. Cloning the Backgammon spread position fell from 1,832 to 1,304 bytes per operation (28.8%). The full human repository turn allocated 33.18 MB and averaged 127.62 ms, compared with 33.21 MB and 125.14 ms previously. This single local run establishes an allocation baseline for future changes. [T5 capture](t5-off.json) and [stage-by-stage comparison](t5-off.json.comparison.json)

@@ -197,7 +197,7 @@ namespace GammonX.Server.Models
 			}
 
 			var remainingRolls = DiceRolls.GetRemainingRolls();
-			var sequence = BoardService.ResolveMove(BoardModel, isWhite, from, to, remainingRolls);
+			var sequence = BoardService.ResolveMoveSequence(BoardModel, isWhite, from, to, remainingRolls);
 			if (sequence == null)
 			{
 				throw new InvalidOperationException($"No legal move exists from '{from}' to '{to}' with the remaining dice.");

@@ -1,6 +1,6 @@
 # Changelog
 
-## 17.11.2026
+## 24.11.2026
 - Load Test findings
 	- reduce unused board/history allocations on hot paths
 	- omit move sequences and dice rolls for waiting player
@@ -9,6 +9,8 @@
 	- minor improvements in matchmaking
 	- made turn timer more robust. Invented concept of obligated turn actions
 	- made bot turn recovery more robust. Added bot turn recovery hosted service
+	- more improvements on memory allocation and GC pressure
+	- send direct single and combined move hints by default using the existing game-state contract
 
 ## 15.11.2026
 - ranked matchmaking

@@ -69,7 +69,7 @@ internal sealed record RunSimulationModel(string Name, GameModus Variant, int Di
 
     // The complete repository command path, including per-command leases/commits and
     // actual SignalR serialization to both recipients. Hosting, timers and transport are excluded.
-    internal Action PrepareTurn()
+    internal Action PrepareTurn(bool nextActions = false)
     {
         var repository = CreateRepository(rolled: false);
         var protocol = CreateProtocol();
@@ -122,7 +122,7 @@ internal sealed record RunSimulationModel(string Name, GameModus Variant, int Di
                     {
                         nextMove = payload.MoveSequences.FirstOrDefault()?.Moves[0];
                     }
-                    protocol.WriteMessage(Message(payload), output);
+                    protocol.WriteMessage(nextActions ? NextActionExperiment.Message(payload) : Message(payload), output);
                 }
             }
         };

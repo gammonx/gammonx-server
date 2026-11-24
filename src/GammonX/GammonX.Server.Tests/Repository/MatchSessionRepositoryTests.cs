@@ -17,6 +17,43 @@ namespace GammonX.Server.Tests.Repository
         private readonly QueueKey _defaultKey = new(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame);
 
         [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task DirectHintsHighlightSingleAndCombinedDestinationsForEitherSeat(bool secondSeat)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+            var match = lease.Create(new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame));
+            var first = new PlayerConnection(Guid.NewGuid(), "one");
+            var second = new PlayerConnection(Guid.NewGuid(), "two");
+            var active = secondSeat ? second : first;
+            match.JoinSession(first);
+            match.JoinSession(second);
+            match.Player1.AcceptNextGame();
+            match.Player2.AcceptNextGame();
+            var game = match.StartMatch(active.Id);
+            Array.Clear(game.BoardModel.Fields);
+            game.BoardModel.Fields[secondSeat ? 18 : 5] = secondSeat ? 15 : -15;
+            game.BoardModel.Fields[secondSeat ? 0 : 23] = secondSeat ? -15 : 15;
+            game.SetDiceRolls([1, 2], !secondSeat);
+            Assert.True(lease.Commit());
+
+            // Act
+            var hints = repo.Get(match.Id)!.GetGameState(active.Id).MoveSequences;
+            var moves = hints.Select(sequence => Assert.Single(sequence.Moves)).ToArray();
+
+            // Assert
+            Assert.All(moves, move => Assert.Equal(5, move.From));
+            Assert.Equal(new[] { 6, 7, 8 }, moves.Select(move => move.To).Order().ToArray());
+            var from = secondSeat ? 18 : 5;
+            var to = secondSeat ? 15 : 8;
+            match.MoveCheckers(active.Id, from, to);
+            Assert.Empty(game.DiceRolls.GetRemainingRolls());
+            Assert.Empty(match.GetGameState(active.Id).MoveSequences);
+        }
+
+        [Theory]
         [InlineData(MatchVariant.Backgammon)]
         [InlineData(MatchVariant.Tavla)]
         [InlineData(MatchVariant.Tavli)]
@@ -28,7 +65,7 @@ namespace GammonX.Server.Tests.Repository
             var historyEvent = new Mock<IHistoryEvent>();
             var cloneable = historyEvent.As<ICloneable>();
             cloneable.Setup(value => value.Clone()).Returns(historyEvent.Object);
-            await using (var lease = await repo.AcquireStateAsync(id))
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
                 match.JoinSession(new PlayerConnection(Guid.NewGuid(), "one"));
@@ -46,7 +83,7 @@ namespace GammonX.Server.Tests.Repository
             cloneable.Invocations.Clear();
 
             // Act
-            await using (var lease = await repo.AcquireStateAsync(id))
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 Assert.NotNull(lease.Get());
                 Assert.True(lease.Commit());
@@ -77,7 +114,7 @@ namespace GammonX.Server.Tests.Repository
             var repo = CreateRepo();
             var id = Guid.NewGuid();
             var playerId = Guid.NewGuid();
-            await using (var lease = await repo.AcquireStateAsync(id))
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
                 match.JoinSession(new PlayerConnection(playerId, "one"));
@@ -98,7 +135,7 @@ namespace GammonX.Server.Tests.Repository
             }
 
             // Act
-            await using var query = await repo.AcquireStateAsync(id);
+            await using var query = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var game = query.ReadGameState(playerId)!;
             var matchState = query.ReadMatchState(playerId)!;
             var originalField = game.BoardState.Fields[0];
@@ -134,7 +171,7 @@ namespace GammonX.Server.Tests.Repository
             var id = Guid.NewGuid();
             var player1 = Guid.NewGuid();
             var player2 = Guid.NewGuid();
-            await using (var setup = await repo.AcquireStateAsync(id))
+            await using (var setup = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 var match = setup.Create(_defaultKey);
                 match.JoinSession(new PlayerConnection(player1, "one"));
@@ -143,7 +180,7 @@ namespace GammonX.Server.Tests.Repository
             }
 
             // Act: scalar reads do not load a working copy; subsequent updates are visible.
-            var lease = await repo.AcquireStateAsync(id);
+            var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             Assert.Equal(player1, lease.GetCallingPlayerId("one"));
             Assert.Equal(player2, lease.GetOtherPlayerId(player1));
             Assert.Equal("two", lease.GetPlayerConnectionId(player2));
@@ -173,7 +210,7 @@ namespace GammonX.Server.Tests.Repository
             var repo = CreateRepo();
             var id = Guid.NewGuid();
             var player = Guid.NewGuid();
-            await using (var setup = await repo.AcquireStateAsync(id))
+            await using (var setup = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 var match = setup.Create(_defaultKey);
                 match.JoinSession(new PlayerConnection(player, "one"));
@@ -187,7 +224,7 @@ namespace GammonX.Server.Tests.Repository
             }
 
             // Act
-            await using (var query = await repo.AcquireStateAsync(id))
+            await using (var query = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
             {
                 Assert.NotNull(query.ReadGameState(player));
                 Assert.NotNull(query.ReadMatchState(player));
@@ -203,9 +240,9 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var first = firstLease.Create(_defaultKey);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             Assert.False(waitingLease.IsCompleted);
@@ -230,7 +267,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var owner = await repo.AcquireStateAsync(id);
+            await using var owner = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             owner.Create(_defaultKey);
             using var cancellation = new CancellationTokenSource();
             var canceled = repo.AcquireStateAsync(id, cancellation.Token);
@@ -260,15 +297,15 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             firstLease.Create(_defaultKey);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             Assert.True(firstLease.TryRemove());
             await firstLease.DisposeAsync();
             var secondLease = await waitingLease.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            var thirdLease = repo.AcquireStateAsync(id);
+            var thirdLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Null(secondLease.Get());
@@ -282,10 +319,10 @@ namespace GammonX.Server.Tests.Repository
         {
             // Arrange
             var repo = CreateRepo();
-            await using var firstLease = await repo.AcquireStateAsync(Guid.NewGuid());
+            await using var firstLease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
             // Act
-            var secondLease = repo.AcquireStateAsync(Guid.NewGuid());
+            var secondLease = repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(secondLease.IsCompletedSuccessfully);
@@ -298,7 +335,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             var created = lease.Create(_defaultKey);
@@ -317,7 +354,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             var session = lease.GetOrCreate(_defaultKey);
@@ -333,7 +370,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act / Assert
             Assert.Null(lease.Get());
@@ -349,7 +386,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
 
             // Act
@@ -368,7 +405,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
 
             // Act
@@ -386,7 +423,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
             session.Player1.SetStartDiceRoll(2);
 
@@ -406,11 +443,11 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var oldSnapshot = firstLease.Create(_defaultKey);
             await firstLease.DisposeAsync();
             var detached = repo.Get(id)!;
-            await using var currentLease = await repo.AcquireStateAsync(id);
+            await using var currentLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             currentLease.Get()!.Player1.SetStartDiceRoll(2);
 
             // Act
@@ -429,11 +466,11 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var oldLease = await repo.AcquireStateAsync(id);
+            var oldLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             oldLease.Create(_defaultKey);
             await oldLease.DisposeAsync();
-            var currentLease = await repo.AcquireStateAsync(id);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var currentLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             await oldLease.DisposeAsync();
@@ -460,13 +497,13 @@ namespace GammonX.Server.Tests.Repository
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
-                await using var lease = await repo.AcquireStateAsync(id);
+                await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
                 lease.Create(_defaultKey).Player1.AcceptNextGame();
                 throw new InvalidOperationException("Failed command.");
             });
 
             // Assert
-            await using var next = await repo.AcquireStateAsync(id).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await using var next = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.False(next.Get()!.Player1.NextGameAccepted);
         }
 
@@ -504,7 +541,7 @@ namespace GammonX.Server.Tests.Repository
             var repo = CreateRepo();
             var player = new PlayerConnection(Guid.NewGuid());
             player.SetConnectionId("human");
-            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid());
+            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
             session.JoinSession(player);
             Assert.True(lease.Commit());

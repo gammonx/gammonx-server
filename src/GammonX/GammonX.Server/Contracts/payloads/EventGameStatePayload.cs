@@ -14,6 +14,8 @@ namespace GammonX.Server.Contracts
 	[DataContract]
 	public sealed class EventGameStatePayload : EventPayloadBase
 	{
+		private const bool FullMoveSequences = false;
+
 		[DataMember(Name = "modus")]
 		public GameModus Modus { get; set; }
 
@@ -39,7 +41,8 @@ namespace GammonX.Server.Contracts
 		public DiceRollContract[] DiceRolls { get; set; }
 
         /// <summary>
-        /// Gets or sets legal move sequences for the recipient. Empty for a waiting player.
+        /// Gets or sets the recipients move hints. Direct hints contain one legal command per sequence.
+        /// A waiting player receives an empty array.
         /// </summary>
 		[DataMember(Name = "moveSequences")]
 		public MoveSequenceModel[] MoveSequences { get; set; }
@@ -62,18 +65,34 @@ namespace GammonX.Server.Contracts
         /// <param name="inverted">Whether to project the board for the second seat.</param>
         /// <param name="requiresMoves">Whether the active recipient needs legal sequences when a move is due.</param>
         /// <param name="allowedCommands">Commands available to this recipient.</param>
+        /// <param name="fullMoveSequences">Generate complete turn orderings for this projection.</param>
         /// <returns>A detached game state suitable for delivery to the player.</returns>
         internal static EventGameStatePayload ForPlayer(
             IGameSessionModel model, 
 			Guid playerId, 
 			bool inverted, 
 			bool requiresMoves, 
-			string[] allowedCommands)
+			string[] allowedCommands,
+            bool fullMoveSequences = FullMoveSequences)
         {
             var active = model.ActivePlayer == playerId;
 			var phaseFits = model.Phase is GamePhase.Rolling or GamePhase.Moving;
 			// we send the legal moves in the game state if player is active, it is required and the game phase is fitting
-            var moves = active && requiresMoves && phaseFits ? model.GetLegalMoveSequences(!inverted) : null;
+            MoveSequences? moves = null;
+            if (active && requiresMoves && phaseFits)
+            {
+				if (fullMoveSequences)
+				{
+					// we send the full blown move seqeuences
+					moves = model.GetLegalMoveSequences(!inverted);
+				}
+				else
+				{
+					// we send the already resolved distinct from/to moves
+					moves = model.ResolveMoveSequences(!inverted);
+				}
+            }
+
             var payload = Create(model, moves, inverted, allowedCommands);
             
 			if (!active)

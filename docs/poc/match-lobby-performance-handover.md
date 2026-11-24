@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 through T5 complete locally. T6 pending. T7 in progress.
+- Status: T0 through T5 complete locally. T6 direct hints implemented and tested as the game-state default. T7 in progress.
 
 ## Objective and scope
 
@@ -323,6 +323,8 @@ Local Release measurements used one warmup and three measured repetitions per fi
 
 ### T6: reduce move enumeration and wire payload size
 
+The [next-action experiment](../../src/GammonX/GammonX.Server.Performance/Baselines/README.md#t6-next-action-experiment) compared full sequences, compact projection, and direct action resolution against T5. Its experimental flat response shrank from 3,115,575 to 1,839 bytes on the spread fixture. The server now uses direct resolution by default using one move per sequence in the existing contract. Full resolution is a server code option. [Move semantics](poc.md#movesequences)
+
 Current behavior: gameplay retains every legal ordering and recomputes remaining sequences after individual moves/undo. The active recipient receives the full ordering list. Equal-dice duplicate subtrees are already skipped; avoid presenting that existing optimization as new work.
 
 Implementation in two independently reviewable stages:
@@ -337,7 +339,7 @@ Implementation in two independently reviewable stages:
 **Stage B: introduce a compact client contract.**
 
 - Design a versioned/capability-negotiated payload of legal next actions or a compact continuation graph, together with the client code that consumes it. The client repository/consumer was not reviewed in this analysis; inspect it before implementing Stage B.
-- Keep current clients on the existing DTO until they opt into the new representation. Continue server-side validation of every submitted move.
+- Keep the existing DTO for direct move hints. Continue server-side validation of every submitted move.
 - Preserve the ability to express combined moves, undo, maximum dice usage, higher-die constraints, bearing off, bar entry, hits, and variant-specific rules.
 - Do not directly substitute `GetUniqueLegalMoveSequences`: equal final boards can have different intermediate moves that gameplay needs.
 

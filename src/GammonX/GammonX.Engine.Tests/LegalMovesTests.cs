@@ -49,7 +49,7 @@ namespace GammonX.Engine.Tests
                     {
                         foreach (var to in destinations)
                         {
-                            var result = service.ResolveMove(board, white, from, to, rolls);
+                            var result = service.ResolveMoveSequence(board, white, from, to, rolls);
                             Assert.Equal(prefixes.Contains((from, to)), result != null);
                             if (result != null)
                             {
@@ -77,7 +77,7 @@ namespace GammonX.Engine.Tests
             fields[1] = lowerBlocked ? 2 : 1;
             board.SetFields(fields);
 
-            var result = service.ResolveMove(board, true, 0, 3, 2, 1);
+            var result = service.ResolveMoveSequence(board, true, 0, 3, 2, 1);
 
             Assert.NotNull(result);
             Assert.Equal(lowerBlocked ? new[] { 2, 1 } : new[] { 1, 2 }, result.UsedDices);
@@ -95,8 +95,8 @@ namespace GammonX.Engine.Tests
             fields[3] = fields[6] = 2;
             board.SetFields(fields);
 
-            Assert.Null(service.ResolveMove(board, true, 0, 2, 1, 2));
-            Assert.NotNull(service.ResolveMove(board, true, 0, 1, 1, 2));
+            Assert.Null(service.ResolveMoveSequence(board, true, 0, 2, 1, 2));
+            Assert.NotNull(service.ResolveMoveSequence(board, true, 0, 1, 1, 2));
             Assert.Equal(fields, board.Fields);
         }
 
@@ -113,7 +113,7 @@ namespace GammonX.Engine.Tests
             fields[3] = 2;
             board.SetFields(fields);
 
-            var result = service.ResolveMove(board, true, 0, destination, dice);
+            var result = service.ResolveMoveSequence(board, true, 0, destination, dice);
 
             Assert.NotNull(result);
             Assert.All(result.UsedDices, die => Assert.Equal(1, die));
@@ -129,7 +129,7 @@ namespace GammonX.Engine.Tests
             fields[23] = -1;
             board.SetFields(fields);
 
-            var result = service.ResolveMove(board, true, 23, BoardPositions.BearOffWhite, 1, 2);
+            var result = service.ResolveMoveSequence(board, true, 23, BoardPositions.BearOffWhite, 1, 2);
 
             Assert.NotNull(result);
             Assert.Equal(new[] { 2 }, result.UsedDices);

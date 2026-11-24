@@ -108,7 +108,7 @@ namespace GammonX.Engine.Services
         }
 
         /// <inheritdoc />
-        public MoveSequenceModel? ResolveMove(IBoardModel model, bool isWhite, int from, int to, params int[] rolls)
+        public MoveSequenceModel? ResolveMoveSequence(IBoardModel model, bool isWhite, int from, int to, params int[] rolls)
         {
             if (rolls.Length == 0 || !GetMoveableCheckerFields(model, isWhite).Contains(from))
             {

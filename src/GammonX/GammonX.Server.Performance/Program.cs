@@ -19,7 +19,7 @@ if (args.FirstOrDefault() == "nn")
     return await NeuralCommands.RunAsync(args[1..]);
 }
 
-var supportedOptions = new HashSet<string>(["--output", "--iterations", "--warmup", "--telemetry", "--compare", "--cpu-limit", "--memory-limit-mb", "--bot-turns"]);
+var supportedOptions = new HashSet<string>(["--output", "--iterations", "--warmup", "--telemetry", "--compare", "--cpu-limit", "--memory-limit-mb", "--bot-turns", "--next-actions"]);
 var options = new Dictionary<string, string>(StringComparer.Ordinal);
 // we parse the cli arguments
 for (var i = 0; i < args.Length; i += 2)
@@ -51,6 +51,12 @@ var botTurns = options.GetValueOrDefault("--bot-turns", "off") switch
     _ => throw new ArgumentException("--bot-turns must be on or off.")
 };
 var outputPath = Path.GetFullPath(options.GetValueOrDefault("--output", "baseline.json"));
+var nextActions = options.GetValueOrDefault("--next-actions", "off") switch
+{
+    "on" when !botTurns => true,
+    "off" => false,
+    _ => throw new ArgumentException("--next-actions supports on or off for standard fixtures.")
+};
 if (options.TryGetValue("--compare", out var comparisonPath)
     && string.Equals(Path.GetFullPath(comparisonPath), outputPath, StringComparison.OrdinalIgnoreCase))
 {
@@ -88,6 +94,10 @@ foreach (var variant in new[] { GameModus.Backgammon, GameModus.Portes, GameModu
 }
 fixtures.Add(new RunSimulationModel("Backgammon-spread-11", GameModus.Backgammon, 1, 1, Spread: true));
 fixtures.Add(new RunSimulationModel("Backgammon-history1000-12", GameModus.Backgammon, 1, 2, HistoryEvents: 1000));
+if (nextActions)
+{
+    NextActionExperiment.VerifySpecialPositions(fixtures[0]);
+}
 
 // we initialize some metrics counter
 var results = new List<Sample>();
@@ -113,7 +123,9 @@ foreach (var fixture in fixtures)
     var unrolled = fixture.CreateGame(false);
     var game = fixture.CreateGame(true);
     var rolls = fixture.Rolls;
-    var payload = game.ToPayload(RunSimulationModel.Player, [], false);
+    GammonX.Server.Contracts.EventGameStatePayload FullPayload() =>
+        GammonX.Server.Contracts.EventGameStatePayload.ForPlayer(game, RunSimulationModel.Player, false, true, [], fullMoveSequences: true);
+    var payload = FullPayload();
     var protocol = RunSimulationModel.CreateProtocol();
     var message = RunSimulationModel.Message(payload);
     var wireBytes = protocol.GetMessageBytes(botTurns
@@ -135,7 +147,7 @@ foreach (var fixture in fixtures)
         return () => working.MoveCheckers(RunSimulationModel.Player, move.From, move.To, true);
     });
     RunSimulation("clone", () => () => GC.KeepAlive(((ICloneable)game).Clone()));
-    RunSimulation("payload", () => () => GC.KeepAlive(game.ToPayload(RunSimulationModel.Player, [], false)));
+    RunSimulation("payload", () => () => GC.KeepAlive(FullPayload()));
     RunSimulation("project-generated", () => () => GC.KeepAlive(GammonX.Server.Contracts.EventGameStatePayload.Create(game, sequences, false)));
     RunSimulation("serialize", () =>
     {
@@ -149,14 +161,32 @@ foreach (var fixture in fixtures)
     });
     if (fixture.Variant == GameModus.Backgammon)
     {
-        RunSimulation("repository-turn", fixture.PrepareTurn);
+        RunSimulation("repository-turn", () => fixture.PrepareTurn());
         var activeQuery = fixture.PrepareQuery(RunSimulationModel.Player);
         RunSimulation("active-query", () => activeQuery);
         var waitingQuery = fixture.PrepareQuery(RunSimulationModel.Opponent);
         RunSimulation("waiting-query", () => waitingQuery);
     }
 
-    void RunSimulation(string stage, Func<Action> prepare)
+    if (nextActions)
+    {
+        NextActionExperiment.Verify(game, true);
+        NextActionExperiment.Verify(game, false);
+        var compactBytes = protocol.GetMessageBytes(NextActionExperiment.Message(payload)).Length;
+        RunSimulation("full-response", () => () => protocol.WriteMessage(
+            RunSimulationModel.Message(FullPayload()), new ArrayBufferWriter<byte>()));
+        RunSimulation("next-action-response", () => () => protocol.WriteMessage(
+            NextActionExperiment.Message(FullPayload()), new ArrayBufferWriter<byte>()), compactBytes);
+        RunSimulation("resolver-response", () => () => protocol.WriteMessage(
+            NextActionExperiment.DirectMessage(game), new ArrayBufferWriter<byte>()),
+            protocol.GetMessageBytes(NextActionExperiment.DirectMessage(game)).Length);
+        if (fixture.Variant == GameModus.Backgammon)
+        {
+            RunSimulation("next-action-turn", () => fixture.PrepareTurn(true), compactBytes);
+        }
+    }
+
+    void RunSimulation(string stage, Func<Action> prepare, int? experimentalWireBytes = null)
     {
         for (var i = 0; i < warmup; i++)
         {
@@ -195,17 +225,17 @@ foreach (var fixture in fixtures)
             observer.Start();
             probe();
         }
-        if ((stage is "move-command" or "bot-turn-deferred" or "waiting-query" && generations != 0)
-            || (stage is "bot-turn-fallback" or "active-query" && generations != 1))
+        if ((stage is "move-command" or "bot-turn-deferred" or "waiting-query" or "active-query" && generations != 0)
+            || (stage is "bot-turn-fallback" && generations != 1))
         {
             throw new InvalidOperationException($"Unexpected full generation count for {stage}: {generations}.");
         }
         var sample = new Sample(fixture.Name, fixture.Variant.ToString(), rolls, game.BoardModel.History.Events.Count,
             payload.MoveSequences.Length, stage, iterations, warmup, times.Average(), times[(int)Math.Ceiling(iterations * 0.95) - 1],
-            (double)bytes / iterations, wireBytes, generations, leaseMs);
+            (double)bytes / iterations, experimentalWireBytes ?? wireBytes, generations, leaseMs);
         results.Add(sample);
         
-        Console.WriteLine(FormattableString.Invariant($"{sample.Fixture,-30} {stage,-16} {sample.MeanMs,10:F3} ms {sample.AllocatedBytes,14:F0} B/op; sequences={sample.Sequences}; wire={wireBytes}"));
+        Console.WriteLine(FormattableString.Invariant($"{sample.Fixture,-30} {stage,-16} {sample.MeanMs,10:F3} ms {sample.AllocatedBytes,14:F0} B/op; sequences={sample.Sequences}; wire={sample.WireBytes}"));
     }
 }
 
@@ -244,6 +274,7 @@ var metadata = new
     Configuration = configuration,
     Telemetry = telemetry,
     BotTurns = botTurns,
+    NextActions = nextActions,
     ServerGc = GCSettings.IsServerGC,
     TieredCompilation = AppContext.GetData("System.Runtime.TieredCompilation")?.ToString(),
     ServerAssembly = typeof(GammonX.Server.MatchLobbyHub).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,

@@ -94,7 +94,7 @@ namespace GammonX.Engine.Services
         /// <param name="to">Requested destination or bear-off position.</param>
         /// <param name="rolls">Unused dice for the current turn, including each remaining double.</param>
         /// <returns>The ordered steps and the die spent on each, or <see langword="null"/> if the command is illegal.</returns>
-        MoveSequenceModel? ResolveMove(IBoardModel model, bool isWhite, int from, int to, params int[] rolls);
+        MoveSequenceModel? ResolveMoveSequence(IBoardModel model, bool isWhite, int from, int to, params int[] rolls);
 
         /// <summary>
         /// Checks whether any remaining die can be played from this position.

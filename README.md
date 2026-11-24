@@ -13,6 +13,8 @@ Key endpoints:
 - `POST /game/matches/queues/{queueId}/cancel` — cancel a queue entry
 - SignalR hub at `/matchhub` for real-time game state
 
+For the selected checker, the server sends each legal single or combined command as one entry in `moveSequences`. [Move hints and client examples](docs/poc/poc.md#movesequences)
+
 ## GammonX.Mars
 Self-trained neural net AI for supported game modi. Feature extraction converts board state into self-crafted positional features (pip counts, blot/anchor counts, hit probabilities, etc.) and a TD style board encoding. Inference runs via **TorchSharp**.
 
