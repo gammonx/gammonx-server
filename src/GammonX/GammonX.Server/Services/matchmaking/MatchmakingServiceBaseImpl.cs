@@ -1,5 +1,6 @@
 ﻿using GammonX.Models.Enums;
 
+using GammonX.Server.Bot;
 using GammonX.Server.Models;
 
 using System.Collections.Concurrent;
@@ -26,7 +27,7 @@ namespace GammonX.Server.Services
 		protected readonly ConcurrentDictionary<QueueKey, ConcurrentQueue<Guid>> _modeQueues = new();
 
 		/// <summary>
-		/// Publish and remove all aliases under one gate so readers cannot observe partial registration.
+		/// Serializes lobby publication, queue cancellation and expiry for this mode.
 		/// </summary>
 		private readonly Lock _lobbyGate = new();
 
@@ -53,10 +54,12 @@ namespace GammonX.Server.Services
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
 
 		// <inheritdoc />
-		public Task LeaveQueueAsync(QueueEntry entry)
+		public virtual Task<bool> LeaveQueueAsync(QueueEntry entry)
 		{
-			LeaveQueue(entry);
-			return Task.FromResult(0);
+			lock (_lobbyGate)
+			{
+				return Task.FromResult(_queueEntries.TryRemove(entry.Id, out _));
+			}
 		}
 
 		public MatchmakingServiceBaseImpl(PlayerConnectionRepository playerConnectionRepository)
@@ -68,9 +71,12 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public void TouchQueueEntry(Guid queueEntryId)
 		{
-			if (_queueEntries.TryGetValue(queueEntryId, out var entry))
+			lock (_lobbyGate)
 			{
-				entry.LastSeenUtc = DateTime.UtcNow;
+				if (_queueEntries.TryGetValue(queueEntryId, out var entry))
+				{
+					entry.LastSeenUtc = DateTime.UtcNow;
+				}
 			}
 		}
 
@@ -81,12 +87,16 @@ namespace GammonX.Server.Services
 			foreach (var (queueId, entry) in _queueEntries)
 			{
 				if (now - entry.LastSeenUtc <= timeout)
-					continue;
-
-				// double-check at removal time
-				if (_queueEntries.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
 				{
-					_queueEntries.TryRemove(queueId, out _);
+					continue;
+				}
+
+				lock (_lobbyGate)
+				{
+					if (now - entry.LastSeenUtc > timeout)
+					{
+						_queueEntries.TryRemove(queueId, out _);
+					}
 				}
 			}
 		}
@@ -197,10 +207,58 @@ namespace GammonX.Server.Services
 			modeQueue.Enqueue(entry.Id);
 		}
 
-		protected virtual internal void LeaveQueue(QueueEntry entry)
-		{
-			_queueEntries.TryRemove(entry.Id, out _);
-			// the mode queue is automatically cleanup while matching opponents for match lobbies
-		}
+        protected void MatchQueuedEntries(QueueKey lobbyKey, QueueEntry first, QueueEntry? second = null)
+        {
+			// We expect the second entry to be null in caase of a bot game
+            QueueEntry[] entries = second == null ? [first] : [first, second];
+            lock (_lobbyGate)
+            {
+                try
+                {
+                    // Cancellation or expiry can win after the matcher dequeues the IDs.
+                    if (entries.Any(entry => !_queueEntries.ContainsKey(entry.Id)))
+                    {
+                        return;
+                    }
+
+					var matchId = Guid.NewGuid();
+					var firstPlayer = _playerConnectionRepository.GetOrCreate(first.PlayerId);
+
+                    var lobby = new MatchLobby(matchId, lobbyKey, firstPlayer);
+                    
+					if (second != null)
+                    {
+						var secondPlayer = _playerConnectionRepository.GetOrCreate(second.PlayerId);
+                        lobby.Join(secondPlayer);
+                    }
+                    else
+                    {
+						var botPlayerId = WellKnownBotPlayers.GetBotPlayerId(lobbyKey.BotLevel);
+                        var bot = _playerConnectionRepository.GetOrCreate(botPlayerId);
+                        bot.SetConnectionId(WellKnownBotPlayers.ConnectionId);
+                        lobby.Join(bot);
+                    }
+
+                    AddMatchLobby(lobby, entries);
+
+					// We remove the queue entries only after the matchlobby was published
+                    foreach (var entry in entries)
+                    {
+                        _queueEntries.TryRemove(entry.Id, out _);
+                    }
+                }
+                finally
+                {
+                    // A failed pairing must return every still-pending ID to its original queue.
+                    foreach (var entry in entries)
+                    {
+                        if (_queueEntries.ContainsKey(entry.Id))
+                        {
+                            _modeQueues[entry.QueueKey].Enqueue(entry.Id);
+                        }
+                    }
+                }
+            }
+        }
 	}
 }

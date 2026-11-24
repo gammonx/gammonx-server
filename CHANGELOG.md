@@ -1,6 +1,11 @@
 # Changelog
 
 ## 24.11.2026
+- fixed `normal` matchmaking regression
+- cancellation support for match lobby cleanup worker
+- publish match lobby before removing queue entries
+
+## 24.11.2026
 - Load Test findings
 	- reduce unused board/history allocations on hot paths
 	- omit move sequences and dice rolls for waiting player

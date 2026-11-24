@@ -41,6 +41,7 @@ namespace GammonX.Server.Services
             // use default glicko2 rating if player has no rating yet
             var relevantRating = ratingResponse?.Rating ?? 1200;
 
+            // we normalize the bot level here for the ranked queue
             var entry = new QueueEntry(Guid.NewGuid(), playerId, queueKey with { BotLevel = BotLevel.Unknown }, DateTime.UtcNow, relevantRating);
 
             Enqueue(entry);
@@ -72,76 +73,35 @@ namespace GammonX.Server.Services
                         // We first try to match to a human player
                         if (TryFindRankedPartner(queueKey, entryA, out var entryB))
                         {
-                            var claimedA = _queueEntries.TryRemove(entryA.Id, out _);
-                            var claimedB = _queueEntries.TryRemove(entryB.Id, out _);
-                            if (!claimedA || !claimedB)
-                            {
-                                if (claimedA)
-                                {
-                                    Enqueue(entryA);
-                                }
-                                if (claimedB)
-                                {
-                                    Enqueue(entryB);
-                                }
-                                continue;
-                            }
-
-                            var tmpQueueKey = queueKey with { BotLevel = BotLevel.Unknown };
-                            var player1Conn = _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                            var player2Conn = _playerConnectionRepository.GetOrCreate(entryB.PlayerId);
-                            var matchId = Guid.NewGuid();
-                            var lobby = new MatchLobby(matchId, tmpQueueKey, player1Conn);
-
-                            lobby.Join(player2Conn);
-                            AddMatchLobby(lobby, entryA, entryB);
+                            MatchQueuedEntries(queueKey with { BotLevel = BotLevel.Unknown }, entryA, entryB);
 
                             continue;
                         }
 
                         var ratingKey = queueKey with { BotLevel = BotLevel.Unknown };
 
-                        // We try then to match the current searching player against a fitting bot opponent
-                        try
+                        if (!ratingsByKey.TryGetValue(ratingKey, out var ratings))
                         {
-                            if (!ratingsByKey.TryGetValue(ratingKey, out var ratings))
+                            try
                             {
-                                // We update the cache bot level ranked ratings
                                 ratings = await GetBotRatingsAsync(ratingKey);
                                 ratingsByKey[ratingKey] = ratings;
                             }
-
-                            var level = ratings.Length == 0
-                                ? GetFallbackBotLevel(entryA.CurrentRating)
-                                : ratings.OrderBy(rating => Math.Abs(rating.Rating - entryA.CurrentRating)).First().Level;
-
-                            // Cancellation and expiry can remove the entry while rating reads are in flight.
-                            if (!_queueEntries.TryRemove(entryA.Id, out _))
+                            catch
                             {
-                                continue;
-                            }
-
-                            var bot = _playerConnectionRepository.GetOrCreate(WellKnownBotPlayers.GetBotPlayerId(level));
-                            // We use an empty guid for the bot connection id as well known value
-                            bot.SetConnectionId(WellKnownBotPlayers.ConnectionId);
-                            var matchId = Guid.NewGuid();
-                            // We set the bot level for this ranked
-                            var tmpRatingKey = ratingKey with { BotLevel = level };
-                            var player1Conn =  _playerConnectionRepository.GetOrCreate(entryA.PlayerId);
-                            var lobby = new MatchLobby(matchId, tmpRatingKey, player1Conn);
-
-                            lobby.Join(bot);
-                            AddMatchLobby(lobby, entryA);
-                        }
-                        catch
-                        {
-                            if (_queueEntries.ContainsKey(entryA.Id))
-                            {
+                                // Retry the dequeued player on the next pass if the rating service failed.
                                 queue.Enqueue(entryA.Id);
+                                throw;
                             }
-
-                            throw;
                         }
+
+                        
+                        var level = ratings.Length == 0
+                            ? GetFallbackBotLevel(entryA.CurrentRating)
+                            : ratings.OrderBy(rating => Math.Abs(rating.Rating - entryA.CurrentRating)).First().Level;
+                        
+                        // We try to match the searching player with an equivalent bot player
+                        MatchQueuedEntries(ratingKey with { BotLevel = level }, entryA);
                     }
                 }
             }

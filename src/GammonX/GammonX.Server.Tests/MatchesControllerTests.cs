@@ -2,15 +2,18 @@
 using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
+using GammonX.Server.Controllers;
 using GammonX.Server.Models;
 using GammonX.Server.Services;
 using GammonX.Server.Tests.Utils;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 
@@ -140,15 +143,16 @@ namespace GammonX.Server.Tests
 		}
 
 		[Theory]
-		[InlineData(MatchModus.Normal)]
-		[InlineData(MatchModus.Ranked)]
-		public async Task TwoPlayersCanJoinAndCreateLobbyAsync(MatchModus modus)
+		[InlineData(MatchModus.Normal, null)]
+		[InlineData(MatchModus.Normal, BotLevel.Hard)]
+		[InlineData(MatchModus.Ranked, BotLevel.Hard)]
+		public async Task TwoPlayersCanJoinAndCreateLobbyAsync(MatchModus modus, BotLevel? secondPlayerBotLevel)
 		{
 			var client = _factory.CreateClient();
 			var matchmakingService = _serviceProvider.GetRequiredKeyedService<IMatchmakingService>(modus);
 				
 			var player1 = CreatePlayer(_player1Id, MatchVariant.Backgammon, modus);
-			var player2 = CreatePlayer(_player2Id, MatchVariant.Backgammon, modus);
+			var player2 = player1 with { PlayerId = _player2Id, BotLevel = secondPlayerBotLevel };
 			// join player 1
 			var response1 = await client.PostAsJsonAsync("/game/api/matches/join", player1, TestContext.Current.CancellationToken);
 			var resultJson1 = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
@@ -180,22 +184,17 @@ namespace GammonX.Server.Tests
 
 			Assert.NotNull(joinPayload1.QueueId);
 			Assert.NotNull(joinPayload2.QueueId);
-			RequestQueueEntryPayload? result1;
-			RequestQueueEntryPayload? result2;
-			do
+			var elapsed = Stopwatch.StartNew();
+			var result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
+			while (result1.Status == QueueEntryStatus.WaitingForOpponent && elapsed.Elapsed < TimeSpan.FromSeconds(10))
 			{
+				await Task.Delay(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken);
 				result1 = await client.PollAsync(player1.PlayerId, joinPayload1.QueueId.Value, modus);
 			}
-			while (result1.Status == QueueEntryStatus.WaitingForOpponent);
 
-			do
-			{
-				result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
-			}
-			while (result2.Status == QueueEntryStatus.WaitingForOpponent);
-
-			Assert.NotNull(result1);
-			Assert.NotNull(result2);
+			var result2 = await client.PollAsync(player2.PlayerId, joinPayload2.QueueId.Value, modus);
+			Assert.Equal(QueueEntryStatus.OpponentFound, result1.Status);
+			Assert.Equal(QueueEntryStatus.OpponentFound, result2.Status);
 			Assert.Equal(result1.MatchId, result2.MatchId);
 			var matchId = result1.MatchId;
 			Assert.NotNull(matchId);
@@ -203,6 +202,7 @@ namespace GammonX.Server.Tests
 			var matchLobbyCreated = matchmakingService.TryFindMatchLobby(matchId.Value, out var lobby);
 			Assert.NotNull(lobby);
 			Assert.True(matchLobbyCreated);
+			Assert.Equal(BotLevel.Unknown, lobby.QueueKey.BotLevel);
 
 			Assert.True(matchmakingService.TryRemoveMatchLobby(matchId.Value));
 			Assert.False(matchmakingService.TryFindMatchLobby(matchId.Value, out var _));
@@ -257,6 +257,50 @@ namespace GammonX.Server.Tests
             await matchmakingService.JoinQueueAsync(player1.PlayerId, queueKey);
             await matchmakingService.JoinQueueAsync(player2.PlayerId, queueKey);
         }
+
+		[Theory]
+		[InlineData(false)]
+		[InlineData(true)]
+		public async Task QueueRequestObservesLobbyPublishedDuringLookup(bool cancel)
+		{
+			// Arrange
+			var mode = new MatchDuringQueueLookup(publishAfterRead: cancel);
+			using var provider = new ServiceCollection().AddKeyedSingleton<IMatchmakingService>(MatchModus.Normal, mode).BuildServiceProvider();
+			var controller = new MatchesController(provider);
+			var key = new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.CashGame);
+			var first = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+			var second = await mode.JoinQueueAsync(Guid.NewGuid(), key);
+			var request = new StatusRequest(first.PlayerId, MatchModus.Normal);
+
+			// Act
+			var result = cancel ? await controller.CancelAsync(first.Id, request) : controller.GetStatusAsync(first.Id, request);
+
+			// Assert
+			Assert.True(mode.TryFindMatchLobby(second.Id, out var lobby));
+			Assert.NotNull(lobby);
+			if (cancel)
+			{
+				var error = Assert.IsType<ResponseContract<RequestErrorPayload>>(Assert.IsType<BadRequestObjectResult>(result).Value);
+				Assert.Contains("already created", error.Payload.Message);
+			}
+			else
+			{
+				var status = Assert.IsType<ResponseContract<RequestQueueEntryPayload>>(Assert.IsType<OkObjectResult>(result).Value);
+				Assert.Equal(QueueEntryStatus.OpponentFound, status.Payload.Status);
+				Assert.Equal(lobby.MatchId, status.Payload.MatchId);
+			}
+		}
+
+		private sealed class MatchDuringQueueLookup(bool publishAfterRead) : NormalMatchmakingService(new PlayerConnectionRepository())
+		{
+			public override bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry)
+			{
+				var wasPending = base.TryFindQueueEntry(queueId, out entry);
+				// Force the worker handoff at the read boundary without relying on thread scheduling.
+				MatchQueuedPlayersAsync().GetAwaiter().GetResult();
+				return publishAfterRead ? wasPending : base.TryFindQueueEntry(queueId, out entry);
+			}
+		}
 
         private static JoinRequest CreatePlayer(Guid playerId, MatchVariant variant, MatchModus queueType)
 		{

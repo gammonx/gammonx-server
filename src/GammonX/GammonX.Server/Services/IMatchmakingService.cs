@@ -48,8 +48,8 @@ namespace GammonX.Server.Services
         /// The given <paramref name="entry"/> leaves the matchmaking queue.
         /// </summary>
         /// <param name="entry">Queue entry who wants to leave.</param>
-        /// <returns>A task to be awaited.</returns>
-        Task LeaveQueueAsync(QueueEntry entry);
+        /// <returns>True if the pending entry was removed. False if it was already matched or removed.</returns>
+        Task<bool> LeaveQueueAsync(QueueEntry entry);
 
         /// <summary>
         /// Updates the <see cref="QueueEntry.LastSeenUtc"/> time stamp to the current time in utc.
