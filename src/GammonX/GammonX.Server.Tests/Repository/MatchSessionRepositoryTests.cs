@@ -225,6 +225,36 @@ namespace GammonX.Server.Tests.Repository
         }
 
         [Fact]
+        public async Task CanceledWaiterPreservesExclusiveAccessAcrossMatchRemoval()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            await using var owner = await repo.AcquireStateAsync(id);
+            owner.Create(_defaultKey);
+            using var cancellation = new CancellationTokenSource();
+            var canceled = repo.AcquireStateAsync(id, cancellation.Token);
+            var waiting = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+
+            // Act
+            Assert.True(owner.TryRemove());
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceled);
+            var last = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.False(waiting.IsCompleted);
+            Assert.False(last.IsCompleted);
+            await owner.DisposeAsync();
+            await using var next = await waiting.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.False(last.IsCompleted);
+            next.Create(_defaultKey);
+            await next.DisposeAsync();
+            await using var final = await last.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.NotNull(final.Get());
+        }
+
+        [Fact]
         public async Task RemovalDoesNotSplitLockBetweenWaitingOperations()
         {
             // Arrange

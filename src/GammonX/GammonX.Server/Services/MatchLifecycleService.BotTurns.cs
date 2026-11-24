@@ -365,7 +365,7 @@ namespace GammonX.Server.Services
         {
             var turn = deadline.Turn;
             using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Generation.Token);
-            await using var matchLock = await _matchRepository.AcquireStateWithCancellationAsync(turn.MatchId, wait.Token);
+            await using var matchLock = await _matchRepository.AcquireStateAsync(turn.MatchId, wait.Token);
 
             cancellationToken.ThrowIfCancellationRequested();
 

@@ -68,7 +68,7 @@ namespace GammonX.Server
 
                 if (playerId.HasValue && matchId.HasValue)
                 {
-                    await using var matchLock = await _matchRepository.AcquireStateAsync(matchId.Value);
+                    await using var matchLock = await _matchRepository.AcquireStateAsync(matchId.Value, Context.ConnectionAborted);
                     var tokenKey = ConstructTokenKey(playerId.Value, matchId.Value, CancellationTokenCategory.Disconnect);
                     // We check if the connecting player has a disconnect timer running
                     if (_cancellationTokenService.TryGet(tokenKey, out var cts) && cts != null)
@@ -218,6 +218,10 @@ namespace GammonX.Server
                     throw new InvalidOperationException("Failed to obtain the required claims from the authorization token");
                 }
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, "An error occurred while handling player connect.");
@@ -308,7 +312,7 @@ namespace GammonX.Server
                 if (!Guid.TryParse(playerId, out var playerIdGuid))
                     await SendErrorEventAsync("LOBBY_ERROR", $"The given playerId '{playerIdGuid}'  is not a valid GUID.", Context.ConnectionId);
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 if (_matchmakingService.TryFindMatchLobby(matchGuid, out var matchLobby) && matchLobby != null)
                 {
                     if (matchLobby.Status != QueueEntryStatus.OpponentFound)
@@ -383,6 +387,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("LOBBY_ERROR", "No match lobby was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("LOBBY_ERROR", $"An error occurred while trying to join the match lobby: '{e.Message}'", Context.ConnectionId, e);
@@ -409,7 +417,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("START_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -519,6 +527,10 @@ namespace GammonX.Server
             {
                 await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to start the match in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("START_MATCH_ERROR", $"An error occurred while trying to start the match: '{e.Message}'", Context.ConnectionId, e);
@@ -544,7 +556,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("START_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -608,6 +620,10 @@ namespace GammonX.Server
             {
                 await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to start the game in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("START_GAME_ERROR", $"An error occurred while trying to start the game: '{e.Message}'", Context.ConnectionId, e);
@@ -635,7 +651,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("ROLL_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -646,6 +662,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("ROLL_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {
@@ -678,7 +698,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -702,6 +722,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("MOVE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("MOVE_ERROR", $"An error occurred while trying to move checkers: '{e.Message}'", Context.ConnectionId, e);
@@ -723,7 +747,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("UNDO_MOVE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -743,6 +767,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("UNDO_MOVE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {
@@ -768,7 +796,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("END_TURN_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -804,6 +832,10 @@ namespace GammonX.Server
             {
                 await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to end the turn in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("END_TURN_ERROR", $"An error occurred while trying to end the turn: '{e.Message}'", Context.ConnectionId, e);
@@ -825,7 +857,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("RESIGN_MATCH_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -838,6 +870,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("RESIGN_MATCH_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {
@@ -860,7 +896,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("RESIGN_GAME_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -882,6 +918,10 @@ namespace GammonX.Server
                     await SendErrorEventAsync("RESIGN_GAME_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("RESIGN_GAME_ERROR", $"An error occurred while resigning the game: '{e.Message}'", Context.ConnectionId, e);
@@ -898,18 +938,22 @@ namespace GammonX.Server
                     await SendErrorEventAsync("GET_GAME_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                 var payload = matchLock.ReadGameState(callingPlayerId);
                 if (payload != null)
                 {
                     var contract = new EventResponseContract<EventGameStatePayload>(ServerEventTypes.GameStateEvent, payload);
-                    await Lifecycle.SendToClientAsync(Context.ConnectionId, ServerEventTypes.GameStateEvent, contract);
+                    await Lifecycle.SendToClientAsync(Context.ConnectionId, ServerEventTypes.GameStateEvent, contract, Context.ConnectionAborted);
                 }
                 else
                 {
                     await SendErrorEventAsync("GET_GAME_STATE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {
@@ -927,19 +971,23 @@ namespace GammonX.Server
                     await SendErrorEventAsync("GET_MATCH_STATE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var callingPlayerId = matchLock.GetCallingPlayerId(Context.ConnectionId);
                 var payload = matchLock.ReadMatchState(callingPlayerId);
                 if (payload != null)
                 {
                     payload.AppendRatingUrl(callingPlayerId, ServerEventTypes.MatchStateEvent);
                     var contract = new EventResponseContract<EventMatchStatePayload>(ServerEventTypes.MatchStateEvent, payload);
-                    await Lifecycle.SendToClientAsync(Context.ConnectionId, ServerEventTypes.MatchStateEvent, contract);
+                    await Lifecycle.SendToClientAsync(Context.ConnectionId, ServerEventTypes.MatchStateEvent, contract, Context.ConnectionAborted);
                 }
                 else
                 {
                     await SendErrorEventAsync("GET_MATCH_STATE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {
@@ -964,7 +1012,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null && matchSession is IDoubleCubeMatchSession doubleCubeSession)
                 {
@@ -992,6 +1040,10 @@ namespace GammonX.Server
             {
                 await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while a double was offered in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("OFFER_DOUBLE_ERROR", $"An error occurred while a double was offered: '{e.Message}'", Context.ConnectionId, e);
@@ -1013,7 +1065,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -1042,6 +1094,10 @@ namespace GammonX.Server
             {
                 await SendErrorEventAsync("BOT_SERVICE_ERROR", $"An error occurred while trying to accepting a double offer in the bot service '{bse.BotName}': '{bse.Message}'", Context.ConnectionId, bse);
             }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
+            }
             catch (Exception e)
             {
                 await SendErrorEventAsync("ACCEPT_DOUBLE_ERROR", $"An error occurred while accepting a double offer: '{e.Message}'", Context.ConnectionId, e);
@@ -1063,7 +1119,7 @@ namespace GammonX.Server
                     await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", $"The given matchId '{matchId}' is not a valid GUID.", Context.ConnectionId);
                 }
 
-                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid);
+                await using var matchLock = await _matchRepository.AcquireStateAsync(matchGuid, Context.ConnectionAborted);
                 var matchSession = matchLock.Get();
                 if (matchSession != null)
                 {
@@ -1081,6 +1137,10 @@ namespace GammonX.Server
                 {
                     await SendErrorEventAsync("DECLINE_DOUBLE_ERROR", "No match session was found with the given matchId.", Context.ConnectionId);
                 }
+            }
+            catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+            {
+                // The caller disconnected while the command was pending.
             }
             catch (Exception e)
             {

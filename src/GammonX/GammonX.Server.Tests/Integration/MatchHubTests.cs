@@ -1013,6 +1013,27 @@ namespace GammonX.Server.Tests.Integration
         }
 
         [Fact]
+        public async Task DisconnectedCallerStopsWaitingForMatchStart()
+        {
+            // Arrange
+            var fixture = await CreatePersistenceFixture(startMatch: false);
+            var match = fixture.Session;
+            using var connection = new CancellationTokenSource();
+            fixture.Hub.Context = new HubCallerContextStub(match.Player1.ConnectionId, match.Player1.Id, match.Id, connection.Token);
+            await using var lease = await _matchRepo.AcquireStateAsync(match.Id);
+            var start = fixture.Hub.StartMatchAsync(match.Id.ToString());
+            Assert.False(start.IsCompleted);
+
+            // Act
+            connection.Cancel();
+            await start.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.Null(lease.Get()!.Player1.StartDiceRoll);
+            fixture.Client.VerifyNoOtherCalls();
+        }
+
+        [Fact]
         public async Task MatchHubWaitsForRepositoryLockBeforeReadingStartingState()
         {
             // Arrange
@@ -1677,7 +1698,7 @@ namespace GammonX.Server.Tests.Integration
             _deadlineClock.FireDueTimers();
             var testCancellation = TestContext.Current.CancellationToken;
             await finished.Task.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
-            await using var lease = await _matchRepo.AcquireStateWithCancellationAsync(matchId, testCancellation);
+            await using var lease = await _matchRepo.AcquireStateAsync(matchId, testCancellation);
 
             // Assert
             Assert.False(_cancellationTokenService.TryGet(key, out _));
@@ -1717,7 +1738,7 @@ namespace GammonX.Server.Tests.Integration
             await fixture.Hub.OnConnectedAsync();
             Assert.True(_cancellationTokenService.TryGet(BotRecoveryKey(fixture.Session), out _));
             var testCancellation = TestContext.Current.CancellationToken;
-            await using var lease = await _matchRepo.AcquireStateWithCancellationAsync(matchId, testCancellation);
+            await using var lease = await _matchRepo.AcquireStateAsync(matchId, testCancellation);
             _deadlineClock.SetUtcNow(_deadlineClock.GetUtcNow() + BotTurnRecoveryService.RecoveryDelay);
             _deadlineClock.FireDueTimers();
 

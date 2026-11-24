@@ -44,10 +44,13 @@ namespace GammonX.Server.Services
         /// <returns>A lease that releases access when disposed.</returns>
         public Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
         {
-            return AcquireStateWithCancellationAsync(matchId, CancellationToken.None);
+            return AcquireStateAsync(matchId, CancellationToken.None);
         }
 
-        internal async Task<MatchSessionLease> AcquireStateWithCancellationAsync(Guid matchId, CancellationToken cancellationToken)
+        /// <summary>Acquires exclusive access until the returned lease is disposed.</summary>
+        /// <param name="matchId">The match to synchronize.</param>
+        /// <param name="cancellationToken">Cancels waiting for access. An acquired lease still requires disposal.</param>
+        public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId, CancellationToken cancellationToken)
         {
             using var measurement = ServerMetrics.Measure(ServerMetrics.LeaseWait);
             MatchLock matchLock;

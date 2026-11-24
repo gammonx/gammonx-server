@@ -2,7 +2,7 @@
 
 - Date: 2026-11-17
 - Reviewed commit: `90fde9cedf528a00424682741715f0529f33d18b`
-- Status: T0 through T5 complete locally. T6 and T7 pending.
+- Status: T0 through T5 complete locally. T6 pending. T7 in progress.
 
 ## Objective and scope
 
@@ -105,7 +105,7 @@ Deliver small PRs with their own validation. The order below separates correctne
 | 5 | T4: move timer ownership out of hubs **(complete locally)** | Medium | Preserve T1 and T2 behavior |
 | 6 | T5: reduce active-game snapshot allocation **(complete locally)** | High CPU | T0 baseline |
 | 7 | T6: compact legal continuations and client payloads | High CPU | T0; coordinate with T5 and client implementation |
-| 8 | T7: shorten match leases around external I/O | High resilience | T1, T2; explicit operation/version ownership |
+| 8 | T7: shorten match leases around external I/O **(in progress)** | High resilience | T1, T2; explicit operation/version ownership |
 
 ### T0: establish a repeatable performance baseline
 
@@ -350,7 +350,9 @@ Acceptance:
 
 ### T7: shorten leases around external work
 
-Current behavior: client sends, entire bot turns, and sequential SQS publication happen while holding the per-match lease. `AcquireStateAsync` has no cancellation argument. These locks do not serialize unrelated matches, but slow dependencies retain state and delay reconnect, timeout, and state-read operations for the affected match.
+Client sends, bot turns and sequential SQS publication still hold the per-match lease. Slow dependencies can delay reconnect, timeout and state reads for the affected match.
+
+Step 1 is complete locally. Hub commands and reconnects now use the repository's cancellation-aware acquisition with the caller's connection token. Disconnect cleanup still waits for ownership so it can establish the grace period. The repository and hub suites passed 246 Release cases across two runs, including cancellation during match removal and a queued start command completing when its caller disconnects. Step 2 begins with ordered, bounded notification delivery.
 
 Implementation in separate steps:
 

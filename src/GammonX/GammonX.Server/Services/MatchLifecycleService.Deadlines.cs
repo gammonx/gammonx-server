@@ -132,7 +132,7 @@ namespace GammonX.Server.Services
             CancellationToken cancellation = default)
         {
             using var callback = new ServerMetrics.CallbackScope();
-            await using var matchLock = await _matchRepository.AcquireStateWithCancellationAsync(matchId, cancellation);
+            await using var matchLock = await _matchRepository.AcquireStateAsync(matchId, cancellation);
             cancellation.ThrowIfCancellationRequested();
             return await ResolveDisconnectExpiryAsync(matchLock, playerId, matchId, connectionId, timer);
         }
@@ -394,7 +394,7 @@ namespace GammonX.Server.Services
         {
             using var callback = new ServerMetrics.CallbackScope();
             var (matchId, playerId) = (deadline.Key.MatchId, deadline.Key.PlayerId);
-            await using var matchLock = await _matchRepository.AcquireStateWithCancellationAsync(matchId, cancellation);
+            await using var matchLock = await _matchRepository.AcquireStateAsync(matchId, cancellation);
             cancellation.ThrowIfCancellationRequested();
             if (_timeProvider.GetUtcNow() < deadline.ExpiresAt || !IsActiveDeadline(deadline))
             {
