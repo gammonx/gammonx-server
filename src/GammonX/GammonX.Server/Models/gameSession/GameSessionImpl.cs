@@ -134,7 +134,7 @@ namespace GammonX.Server.Models
 			TurnNumber++;
 			OtherPlayer = ActivePlayer;
 			ActivePlayer = playerId;
-			DiceRolls = new DiceRollsModel();
+			DiceRolls = [];
 			ActiveUndoStack.Clear();
 			Phase = GamePhase.WaitingForRoll;
 		}
@@ -149,13 +149,13 @@ namespace GammonX.Server.Models
 				var diceRoll2 = new DiceRollContract(rolls[0]);
 				var diceRoll3 = new DiceRollContract(rolls[0]);
 				var diceRoll4 = new DiceRollContract(rolls[0]);
-				DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2, diceRoll3, diceRoll4 };
+				DiceRolls = [diceRoll1, diceRoll2, diceRoll3, diceRoll4];
 			}
 			else
 			{
 				var diceRoll1 = new DiceRollContract(rolls[0]);
 				var diceRoll2 = new DiceRollContract(rolls[1]);
-				DiceRolls = new DiceRollsModel() { diceRoll1, diceRoll2 };
+				DiceRolls = [diceRoll1, diceRoll2];
 			}
 
 			if (CanMove(isWhite))

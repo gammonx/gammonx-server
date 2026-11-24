@@ -577,9 +577,11 @@ namespace GammonX.Server.Tests.Integration
                         player2FirstDiceRoll = payload.DiceRolls[0];
                         player2SecondDiceRoll = payload.DiceRolls[1];
                         Assert.NotEmpty(payload.MoveSequences);
-                        // execute a combined dice roll
-                        var moveSeq = payload.MoveSequences.Select(ms => ms.Moves).First(ms => ms.Count >= 2 && ms[0].To == ms[1].From);
-                        player2FirstRollMove = new MoveModel(moveSeq[0].From, moveSeq[1].To);
+                        // Combined dice moves are published as one command with the final destination.
+                        Assert.All(payload.MoveSequences, sequence => Assert.Single(sequence.Moves));
+                        var combinedRoll = player2FirstDiceRoll.Roll + player2SecondDiceRoll.Roll;
+                        player2FirstRollMove = payload.MoveSequences.Select(ms => Assert.Single(ms.Moves))
+                            .First(move => Math.Abs(move.From - move.To) == combinedRoll);
                         player2RolledTheDice = true;
                         Assert.NotNull(payload.BoardState);
                         Assert.Equal(3, payload.AllowedCommands.Length);
@@ -732,7 +734,7 @@ namespace GammonX.Server.Tests.Integration
             Assert.NotNull(player2SecondDiceRoll);
             Assert.NotNull(player2FirstRollMove);
 
-            // player 1 moves a checker with both dice rolls
+            // player 2 moves a checker with both dice rolls
             await player2Connection.InvokeAsync(ServerCommands.MoveCommand, joinPayload1.MatchId.ToString(), player2FirstRollMove.From, player2FirstRollMove.To, TestContext.Current.CancellationToken);
 
             while (!player2FirstMove)
