@@ -69,6 +69,30 @@ namespace GammonX.Server.Tests.Bot.Mars
         }
 
         [Fact]
+        public async Task MoveEvaluationSendsOnlyUnusedDiceAfterPartialTurn()
+        {
+            // Arrange
+            var handler = new ScriptedHttpMessageHandler(
+                _ => Task.FromResult(MarsStubs.JsonResponse(HttpStatusCode.OK, MarsStubs.MoveResponse)));
+            using var client = MarsStubs.CreateClient(handler, 1);
+            var bot = new MarsBotService(client);
+            var (match, botId) = CreateExpertSession();
+            var game = match.GetGameSession(match.GameRound)!;
+            game.SetDiceRolls([2, 1], false);
+            var move = game.GetLegalMoveSequences(match.Player1.Id == botId).First().Moves[0];
+            match.MoveCheckers(botId, move.From, move.To);
+            var remaining = Assert.Single(game.DiceRolls, roll => !roll.Used).Roll;
+
+            // Act
+            await bot.GetNextMovesAsync(match, botId, TestContext.Current.CancellationToken);
+
+            // Assert
+            using var body = JsonDocument.Parse(Assert.Single(handler.RequestBodies));
+            var sent = Assert.Single(body.RootElement.GetProperty("rolls").EnumerateArray());
+            Assert.Equal(remaining, sent.GetInt32());
+        }
+
+        [Fact]
         public async Task ExpertMoveDoesNotFallbackAfterCallerCancellation()
         {
             var handler = new ScriptedHttpMessageHandler(

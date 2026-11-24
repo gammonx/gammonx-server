@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>$(TargetFramework)</TargetFramework>
@@ -16,6 +16,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="../GammonX.Diagnostics/GammonX.Diagnostics.csproj" />
 		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
 		<ProjectReference Include="..\GammonX.Mars.NN\GammonX.Mars.NN.csproj" />
 		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
@@ -23,6 +24,9 @@
 
 	<ItemGroup>
 		<Using Include="Xunit" />
+		<Compile Include="../GammonX.Server.Performance/NN/Tests/*.cs" Link="Performance/%(Filename)%(Extension)" />
+		<Compile Include="../GammonX.Server.Performance/NN/EvaluationMetricsCollector.cs" Link="Performance/EvaluationMetricsCollector.cs" />
+		<Compile Include="../GammonX.Server.Performance/NN/NeuralInputComparer.cs" Link="Performance/NeuralInputComparer.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

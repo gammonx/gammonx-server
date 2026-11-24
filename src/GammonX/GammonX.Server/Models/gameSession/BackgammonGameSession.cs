@@ -37,6 +37,11 @@ namespace GammonX.Server.Models.gameSession
 	// <inheritdoc />
 	public sealed class BackgammonGameSession : GameSessionImpl, IDoublingCubeGameSession
 	{
+		private BackgammonGameSession(BackgammonGameSession source) : base(source)
+		{
+			// pass
+		}
+
 		public BackgammonGameSession(Guid matchId, GameModus modus, IBoardService boardService, IDiceService diceService)
 			: base(matchId, modus, boardService, diceService)
 		{
@@ -68,31 +73,6 @@ namespace GammonX.Server.Models.gameSession
 		}
 
 		// <inheritdoc />
-        public override object Clone()
-        {
-			var moveSeqClone = this.MoveSequences.Select(ms => ms.DeepClone()).ToList();
-            // we need to ensure the proper order of moves in the undo stack
-            var undoStackClone = new Stack<MoveModel>(ActiveUndoStack.Select(m => (MoveModel)m.Clone()).Reverse());
-			var rollsClone = new DiceRollsModel(this.DiceRolls.Select(dr => (DiceRollContract)dr.Clone()));
-
-			var gameSession = new BackgammonGameSession(this.MatchId, this.Modus, this.BoardService, this.DiceService)
-			{
-				Id = this.Id,
-				MatchId = this.MatchId,
-				ActivePlayer = this.ActivePlayer,
-				BoardModel = this.BoardModel.DeepClone(),
-				DiceRolls = rollsClone,
-				MoveSequences = new MoveSequences(moveSeqClone),
-				Result = this.Result,
-				Phase = this.Phase,
-				EndedAt = this.EndedAt,
-				StartedAt = this.StartedAt,
-				OtherPlayer = this.OtherPlayer,
-				TurnNumber = this.TurnNumber,
-				ActiveUndoStack = undoStackClone,
-			};
-
-			return gameSession;
-        }
+        public override object Clone() => new BackgammonGameSession(this);
 	}
 }

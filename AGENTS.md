@@ -25,6 +25,8 @@
 - GammonX.Engine.Tests (non production assembly)
 - GammonX.Models (production assembly)
 - GammonX.Models.Tests (non production assembly)
+- GammonX.Diagnostics (production assembly)
+- GammonX.Server.Performance (non production assembly)
 
 ### Technical
 - .net 10 sdk as prerequisite
@@ -50,6 +52,7 @@
 - document public facing interfaces, properties and classes. Only consider it for added or changed APIs
 - comment non-obvious constraints and reasoning in complex code; avoid restating the implementation.
 - apply the AAA (Arrange, Act, Assert) pattern for unit tests
+- never use local time, always use UTC time. `DateTime.UtcNow` or `DateTimeOffset.UtcNow`
 
 ## Testing instructions
 - keep test execution scope relevant to the applied changes. Do not execute the whole solution test suite by default.

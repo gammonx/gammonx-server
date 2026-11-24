@@ -126,13 +126,18 @@ namespace GammonX.Server.Tests.Integration
             Assert.Equal(GamePhase.Rolling, game.Phase);
             Assert.NotEmpty(game.MoveSequences);
 
-            // Use a legal sequence, since the two opening dice can require different moves.
-            foreach (var move in game.MoveSequences.First().Moves)
+            // Each hint is one command. Read fresh hints after every move until the turn is complete.
+            while (game.AllowedCommands.Contains(ServerCommands.MoveCommand))
             {
+                Assert.NotEmpty(game.MoveSequences);
+                Assert.All(game.MoveSequences, sequence => Assert.Single(sequence.Moves));
+                var move = Assert.Single(game.MoveSequences.First().Moves);
                 await connection.InvokeAsync(ServerCommands.MoveCommand, matchId.ToString(), move.From, move.To, cancellationToken);
                 game = await ReadPayloadAsync<EventGameStatePayload>(gameStates);
                 Assert.Equal(player.PlayerId, game.ActiveTurn);
             }
+            Assert.Equal(GamePhase.WaitingForEndTurn, game.Phase);
+            Assert.Empty(game.MoveSequences);
             Assert.Contains(ServerCommands.EndTurnCommand, game.AllowedCommands);
 
             await connection.InvokeAsync(ServerCommands.EndTurnCommand, matchId.ToString(), cancellationToken);

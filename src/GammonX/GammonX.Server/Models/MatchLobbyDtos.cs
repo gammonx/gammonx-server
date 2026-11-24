@@ -23,7 +23,7 @@ namespace GammonX.Server.Models
 	public record StatusRequest(Guid PlayerId, MatchModus MatchModus);
 
     /// <summary>
-    /// Unique ID of a queue entry.
+    /// Unique key of a variant, modus and type specific machtmaking queue.
     /// </summary>
     /// <param name="MatchVariant">Match variant.</param>
     /// <param name="MatchModus">Match type.</param>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>$(TargetFramework)</TargetFramework>
@@ -21,12 +21,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="../GammonX.Diagnostics/GammonX.Diagnostics.csproj" />
 		<ProjectReference Include="..\GammonX.Engine\GammonX.Engine.csproj" />
 		<ProjectReference Include="..\GammonX.Models\GammonX.Models.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<InternalsVisibleTo Include="GammonX.Server.Tests" />
+		<InternalsVisibleTo Include="GammonX.Server.Performance" />
+		<Compile Include="../Shared/LoggingConfiguration.cs" Link="LoggingConfiguration.cs" />
 	</ItemGroup>
 
 	<ItemGroup>

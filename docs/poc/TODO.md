@@ -2,8 +2,7 @@
 - see changelog 
 
 ## Active
-- bot as ranked opponent
-- track bot profiles as "players"
+- ?
 
 ## TODO
 - invite friend by link
@@ -46,3 +45,4 @@
 
 ## Functional Gap in Client
 - rating change url for match ended event
+- ranked should only be 7pts matches

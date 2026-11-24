@@ -5,7 +5,7 @@ using GammonX.Mars.NN.Services;
 
 using GammonX.Models.Enums;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
 public class NeuralInputComparerTests
 {

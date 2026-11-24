@@ -26,6 +26,198 @@ namespace GammonX.Server.Tests
         [InlineData(GameModus.Portes)]
         [InlineData(GameModus.Plakoto)]
         [InlineData(GameModus.Fevga)]
+        public void DirectHintsMatchPlayablePrefixesAcrossRollsAndUndo(GameModus modus)
+        {
+            foreach (var white in new[] { true, false })
+            {
+                foreach (var dice in new[] { new[] { 1, 2 }, new[] { 1, 1 } })
+                {
+                    // Arrange
+                    var game = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+                    game.StartGame(Guid.NewGuid(), Guid.NewGuid());
+                    game.SetDiceRolls(dice, white);
+                    var first = game.GetLegalMoveSequences(white).First().Moves[0];
+
+                    // Act and assert at each state visible to the client.
+                    CheckHints(game, white);
+                    game.MoveCheckers(game.ActivePlayer, first.From, first.To, white);
+                    CheckHints(game, white);
+                    game.UndoLastMove(game.ActivePlayer, white);
+                    CheckHints(game, white);
+                }
+            }
+        }
+
+        [Fact]
+        public void DirectHintsIncludeBarEntryAndOversizedBearOff()
+        {
+            // Arrange
+            var game = _gameSessionFactory.Create(Guid.NewGuid(), GameModus.Backgammon);
+            game.StartGame(Guid.NewGuid(), Guid.NewGuid());
+            Array.Clear(game.BoardModel.Fields);
+            game.BoardModel.Fields[23] = -14;
+            game.BoardModel.Fields[2] = 2;
+            game.BoardModel.Fields[20] = 13;
+            var bar = (IHomeBarModel)game.BoardModel;
+            bar.AddToHomeBar(true, 1);
+            game.SetDiceRolls([1, 2], true);
+
+            // Act
+            var entries = game.ResolveMoveSequences(true).Select(sequence => Assert.Single(sequence.Moves)).ToArray();
+            bar.RemoveFromHomeBar(true, 1);
+            game.BoardModel.Fields[23] = -15;
+            var bearOff = Assert.Single(Assert.Single(game.ResolveMoveSequences(true)).Moves);
+
+            // Assert
+            Assert.NotEmpty(entries);
+            Assert.All(entries, move => Assert.Equal(BoardPositions.HomeBarWhite, move.From));
+            Assert.DoesNotContain(entries, move => move.To == 2);
+            Assert.Equal((23, BoardPositions.BearOffWhite), (bearOff.From, bearOff.To));
+        }
+
+        private static void CheckHints(IGameSessionModel game, bool white)
+        {
+            var expected = new HashSet<(int From, int To)>();
+            foreach (var sequence in game.GetLegalMoveSequences(white).Where(sequence => sequence.Moves.Count > 0))
+            {
+                var from = sequence.Moves[0].From;
+                var position = from;
+                foreach (var step in sequence.Moves)
+                {
+                    if (step.From != position)
+                    {
+                        break;
+                    }
+                    expected.Add((from, step.To));
+                    position = step.To;
+                }
+            }
+            var actual = game.ResolveMoveSequences(white).Select(sequence => Assert.Single(sequence.Moves))
+                .Select(move => (move.From, move.To)).ToArray();
+            Assert.Equal(expected.Count, actual.Length);
+            Assert.True(expected.SetEquals(actual));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void CombinedMoveRequiresLegalIntermediateStepsAndUndoesEachHit(bool blocked)
+        {
+            // Arrange
+            var game = _gameSessionFactory.Create(Guid.NewGuid(), GameModus.Backgammon);
+            var player = Guid.NewGuid();
+            game.StartGame(player, Guid.NewGuid());
+            var fields = new int[24];
+            fields[0] = -1;
+            fields[1] = blocked ? 2 : 1;
+            fields[2] = 2;
+            game.BoardModel.SetFields(fields);
+            game.SetDiceRolls([1, 2], true);
+            var historyCount = game.BoardModel.History.Events.Count;
+
+            // Act and assert
+            if (blocked)
+            {
+                Assert.Throws<InvalidOperationException>(() => game.MoveCheckers(player, 0, 3, true));
+                Assert.False(game.CanMove(true));
+            }
+            else
+            {
+                Assert.Throws<InvalidOperationException>(() => game.MoveCheckers(player, 1, 3, true));
+                game.MoveCheckers(player, 0, 3, true);
+                Assert.All(game.DiceRolls, die => Assert.True(die.Used));
+                Assert.Equal(1, ((IHomeBarModel)game.BoardModel).HomeBarCountBlack);
+
+                game.UndoLastMove(player, true);
+                Assert.Equal(-1, game.BoardModel.Fields[1]);
+                Assert.Equal(new[] { 2 }, game.DiceRolls.GetRemainingRolls());
+                game.UndoLastMove(player, true);
+            }
+
+            Assert.Equal(fields, game.BoardModel.Fields);
+            Assert.Equal(historyCount, game.BoardModel.History.Events.Count);
+            Assert.Equal(new[] { 1, 2 }, game.DiceRolls.GetRemainingRolls());
+            Assert.False(game.CanUndoLastMove(player));
+        }
+
+        [Fact]
+        public void HumanMustUseHigherDieWhenOnlyOneCanBePlayed()
+        {
+            // Arrange
+            var game = _gameSessionFactory.Create(Guid.NewGuid(), GameModus.Backgammon);
+            var player = Guid.NewGuid();
+            game.StartGame(player, Guid.NewGuid());
+            var fields = new int[24];
+            fields[0] = -1;
+            fields[3] = 2;
+            game.BoardModel.SetFields(fields);
+            game.SetDiceRolls([1, 2], true);
+
+            // Act
+            var hint = Assert.Single(Assert.Single(game.ResolveMoveSequences(true)).Moves);
+            Assert.Equal((0, 2), (hint.From, hint.To));
+            Assert.Throws<InvalidOperationException>(() => game.MoveCheckers(player, 0, 1, true));
+            game.MoveCheckers(player, 0, 2, true);
+
+            // Assert
+            Assert.Equal(-1, game.BoardModel.Fields[2]);
+            Assert.Equal(new[] { 1 }, game.DiceRolls.GetRemainingRolls());
+            Assert.Equal(GamePhase.WaitingForEndTurn, game.Phase);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon, true)]
+        [InlineData(GameModus.Backgammon, false)]
+        [InlineData(GameModus.Portes, true)]
+        [InlineData(GameModus.Portes, false)]
+        [InlineData(GameModus.Tavla, true)]
+        [InlineData(GameModus.Tavla, false)]
+        [InlineData(GameModus.Plakoto, true)]
+        [InlineData(GameModus.Plakoto, false)]
+        [InlineData(GameModus.Fevga, true)]
+        [InlineData(GameModus.Fevga, false)]
+        public void PayloadIncludesLegalMovesOnlyForActivePlayerAndFollowsTurnChanges(GameModus modus, bool isWhite)
+        {
+            // Arrange
+            var game = _gameSessionFactory.Create(Guid.NewGuid(), modus);
+            var active = Guid.NewGuid();
+            var waiting = Guid.NewGuid();
+            game.StartGame(active, waiting);
+            game.SetDiceRolls([3, 3], isWhite);
+            var sequenceCount = game.GetLegalMoveSequences(isWhite).Count;
+
+            // Act
+            var activePayload = game.ToPayload(active, [], !isWhite);
+            var waitingPayload = game.ToPayload(waiting, [], isWhite);
+
+            // Assert
+            Assert.True(sequenceCount > 0);
+            Assert.Equal(game.ResolveMoveSequences(isWhite).Count, activePayload.MoveSequences.Length);
+            Assert.All(activePayload.MoveSequences, sequence => Assert.Single(sequence.Moves));
+            Assert.Empty(waitingPayload.MoveSequences);
+            Assert.Equal(GamePhase.WaitingForOpponent, waitingPayload.Phase);
+            Assert.Equal(game.Phase, activePayload.Phase);
+            Assert.Equal(active, waitingPayload.ActiveTurn);
+            Assert.Equal(activePayload.TurnNumber, waitingPayload.TurnNumber);
+            Assert.Equal(activePayload.DiceRolls.Select(dice => dice.Roll), waitingPayload.DiceRolls.Select(dice => dice.Roll));
+            Assert.NotEmpty(waitingPayload.BoardState.Fields);
+            var full = GammonX.Server.Contracts.EventGameStatePayload.ForPlayer(game, active, !isWhite, true, [], fullMoveSequences: true);
+            Assert.Equal(sequenceCount, full.MoveSequences.Length);
+            Assert.Contains(full.MoveSequences, sequence => sequence.Moves.Count > 1);
+
+            game.NextTurn(waiting);
+            game.SetDiceRolls([2, 3], !isWhite);
+            Assert.NotEmpty(game.GetLegalMoveSequences(!isWhite));
+            Assert.Equal(game.ResolveMoveSequences(!isWhite).Count, game.ToPayload(waiting, [], isWhite).MoveSequences.Length);
+            Assert.Empty(game.ToPayload(active, [], !isWhite).MoveSequences);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
         public void GameSessionClonePreservesUnstartedState(GameModus modus)
         {
             var gameSession = _gameSessionFactory.Create(Guid.NewGuid(), modus);
@@ -46,7 +238,7 @@ namespace GammonX.Server.Tests
             Assert.Null(clone.EndedAt);
             Assert.Equal(0, clone.Duration);
             Assert.Empty(clone.DiceRolls);
-            Assert.Empty(clone.MoveSequences);
+            Assert.Empty(clone.GetLegalMoveSequences(true));
             Assert.NotSame(gameSession.BoardModel, clone.BoardModel);
             Assert.Equal(gameSession.BoardModel.Fields, clone.BoardModel.Fields);
             Assert.NotSame(gameSession.BoardModel.Fields, clone.BoardModel.Fields);
@@ -85,13 +277,15 @@ namespace GammonX.Server.Tests
                 Assert.Equal(gameSession.DiceRolls[diceIndex].Used, clone.DiceRolls[diceIndex].Used);
             }
 
-            Assert.NotEmpty(clone.MoveSequences);
-            Assert.NotSame(gameSession.MoveSequences, clone.MoveSequences);
-            Assert.Equal(gameSession.MoveSequences.Count, clone.MoveSequences.Count);
-            for (var sequenceIndex = 0; sequenceIndex < gameSession.MoveSequences.Count; sequenceIndex++)
+            var clonedMoves = clone.GetLegalMoveSequences(isWhite);
+            var originalMoves = gameSession.GetLegalMoveSequences(isWhite);
+            Assert.NotEmpty(clonedMoves);
+            Assert.NotSame(originalMoves, clonedMoves);
+            Assert.Equal(originalMoves.Count, clonedMoves.Count);
+            for (var sequenceIndex = 0; sequenceIndex < originalMoves.Count; sequenceIndex++)
             {
-                var originalSequence = gameSession.MoveSequences[sequenceIndex];
-                var clonedSequence = clone.MoveSequences[sequenceIndex];
+                var originalSequence = originalMoves[sequenceIndex];
+                var clonedSequence = clonedMoves[sequenceIndex];
                 Assert.NotSame(originalSequence, clonedSequence);
                 Assert.NotSame(originalSequence.Moves, clonedSequence.Moves);
                 Assert.NotSame(originalSequence.UsedDices, clonedSequence.UsedDices);
@@ -104,11 +298,11 @@ namespace GammonX.Server.Tests
             }
 
             clone.DiceRolls[0].Use();
-            clone.MoveSequences[0].Moves[0].From = 99;
-            clone.MoveSequences[0].UsedDices.Clear();
+            clonedMoves[0].Moves[0].From = 99;
+            clonedMoves[0].UsedDices.Clear();
             Assert.All(gameSession.DiceRolls, dice => Assert.False(dice.Used));
-            Assert.NotEqual(99, gameSession.MoveSequences[0].Moves[0].From);
-            Assert.NotEmpty(gameSession.MoveSequences[0].UsedDices);
+            Assert.NotEqual(99, originalMoves[0].Moves[0].From);
+            Assert.NotEmpty(originalMoves[0].UsedDices);
         }
 
         [Theory]
@@ -124,7 +318,7 @@ namespace GammonX.Server.Tests
             gameSession.StartGame(playerId, Guid.NewGuid());
             gameSession.SetDiceRolls([2, 3], true);
             var initialFields = gameSession.BoardModel.Fields.ToArray();
-            var moves = gameSession.MoveSequences.First().Moves.ToArray();
+            var moves = gameSession.GetLegalMoveSequences(true).First().Moves.ToArray();
             Assert.Equal(2, moves.Length);
             foreach (var move in moves)
             {
@@ -230,7 +424,7 @@ namespace GammonX.Server.Tests
             Assert.NotNull(gameSession.BoardModel);
             Assert.NotEmpty(gameSession.BoardModel.Fields);
             Assert.Empty(gameSession.DiceRolls);
-            Assert.Empty(gameSession.MoveSequences);
+            Assert.Empty(gameSession.GetLegalMoveSequences(true));
             Assert.Null(gameSession.StartedAt);
             Assert.Null(gameSession.EndedAt);
             Assert.Equal(0, gameSession.Duration);
@@ -264,16 +458,16 @@ namespace GammonX.Server.Tests
             Assert.Equal(3, gameSession.DiceRolls[1].Roll);
             Assert.False(gameSession.DiceRolls[0].Used);
             Assert.False(gameSession.DiceRolls[1].Used);
-            Assert.NotEmpty(gameSession.MoveSequences);
-            var legalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms.From, ms.To, out var _) == 2);
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(isWhite));
+            var legalMove = gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves[0]).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms.From, ms.To, out var _) == 2);
             Assert.NotNull(legalMove);
             gameSession.MoveCheckers(player1Id, legalMove.From, legalMove.To, isWhite);
             Assert.Equal(GamePhase.Moving, gameSession.Phase);
             Assert.True(gameSession.DiceRolls[0].Used);
             Assert.False(gameSession.DiceRolls[1].Used);
-            Assert.NotEmpty(gameSession.MoveSequences);
-            Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 3));
-            legalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(isWhite));
+            Assert.True(gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves).All(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 3));
+            legalMove = gameSession.GetLegalMoveSequences(isWhite).SelectMany(ms => ms.Moves).FirstOrDefault();
             Assert.NotNull(legalMove);
             gameSession.MoveCheckers(player1Id, legalMove.From, legalMove.To, isWhite);
             Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -307,14 +501,14 @@ namespace GammonX.Server.Tests
             Assert.Equal(3, gameSession.DiceRolls[1].Roll);
             Assert.False(gameSession.DiceRolls[0].Used);
             Assert.False(gameSession.DiceRolls[1].Used);
-            Assert.NotEmpty(gameSession.MoveSequences);
-            var movSeq = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 5);
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(isWhite));
+            var movSeq = gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 5);
             Assert.NotNull(movSeq);
             gameSession.MoveCheckers(player1Id, movSeq[0].From, movSeq[1].To, isWhite);
             Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
             Assert.True(gameSession.DiceRolls[0].Used);
             Assert.True(gameSession.DiceRolls[1].Used);
-            Assert.Empty(gameSession.MoveSequences);
+            Assert.Empty(gameSession.GetLegalMoveSequences(isWhite));
         }
 
         [Theory]
@@ -349,10 +543,10 @@ namespace GammonX.Server.Tests
             Assert.False(gameSession.DiceRolls[1].Used);
             Assert.False(gameSession.DiceRolls[2].Used);
             Assert.False(gameSession.DiceRolls[3].Used);
-            Assert.NotEmpty(gameSession.MoveSequences);
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(isWhite));
             // use up 2 dices
             // so we search a move sequence were move 1 and 2 are using two 1 roll dices
-            var legalMoves = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2);
+            var legalMoves = gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves).FirstOrDefault(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2);
             Assert.NotNull(legalMoves);
             gameSession.MoveCheckers(player1Id, legalMoves[0].From, legalMoves[1].To, isWhite);
             Assert.Equal(GamePhase.Moving, gameSession.Phase);
@@ -360,10 +554,10 @@ namespace GammonX.Server.Tests
             Assert.True(gameSession.DiceRolls[1].Used);
             Assert.False(gameSession.DiceRolls[2].Used);
             Assert.False(gameSession.DiceRolls[3].Used);
-            Assert.NotEmpty(gameSession.MoveSequences);
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(isWhite));
             // two dices with 1 roll value left
-            Assert.True(gameSession.MoveSequences.Select(ms => ms.Moves).All(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2 || DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 1));
-            legalMoves = gameSession.MoveSequences.Select(ms => ms.Moves).FirstOrDefault(lm => Math.Abs(lm[0].From - lm[1].To) == 2);
+            Assert.True(gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves).All(ms => DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[1].To, out var _) == 2 || DiceRollsModel.GetMoveDistance(gameSession.BoardModel, ms[0].From, ms[0].To, out var _) == 1));
+            legalMoves = gameSession.GetLegalMoveSequences(isWhite).Select(ms => ms.Moves).FirstOrDefault(lm => Math.Abs(lm[0].From - lm[1].To) == 2);
             Assert.NotNull(legalMoves);
             gameSession.MoveCheckers(player1Id, legalMoves[0].From, legalMoves[1].To, isWhite);
             Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -412,7 +606,7 @@ namespace GammonX.Server.Tests
             var player2Id = Guid.NewGuid();
             gameSession.StartGame(player1Id, player2Id);
             gameSession.RollDices(player1Id, isWhite);
-            var movSeq = gameSession.MoveSequences.FirstOrDefault();
+            var movSeq = gameSession.GetLegalMoveSequences(isWhite).FirstOrDefault();
             Assert.NotNull(movSeq);
             var firstMove = movSeq.Moves.First();
             var lastMove = movSeq.Moves.Last();
@@ -512,7 +706,7 @@ namespace GammonX.Server.Tests
             var player2Id = Guid.NewGuid();
             gameSession.StartGame(player1Id, player2Id);
             gameSession.RollDices(player1Id, isWhite);
-            var movSeq = gameSession.MoveSequences.FirstOrDefault();
+            var movSeq = gameSession.GetLegalMoveSequences(isWhite).FirstOrDefault();
             Assert.NotNull(movSeq);
             var firstMove = movSeq.Moves.First();
             var lastMove = movSeq.Moves.Last();
@@ -583,6 +777,7 @@ namespace GammonX.Server.Tests
             // moves are inverted for black player
             var gameState = gameSession.ToPayload(player1Id, Array.Empty<string>(), !isWhite);
             Assert.NotNull(gameState);
+            var legalMoves = gameSession.ResolveMoveSequences(isWhite).SelectMany(ms => ms.Moves).ToHashSet();
             foreach (var moveSeq in gameState.MoveSequences)
             {
                 foreach (var move in moveSeq.Moves)
@@ -594,18 +789,18 @@ namespace GammonX.Server.Tests
                         {
                             // we invert the inverted move again to find the original move in the game session
                             var invertedFrom = BoardBroker.InvertBoardMoveDiagonalHorizontally(move.From, move.To);
-                            Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
+                            Assert.Contains(legalMoves, m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
                         }
                         else
                         {
                             // we invert the inverted move again to find the original move in the game session
                             var invertedFrom = BoardBroker.InvertBoardMoveHorizontally(move.From, move.To);
-                            Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
+                            Assert.Contains(legalMoves, m => m.From == invertedFrom.Item1 && m.To == invertedFrom.Item2);
                         }
                     }
                     else
                     {
-                        Assert.Contains(gameSession.MoveSequences.SelectMany(ms => ms.Moves), m => m.From == move.From && m.To == move.To);
+                        Assert.Contains(legalMoves, m => m.From == move.From && m.To == move.To);
                     }
                 }
             }
@@ -697,7 +892,7 @@ namespace GammonX.Server.Tests
 
             gameSession.StartGame(player1Id, player2Id);
             gameSession.RollDices(player1Id, true);
-            var moveSeq = gameSession.MoveSequences.First();
+            var moveSeq = gameSession.GetLegalMoveSequences(true).First();
             foreach (var move in moveSeq.Moves)
             {
                 gameSession.MoveCheckers(player1Id, move.From, move.To, true);
@@ -732,7 +927,7 @@ namespace GammonX.Server.Tests
             Assert.Equal(player2Id, gameSession.OtherPlayer);
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
             Assert.Empty(gameSession.DiceRolls);
-            Assert.Empty(gameSession.MoveSequences);
+            Assert.Empty(gameSession.GetLegalMoveSequences(true));
             Assert.False(gameSession.GameOver(true));
             Assert.False(gameSession.GameOver(false));
             Assert.Equal(1, gameSession.TurnNumber);
@@ -743,8 +938,8 @@ namespace GammonX.Server.Tests
             Assert.Equal(2, rolls.Length);
             gameSession.SetDiceRolls(rolls, true);
             Assert.NotEmpty(gameSession.DiceRolls);
-            Assert.NotEmpty(gameSession.MoveSequences);
-            Assert.True(gameSession.MoveSequences.CanMove);
+            Assert.NotEmpty(gameSession.GetLegalMoveSequences(true));
+            Assert.True(gameSession.GetLegalMoveSequences(true).CanMove);
             Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 
             // we go to the next turn without actually moving anything (validation happens im match session)
@@ -752,7 +947,7 @@ namespace GammonX.Server.Tests
             Assert.Equal(player2Id, gameSession.ActivePlayer);
             Assert.Equal(player1Id, gameSession.OtherPlayer);
             Assert.Empty(gameSession.DiceRolls);
-            Assert.Empty(gameSession.MoveSequences);
+            Assert.Empty(gameSession.GetLegalMoveSequences(true));
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
 
             var gameResult = new GameResultModel(player2Id, GameResult.Backgammon, GameResult.LostBackgammon, 3);

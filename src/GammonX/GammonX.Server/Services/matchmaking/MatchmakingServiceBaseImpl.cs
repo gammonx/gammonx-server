@@ -18,7 +18,7 @@ namespace GammonX.Server.Services
 		/// <summary>
 		/// Gets queue entries grouped by the queue entry id.
 		/// </summary>
-		protected readonly ConcurrentDictionary<Guid, QueueEntry> _queue = new();
+		protected readonly ConcurrentDictionary<Guid, QueueEntry> _queueEntries = new();
 
 		/// <summary>
 		/// Gets queue entry id queue grouped by different queue keys.
@@ -26,12 +26,28 @@ namespace GammonX.Server.Services
 		protected readonly ConcurrentDictionary<QueueKey, ConcurrentQueue<Guid>> _modeQueues = new();
 
 		/// <summary>
-		/// Gets match lobbies grouped by queue entries. A match lobby is created as soon as two players were matched
+		/// Publish and remove all aliases under one gate so readers cannot observe partial registration.
 		/// </summary>
-		/// <remarks>
-		/// Each match lobby occurrs twice in the dictionary keyed by the queue entry of each player.
-		/// </remarks>
-		protected readonly ConcurrentDictionary<QueueEntry, MatchLobby> _matchLobbies = new();
+		private readonly Lock _lobbyGate = new();
+
+        private int _lobbyCount;
+
+        internal int LobbyCount
+        {
+            get
+            {
+                lock (_lobbyGate)
+                {
+                    return _lobbyCount;
+                }
+            }
+        }
+
+		/// <summary>
+		/// Contains match lobbies grouped by their match id and/or their queue id.
+		/// May contain a matchlobby up to three times.
+		/// </summary>
+		private readonly Dictionary<Guid, (MatchLobby Lobby, Guid[] QueueIds)> _lobbiesById = new();
 
 		// <inheritdoc />
 		public abstract Task<QueueEntry> JoinQueueAsync(Guid playerId, QueueKey queueKey);
@@ -52,7 +68,7 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public void TouchQueueEntry(Guid queueEntryId)
 		{
-			if (_queue.TryGetValue(queueEntryId, out var entry))
+			if (_queueEntries.TryGetValue(queueEntryId, out var entry))
 			{
 				entry.LastSeenUtc = DateTime.UtcNow;
 			}
@@ -62,15 +78,15 @@ namespace GammonX.Server.Services
 		public void CleanupExpiredQueueEntries(TimeSpan timeout)
 		{
 			var now = DateTime.UtcNow;
-			foreach (var (queueId, entry) in _queue)
+			foreach (var (queueId, entry) in _queueEntries)
 			{
 				if (now - entry.LastSeenUtc <= timeout)
 					continue;
 
 				// double-check at removal time
-				if (_queue.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
+				if (_queueEntries.TryGetValue(queueId, out var current) && now - current.LastSeenUtc > timeout)
 				{
-					_queue.TryRemove(queueId, out _);
+					_queueEntries.TryRemove(queueId, out _);
 				}
 			}
 		}
@@ -81,7 +97,7 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public virtual bool TryFindQueueEntry(Guid queueId, out QueueEntry? entry)
 		{
-			var queueEntry = _queue.GetValueOrDefault(queueId);
+			var queueEntry = _queueEntries.GetValueOrDefault(queueId);
 
 			if (queueEntry == null)
 			{
@@ -96,55 +112,94 @@ namespace GammonX.Server.Services
 		// <inheritdoc />
 		public virtual bool TryFindMatchLobby(Guid matchOrQueueId, out MatchLobby? matchLobby)
 		{
-			var kvp = _matchLobbies.FirstOrDefault(q => q.Value.MatchId == matchOrQueueId || q.Key.Id == matchOrQueueId);
-			var queueEntry = kvp.Key;
-			
-			if (queueEntry == default)
-			{
-				matchLobby = null;
-				return false;
-			}
-			
-			matchLobby = kvp.Value;
-			return true;
+            lock (_lobbyGate)
+            {
+                if (_lobbiesById.TryGetValue(matchOrQueueId, out var registration))
+                {
+                    matchLobby = registration.Lobby;
+                    return true;
+                }
+
+                matchLobby = null;
+                return false;
+            }
 		}
 
 		// <inheritdoc />
 		public virtual bool TryRemoveMatchLobby(Guid matchId)
 		{
-			var queueEntries = _matchLobbies.Where(q => q.Value.MatchId == matchId);
-			var found = queueEntries.Any();
+            lock (_lobbyGate)
+            {
+                if (!_lobbiesById.TryGetValue(matchId, out var registration) || registration.Lobby.MatchId != matchId)
+                {
+                    return false;
+                }
 
-			foreach (var entry in queueEntries)
-			{
-				_matchLobbies.TryRemove(entry);
-			}
+                _lobbiesById.Remove(matchId);
+                _lobbyCount--;
 
-			return found;
+                foreach (var queueId in registration.QueueIds)
+                {
+                    _lobbiesById.Remove(queueId);
+                }
+
+                return true;
+            }
 		}
 
 		// <inheritdoc />
 		public virtual MatchLobby[] GetMatchLobbies()
 		{
-			return _matchLobbies.Values.ToArray();
+            lock (_lobbyGate)
+            {
+                return _lobbiesById.Values.Select(registration => registration.Lobby).DistinctBy(lobby => lobby.MatchId).ToArray();
+            }
 		}
+
+        protected void AddMatchLobby(MatchLobby lobby, params QueueEntry[] entries)
+        {
+            var queueIds = entries.Select(entry => entry.Id).ToArray();
+            lock (_lobbyGate)
+            {
+                if (
+					queueIds.Length == 0 || 
+					_lobbiesById.ContainsKey(lobby.MatchId) || 
+					queueIds.Contains(lobby.MatchId) ||
+                    queueIds.Any(_lobbiesById.ContainsKey) ||
+					queueIds.Distinct().Count() != queueIds.Length)
+                {
+                    throw new InvalidOperationException("The match lobby or one of its queue entries is already registered.");
+                }
+
+                var registration = (lobby, queueIds);
+				// we once add the matchlobby by its match id
+                _lobbiesById.Add(lobby.MatchId, registration);
+                _lobbyCount++;
+                
+				// we add the matchlobby by its two queue ids
+				foreach (var queueId in queueIds)
+                {
+                    _lobbiesById.Add(queueId, registration);
+                }
+            }
+        }
 
 		// <inheritdoc />
 		public virtual QueueEntry[] GetQueueEntries()
 		{
-			return _queue.Values.ToArray();
+			return _queueEntries.Values.ToArray();
 		}
 
 		protected virtual internal void Enqueue(QueueEntry entry)
 		{
-			_queue[entry.Id] = entry;
+			_queueEntries[entry.Id] = entry;
 			var modeQueue = _modeQueues.GetOrAdd(entry.QueueKey, _ => new ConcurrentQueue<Guid>());
 			modeQueue.Enqueue(entry.Id);
 		}
 
 		protected virtual internal void LeaveQueue(QueueEntry entry)
 		{
-			_queue.TryRemove(entry.Id, out _);
+			_queueEntries.TryRemove(entry.Id, out _);
 			// the mode queue is automatically cleanup while matching opponents for match lobbies
 		}
 	}

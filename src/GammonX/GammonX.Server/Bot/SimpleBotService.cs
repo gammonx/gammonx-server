@@ -26,13 +26,8 @@ namespace GammonX.Server.Bot
 			if (activeSession == null)
 				throw new InvalidOperationException($"No game session exists for round {matchSession.GameRound}.");
 
-			if (activeSession.MoveSequences.CanMove)
-			{
-				var result = activeSession.MoveSequences.FirstOrDefault() ?? new MoveSequenceModel();
-				return Task.FromResult(result);
-			}
-
-			return Task.FromResult(new MoveSequenceModel());
+			var moves = activeSession.GetLegalMoveSequences(matchSession.Player1.Id == playerId);
+			return Task.FromResult(moves.FirstOrDefault() ?? new MoveSequenceModel());
 		}
 
 		// <inheritdoc />

@@ -1,6 +1,5 @@
 using GammonX.Mars.NN.Nets;
 using GammonX.Mars.NN.Services;
-using GammonX.Mars.NN.Tests.Performance;
 
 using Moq;
 

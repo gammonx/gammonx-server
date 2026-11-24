@@ -218,12 +218,8 @@ namespace GammonX.Engine.Models
 		public object Clone() => CloneWithHistory((IBoardHistory)((ICloneable)History).Clone());
 
 		/// <summary>
-		/// Creates a positional snapshot of the board containing only all information required for equality checks.
+		/// Copies checker positions and variant state with an empty history for comparisons and move traversal.
 		/// </summary>
-		/// <remarks>
-		/// This snapshot should only be used for equality checks and not for game evaluation or other purposes.
-		/// </remarks>
-		/// <returns>A snapshot of the board for equality checks.</returns>
 		internal BoardBaseImpl CreatePositionSnapshot() => CloneWithHistory(new BoardHistoryImpl());
 
 		/// <summary>

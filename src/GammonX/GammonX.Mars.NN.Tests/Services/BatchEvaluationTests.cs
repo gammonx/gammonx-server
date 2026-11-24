@@ -5,7 +5,6 @@ using GammonX.Engine.Services;
 using GammonX.Mars.NN.Models;
 using GammonX.Mars.NN.Nets;
 using GammonX.Mars.NN.Services;
-using GammonX.Mars.NN.Tests.Performance;
 using GammonX.Mars.NN.Tests.Data;
 
 using GammonX.Models.Contracts;

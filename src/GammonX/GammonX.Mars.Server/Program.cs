@@ -2,6 +2,8 @@ using DotNetEnv;
 
 using GammonX.Mars.NN.Services;
 
+using GammonX.Hosting;
+
 using GammonX.Mars.Server;
 
 using GammonX.Models.Enums;
@@ -95,9 +97,10 @@ if (portesInference != null)
 // -------------------------------------------------------------------------------
 // LOGGING SETUP
 // -------------------------------------------------------------------------------
-builder.Host.UseSerilog((_, _, configuration) =>
+builder.Host.UseSerilog((context, _, configuration) =>
 {
     configuration
+        .ApplyLogLevels(context.Configuration)
         .Enrich.FromLogContext()
         .WriteTo.Console();
 });

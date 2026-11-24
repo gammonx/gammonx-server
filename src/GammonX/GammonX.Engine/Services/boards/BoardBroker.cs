@@ -310,5 +310,13 @@ namespace GammonX.Engine.Services
 			}
 			return results;
 		}
+
+        /// <summary>Copies the playable position with independent history for move generation.</summary>
+        /// <param name="model">Board whose playable position is copied.</param>
+        /// <returns>A board that can be moved and undone independently of the source.</returns>
+        public static IBoardModel CloneForMoveGeneration(this IBoardModel model)
+        {
+            return model is BoardBaseImpl board ? board.CreatePositionSnapshot() : model.DeepClone();
+        }
 	}
 }

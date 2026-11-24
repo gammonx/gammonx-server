@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
 internal sealed class NeuralInputComparer : IEqualityComparer<float[]>
 {

@@ -4,6 +4,7 @@ using GammonX.Models.Enums;
 
 using System.Diagnostics;
 using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 
 // ReSharper disable NonReadonlyMemberInGetHashCode
 
@@ -13,7 +14,7 @@ namespace GammonX.Engine.Models
 	/// A move sequence represents a set of plays (from/to) which can be made with a set of dices.
 	/// </summary>
 	[DataContract]
-	public class MoveSequenceModel : IEquatable<MoveSequenceModel>
+	public sealed class MoveSequenceModel : IEquatable<MoveSequenceModel>
 	{
 		/// <summary>
 		/// Gets a list of plays. Contains 4 moves for a pasch and 2 moves for 2 different dice values.
@@ -24,7 +25,7 @@ namespace GammonX.Engine.Models
 		/// <summary>
 		/// Gets a list of used dices in order to execute <see cref="Moves"/>.
 		/// </summary>
-		[IgnoreDataMember]
+		[JsonIgnore]
 		public List<int> UsedDices { get; } = [];
 
 		public MoveSequenceModel DeepClone()

@@ -31,6 +31,11 @@
         void Cancel(CancellationTokenKey key);
 
         /// <summary>
+        /// Removes and cancels the registration only if it is still current and has not been canceled.
+        /// </summary>
+        bool TryCancel(CancellationTokenKey key, CancellationTokenSource expected);
+
+        /// <summary>
         /// Cancels all token sources associated with the given player id.
         /// </summary>
         /// <param name="playerId">Player id to search for.</param>
@@ -58,5 +63,6 @@
     {
         Turn = 0,
         Disconnect = 1,
+        BotRecovery = 2,
     }
 }

@@ -1,5 +1,7 @@
 ﻿using GammonX.Server.Models;
 
+using GammonX.Server.Services;
+
 namespace GammonX.Server
 {
     /// <summary>
@@ -146,7 +148,7 @@ namespace GammonX.Server
             // we check if the active game session is over
             if (game != null && game.Phase == GamePhase.GameOver)
             {
-                if (match.IsMatchOver())
+                if (match.Type.GetMatchOverFunc()(match))
                 {
                     return Array.Empty<string>();
                 }
@@ -170,7 +172,10 @@ namespace GammonX.Server
                         // subsequent games have to be started with 'StartGameCommand' and the starting player
                         // is implicitly defined by the winner of the previous game.
                         if (game.DiceRolls.Any())
-                            return new string[] { MoveCommand, ResignGameCommand, ResignMatchCommand };
+                        {
+                            var next = match.CanEndTurn(callingPlayerId) ? EndTurnCommand : MoveCommand;
+                            return new string[] { next, ResignGameCommand, ResignMatchCommand };
+                        }
                         else
                             return new string[] { RollCommand, ResignGameCommand, ResignMatchCommand };
                     case StartGameCommand:
@@ -186,7 +191,7 @@ namespace GammonX.Server
                         {
                             if (game.Phase == GamePhase.GameOver)
                             {
-                                if (match.IsMatchOver())
+                                if (match.Type.GetMatchOverFunc()(match))
                                 {
                                     return Array.Empty<string>();
                                 }

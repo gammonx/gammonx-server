@@ -1,7 +1,7 @@
 ﻿using GammonX.Models.Enums;
 
 using GammonX.Server.Contracts;
-
+using GammonX.Server.Services;
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Models
@@ -176,6 +176,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns the game session for the given <paramref name="gameRound"/>.
 		/// </summary>
+        /// <remarks>
+        /// Completed rounds may be shared wrappers that copy their state on mutable access.
+        /// </remarks>
 		/// <param name="gameRound">Game round. 1-based index.</param>
 		/// <returns>An instance of <see cref="IGameSessionModel"/> or null if game session not yet started.</returns>
 		IGameSessionModel? GetGameSession(int gameRound);
@@ -183,6 +186,9 @@ namespace GammonX.Server.Models
 		/// <summary>
 		/// Returns all game sessions of this match session.
 		/// </summary>
+        /// <remarks>
+        /// Completed rounds may be shared wrappers that copy their state on mutable access.
+        /// </remarks>
 		/// <returns>An array of <see cref="IGameSessionModel"/> instances.</returns>
 		IGameSessionModel?[] GetGameSessions();
 
@@ -213,5 +219,10 @@ namespace GammonX.Server.Models
 		/// <param name="command">Command to check.</param>
 		/// <returns>Boolean indicating if the command can be executed.</returns>
 		bool IsAllowedCommand(Guid callingPlayerId, string command);
+
+		/// <summary>
+		/// Returns the action the seated player still owes, or null when no action is due.
+		/// </summary>
+		TurnObligation? PendingObligation(Guid callingPlayerId);
 	}
 }

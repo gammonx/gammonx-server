@@ -1,4 +1,4 @@
-﻿using GammonX.Mars.Server.Contracts;
+using GammonX.Mars.Server.Contracts;
 using GammonX.Mars.Server.Tests.Data;
 
 using GammonX.Models.Contracts;
@@ -12,7 +12,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Net.Http.Json;
 
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 
 using static TorchSharp.torch;
 

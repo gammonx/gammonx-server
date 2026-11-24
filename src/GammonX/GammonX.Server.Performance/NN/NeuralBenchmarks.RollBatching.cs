@@ -1,11 +1,11 @@
 using GammonX.Mars.NN.Services;
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 using System.Diagnostics.Metrics;
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-public partial class PerformanceTests
+internal partial class NeuralBenchmarks
 {
     private void ConfigureRollBatching(IFeatureEvalService service)
     {

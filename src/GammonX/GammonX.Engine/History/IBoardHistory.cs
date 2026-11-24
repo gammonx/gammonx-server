@@ -8,6 +8,10 @@
 		/// <summary>
 		/// Gets the list of events of this board history.
 		/// </summary>
+        /// <remarks>
+        /// Clones own independent stacks but may share immutable built-in events.
+        /// Array values returned by those events are defensive copies.
+        /// </remarks>
 		Stack<IHistoryEvent> Events { get; }
 
 		/// <summary>

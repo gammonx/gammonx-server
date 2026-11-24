@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>$(TargetFramework)</TargetFramework>
@@ -8,6 +8,9 @@
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 	</PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/LoggingConfigurationTests.cs" Link="LoggingConfigurationTests.cs" />
+  </ItemGroup>
 
 	<ItemGroup>
 	  <None Include="..\GammonX.Server\.env" Link=".env">
@@ -29,6 +32,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="../GammonX.Diagnostics/GammonX.Diagnostics.csproj" />
 		<ProjectReference Include="..\GammonX.Server\GammonX.Server.csproj" />
 	</ItemGroup>
 

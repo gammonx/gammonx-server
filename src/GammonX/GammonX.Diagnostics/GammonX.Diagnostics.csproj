@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(TargetFramework)</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" PrivateAssets="all" />
+    <InternalsVisibleTo Include="GammonX.Server" />
+    <InternalsVisibleTo Include="GammonX.Server.Tests" />
+    <InternalsVisibleTo Include="GammonX.Server.Performance" />
+  </ItemGroup>
+</Project>

@@ -1,7 +1,13 @@
 ﻿using GammonX.Engine.Services;
+using GammonX.Engine.History;
+
 using GammonX.Models.Enums;
+
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+
+using Moq;
+
 using MatchType = GammonX.Models.Enums.MatchType;
 
 namespace GammonX.Server.Tests.Repository
@@ -10,9 +16,222 @@ namespace GammonX.Server.Tests.Repository
     {
         private readonly QueueKey _defaultKey = new(MatchVariant.Tavli, MatchModus.Normal, MatchType.FivePointGame);
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task DirectHintsHighlightSingleAndCombinedDestinationsForEitherSeat(bool secondSeat)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+            var match = lease.Create(new QueueKey(MatchVariant.Backgammon, MatchModus.Normal, MatchType.FivePointGame));
+            var first = new PlayerConnection(Guid.NewGuid(), "one");
+            var second = new PlayerConnection(Guid.NewGuid(), "two");
+            var active = secondSeat ? second : first;
+            match.JoinSession(first);
+            match.JoinSession(second);
+            match.Player1.AcceptNextGame();
+            match.Player2.AcceptNextGame();
+            var game = match.StartMatch(active.Id);
+            Array.Clear(game.BoardModel.Fields);
+            game.BoardModel.Fields[secondSeat ? 18 : 5] = secondSeat ? 15 : -15;
+            game.BoardModel.Fields[secondSeat ? 0 : 23] = secondSeat ? -15 : 15;
+            game.SetDiceRolls([1, 2], !secondSeat);
+            Assert.True(lease.Commit());
+
+            // Act
+            var hints = repo.Get(match.Id)!.GetGameState(active.Id).MoveSequences;
+            var moves = hints.Select(sequence => Assert.Single(sequence.Moves)).ToArray();
+
+            // Assert
+            Assert.All(moves, move => Assert.Equal(5, move.From));
+            Assert.Equal(new[] { 6, 7, 8 }, moves.Select(move => move.To).Order().ToArray());
+            var from = secondSeat ? 18 : 5;
+            var to = secondSeat ? 15 : 8;
+            match.MoveCheckers(active.Id, from, to);
+            Assert.Empty(game.DiceRolls.GetRemainingRolls());
+            Assert.Empty(match.GetGameState(active.Id).MoveSequences);
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon)]
+        [InlineData(MatchVariant.Tavla)]
+        [InlineData(MatchVariant.Tavli)]
+        public async Task CompletedRoundsAreSharedUntilExplicitlyAccessed(MatchVariant variant)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var historyEvent = new Mock<IHistoryEvent>();
+            var cloneable = historyEvent.As<ICloneable>();
+            cloneable.Setup(value => value.Clone()).Returns(historyEvent.Object);
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(match.Player1.Id);
+                ((IEditableBoardHistory)round.BoardModel.History).Add(historyEvent.Object);
+                match.ResignGame(match.Player2.Id);
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                match.StartNextGame(match.Player1.Id);
+                Assert.True(lease.Commit());
+            }
+            cloneable.Invocations.Clear();
+
+            // Act
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                Assert.NotNull(lease.Get());
+                Assert.True(lease.Commit());
+            }
+
+            // Assert
+            cloneable.Verify(value => value.Clone(), Times.Never);
+            var snapshot = repo.Get(id)!;
+            var completed = snapshot.GetGameSession(1)!;
+            var completedBoard = completed.BoardModel;
+            cloneable.Verify(value => value.Clone(), Times.Once);
+            completedBoard.Fields[0] = 99;
+            completedBoard.History.Events.Clear();
+            Assert.NotEqual(99, repo.Get(id)!.GetGameSession(1)!.BoardModel.Fields[0]);
+            Assert.Single(repo.Get(id)!.GetGameSession(1)!.BoardModel.History.Events);
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, false)]
+        [InlineData(MatchVariant.Backgammon, true)]
+        [InlineData(MatchVariant.Tavla, false)]
+        [InlineData(MatchVariant.Tavla, true)]
+        [InlineData(MatchVariant.Tavli, false)]
+        [InlineData(MatchVariant.Tavli, true)]
+        public async Task StateQueriesDoNotCloneMatchAndReturnDetachedPayloads(MatchVariant variant, bool completed)
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var playerId = Guid.NewGuid();
+            await using (var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                var match = lease.Create(new QueueKey(variant, MatchModus.Normal, MatchType.FivePointGame));
+                match.JoinSession(new PlayerConnection(playerId, "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(match.Player1.Id);
+                round.SetDiceRolls([2, 3], true);
+                var historyEvent = new Mock<IHistoryEvent>();
+                historyEvent.As<ICloneable>().Setup(value => value.Clone()).Returns(historyEvent.Object);
+                ((IEditableBoardHistory)round.BoardModel.History).Add(historyEvent.Object);
+                if (completed)
+                {
+                    round.StopGame(GammonX.Models.GameResultModel.Draw());
+                }
+                Assert.True(lease.Commit());
+                historyEvent.As<ICloneable>().Setup(value => value.Clone()).Throws(new InvalidOperationException("Query cloned history"));
+            }
+
+            // Act
+            await using var query = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+            var game = query.ReadGameState(playerId)!;
+            var matchState = query.ReadMatchState(playerId)!;
+            var originalField = game.BoardState.Fields[0];
+            var originalMove = game.MoveSequences.FirstOrDefault()?.Moves[0].From;
+            Assert.Equal(completed, originalMove == null);
+            game.BoardState.Fields[0] = 99;
+            game.DiceRolls[0].Used = true;
+            if (!completed)
+            {
+                game.MoveSequences[0].Moves[0].From = 99;
+            }
+            matchState.GameRounds![0].Points = 99;
+
+            // Assert
+            var reread = query.ReadGameState(playerId)!;
+            Assert.Equal(originalField, reread.BoardState.Fields[0]);
+            Assert.False(reread.DiceRolls[0].Used);
+            Assert.Equal(originalMove, reread.MoveSequences.FirstOrDefault()?.Moves[0].From);
+            Assert.NotEqual(99, query.ReadMatchState(playerId)!.GameRounds![0].Points);
+            Assert.False(query.Commit()); // A state query never loads a working match.
+        }
+
         private static MatchSessionRepository CreateRepo()
         {
             return new MatchSessionRepository(new MatchSessionFactory(new GameSessionFactory(new DiceServiceFactory())));
+        }
+
+        [Fact]
+        public async Task PlayerHelpersObserveWorkingStateAndRejectDisposedLeases()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var player1 = Guid.NewGuid();
+            var player2 = Guid.NewGuid();
+            await using (var setup = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                var match = setup.Create(_defaultKey);
+                match.JoinSession(new PlayerConnection(player1, "one"));
+                match.JoinSession(new PlayerConnection(player2, "two"));
+                Assert.True(setup.Commit());
+            }
+
+            // Act: scalar reads do not load a working copy; subsequent updates are visible.
+            var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+            Assert.Equal(player1, lease.GetCallingPlayerId("one"));
+            Assert.Equal(player2, lease.GetOtherPlayerId(player1));
+            Assert.Equal("two", lease.GetPlayerConnectionId(player2));
+            Assert.True(lease.IsWhite(player1));
+            Assert.False(lease.IsWhite(player2));
+            Assert.False(lease.IsBotPlayer(player2));
+            Assert.False(lease.Commit());
+            Assert.True(lease.TryRemove());
+            Assert.Throws<InvalidOperationException>(() => lease.GetCallingPlayerId("one"));
+            Assert.Throws<InvalidOperationException>(() => lease.GetOtherPlayerId(player1));
+            Assert.Throws<InvalidOperationException>(() => lease.IsBotPlayer(player2));
+            await lease.DisposeAsync();
+
+            // Assert
+            Assert.Throws<ObjectDisposedException>(() => lease.GetCallingPlayerId("one"));
+            Assert.Throws<ObjectDisposedException>(() => lease.GetOtherPlayerId(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.GetPlayerConnectionId(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.IsWhite(player1));
+            Assert.Throws<ObjectDisposedException>(() => lease.IsBotPlayer(player1));
+            Assert.Null(repo.Get(id));
+        }
+
+        [Fact]
+        public async Task CompletedMatchQueriesDoNotSetStoredEndTime()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            var player = Guid.NewGuid();
+            await using (var setup = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                var match = setup.Create(_defaultKey);
+                match.JoinSession(new PlayerConnection(player, "one"));
+                match.JoinSession(new PlayerConnection(Guid.NewGuid(), "two"));
+                match.Player1.AcceptNextGame();
+                match.Player2.AcceptNextGame();
+                var round = match.StartMatch(player);
+                round.StopGame(GammonX.Models.GameResultModel.Draw());
+                match.Player1.Points = 5;
+                Assert.True(setup.Commit());
+            }
+
+            // Act
+            await using (var query = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken))
+            {
+                Assert.NotNull(query.ReadGameState(player));
+                Assert.NotNull(query.ReadMatchState(player));
+            }
+
+            // Assert
+            Assert.Null(repo.Get(id)!.EndedAt);
         }
 
         [Fact]
@@ -21,9 +240,9 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var first = firstLease.Create(_defaultKey);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             Assert.False(waitingLease.IsCompleted);
@@ -43,20 +262,50 @@ namespace GammonX.Server.Tests.Repository
         }
 
         [Fact]
+        public async Task CanceledWaiterPreservesExclusiveAccessAcrossMatchRemoval()
+        {
+            // Arrange
+            var repo = CreateRepo();
+            var id = Guid.NewGuid();
+            await using var owner = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+            owner.Create(_defaultKey);
+            using var cancellation = new CancellationTokenSource();
+            var canceled = repo.AcquireStateAsync(id, cancellation.Token);
+            var waiting = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+
+            // Act
+            Assert.True(owner.TryRemove());
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceled);
+            var last = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+
+            // Assert
+            Assert.False(waiting.IsCompleted);
+            Assert.False(last.IsCompleted);
+            await owner.DisposeAsync();
+            await using var next = await waiting.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.False(last.IsCompleted);
+            next.Create(_defaultKey);
+            await next.DisposeAsync();
+            await using var final = await last.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.NotNull(final.Get());
+        }
+
+        [Fact]
         public async Task RemovalDoesNotSplitLockBetweenWaitingOperations()
         {
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             firstLease.Create(_defaultKey);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             Assert.True(firstLease.TryRemove());
             await firstLease.DisposeAsync();
             var secondLease = await waitingLease.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            var thirdLease = repo.AcquireStateAsync(id);
+            var thirdLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Null(secondLease.Get());
@@ -70,10 +319,10 @@ namespace GammonX.Server.Tests.Repository
         {
             // Arrange
             var repo = CreateRepo();
-            await using var firstLease = await repo.AcquireStateAsync(Guid.NewGuid());
+            await using var firstLease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
             // Act
-            var secondLease = repo.AcquireStateAsync(Guid.NewGuid());
+            var secondLease = repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(secondLease.IsCompletedSuccessfully);
@@ -86,7 +335,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             var created = lease.Create(_defaultKey);
@@ -105,7 +354,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             var session = lease.GetOrCreate(_defaultKey);
@@ -121,7 +370,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act / Assert
             Assert.Null(lease.Get());
@@ -137,7 +386,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
 
             // Act
@@ -156,7 +405,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
 
             // Act
@@ -174,7 +423,7 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            await using var lease = await repo.AcquireStateAsync(id);
+            await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
             session.Player1.SetStartDiceRoll(2);
 
@@ -194,11 +443,11 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var firstLease = await repo.AcquireStateAsync(id);
+            var firstLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             var oldSnapshot = firstLease.Create(_defaultKey);
             await firstLease.DisposeAsync();
             var detached = repo.Get(id)!;
-            await using var currentLease = await repo.AcquireStateAsync(id);
+            await using var currentLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             currentLease.Get()!.Player1.SetStartDiceRoll(2);
 
             // Act
@@ -217,11 +466,11 @@ namespace GammonX.Server.Tests.Repository
             // Arrange
             var repo = CreateRepo();
             var id = Guid.NewGuid();
-            var oldLease = await repo.AcquireStateAsync(id);
+            var oldLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
             oldLease.Create(_defaultKey);
             await oldLease.DisposeAsync();
-            var currentLease = await repo.AcquireStateAsync(id);
-            var waitingLease = repo.AcquireStateAsync(id);
+            var currentLease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
+            var waitingLease = repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
 
             // Act
             await oldLease.DisposeAsync();
@@ -248,13 +497,13 @@ namespace GammonX.Server.Tests.Repository
             // Act
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
-                await using var lease = await repo.AcquireStateAsync(id);
+                await using var lease = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken);
                 lease.Create(_defaultKey).Player1.AcceptNextGame();
                 throw new InvalidOperationException("Failed command.");
             });
 
             // Assert
-            await using var next = await repo.AcquireStateAsync(id).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await using var next = await repo.AcquireStateAsync(id, TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             Assert.False(next.Get()!.Player1.NextGameAccepted);
         }
 
@@ -292,7 +541,7 @@ namespace GammonX.Server.Tests.Repository
             var repo = CreateRepo();
             var player = new PlayerConnection(Guid.NewGuid());
             player.SetConnectionId("human");
-            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid());
+            await using var lease = await repo.AcquireStateAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
             var session = lease.Create(_defaultKey);
             session.JoinSession(player);
             Assert.True(lease.Commit());

@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-using GammonX.Engine.Diagnostics;
+using GammonX.Diagnostics.Engine;
 
 using static TorchSharp.torch;
 

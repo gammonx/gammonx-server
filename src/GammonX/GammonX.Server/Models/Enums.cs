@@ -18,4 +18,28 @@
 		/// </summary>
 		Discarded = 2
 	}
+
+	/// <summary>
+	/// Describes which action is expected from the player until the deadline expires.
+	/// </summary>
+	public enum TurnDeadlineAction
+	{
+		/// <summary>
+		/// Join an unstarted match (signalR socket) based on an already constructed match lobby.
+		/// </summary>
+		Join,
+		StartMatch,
+		/// <summary>
+		/// Accept the next game within a running match session.
+		/// </summary>
+		AcceptNextGame,
+		/// <summary>
+		/// Play a turn (roll, move, endturn, offer double cube).
+		/// </summary>
+		PlayTurn,
+		/// <summary>
+		/// Respond to a pending doubling cube offer.
+		/// </summary>
+		RespondToCube
+	}
 }

@@ -67,7 +67,7 @@ namespace GammonX.Server.Tests.Match
 			board.BearOffChecker(false, 1);
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -124,7 +124,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a turn for white checkers
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -133,7 +133,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -172,7 +172,7 @@ namespace GammonX.Server.Tests.Match
 			// no borne off for black
 
 			session.RollDices(session.Player1.Id);
-			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player1.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);
@@ -212,7 +212,7 @@ namespace GammonX.Server.Tests.Match
 
 			// execute a turn for white checkers
 			session.RollDices(session.Player1.Id);
-			var anyMoveSeq = gameSession.MoveSequences.FirstOrDefault();
+			var anyMoveSeq = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).FirstOrDefault();
 			Assert.NotNull(anyMoveSeq);
 			foreach (var move in anyMoveSeq.Moves)
 			{
@@ -221,7 +221,7 @@ namespace GammonX.Server.Tests.Match
 			session.EndTurn(session.Player1.Id);
 
 			session.RollDices(session.Player2.Id);
-			var anyMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var anyMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(anyMove);
 			session.MoveCheckers(session.Player2.Id, anyMove.From, anyMove.To);
 			Assert.Equal(GamePhase.GameOver, gameSession.Phase);

@@ -177,12 +177,13 @@ namespace GammonX.Server.Tests
 
             var boardService = BoardServiceFactory.Create(GameModus.Backgammon);
             var legalMoveSeq = boardService.GetLegalMoveSequences(gameSession.BoardModel, true, 5, 6);
-            Assert.Equal(gameSession.MoveSequences.Count, legalMoveSeq.Length);
-            Assert.Equal(gameSession.MoveSequences[0].Moves.Count, legalMoveSeq[0].Moves.Count);
-            Assert.Equal(gameSession.MoveSequences[0].Moves[0], legalMoveSeq[0].Moves[0]);
-            Assert.Equal(gameSession.MoveSequences[0].Moves[1], legalMoveSeq[0].Moves[1]);
-            Assert.Equal(gameSession.MoveSequences[1].Moves[0], legalMoveSeq[1].Moves[0]);
-            Assert.Equal(gameSession.MoveSequences[1].Moves[1], legalMoveSeq[1].Moves[1]);
+            var moves = gameSession.GetLegalMoveSequences(true);
+            Assert.Equal(moves.Count, legalMoveSeq.Length);
+            Assert.Equal(moves[0].Moves.Count, legalMoveSeq[0].Moves.Count);
+            Assert.Equal(moves[0].Moves[0], legalMoveSeq[0].Moves[0]);
+            Assert.Equal(moves[0].Moves[1], legalMoveSeq[0].Moves[1]);
+            Assert.Equal(moves[1].Moves[0], legalMoveSeq[1].Moves[0]);
+            Assert.Equal(moves[1].Moves[1], legalMoveSeq[1].Moves[1]);
 
             var botMoveSequence = await botService.GetNextMovesAsync(matchSession, activePlayerId, TestContext.Current.CancellationToken);
             foreach (var botMove in botMoveSequence.Moves)
@@ -397,6 +398,22 @@ namespace GammonX.Server.Tests
         [InlineData(MatchVariant.Tavla, GameModus.Tavla, 6120)]
         public async Task BotCanPlayRandomStandardBoards(MatchVariant variant, GameModus modus, int seed)
         {
+            await AssertBotCanPlayRandomStandardBoard(variant, modus, seed, BotUtils.GetBotService(WellKnownBotServices.Mars));
+        }
+
+        [Theory]
+        [InlineData(MatchVariant.Backgammon, GameModus.Backgammon, 42)]
+        [InlineData(MatchVariant.Tavli, GameModus.Portes, 34257)]
+        [InlineData(MatchVariant.Tavla, GameModus.Tavla, 2024)]
+        public async Task SimpleBotCanPlayRandomStandardBoards(MatchVariant variant, GameModus modus, int seed)
+        {
+            // Exercise the random-board fixture without requiring the external Mars service.
+            await AssertBotCanPlayRandomStandardBoard(variant, modus, seed, new SimpleBotService());
+        }
+
+        private static async Task AssertBotCanPlayRandomStandardBoard(MatchVariant variant, GameModus modus, int seed, IBotService botService)
+        {
+            // Arrange
             var fields = RandomBoardGenerator.GenerateRandomFields(
                 24, 15, 15,
                 out var bearOffBlack,
@@ -412,8 +429,6 @@ namespace GammonX.Server.Tests
             var matchSession = SessionUtils.CreateMatchSessionWithBot(variant, MatchType.CashGame, matchFactory);
             Assert.Equal(WellKnownBotPlayers.ConnectionId, matchSession.Player2.ConnectionId);
 
-            var botService = BotUtils.GetBotService(WellKnownBotServices.Mars);
-
             matchSession.Player1.AcceptNextGame();
             matchSession.Player2.AcceptNextGame();
 
@@ -422,12 +437,13 @@ namespace GammonX.Server.Tests
 
             Assert.Equal(modus, matchSession.GetGameModus());
 
-            // black checker bot moves first
+            // Act and assert: black moves first, then white; blocked turns must still end.
             var gameSession = matchSession.StartMatch(botPlayer2Id);
             Assert.NotNull(gameSession);
             Assert.Equal(GamePhase.WaitingForRoll, gameSession.Phase);
             matchSession.RollDices(botPlayer2Id);
             var nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer2Id, TestContext.Current.CancellationToken);
+            Assert.Equal(nextMoveSeq.Moves.Count != 0, gameSession.CanMove(false));
             var canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
@@ -435,11 +451,13 @@ namespace GammonX.Server.Tests
                 canMove = matchSession.MoveCheckers(botPlayer2Id, nextMove.From, nextMove.To);
             }
             Assert.False(canMove);
+            Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
             matchSession.EndTurn(botPlayer2Id);
 
             // white checker bot moves second
             matchSession.RollDices(botPlayer1Id);
             nextMoveSeq = await botService.GetNextMovesAsync(matchSession, botPlayer1Id, TestContext.Current.CancellationToken);
+            Assert.Equal(nextMoveSeq.Moves.Count != 0, gameSession.CanMove(true));
             canMove = nextMoveSeq.Moves.Count != 0;
 
             foreach (var nextMove in nextMoveSeq.Moves)
@@ -447,6 +465,7 @@ namespace GammonX.Server.Tests
                 canMove = matchSession.MoveCheckers(botPlayer1Id, nextMove.From, nextMove.To);
             }
             Assert.False(canMove);
+            Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
             matchSession.EndTurn(botPlayer1Id);
         }
 

@@ -6,16 +6,16 @@ using GammonX.Models.Enums;
 
 using static TorchSharp.torch;
 
-namespace GammonX.Mars.NN.Tests.Performance;
+namespace GammonX.Server.Performance.NN;
 
-public partial class PerformanceTests
+internal partial class NeuralBenchmarks
 {
     /// <summary>
     /// Measures one CPU configuration per fresh test process. Set OMP_NUM_THREADS and
     /// MKL_NUM_THREADS before launch; GAMMONX_PERF_THREADS verifies the requested value.
     /// Optional GAMMONX_PERF_BOARD, GAMMONX_PERF_BATCH_SIZE and GAMMONX_PERF_PHASE select the workload.
     /// </summary>
-    [Fact(Skip = "PERFORMANCE")]
+
     public async Task MeasureCpuThreadAndBatchTuning()
     {
         var threads = ReadTuningInt("GAMMONX_PERF_THREADS", get_num_threads());

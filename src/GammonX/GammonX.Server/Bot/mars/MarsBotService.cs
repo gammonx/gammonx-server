@@ -1,4 +1,4 @@
-﻿using GammonX.Engine.Extensions;
+using GammonX.Engine.Extensions;
 using GammonX.Engine.Models;
 
 using GammonX.Models.Contracts;
@@ -6,6 +6,7 @@ using GammonX.Models.Enums;
 
 using GammonX.Server.Models;
 using GammonX.Server.Services;
+using GammonX.Diagnostics.Server;
 
 namespace GammonX.Server.Bot
 {
@@ -42,7 +43,7 @@ namespace GammonX.Server.Bot
                 // bot plays with black checkers
                 var isWhite = IsWhite(matchSession, playerId);
                 var boardContract = gameSession.BoardModel.ToContract(false);
-                var rolls = gameSession.DiceRolls.Select(dr => dr.Roll).ToArray();
+                var rolls = gameSession.DiceRolls.GetRemainingRolls();
 
                 EvalMoveRequestContract parameters = new EvalMoveRequestContract
                 {
@@ -62,7 +63,8 @@ namespace GammonX.Server.Bot
                 }
                 catch (Exception ex) when (parameters.BotLevel == BotLevel.Expert && IsTimeout(ex, cancellationToken))
                 {
-                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out, falling back to hard level.");
+                    Serilog.Log.Error(ex, "Expert bot move evaluation timed out for match {matchId}, falling back to hard level.", matchSession.Id);
+                    ServerMetrics.BotFallbacks.Add(1, new KeyValuePair<string, object?>("operation", "move.expert_to_hard"));
                     // we currently have a performance bottleneck when 2ply calculation exceeds configured timeout
                     // we fall back to a 1ply evaluation instead
                     parameters.BotLevel = BotLevel.Hard;

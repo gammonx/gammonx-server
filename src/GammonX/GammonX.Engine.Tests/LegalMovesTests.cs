@@ -10,6 +10,182 @@ namespace GammonX.Engine.Tests
 {
 	public class LegalMovesTests
 	{
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
+        public void CoordinateResolverMatchesLegalPrefixesForBothSeats(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            var original = board.DeepClone();
+
+            foreach (var white in new[] { true, false })
+            {
+                foreach (var rolls in new[] { new[] { 2, 1 }, new[] { 1, 1, 1, 1 } })
+                {
+                    var legal = service.GetLegalMoveSequences(board, white, rolls);
+                    var prefixes = new HashSet<(int From, int To)>();
+                    foreach (var sequence in legal)
+                    {
+                        var from = sequence.Moves[0].From;
+                        var position = from;
+                        foreach (var move in sequence.Moves)
+                        {
+                            if (move.From != position)
+                            {
+                                break;
+                            }
+                            prefixes.Add((from, move.To));
+                            position = move.To;
+                        }
+                    }
+
+                    var sources = Enumerable.Range(0, 24).Append(BoardPositions.HomeBarWhite).Append(BoardPositions.HomeBarBlack);
+                    var destinations = Enumerable.Range(0, 24).Append(BoardPositions.BearOffWhite).Append(BoardPositions.BearOffBlack);
+                    foreach (var from in sources)
+                    {
+                        foreach (var to in destinations)
+                        {
+                            var result = service.ResolveMoveSequence(board, white, from, to, rolls);
+                            Assert.Equal(prefixes.Contains((from, to)), result != null);
+                            if (result != null)
+                            {
+                                Assert.Contains(legal, sequence =>
+                                    sequence.Moves.Take(result.Moves.Count).SequenceEqual(result.Moves)
+                                    && sequence.UsedDices.Take(result.Moves.Count).SequenceEqual(result.UsedDices));
+                            }
+                        }
+                    }
+                    Assert.True(original.Equals(board));
+                    Assert.Empty(board.History.Events);
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void CombinedMoveTriesSmallerDieFirstUnlessBlocked(bool lowerBlocked)
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = service.CreateBoard();
+            var fields = new int[24];
+            fields[0] = -1;
+            fields[1] = lowerBlocked ? 2 : 1;
+            board.SetFields(fields);
+
+            var result = service.ResolveMoveSequence(board, true, 0, 3, 2, 1);
+
+            Assert.NotNull(result);
+            Assert.Equal(lowerBlocked ? new[] { 2, 1 } : new[] { 1, 2 }, result.UsedDices);
+            Assert.Equal(fields, board.Fields);
+            Assert.Empty(board.History.Events);
+        }
+
+        [Fact]
+        public void CannotStrandADieWhenAnotherCheckerCanCompleteTheRoll()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = service.CreateBoard();
+            var fields = new int[24];
+            fields[0] = fields[5] = -1;
+            fields[3] = fields[6] = 2;
+            board.SetFields(fields);
+
+            Assert.Null(service.ResolveMoveSequence(board, true, 0, 2, 1, 2));
+            Assert.NotNull(service.ResolveMoveSequence(board, true, 0, 1, 1, 2));
+            Assert.Equal(fields, board.Fields);
+        }
+
+        [Theory]
+        [InlineData(2, 1, 1, 2)]
+        [InlineData(3, 2, 1, 1, 1, 1)]
+        public void CanPlayAPartialRollWhenTheOtherDiceAreBlocked(int block, int destination, params int[] dice)
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = service.CreateBoard();
+            var fields = new int[24];
+            fields[0] = -1;
+            fields[block] = 2;
+            fields[3] = 2;
+            board.SetFields(fields);
+
+            var result = service.ResolveMoveSequence(board, true, 0, destination, dice);
+
+            Assert.NotNull(result);
+            Assert.All(result.UsedDices, die => Assert.Equal(1, die));
+            Assert.Equal(destination, result.Moves.Count);
+        }
+
+        [Fact]
+        public void LastCheckerUsesHigherDieEvenWhenBothCanBearOff()
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = service.CreateBoard();
+            var fields = new int[24];
+            fields[23] = -1;
+            board.SetFields(fields);
+
+            var result = service.ResolveMoveSequence(board, true, 23, BoardPositions.BearOffWhite, 1, 2);
+
+            Assert.NotNull(result);
+            Assert.Equal(new[] { 2 }, result.UsedDices);
+            Assert.Equal(result.UsedDices, Assert.Single(service.GetLegalMoveSequences(board, true, 1, 2)).UsedDices);
+            Assert.Equal(result.UsedDices, Assert.Single(service.GetUniqueLegalMoveSequences(board, true, [1, 2], TestContext.Current.CancellationToken)).UsedDices);
+        }
+
+        [Theory]
+        [InlineData(GameModus.Backgammon)]
+        [InlineData(GameModus.Portes)]
+        [InlineData(GameModus.Tavla)]
+        [InlineData(GameModus.Plakoto)]
+        [InlineData(GameModus.Fevga)]
+        public void AvailabilityMatchesGeneratedFirstSteps(GameModus modus)
+        {
+            var service = BoardServiceFactory.Create(modus);
+            var board = service.CreateBoard();
+            foreach (var white in new[] { true, false })
+            {
+                Check([]);
+                Check([1, 2]);
+                Check([4, 4, 4, 4]);
+
+                void Check(int[] rolls)
+                {
+                    var sequences = service.GetLegalMoveSequences(board, white, rolls);
+                    Assert.Equal(sequences.Length > 0, service.CanUseAnyRoll(board, white, rolls));
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public void AvailabilityMatchesBarEntryAndBearOff(bool onBar, bool blocked)
+        {
+            var service = BoardServiceFactory.Create(GameModus.Backgammon);
+            var board = service.CreateBoard();
+            var fields = new int[24];
+            if (onBar)
+            {
+                ((IHomeBarModel)board).AddToHomeBar(true, 1);
+                fields[0] = blocked ? 2 : 0;
+            }
+            else
+            {
+                fields[23] = -1;
+            }
+            board.SetFields(fields);
+
+            var sequences = service.GetLegalMoveSequences(board, true, 1);
+            Assert.Equal(!blocked, sequences.Length > 0);
+            Assert.Equal(sequences.Length > 0, service.CanUseAnyRoll(board, true, 1));
+        }
+
 		#region Backgammon
 
 		[Theory]

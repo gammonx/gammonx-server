@@ -22,6 +22,34 @@ namespace GammonX.Server.Tests.Match
 		private static readonly MatchSessionFactory _matchSessionFactory = new(_gameSessionFactory);
 
 		[Theory]
+		[InlineData(MatchType.SevenPointGame, false, TurnDeadlineAction.AcceptNextGame)]
+		[InlineData(MatchType.SevenPointGame, true, null)]
+		[InlineData(MatchType.CashGame, false, null)]
+		public void FinishedRoundOnlyOwesAcceptanceForAnUnacceptedNextGame(
+			MatchType matchType, bool acceptedNextGame, TurnDeadlineAction? expected)
+		{
+			// Arrange
+			var match = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, matchType, _matchSessionFactory);
+			var player = match.Player1;
+			player.AcceptNextGame();
+			match.Player2.AcceptNextGame();
+			var game = match.StartMatch(player.Id);
+			match.ResignGame(match.Player2.Id);
+			Assert.Equal(GamePhase.GameOver, game.Phase);
+			Assert.Equal(player.Id, game.ActivePlayer);
+			if (acceptedNextGame)
+			{
+				player.AcceptNextGame();
+			}
+
+			// Act
+			var obligation = match.PendingObligation(player.Id);
+
+			// Assert
+			Assert.Equal(expected, obligation?.Action);
+		}
+
+		[Theory]
 		[InlineData(MatchVariant.Backgammon, MatchType.CashGame)]
 		[InlineData(MatchVariant.Backgammon, MatchType.FivePointGame)]
 		[InlineData(MatchVariant.Backgammon, MatchType.SevenPointGame)]
@@ -353,7 +381,7 @@ namespace GammonX.Server.Tests.Match
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
 		}
 
 		[Theory]
@@ -435,12 +463,12 @@ namespace GammonX.Server.Tests.Match
 			session.RollDices(player1Id);
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -464,9 +492,9 @@ namespace GammonX.Server.Tests.Match
 			var player2Id = session.Player2.Id;
 			session.RollDices(player1Id);
 
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).First();
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).First();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).First();
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
 
@@ -509,14 +537,14 @@ namespace GammonX.Server.Tests.Match
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Rolling, gameSession.Phase);
 			Assert.NotEmpty(gameSession.DiceRolls);
-			Assert.NotEmpty(gameSession.MoveSequences);
-			var firstLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			Assert.NotEmpty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
+			var firstLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(firstLegalMove);
 			session.MoveCheckers(player1Id, firstLegalMove.From, firstLegalMove.To);
 			Assert.False(session.CanEndTurn(player1Id));
 			Assert.False(session.CanEndTurn(session.Player2.Id));
 			Assert.Equal(GamePhase.Moving, gameSession.Phase);
-			var secondLegalMove = gameSession.MoveSequences.SelectMany(ms => ms.Moves).FirstOrDefault();
+			var secondLegalMove = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id).SelectMany(ms => ms.Moves).FirstOrDefault();
 			Assert.NotNull(secondLegalMove);
 			session.MoveCheckers(player1Id, secondLegalMove.From, secondLegalMove.To);
 			Assert.Equal(GamePhase.WaitingForEndTurn, gameSession.Phase);
@@ -531,7 +559,7 @@ namespace GammonX.Server.Tests.Match
 			Assert.NotEqual(player2Id, gameSession.OtherPlayer);
 			Assert.Equal(2, gameSession.TurnNumber);
 			Assert.Empty(gameSession.DiceRolls);
-			Assert.Empty(gameSession.MoveSequences);
+			Assert.Empty(gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == session.Player1.Id));
 		}
 
 		[Theory]
@@ -874,6 +902,41 @@ namespace GammonX.Server.Tests.Match
             Assert.Equal(session.Player2.Id, payload.Loser);
         }
 
+        [Fact]
+        public void MatchRecordsPreserveEachRoundsCubeAndShareHistoriesBetweenPlayers()
+        {
+            // Arrange
+            var session = SessionUtils.CreateMatchSessionWithPlayers(MatchVariant.Backgammon, MatchType.SevenPointGame, _matchSessionFactory);
+            session.Player1.AcceptNextGame();
+            session.Player2.AcceptNextGame();
+            var firstGame = session.StartMatch(session.Player1.Id);
+            var firstCube = Assert.IsAssignableFrom<GammonX.Engine.Models.IDoublingCubeModel>(firstGame.BoardModel);
+            firstCube.AcceptDoublingCubeOffer(false);
+            session.ResignGame(session.Player2.Id);
+            session.Player1.AcceptNextGame();
+            session.Player2.AcceptNextGame();
+            var secondGame = session.StartNextGame(session.Player1.Id);
+            Assert.Equal(1, Assert.IsAssignableFrom<GammonX.Engine.Models.IDoublingCubeModel>(secondGame.BoardModel).DoublingCubeValue);
+            session.ResignMatch(session.Player2.Id);
+
+            // Act
+            var records = session.ToRecords();
+
+            // Assert
+            var whiteGames = records.Player1.Games!.ToArray();
+            var blackGames = records.Player2.Games!.ToArray();
+            Assert.Equal(new int?[] { 2, 1 }, whiteGames.Select(game => game.DoublingCubeValue));
+            Assert.Equal(new int?[] { 2, 1 }, blackGames.Select(game => game.DoublingCubeValue));
+            Assert.Equal(new[] { firstGame.Id, secondGame.Id }, whiteGames.Select(game => game.Id));
+            Assert.Same(records.Player1.MatchHistory, records.Player2.MatchHistory);
+            for (var index = 0; index < whiteGames.Length; index++)
+            {
+                Assert.Equal(session.Player1.Id, whiteGames[index].PlayerId);
+                Assert.Equal(session.Player2.Id, blackGames[index].PlayerId);
+                Assert.Same(whiteGames[index].GameHistory, blackGames[index].GameHistory);
+            }
+        }
+
 		[Fact]
 		public void ResignMatchAfterConcludedGamePreservesGameHistory()
 		{
@@ -895,8 +958,9 @@ namespace GammonX.Server.Tests.Match
 			Assert.Equal(gameResult, gameSession.Result);
 			Assert.Equal(gameEndedAt, gameSession.EndedAt);
 
-			var player1Record = session.ToRecord(session.Player1.Id);
-			var player2Record = session.ToRecord(session.Player2.Id);
+			var records = session.ToRecords();
+            var player1Record = records.Player1;
+            var player2Record = records.Player2;
 			var work = new MatchCompletedWorkContract { Records = [player1Record, player2Record] };
 
 			var (winner, loser) = work.GetValidatedRecords();
@@ -1082,7 +1146,7 @@ namespace GammonX.Server.Tests.Match
 		private static void ExecutePlayerTurn(IMatchSessionModel matchSession, IGameSessionModel gameSession)
 		{
 			matchSession.RollDices(gameSession.ActivePlayer);
-			var ms = gameSession.MoveSequences.FirstOrDefault();
+			var ms = gameSession.GetLegalMoveSequences(gameSession.ActivePlayer == matchSession.Player1.Id).FirstOrDefault();
 			if (ms != null)
 			{
 				var moves = ms.Moves.ToList();

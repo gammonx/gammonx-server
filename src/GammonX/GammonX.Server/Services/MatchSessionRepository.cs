@@ -1,4 +1,6 @@
 using GammonX.Server.Models;
+using GammonX.Server.Contracts;
+using GammonX.Diagnostics.Server;
 
 using System.Collections.Concurrent;
 
@@ -9,17 +11,19 @@ namespace GammonX.Server.Services
     /// </summary>
     public sealed class MatchSessionRepository
     {
-		/// <summary>
-		/// Returns the given match session by its match id.
-		/// </summary>
+        /// <summary>
+        /// Returns the given match session by its match id.
+        /// </summary>
         private readonly ConcurrentDictionary<Guid, IMatchSessionModel> _sessions = new();
-        
-		private readonly IMatchSessionFactory _matchSessionFactory;
-        
-		/// <summary>
-		/// Returns the given match lock by its match id.
-		/// </summary>
-		private readonly Dictionary<Guid, MatchLock> _matchLocks = new();
+
+        internal int Count => _sessions.Count;
+
+        private readonly IMatchSessionFactory _matchSessionFactory;
+
+        /// <summary>
+        /// Returns the given match lock by its match id.
+        /// </summary>
+        private readonly Dictionary<Guid, MatchLock> _matchLocks = new();
 
         /// <summary>
 		/// Creates a repository using the supplied match factory
@@ -38,8 +42,17 @@ namespace GammonX.Server.Services
         /// </remarks>
         /// <param name="matchId">The match to synchronize.</param>
         /// <returns>A lease that releases access when disposed.</returns>
-        public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
+        public Task<MatchSessionLease> AcquireStateAsync(Guid matchId)
         {
+            return AcquireStateAsync(matchId, CancellationToken.None);
+        }
+
+        /// <summary>Acquires exclusive access until the returned lease is disposed.</summary>
+        /// <param name="matchId">The match to synchronize.</param>
+        /// <param name="cancellationToken">Cancels waiting for access. An acquired lease still requires disposal.</param>
+        public async Task<MatchSessionLease> AcquireStateAsync(Guid matchId, CancellationToken cancellationToken)
+        {
+            using var measurement = ServerMetrics.Measure(ServerMetrics.LeaseWait);
             MatchLock matchLock;
 
             lock (_matchLocks)
@@ -54,10 +67,34 @@ namespace GammonX.Server.Services
                 matchLock.Users++;
             }
 
-			// We lock the semaphore until the returned lease is disposed
-            await matchLock.Semaphore.WaitAsync();
+            try
+            {
+                await matchLock.Semaphore.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                ReleaseLock(matchId, matchLock, acquired: false);
+                throw;
+            }
 
             return new MatchSessionLease(this, matchId, matchLock);
+        }
+
+        private void ReleaseLock(Guid matchId, MatchLock matchLock, bool acquired)
+        {
+            lock (_matchLocks)
+            {
+                if (acquired)
+                {
+                    matchLock.Semaphore.Release();
+                }
+
+                if (--matchLock.Users == 0)
+                {
+                    _matchLocks.Remove(matchId);
+                    matchLock.Semaphore.Dispose();
+                }
+            }
         }
 
         /// <summary>
@@ -108,18 +145,21 @@ namespace GammonX.Server.Services
 
             private IMatchSessionModel? _session;
 
-			/// <summary>
-			/// Indicates if the given session was already read from the repository.
-			/// </summary>
+            /// <summary>
+            /// Indicates if the given session was already read from the repository.
+            /// </summary>
             private bool _loaded;
 
             private bool _disposed;
+
+            private readonly ServerMetrics.DurationScope _holdMeasurement;
 
             internal MatchSessionLease(MatchSessionRepository repository, Guid matchId, MatchLock matchLock)
             {
                 _repository = repository;
                 _matchId = matchId;
                 _matchLock = matchLock;
+                _holdMeasurement = ServerMetrics.Measure(ServerMetrics.LeaseHold);
             }
 
             /// <summary>
@@ -140,6 +180,140 @@ namespace GammonX.Server.Services
                         _loaded = true;
                     }
                     return _session;
+                }
+            }
+
+            /// <summary>
+            /// Checks whether the match has started without loading a working copy.
+            /// </summary>
+            internal bool HasStarted()
+            {
+                lock (_gate)
+                {
+                    return GetMatchSession()?.StartedAt != null;
+                }
+            }
+
+            /// <summary>
+            /// Returns the seated player associated with a connection without loading a working copy.
+            /// </summary>
+            public Guid GetCallingPlayerId(string connectionId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession();
+                    if (match != null && match.Player1.ConnectionId == connectionId)
+                    {
+                        return match.Player1.Id;
+                    }
+                    if (match != null && match.Player2.ConnectionId == connectionId)
+                    {
+                        return match.Player2.Id;
+                    }
+                    throw new InvalidOperationException("The calling player is not part of the match session.");
+                }
+            }
+
+            /// <summary>
+            /// Returns the opponent of a seated player without loading a working copy.
+            /// </summary>
+            public Guid GetOtherPlayerId(Guid callingPlayerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession();
+                    if (match != null && match.Player1.Id.Equals(callingPlayerId))
+                    {
+                        return match.Player2.Id;
+                    }
+                    if (match != null && match.Player2.Id.Equals(callingPlayerId))
+                    {
+                        return match.Player1.Id;
+                    }
+
+                    throw new InvalidOperationException("The calling player is not part of the match session.");
+                }
+            }
+
+            /// <summary>
+            /// Returns whether the given player occupies a bot seat.
+            /// </summary>
+            public bool IsBotPlayer(Guid playerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession() ?? throw new InvalidOperationException("match cannot be null");
+                    return (match.Player1.Id == playerId && match.Player1.IsBot)
+                        || (match.Player2.Id == playerId && match.Player2.IsBot);
+                }
+            }
+
+            /// <summary>
+            /// Returns the connection of a seated player without loading a working copy.
+            /// </summary>
+            public string GetPlayerConnectionId(Guid playerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession() ?? throw new InvalidOperationException("match cannot be null");
+
+                    if (match.Player1.Id.Equals(playerId))
+                    {
+                        return match.Player1.ConnectionId;
+                    }
+                    if (match.Player2.Id.Equals(playerId))
+                    {
+                        return match.Player2.ConnectionId;
+                    }
+
+                    throw new InvalidOperationException("The calling player is not part of the match session.");
+                }
+            }
+
+            /// <summary>
+            /// Returns whether a seated player plays white.
+            /// </summary>
+            public bool IsWhite(Guid callingPlayerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession() ?? throw new InvalidOperationException("match cannot be null");
+                    if (match.Player1.Id.Equals(callingPlayerId))
+                    {
+                        return true;
+                    }
+                    if (match.Player2.Id.Equals(callingPlayerId))
+                    {
+                        return false;
+                    }
+
+                    throw new InvalidOperationException("Player is not part of this match session.");
+                }
+            }
+
+            /// <summary>
+            /// Builds detached game responses without loading a mutable match copy.
+            /// </summary>
+            /// <param name="callingPlayerId">The calling player id.</param>
+            internal EventGameStatePayload? ReadGameState(Guid callingPlayerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession();
+                    return match?.GetGameState(callingPlayerId);
+                }
+            }
+
+            /// <summary>
+            /// Builds detached match responses without loading a mutable match copy.
+            /// </summary>
+            /// <param name="callingPlayerId">The calling player id.</param>
+            internal EventMatchStatePayload? ReadMatchState(Guid callingPlayerId)
+            {
+                lock (_gate)
+                {
+                    var match = GetMatchSession();
+                    return match?.ToPayload(callingPlayerId);
                 }
             }
 
@@ -244,16 +418,8 @@ namespace GammonX.Server.Services
                         _disposed = true;
                         _session = null;
 
-                        lock (_repository._matchLocks)
-                        {
-							// we release the match session lease
-                            _matchLock.Semaphore.Release();
-                            if (--_matchLock.Users == 0)
-                            {
-                                _repository._matchLocks.Remove(_matchId);
-                                _matchLock.Semaphore.Dispose();
-                            }
-                        }
+                        _repository.ReleaseLock(_matchId, _matchLock, acquired: true);
+                        _holdMeasurement.Dispose();
                     }
                 }
                 return ValueTask.CompletedTask;
@@ -262,6 +428,13 @@ namespace GammonX.Server.Services
             private void ThrowIfDisposed()
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
+            }
+
+            private IMatchSessionModel? GetMatchSession()
+            {
+                ThrowIfDisposed();
+                var match = _loaded ? _session : _repository._sessions.GetValueOrDefault(_matchId);
+                return match;
             }
         }
     }

@@ -1,4 +1,4 @@
-using Amazon.Runtime;
+﻿using Amazon.Runtime;
 using Amazon.SQS;
 
 using DotNetEnv;
@@ -8,6 +8,7 @@ using GammonX.Engine.Services;
 using GammonX.Models.Contracts;
 using GammonX.Models.Enums;
 
+using GammonX.Server.Extensions;
 using GammonX.Server.Models;
 using GammonX.Server.Bot;
 using GammonX.Server.Queue;
@@ -98,7 +99,7 @@ namespace GammonX.Server.Tests.Queue
         {
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndCompleteSimpleMatch();
-            await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+            await service.EnqueueRatingProcessingAsync(match.ToRecords(), CancellationToken.None);
         }
 
         [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
@@ -106,7 +107,7 @@ namespace GammonX.Server.Tests.Queue
         {
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndStartSimpleMatch();
-            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+            await service.EnqueueStatProcessingAsync(match.ToRecords(), CancellationToken.None);
         }
 
         [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
@@ -114,7 +115,7 @@ namespace GammonX.Server.Tests.Queue
         {
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndCompleteSimpleMatch();
-            await service.EnqueueMatchResultAsync(match, CancellationToken.None);
+            await service.EnqueueMatchResultAsync(match.ToRecords(), CancellationToken.None);
         }
 
         [Fact(Skip = "AWS_STACK", SkipUnless = nameof(IsAwsEnvironment))]
@@ -122,7 +123,7 @@ namespace GammonX.Server.Tests.Queue
         {
             var service = new WorkQueueService(_serviceProvider);
             var match = CreateAndStartSimpleMatch();
-            await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+            await service.EnqueueGameResultAsync(match.ToRecords(1), CancellationToken.None);
         }
 
         [Fact]
@@ -139,7 +140,7 @@ namespace GammonX.Server.Tests.Queue
             var service = new WorkQueueService(services.BuildServiceProvider());
             var match = CreateAndStartSimpleMatch();
 
-            await service.EnqueueGameResultAsync(match, 1, CancellationToken.None);
+            await service.EnqueueGameResultAsync(match.ToRecords(1), CancellationToken.None);
 
             queue.Verify(
                 value => value.EnqueueAsync(
@@ -165,7 +166,7 @@ namespace GammonX.Server.Tests.Queue
             var service = new WorkQueueService(services.BuildServiceProvider());
             var match = CreateAndCompleteSimpleMatch();
 
-            await service.EnqueueMatchResultAsync(match, CancellationToken.None);
+            await service.EnqueueMatchResultAsync(match.ToRecords(), CancellationToken.None);
 
             queue.Verify(
                 value => value.EnqueueAsync(
@@ -193,7 +194,7 @@ namespace GammonX.Server.Tests.Queue
             var service = new WorkQueueService(services.BuildServiceProvider());
             var match = CreateAndCompleteSimpleMatch(botOpponent);
 
-            await service.EnqueueRatingProcessingAsync(match, CancellationToken.None);
+            await service.EnqueueRatingProcessingAsync(match.ToRecords(), CancellationToken.None);
 
             queue.Verify(
                 value => value.EnqueueAsync(
@@ -225,7 +226,7 @@ namespace GammonX.Server.Tests.Queue
 
             var match = CreateAndCompleteSimpleMatch();
 
-            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+            await service.EnqueueStatProcessingAsync(match.ToRecords(), CancellationToken.None);
 
             queue.Verify(value => value.EnqueueFifoBatchAsync(
                 It.Is<IEnumerable<FifoWorkMessage<MatchRecordContract>>>(messages =>
@@ -257,7 +258,7 @@ namespace GammonX.Server.Tests.Queue
 
             var match = CreateAndCompleteSimpleMatch();
 
-            await service.EnqueueStatProcessingAsync(match, CancellationToken.None);
+            await service.EnqueueStatProcessingAsync(match.ToRecords(), CancellationToken.None);
 
             queue.Verify(value => value.EnqueueBatchAsync(
                 It.Is<IEnumerable<MatchRecordContract>>(messages => messages.Count() == 2),
